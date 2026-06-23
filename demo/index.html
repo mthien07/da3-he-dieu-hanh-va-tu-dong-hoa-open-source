@@ -13,8 +13,8 @@
         :root {
             --bg-base: #060b13;
             --bg-desktop: #0a1120;
-            --card-glass: rgba(15, 23, 42, 0.65);
-            --border-glass: rgba(255, 255, 255, 0.08);
+            --card-glass: rgba(15, 23, 42, 0.75);
+            --border-glass: rgba(255, 255, 255, 0.1);
             --text-main: #f1f5f9;
             --text-sub: #94a3b8;
             --teal: #00f0ff;
@@ -38,512 +38,125 @@
 
         /* Desktop Wallpaper & Glows */
         .desktop {
-            flex: 1;
-            position: relative;
+            flex: 1; position: relative;
             background: radial-gradient(circle at 80% 20%, rgba(0, 240, 255, 0.07) 0%, transparent 40%),
                         radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 45%),
+                        url('data:image/svg+xml;utf8,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><path d="M10 10h10v10H10z" fill="rgba(255,255,255,0.01)"/></svg>'),
                         linear-gradient(135deg, #070e1b 0%, #0a192f 100%);
-            display: flex;
-            flex-direction: column;
-            padding: 24px;
-            overflow: hidden;
+            display: flex; flex-direction: column; padding: 24px; overflow: hidden;
         }
 
         /* Desktop Icons */
-        .desktop-icons {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            width: 100px;
-            z-index: 10;
-        }
-
+        .desktop-icons { display: flex; flex-direction: column; gap: 20px; width: 100px; z-index: 10; }
         .icon-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            border-radius: 8px;
-            padding: 8px;
-            border: 1px solid transparent;
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+            cursor: pointer; transition: all 0.2s; border-radius: 8px; padding: 8px; border: 1px solid transparent;
         }
-
-        .icon-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(5px);
-        }
-
-        .icon-symbol {
-            font-size: 32px;
-            margin-bottom: 8px;
-            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
-            transition: transform 0.2s;
-        }
-
-        .icon-item:hover .icon-symbol {
-            transform: scale(1.08);
-        }
-
-        .icon-name {
-            font-size: 11px;
-            font-weight: 500;
-            color: var(--text-main);
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-            line-height: 1.3;
-        }
+        .icon-item:hover { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.05); backdrop-filter: blur(5px); }
+        .icon-symbol { font-size: 32px; margin-bottom: 8px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3)); transition: transform 0.2s; }
+        .icon-item:hover .icon-symbol { transform: scale(1.08); }
+        .icon-name { font-size: 11px; font-weight: 500; color: var(--text-main); text-shadow: 0 2px 4px rgba(0,0,0,0.8); line-height: 1.3; }
 
         /* Taskbar */
         .taskbar {
-            height: 48px;
-            background: rgba(10, 17, 32, 0.85);
-            border-top: 1px solid var(--border-glass);
-            backdrop-filter: blur(20px);
-            display: flex;
-            align-items: center;
-            padding: 0 16px;
-            z-index: 100;
-            justify-content: space-between;
+            height: 48px; background: rgba(10, 17, 32, 0.85); border-top: 1px solid var(--border-glass);
+            backdrop-filter: blur(20px); display: flex; align-items: center; padding: 0 16px; z-index: 100; justify-content: space-between;
         }
-
-        .taskbar-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
+        .taskbar-left { display: flex; align-items: center; gap: 12px; }
         .start-btn {
-            background: linear-gradient(135deg, var(--teal), var(--blue));
-            color: #040814;
-            border: none;
-            padding: 6px 14px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            box-shadow: 0 0 10px rgba(0, 240, 255, 0.35);
+            background: linear-gradient(135deg, var(--teal), var(--blue)); color: #040814; border: none;
+            padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; gap: 6px; box-shadow: 0 0 10px rgba(0, 240, 255, 0.35); transition: all 0.2s;
         }
-
-        .start-btn:hover {
-            box-shadow: 0 0 16px rgba(0, 240, 255, 0.5);
-        }
-
-        .taskbar-apps {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
+        .start-btn:hover { box-shadow: 0 0 16px rgba(0, 240, 255, 0.5); transform: translateY(-1px); }
+        .taskbar-apps { display: flex; align-items: center; gap: 8px; }
         .taskbar-app-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-            background: rgba(255, 255, 255, 0.05);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            cursor: pointer;
-            border: 1px solid transparent;
-            transition: all 0.2s;
+            width: 32px; height: 32px; border-radius: 6px; background: rgba(255, 255, 255, 0.05);
+            display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer;
+            border: 1px solid transparent; transition: all 0.2s;
         }
-
-        .taskbar-app-icon:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: var(--border-glass);
-        }
-
-        .taskbar-app-icon.active {
-            background: rgba(0, 240, 255, 0.15);
-            border-color: var(--teal);
-            box-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
-        }
-
-        .taskbar-right {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            font-size: 12px;
-            color: var(--text-sub);
-        }
-
-        .taskbar-status {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            color: var(--teal);
-            font-weight: 500;
-        }
-
-        .status-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--teal);
-            box-shadow: 0 0 8px var(--teal);
-            animation: blink 2s infinite;
-        }
-
-        @keyframes blink {
-            50% { opacity: 0.4; }
-        }
+        .taskbar-app-icon:hover { background: rgba(255, 255, 255, 0.1); border-color: var(--border-glass); }
+        .taskbar-app-icon.active { background: rgba(0, 240, 255, 0.15); border-color: var(--teal); box-shadow: 0 0 8px rgba(0, 240, 255, 0.2); }
+        .taskbar-right { display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--text-sub); }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 8px var(--teal); animation: blink 2s infinite; }
+        @keyframes blink { 50% { opacity: 0.4; } }
 
         /* Floating Windows */
         .window {
-            position: absolute;
-            top: 10%;
-            left: 25%;
-            width: 700px;
-            height: 480px;
-            background: var(--card-glass);
-            border: 1px solid var(--border-glass);
-            border-radius: 12px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(25px);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            z-index: 50;
-            opacity: 0;
-            transform: scale(0.95);
-            pointer-events: none;
-            transition: opacity 0.3s, transform 0.3s;
+            position: absolute; top: 10%; left: 20%; background: var(--card-glass); border: 1px solid var(--border-glass);
+            border-radius: 12px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); backdrop-filter: blur(25px);
+            display: flex; flex-direction: column; overflow: hidden; z-index: 50; opacity: 0; transform: scale(0.95);
+            pointer-events: none; transition: opacity 0.2s, transform 0.2s;
         }
-
-        .window.active {
-            opacity: 1;
-            transform: scale(1);
-            pointer-events: all;
-            z-index: 60;
-        }
-
-        .window-header {
-            height: 38px;
-            background: rgba(15, 23, 42, 0.8);
-            border-bottom: 1px solid var(--border-glass);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 16px;
-            cursor: move;
-        }
-
-        .window-title {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .window-controls {
-            display: flex;
-            gap: 8px;
-        }
-
-        .win-btn {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            border: none;
-            cursor: pointer;
-        }
-
+        .window.active { opacity: 1; transform: scale(1); pointer-events: all; z-index: 60; }
+        .window-header { height: 38px; background: rgba(15, 23, 42, 0.8); border-bottom: 1px solid var(--border-glass); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; cursor: move; }
+        .window-title { font-size: 12px; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+        .window-controls { display: flex; gap: 8px; }
+        .win-btn { width: 12px; height: 12px; border-radius: 50%; border: none; cursor: pointer; }
         .win-close { background-color: var(--red); }
         .win-min { background-color: var(--gold); }
         .win-max { background-color: var(--green); }
-
-        .window-content {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-        }
+        .window-content { flex: 1; overflow-y: auto; }
 
         /* Terminal Window custom styles */
-        .terminal-content {
-            background-color: rgba(3, 7, 18, 0.9);
-            font-family: 'Fira Code', monospace;
-            padding: 16px;
-            font-size: 13px;
-            color: #38bdf8;
-            line-height: 1.6;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .terminal-history {
-            flex: 1;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            margin-bottom: 8px;
-        }
-
-        .terminal-input-line {
-            display: flex;
-            align-items: center;
-        }
-
-        .prompt {
-            color: #4ade80;
-            margin-right: 8px;
-            flex-shrink: 0;
-        }
-
-        .terminal-input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            outline: none;
-            color: var(--text-main);
-            font-family: inherit;
-            font-size: inherit;
-        }
+        .terminal-content { background-color: rgba(3, 7, 18, 0.95); font-family: 'Fira Code', monospace; padding: 16px; font-size: 13px; color: #38bdf8; line-height: 1.6; display: flex; flex-direction: column; height: 100%; }
+        .terminal-history { flex: 1; overflow-y: auto; white-space: pre-wrap; margin-bottom: 8px; }
+        .terminal-input-line { display: flex; align-items: center; }
+        .prompt { color: #4ade80; margin-right: 8px; flex-shrink: 0; }
+        .terminal-input { flex: 1; background: transparent; border: none; outline: none; color: var(--text-main); font-family: inherit; font-size: inherit; }
 
         /* System Info View Styles */
-        .sys-grid {
-            display: grid;
-            grid-template-columns: 1fr 1.2fr;
-            gap: 20px;
-            height: 100%;
-        }
-
-        .sys-left {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .sys-card {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--border-glass);
-            border-radius: 10px;
-            padding: 16px;
-        }
-
-        .sys-title {
-            font-size: 12px;
-            color: var(--text-sub);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-        }
-
-        .sys-value {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--teal);
-        }
-
-        .cost-comparison {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .cost-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 13px;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .cost-row:last-child { border-bottom: none; }
-
+        .sys-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 20px; padding: 20px; }
+        .sys-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: 10px; padding: 16px; }
+        .sys-title { font-size: 12px; color: var(--text-sub); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .sys-value { font-size: 24px; font-weight: 700; color: var(--teal); }
         .cost-bad { color: var(--red); font-weight: 600; }
         .cost-good { color: var(--teal); font-weight: 600; }
-
-        .chart-radial {
-            position: relative;
-            width: 140px;
-            height: 140px;
-            margin: 0 auto;
-        }
-
-        .chart-radial svg {
-            transform: rotate(-90deg);
-        }
-
-        .chart-radial .bg {
-            fill: none;
-            stroke: rgba(255,255,255,0.04);
-            stroke-width: 8;
-        }
-
-        .chart-radial .progress {
-            fill: none;
-            stroke: var(--teal);
-            stroke-width: 8;
-            stroke-linecap: round;
-            stroke-dasharray: 377;
-            stroke-dashoffset: 377;
-            transition: stroke-dashoffset 1s ease;
-        }
-
-        .chart-text {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-        }
-
-        .chart-num { font-size: 24px; font-weight: 700; color: var(--teal); }
+        .chart-radial { position: relative; width: 120px; height: 120px; margin: 0 auto; }
+        .chart-radial svg { transform: rotate(-90deg); }
+        .chart-radial .bg { fill: none; stroke: rgba(255,255,255,0.04); stroke-width: 8; }
+        .chart-radial .progress { fill: none; stroke: var(--teal); stroke-width: 8; stroke-linecap: round; stroke-dasharray: 314; stroke-dashoffset: 314; transition: stroke-dashoffset 1s ease; }
+        .chart-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+        .chart-num { font-size: 20px; font-weight: 700; color: var(--teal); }
         .chart-label { font-size: 10px; color: var(--text-sub); }
 
-        /* Custom OS Settings App */
-        .settings-nav {
-            display: flex;
-            gap: 8px;
-            border-bottom: 1px solid var(--border-glass);
-            margin-bottom: 16px;
-            padding-bottom: 8px;
-        }
+        /* LibreOffice App */
+        .office-toolbar { background: #f1f5f9; padding: 8px 16px; display: flex; gap: 12px; border-bottom: 1px solid #cbd5e1; align-items: center; }
+        .office-tool { padding: 4px 8px; border-radius: 4px; color: #334155; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        .office-tool:hover { background: #e2e8f0; }
+        .office-doc { background: #e2e8f0; height: calc(100% - 45px); padding: 24px; overflow-y: auto; display: flex; justify-content: center; }
+        .office-page { background: white; width: 100%; max-width: 600px; min-height: 800px; padding: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); color: #0f172a; font-family: 'Times New Roman', serif; outline: none; }
 
-        .set-nav-btn {
-            background: transparent;
-            border: 1px solid transparent;
-            color: var(--text-sub);
-            padding: 6px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: all 0.2s;
-        }
+        /* Store App */
+        .store-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 20px; }
+        .store-app { background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; transition: 0.2s; }
+        .store-app:hover { background: rgba(255,255,255,0.1); transform: translateY(-2px); }
+        .store-icon { font-size: 32px; }
+        .store-btn { background: rgba(0, 240, 255, 0.1); color: var(--teal); border: 1px solid var(--teal); padding: 4px 0; border-radius: 6px; text-align: center; font-size: 12px; font-weight: 600; cursor: pointer; margin-top: auto; transition: 0.2s; }
+        .store-btn:hover { background: var(--teal); color: var(--bg-base); }
 
-        .set-nav-btn.active {
-            background: rgba(0, 240, 255, 0.1);
-            color: var(--teal);
-            border-color: rgba(0, 240, 255, 0.2);
-        }
-
-        .settings-content {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .setting-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(255,255,255,0.02);
-            border: 1px solid var(--border-glass);
-            padding: 12px 16px;
-            border-radius: 8px;
-        }
-
-        .set-info h4 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
-        .set-info p { font-size: 12px; color: var(--text-sub); }
-
-        .toggle-switch {
-            width: 48px;
-            height: 24px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 12px;
-            position: relative;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .toggle-switch.active {
-            background: var(--teal);
-        }
-
-        .toggle-switch::after {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 20px;
-            height: 20px;
-            background: white;
-            border-radius: 50%;
-            transition: left 0.3s;
-        }
-
-        .toggle-switch.active::after {
-            left: 26px;
-        }
-
-        /* Custom notifications */
-        .notification-area {
-            position: absolute;
-            top: 24px;
-            right: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            z-index: 1000;
-        }
-
-        .toast {
-            background: rgba(10, 17, 32, 0.9);
-            border: 1px solid var(--border-glass);
-            border-left: 4px solid var(--teal);
-            border-radius: 8px;
-            padding: 14px 18px;
-            width: 320px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            backdrop-filter: blur(15px);
-            display: flex;
-            gap: 12px;
-            transform: translateX(340px);
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        .toast.show {
-            transform: translateX(0);
-        }
-
+        /* Notifications */
+        .notification-area { position: absolute; top: 24px; right: 24px; display: flex; flex-direction: column; gap: 12px; z-index: 1000; }
+        .toast { background: rgba(10, 17, 32, 0.9); border: 1px solid var(--border-glass); border-left: 4px solid var(--teal); border-radius: 8px; padding: 14px 18px; width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(15px); display: flex; gap: 12px; transform: translateX(340px); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .toast.show { transform: translateX(0); }
         .toast-icon { font-size: 20px; }
         .toast-title { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
         .toast-desc { font-size: 11px; color: var(--text-sub); }
 
-        /* Banner info contest */
-        .contest-banner {
-            position: absolute;
-            top: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(10,17,32,0.6);
-            border: 1px solid var(--border-glass);
-            padding: 8px 18px;
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
-            font-size: 11px;
-            color: var(--teal);
-            letter-spacing: 0.5px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            z-index: 1;
-        }
-
+        /* Banner */
+        .contest-banner { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); background: rgba(10,17,32,0.6); border: 1px solid var(--border-glass); padding: 8px 18px; border-radius: 20px; backdrop-filter: blur(10px); font-size: 11px; color: var(--teal); letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; z-index: 1; }
         .contest-banner span { color: var(--gold); font-weight: 700; }
     </style>
 </head>
 <body>
 
-    <!-- Desktop Area -->
     <div class="desktop" id="desktop">
-        
-        <!-- Contest Info Banner -->
         <div class="contest-banner">
             🐝 HTX OneBee <span>DA3: Hệ điều hành & Tự động hóa Open Source</span> - Hội thi Khởi nghiệp ĐMST Tây Ninh 2026
         </div>
 
-        <!-- Notification Area -->
         <div class="notification-area" id="notificationArea"></div>
 
-        <!-- Icons Grid -->
         <div class="desktop-icons">
             <div class="icon-item" onclick="openWindow('win-sys')">
                 <span class="icon-symbol">🖥️</span>
@@ -553,57 +166,58 @@
                 <span class="icon-symbol">🐚</span>
                 <span class="icon-name">AI Terminal<br>Ollama local</span>
             </div>
-            <div class="icon-item" onclick="openWindow('win-settings')">
-                <span class="icon-symbol">⚙️</span>
-                <span class="icon-name">Cấu hình<br>OneBee OS</span>
+            <div class="icon-item" onclick="openWindow('win-store')">
+                <span class="icon-symbol">🛍️</span>
+                <span class="icon-name">Kho Phần mềm<br>Open Source</span>
             </div>
-            <div class="icon-item" onclick="showNotification('Tài liệu mẫu', 'Đã khởi chạy bộ LibreOffice Writer thành công.', '📝')">
+            <div class="icon-item" onclick="openWindow('win-office')">
                 <span class="icon-symbol">📝</span>
-                <span class="icon-name">LibreOffice<br>Soạn thảo</span>
+                <span class="icon-name">LibreOffice<br>Writer</span>
             </div>
         </div>
 
         <!-- Window 1: System Info -->
-        <div class="window" id="win-sys">
+        <div class="window" id="win-sys" style="width: 700px; height: 480px; top: 10%; left: 25%;">
             <div class="window-header" onmousedown="dragStart(event, 'win-sys')">
                 <div class="window-title">🖥️ Thông tin Hệ thống — OneBee OS v24.04</div>
                 <div class="window-controls">
-                    <button class="win-btn win-min" onclick="minimizeWindow('win-sys')"></button>
+                    <button class="win-btn win-min" onclick="closeWindow('win-sys')"></button>
                     <button class="win-btn win-max"></button>
                     <button class="win-btn win-close" onclick="closeWindow('win-sys')"></button>
                 </div>
             </div>
             <div class="window-content">
                 <div class="sys-grid">
-                    <div class="sys-left">
+                    <div style="display:flex; flex-direction:column; gap:16px;">
                         <div class="sys-card">
-                            <div class="sys-title">Bản quyền phần mềm đóng (Windows + Office)</div>
+                            <div class="sys-title">Bản quyền Windows + Office (Đóng)</div>
                             <div class="sys-value cost-bad">80.000.000đ</div>
-                            <p style="font-size:11px; color: var(--text-sub); margin-top: 4px;">Ước tính cho doanh nghiệp 20 máy tính</p>
+                            <p style="font-size:11px; color: var(--text-sub); margin-top: 4px;">Ước tính cho 20 máy tính</p>
                         </div>
                         <div class="sys-card">
                             <div class="sys-title">Bản quyền OneBee OS (Mã nguồn mở)</div>
                             <div class="sys-value cost-good">0đ</div>
-                            <p style="font-size:11px; color: var(--teal); margin-top: 4px;">Tuân thủ bản quyền 100%, không lo crack lậu</p>
+                            <p style="font-size:11px; color: var(--teal); margin-top: 4px;">Tuân thủ bản quyền, an toàn bảo mật 100%</p>
                         </div>
                         <div class="sys-card">
-                            <div class="sys-title">Tỷ lệ tối ưu chi phí hạ tầng</div>
-                            <div class="sys-value" style="color: var(--purple);">Giảm 80%</div>
+                            <div class="sys-title">Docker Containers Active</div>
+                            <div class="sys-value" style="color: var(--blue);">8 Containers</div>
+                            <p style="font-size:11px; color: var(--text-sub); margin-top: 4px;">n8n, PostgreSQL, Redis, Llama3...</p>
                         </div>
                     </div>
                     <div class="sys-card" style="display:flex; flex-direction:column; justify-content:space-between;">
                         <div>
-                            <h3 style="font-size:15px; font-weight:700; margin-bottom: 12px; color: var(--teal);">Hiệu năng tối ưu hóa</h3>
+                            <h3 style="font-size:15px; font-weight:700; margin-bottom: 8px; color: var(--teal);">Hiệu năng tối ưu hóa</h3>
                             <p style="font-size:12px; color: var(--text-sub); line-height: 1.5; margin-bottom: 16px;">
-                                OneBee OS tùy biến nhân Linux giúp giảm 40% dung lượng RAM chiếm dụng so với Windows 11, tăng tốc khởi chạy ứng dụng văn phòng. Tích hợp sẵn Ollama AI.
+                                Nhân Linux (Kernel 6.8) tùy biến giúp giảm 40% RAM so với hệ điều hành thông thường, giải phóng tài nguyên để chạy mượt mà AI cục bộ.
                             </p>
                         </div>
                         
                         <div style="display:flex; gap: 16px; align-items:center; justify-content:center;">
                             <div class="chart-radial">
-                                <svg width="140" height="140">
-                                    <circle class="bg" cx="70" cy="70" r="60"></circle>
-                                    <circle class="progress" id="cpu-circle" cx="70" cy="70" r="60"></circle>
+                                <svg width="120" height="120">
+                                    <circle class="bg" cx="60" cy="60" r="50"></circle>
+                                    <circle class="progress" id="cpu-circle" cx="60" cy="60" r="50"></circle>
                                 </svg>
                                 <div class="chart-text">
                                     <div class="chart-num" id="cpu-val">12%</div>
@@ -611,9 +225,9 @@
                                 </div>
                             </div>
                             <div class="chart-radial">
-                                <svg width="140" height="140">
-                                    <circle class="bg" cx="70" cy="70" r="60"></circle>
-                                    <circle class="progress" id="ram-circle" cx="70" cy="70" r="60" style="stroke: var(--purple);"></circle>
+                                <svg width="120" height="120">
+                                    <circle class="bg" cx="60" cy="60" r="50"></circle>
+                                    <circle class="progress" id="ram-circle" cx="60" cy="60" r="50" style="stroke: var(--purple);"></circle>
                                 </svg>
                                 <div class="chart-text">
                                     <div class="chart-num" id="ram-val">34%</div>
@@ -621,104 +235,118 @@
                                 </div>
                             </div>
                         </div>
-
-                        <div style="font-size:11px; text-align:center; color: var(--text-sub); margin-top: 10px;">
-                            Core: Linux Kernel 6.8.0-unattended-tuning
-                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Window 2: Terminal -->
-        <div class="window" id="win-terminal">
+        <div class="window" id="win-terminal" style="width: 650px; height: 420px; top: 20%; left: 30%;">
             <div class="window-header" onmousedown="dragStart(event, 'win-terminal')">
-                <div class="window-title">🐚 OneBee Terminal (Simulated) — Llama 3 8B Active</div>
+                <div class="window-title">🐚 OneBee Terminal — Llama 3 8B Active</div>
                 <div class="window-controls">
-                    <button class="win-btn win-min" onclick="minimizeWindow('win-terminal')"></button>
+                    <button class="win-btn win-min" onclick="closeWindow('win-terminal')"></button>
                     <button class="win-btn win-max"></button>
                     <button class="win-btn win-close" onclick="closeWindow('win-terminal')"></button>
                 </div>
             </div>
             <div class="window-content terminal-content">
                 <div class="terminal-history" id="termHistory">OneBee OS Core Console v1.0.2
-Hệ điều hành tối ưu hóa & nhúng AI nội bộ cho HTX OneBee.
 Gõ 'help' để xem các lệnh khả dụng.
-
 </div>
                 <div class="terminal-input-line">
                     <span class="prompt">onebee@os:~$</span>
-                    <input type="text" class="terminal-input" id="termInput" autofocus autocomplete="off" placeholder="Gõ lệnh tại đây...">
+                    <input type="text" class="terminal-input" id="termInput" autocomplete="off" placeholder="Gõ lệnh tại đây...">
                 </div>
             </div>
         </div>
 
-        <!-- Window 3: Settings -->
-        <div class="window" id="win-settings">
-            <div class="window-header" onmousedown="dragStart(event, 'win-settings')">
-                <div class="window-title">⚙️ Cấu hình OneBee OS — Tự động hóa</div>
+        <!-- Window 3: LibreOffice Writer -->
+        <div class="window" id="win-office" style="width: 800px; height: 600px; top: 5%; left: 15%;">
+            <div class="window-header" onmousedown="dragStart(event, 'win-office')">
+                <div class="window-title">📝 Tài liệu chưa đặt tên - LibreOffice Writer</div>
                 <div class="window-controls">
-                    <button class="win-btn win-min" onclick="minimizeWindow('win-settings')"></button>
+                    <button class="win-btn win-min" onclick="closeWindow('win-office')"></button>
                     <button class="win-btn win-max"></button>
-                    <button class="win-btn win-close" onclick="closeWindow('win-settings')"></button>
+                    <button class="win-btn win-close" onclick="closeWindow('win-office')"></button>
+                </div>
+            </div>
+            <div class="window-content" style="display: flex; flex-direction: column; background: white; padding: 0;">
+                <div class="office-toolbar">
+                    <div class="office-tool">File</div>
+                    <div class="office-tool">Edit</div>
+                    <div class="office-tool">View</div>
+                    <div class="office-tool">Insert</div>
+                    <div class="office-tool">Format</div>
+                    <span style="color:#ccc">|</span>
+                    <div class="office-tool" style="font-weight:bold">B</div>
+                    <div class="office-tool" style="font-style:italic">I</div>
+                    <div class="office-tool" style="text-decoration:underline">U</div>
+                    <span style="color:#ccc">|</span>
+                    <div class="office-tool">Tân Trang (Times New Roman) ▾</div>
+                    <div class="office-tool">12 ▾</div>
+                </div>
+                <div class="office-doc">
+                    <div class="office-page" contenteditable="true">
+                        <h2 style="text-align: center; margin-bottom: 20px;">BÁO CÁO KẾT QUẢ KINH DOANH<br>HỢP TÁC XÃ ONEBEE</h2>
+                        <p><strong>Ngày lập:</strong> 22/06/2026</p>
+                        <p><strong>Nội dung:</strong> Đánh giá tiến độ áp dụng hệ điều hành mã nguồn mở OneBee OS vào quy trình vận hành nội bộ.</p>
+                        <br>
+                        <p>Kể từ khi áp dụng LibreOffice thay cho Microsoft Word, toàn bộ máy tính trong HTX đã hoạt động ổn định, mở được 100% định dạng file .docx, .xlsx do đối tác gửi mà không gặp lỗi font.</p>
+                        <p><em>(Bạn có thể gõ thêm văn bản tại đây...)</em></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Window 4: App Store -->
+        <div class="window" id="win-store" style="width: 750px; height: 500px; top: 15%; left: 20%;">
+            <div class="window-header" onmousedown="dragStart(event, 'win-store')">
+                <div class="window-title">🛍️ OneBee Software Center — Miễn phí & An toàn</div>
+                <div class="window-controls">
+                    <button class="win-btn win-min" onclick="closeWindow('win-store')"></button>
+                    <button class="win-btn win-max"></button>
+                    <button class="win-btn win-close" onclick="closeWindow('win-store')"></button>
                 </div>
             </div>
             <div class="window-content">
-                <div class="settings-nav">
-                    <button class="set-nav-btn active" onclick="switchSettingTab('general')">Tổng quan</button>
-                    <button class="set-nav-btn" onclick="switchSettingTab('auto')">Harness Automation</button>
-                    <button class="set-nav-btn" onclick="switchSettingTab('ai')">Cấu hình AI On-premise</button>
-                </div>
-                
-                <div class="settings-content" id="set-general">
-                    <div class="setting-item">
-                        <div class="set-info">
-                            <h4>Giao diện thân thiện người dùng (Windows layout)</h4>
-                            <p>Tự động cấu hình taskbar và menu giống hệ điều hành cũ để giảm thời gian làm quen.</p>
-                        </div>
-                        <div class="toggle-switch active" onclick="toggleSwitch(this)"></div>
+                <h3 style="padding: 20px 20px 0; font-weight: 600; font-size: 16px;">Kho Phần mềm Mã Nguồn Mở (Thay thế phần mềm độc quyền)</h3>
+                <div class="store-grid">
+                    <div class="store-app">
+                        <div class="store-icon">🦊</div>
+                        <div style="font-weight:600; font-size:14px;">Firefox Browser</div>
+                        <div style="font-size:11px; color:var(--text-sub);">Trình duyệt web an toàn, chặn theo dõi.</div>
+                        <div class="store-btn">Đã cài đặt</div>
                     </div>
-                    <div class="setting-item">
-                        <div class="set-info">
-                            <h4>Chế độ bảo vệ dữ liệu nội bộ (Data Privacy)</h4>
-                            <p>Ngăn chặn tự động upload dữ liệu lên đám mây công cộng.</p>
-                        </div>
-                        <div class="toggle-switch active" onclick="toggleSwitch(this)"></div>
+                    <div class="store-app">
+                        <div class="store-icon">🎨</div>
+                        <div style="font-weight:600; font-size:14px;">GIMP</div>
+                        <div style="font-size:11px; color:var(--text-sub);">Thay thế Photoshop. Chỉnh sửa ảnh chuyên nghiệp.</div>
+                        <div class="store-btn">Cài đặt (Miễn phí)</div>
                     </div>
-                </div>
-
-                <div class="settings-content hidden" id="set-auto">
-                    <div class="setting-item">
-                        <div class="set-info">
-                            <h4>Tự động sao lưu cơ sở dữ liệu hàng ngày</h4>
-                            <p>Nén, mã hóa bằng GPG và đẩy về ổ cứng NAS nội bộ lúc 23:00.</p>
-                        </div>
-                        <div class="toggle-switch active" onclick="toggleSwitch(this)"></div>
+                    <div class="store-app">
+                        <div class="store-icon">🎬</div>
+                        <div style="font-weight:600; font-size:14px;">Kdenlive</div>
+                        <div style="font-size:11px; color:var(--text-sub);">Thay thế Premiere. Dựng video 4K ổn định.</div>
+                        <div class="store-btn">Cài đặt (Miễn phí)</div>
                     </div>
-                    <div class="setting-item">
-                        <div class="set-info">
-                            <h4>Giám sát hiệu năng và tự động giải phóng RAM</h4>
-                            <p>Tự động dọn dẹp bộ nhớ đệm cache khi dung lượng RAM vượt quá 85%.</p>
-                        </div>
-                        <div class="toggle-switch active" onclick="toggleSwitch(this)"></div>
+                    <div class="store-app">
+                        <div class="store-icon">▶️</div>
+                        <div style="font-weight:600; font-size:14px;">VLC Player</div>
+                        <div style="font-size:11px; color:var(--text-sub);">Trình phát đa phương tiện đọc mọi định dạng.</div>
+                        <div class="store-btn">Đã cài đặt</div>
                     </div>
-                    <button class="start-btn" style="margin-top:10px; padding: 10px;" onclick="simulateBackup()">⚡ Chạy backup thủ công ngay lập tức</button>
-                </div>
-
-                <div class="settings-content hidden" id="set-ai">
-                    <div class="setting-item">
-                        <div class="set-info">
-                            <h4>Khởi chạy Ollama khi bật máy</h4>
-                            <p>Nạp mô hình ngôn ngữ lớn (Llama 3 8B) vào bộ nhớ VRAM để sẵn sàng phản hồi chatbot.</p>
-                        </div>
-                        <div class="toggle-switch active" onclick="toggleSwitch(this)"></div>
+                    <div class="store-app">
+                        <div class="store-icon">🐘</div>
+                        <div style="font-weight:600; font-size:14px;">PostgreSQL</div>
+                        <div style="font-size:11px; color:var(--text-sub);">Hệ quản trị CSDL mạnh mẽ nhất.</div>
+                        <div class="store-btn">Đã cài đặt (Server)</div>
                     </div>
-                    <div class="setting-item">
-                        <div class="set-info">
-                            <h4>Mô hình AI Đang dùng</h4>
-                            <p>Llama 3 8B (Quantized Q4_K_M) — Cục bộ 100%</p>
-                        </div>
-                        <span style="font-size:12px; color: var(--teal); font-weight:700;">Đang chạy ✓</span>
+                    <div class="store-app">
+                        <div class="store-icon">🤖</div>
+                        <div style="font-weight:600; font-size:14px;">Ollama</div>
+                        <div style="font-size:11px; color:var(--text-sub);">Khởi chạy LLM Offline bảo mật dữ liệu.</div>
+                        <div class="store-btn">Đã cài đặt (Core)</div>
                     </div>
                 </div>
             </div>
@@ -726,22 +354,21 @@ Gõ 'help' để xem các lệnh khả dụng.
 
     </div>
 
-    <!-- Taskbar -->
     <div class="taskbar">
         <div class="taskbar-left">
-            <button class="start-btn" onclick="showNotification('OneBee OS', 'Chào mừng bạn đến với OneBee OS. Hãy thử mở các ứng dụng trên Desktop!', '🐝')">
-                <span>🐝</span> Start
+            <button class="start-btn" onclick="showNotification('OneBee OS', 'Chào mừng bạn đến với Hệ sinh thái mã nguồn mở OneBee OS!', '🐧')">
+                <span>🐧</span> Start
             </button>
             <div class="taskbar-apps">
                 <div class="taskbar-app-icon" id="task-sys" onclick="toggleWindow('win-sys')">🖥️</div>
                 <div class="taskbar-app-icon" id="task-terminal" onclick="toggleWindow('win-terminal')">🐚</div>
-                <div class="taskbar-app-icon" id="task-settings" onclick="toggleWindow('win-settings')">⚙️</div>
+                <div class="taskbar-app-icon" id="task-store" onclick="toggleWindow('win-store')">🛍️</div>
+                <div class="taskbar-app-icon" id="task-office" onclick="toggleWindow('win-office')">📝</div>
             </div>
         </div>
         <div class="taskbar-right">
-            <div class="taskbar-status">
-                <span class="status-dot"></span>
-                <span>Ollama Online</span>
+            <div style="display:flex; align-items:center; gap:6px; color:var(--teal); font-weight:500;">
+                <span class="status-dot"></span> Ollama Online
             </div>
             <span style="border-left: 1px solid var(--border-glass); height: 16px; margin: 0 4px;"></span>
             <span id="clock">12:00 PM</span>
@@ -770,10 +397,8 @@ Gõ 'help' để xem các lệnh khả dụng.
 
         function dragMove(e) {
             if (!dragObj) return;
-            let dx = e.clientX - startX;
-            let dy = e.clientY - startY;
-            dragObj.style.left = (objLeft + dx) + 'px';
-            dragObj.style.top = (objTop + dy) + 'px';
+            dragObj.style.left = (objLeft + (e.clientX - startX)) + 'px';
+            dragObj.style.top = (objTop + (e.clientY - startY)) + 'px';
         }
 
         function dragEnd() {
@@ -786,59 +411,25 @@ Gõ 'help' để xem các lệnh khả dụng.
         function openWindow(id) {
             const win = document.getElementById(id);
             win.classList.add('active');
-            
-            const appId = id.replace('win-', 'task-');
-            const taskIcon = document.getElementById(appId);
+            const taskIcon = document.getElementById(id.replace('win-', 'task-'));
             if (taskIcon) taskIcon.classList.add('active');
+            
+            document.querySelectorAll('.window').forEach(w => w.style.zIndex = 50);
+            win.style.zIndex = 60;
 
-            // Focus terminal input if terminal is opened
-            if (id === 'win-terminal') {
-                setTimeout(() => document.getElementById('termInput').focus(), 100);
-            }
+            if (id === 'win-terminal') setTimeout(() => document.getElementById('termInput').focus(), 100);
         }
 
         function closeWindow(id) {
             const win = document.getElementById(id);
             win.classList.remove('active');
-            
-            const appId = id.replace('win-', 'task-');
-            const taskIcon = document.getElementById(appId);
+            const taskIcon = document.getElementById(id.replace('win-', 'task-'));
             if (taskIcon) taskIcon.classList.remove('active');
         }
 
         function toggleWindow(id) {
             const win = document.getElementById(id);
-            if (win.classList.contains('active')) {
-                closeWindow(id);
-            } else {
-                openWindow(id);
-            }
-        }
-
-        function minimizeWindow(id) {
-            closeWindow(id);
-        }
-
-        // Switch settings tab
-        function switchSettingTab(tab) {
-            document.querySelectorAll('.set-nav-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.settings-content').forEach(c => c.classList.add('hidden'));
-
-            event.target.classList.add('active');
-            document.getElementById('set-' + tab).classList.remove('hidden');
-        }
-
-        // Toggle Switch UI
-        function toggleSwitch(el) {
-            el.classList.toggle('active');
-            const isPrivacy = el.previousElementSibling.querySelector('h4').textContent.includes('bảo vệ dữ liệu');
-            if (isPrivacy) {
-                if (el.classList.contains('active')) {
-                    showNotification('Security Action', 'Đã bật chế độ Data Privacy. Ngăn dữ liệu gửi ra ngoài.', '🛡️');
-                } else {
-                    showNotification('Security Warning', 'Đã tắt chế độ Data Privacy. Cảnh báo rò rỉ dữ liệu!', '⚠️');
-                }
-            }
+            win.classList.contains('active') ? closeWindow(id) : openWindow(id);
         }
 
         // Notifications
@@ -846,166 +437,69 @@ Gõ 'help' để xem các lệnh khả dụng.
             const area = document.getElementById('notificationArea');
             const toast = document.createElement('div');
             toast.className = 'toast';
-            toast.innerHTML = `
-                <div class="toast-icon">${icon}</div>
-                <div>
-                    <div class="toast-title">${title}</div>
-                    <div class="toast-desc">${desc}</div>
-                </div>
-            `;
+            toast.innerHTML = `<div class="toast-icon">${icon}</div><div><div class="toast-title">${title}</div><div class="toast-desc">${desc}</div></div>`;
             area.appendChild(toast);
-            
-            // Trigger animation
             setTimeout(() => toast.classList.add('show'), 50);
-            
-            // Remove after 4s
             setTimeout(() => {
                 toast.classList.remove('show');
                 setTimeout(() => toast.remove(), 500);
             }, 4000);
         }
 
-        // Simulate n8n/Harness Backup
-        function simulateBackup() {
-            openWindow('win-terminal');
-            const history = document.getElementById('termHistory');
-            
-            let logs = [
-                "\n[Harness] Starting backup sequence...",
-                "[Harness] Checking database integrity (Supabase local cache)...",
-                "[Harness] Compressing transaction records...",
-                "[Harness] Encrypting backup with GPG (AES-256)...",
-                "[Harness] Sending archive to Local NAS (IP: 192.168.1.200)...",
-                "[Harness] Backup completed successfully! (Size: 4.8MB, Hash: sha256:d82f...91f)\n"
-            ];
-
-            let index = 0;
-            function printLog() {
-                if (index < logs.length) {
-                    history.innerHTML += logs[index] + "\n";
-                    index++;
-                    document.getElementById('termHistory').scrollTop = document.getElementById('termHistory').scrollHeight;
-                    setTimeout(printLog, 600);
-                } else {
-                    showNotification('Automation Success', 'Đã tự động sao lưu hệ thống thành công.', '💾');
-                }
-            }
-            printLog();
-        }
-
-        // Interactive Terminal Logic
+        // Terminal Logic
         const termInput = document.getElementById('termInput');
         const termHistory = document.getElementById('termHistory');
+        let currentMode = 'normal';
 
         termInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 const cmd = termInput.value.trim();
                 termInput.value = '';
-                
                 if (cmd === '') return;
 
-                // Echo command
                 termHistory.innerHTML += `\nonebee@os:~$ ${cmd}\n`;
-                
-                // Process command
                 processCommand(cmd.toLowerCase());
-                
-                // Scroll to bottom
                 termHistory.scrollTop = termHistory.scrollHeight;
             }
         });
 
         function processCommand(cmd) {
             if (cmd === 'help') {
-                termHistory.innerHTML += `Lệnh khả dụng:
-  help          - Hiển thị hướng dẫn
-  sys-info      - Xem thông số cấu hình và tối ưu hóa hệ thống
-  ollama-chat   - Khởi chạy khung chat với Llama 3 cục bộ
-  backup-db     - Chạy script sao lưu dữ liệu tự động
-  clear         - Xóa sạch màn hình dòng lệnh
-  credits       - Thông tin nhóm phát triển OneBee`;
-            } else if (cmd === 'sys-info') {
-                termHistory.innerHTML += `[SYSTEM INFO]
-  OS: OneBee OS v24.04 (Ubuntu-based LTS)
-  Kernel: 6.8.0-unattended-tuning-onebee
-  CPU: Intel Xeon E5-2680 v4 (optimized virtual cores)
-  RAM: 1.2 GB / 8.0 GB (đang sử dụng 15%)
-  Disk: 45 GB / 120 GB
-  AI Processor: Ollama active (using local CPU threads)
-  Optimization status: HIGH (Giảm 40% RAM so với Windows 11)`;
-            } else if (cmd === 'ollama-chat') {
-                termHistory.innerHTML += `\n[Ollama] Đang tải mô hình Llama 3 8B vào RAM...\n[Ollama] Sẵn sàng! Hãy nhập câu hỏi sau dấu nhắc lệnh để trò chuyện. (Gõ 'exit' để thoát khỏi AI Chat).\n`;
-                currentMode = 'ai';
-            } else if (cmd === 'backup-db') {
-                simulateBackup();
+                termHistory.innerHTML += `Lệnh khả dụng:\n  help          - Hiển thị hướng dẫn\n  docker ps     - Xem các container đang chạy\n  ollama run    - Gọi mô hình Llama 3\n  apt update    - Cập nhật hệ thống\n  clear         - Xóa màn hình`;
+            } else if (cmd === 'docker ps') {
+                termHistory.innerHTML += `CONTAINER ID   IMAGE         COMMAND                  STATUS          PORTS                    NAMES\n18b56f932f31   n8nio/n8n     "tini -- /docker-ent…"   Up 24 hours     0.0.0.0:5678->5678/tcp   n8n-automation\n9a18fdb9e1a1   postgres:16   "docker-entrypoint.s…"   Up 24 hours     0.0.0.0:5432->5432/tcp   onebee-db\nf72ad3819eac   ollama/ollama "/bin/ollama serve"      Up 24 hours     11434/tcp                llama-ai`;
+            } else if (cmd === 'ollama run') {
+                termHistory.innerHTML += `\n[Ollama] Llama 3 8B On-premise đã sẵn sàng.\n[AI]: Chào bạn, tôi có thể giúp gì cho hệ thống quản trị OneBee hôm nay?\n`;
+            } else if (cmd === 'apt update') {
+                termHistory.innerHTML += `Hit:1 http://archive.ubuntu.com/ubuntu jammy InRelease\nGet:2 http://archive.ubuntu.com/ubuntu jammy-updates InRelease [119 kB]\nFetched 119 kB in 1s (182 kB/s)\nReading package lists... Done\nBuilding dependency tree... Done\nAll packages are up to date.`;
             } else if (cmd === 'clear') {
                 termHistory.innerHTML = '';
-            } else if (cmd === 'credits') {
-                termHistory.innerHTML += `OneBee OS được xây dựng bởi HTX OneBee phục vụ Hội thi Khởi nghiệp tỉnh Tây Ninh năm 2026.
-Tác giả: Nhóm Kỹ thuật OneBee.
-Mã nguồn mở 100%, an toàn bảo mật, an tâm sử dụng.`;
-            } else if (currentMode === 'ai') {
-                if (cmd === 'exit') {
-                    currentMode = 'normal';
-                    termHistory.innerHTML += `\n[Ollama] Đã tắt phiên làm việc với AI.\n`;
-                } else {
-                    // Simple mock responses for AI chat
-                    let aiReply = "Tôi là AI Llama 3 chạy offline trên máy chủ của bạn. Tôi có thể hỗ trợ các lệnh cơ bản như viết email, soạn thảo tài liệu hoặc giải đáp các kiến thức chuyển đổi số. Bạn muốn hỏi gì thêm?";
-                    if (cmd.includes('muối tôm') || cmd.includes('tây ninh')) {
-                        aiReply = "Muối tôm Tây Ninh là đặc sản nổi tiếng của vùng đất nắng gió. Tôi có thể hỗ trợ HTX OneBee lập kế hoạch quảng bá muối tôm ra thị trường cả nước bằng các kịch bản email marketing.";
-                    } else if (cmd.includes('linux') || cmd.includes('ubuntu')) {
-                        aiReply = "Linux giúp doanh nghiệp tiết kiệm hàng triệu đồng tiền bản quyền phần mềm, đồng thời tăng tính bảo mật, tránh các mã độc tống tiền (ransomware) thường lây lan trên hệ điều hành lậu.";
-                    }
-                    termHistory.innerHTML += `\n[Ollama] ${aiReply}\n`;
-                }
             } else {
-                termHistory.innerHTML += `Không tìm thấy câu lệnh: '${cmd}'. Gõ 'help' để xem danh sách lệnh.`;
+                termHistory.innerHTML += `bash: ${cmd}: command not found. Gõ 'help' để xem lệnh.`;
             }
         }
 
-        let currentMode = 'normal';
-
-        // Performance Chart Animation
-        let cpuCircle = document.getElementById('cpu-circle');
-        let ramCircle = document.getElementById('ram-circle');
-        let cpuVal = document.getElementById('cpu-val');
-        let ramVal = document.getElementById('ram-val');
-
+        // Charts
         function updateCharts() {
-            let cpu = Math.floor(Math.random() * 15) + 5; // 5-20%
-            let ram = Math.floor(Math.random() * 5) + 32; // 32-37%
-
-            cpuVal.textContent = cpu + "%";
-            ramVal.textContent = ram + "%";
-
-            // Stroke dashoffset logic (radius = 60, circumference = 377)
-            let cpuOffset = 377 - (377 * cpu) / 100;
-            let ramOffset = 377 - (377 * ram) / 100;
-
-            cpuCircle.style.strokeDashoffset = cpuOffset;
-            ramCircle.style.strokeDashoffset = ramOffset;
+            let cpu = Math.floor(Math.random() * 15) + 5;
+            let ram = Math.floor(Math.random() * 5) + 32;
+            document.getElementById('cpu-val').textContent = cpu + "%";
+            document.getElementById('ram-val').textContent = ram + "%";
+            document.getElementById('cpu-circle').style.strokeDashoffset = 314 - (314 * cpu) / 100;
+            document.getElementById('ram-circle').style.strokeDashoffset = 314 - (314 * ram) / 100;
         }
 
-        // Time updates
+        // Clock
         function updateClock() {
-            let now = new Date();
-            let hours = now.getHours();
-            let minutes = now.getMinutes();
-            let ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12;
-            hours = hours ? hours : 12; // the hour '0' should be '12'
-            minutes = minutes < 10 ? '0' + minutes : minutes;
-            document.getElementById('clock').textContent = hours + ':' + minutes + ' ' + ampm;
+            document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'});
         }
 
-        // Init
-        updateClock();
         setInterval(updateClock, 1000);
         setInterval(updateCharts, 3000);
-        setTimeout(updateCharts, 500);
-
-        // Open System Info by default
-        setTimeout(() => openWindow('win-sys'), 1000);
+        updateClock(); updateCharts();
+        
+        // Open default windows
+        setTimeout(() => openWindow('win-sys'), 500);
 
     </script>
 </body>
