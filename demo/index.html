@@ -694,9 +694,9 @@ Gõ 'help' để xem các lệnh khả dụng.
             </div>
             <div class="window-content">
                 <div class="settings-nav">
-                    <button class="set-nav-btn active" onclick="switchSettingTab('general')">Tổng quan</button>
-                    <button class="set-nav-btn" onclick="switchSettingTab('auto')">Harness Automation</button>
-                    <button class="set-nav-btn" onclick="switchSettingTab('ai')">Cấu hình AI On-premise</button>
+                    <button class="set-nav-btn active" onclick="switchSettingTab('general', this)">Tổng quan</button>
+                    <button class="set-nav-btn" onclick="switchSettingTab('auto', this)">Harness Automation</button>
+                    <button class="set-nav-btn" onclick="switchSettingTab('ai', this)">Cấu hình AI On-premise</button>
                 </div>
                 
                 <div class="settings-content" id="set-general">
@@ -854,12 +854,14 @@ Gõ 'help' để xem các lệnh khả dụng.
         }
 
         // Switch settings tab
-        function switchSettingTab(tab) {
-            document.querySelectorAll('.set-nav-btn').forEach(btn => btn.classList.remove('active'));
+        function switchSettingTab(tab, btn) {
+            document.querySelectorAll('.set-nav-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.settings-content').forEach(c => c.classList.add('hidden'));
 
-            event.target.classList.add('active');
-            document.getElementById('set-' + tab).classList.remove('hidden');
+            const targetBtn = btn || (typeof event !== 'undefined' && event?.target ? event.target.closest('.set-nav-btn') : null) || document.querySelector(`.set-nav-btn[onclick*="'${tab}'"]`);
+            if (targetBtn) targetBtn.classList.add('active');
+            const targetContent = document.getElementById('set-' + tab);
+            if (targetContent) targetContent.classList.remove('hidden');
         }
 
         // Toggle Switch UI
