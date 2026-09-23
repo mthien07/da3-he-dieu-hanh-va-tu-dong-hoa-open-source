@@ -553,9 +553,12 @@
         .window, .icon-item, .toast {
             will-change: transform;
         }
+            .demo-ribbon { position: fixed; bottom: 62px; left: 50%; transform: translateX(-50%); z-index: 9000; background: #2b2410; color: #f4b942; border: 1px solid rgba(244,185,66,0.55); padding: 5px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; pointer-events: none; white-space: nowrap; font-family: Inter, system-ui, sans-serif; }
+        @media (max-width: 768px) { .demo-ribbon { bottom: 70px; font-size: 11px; white-space: normal; text-align: center; width: calc(100% - 48px); } }
     </style>
 </head>
 <body>
+    <div class="demo-ribbon">Bản demo mô phỏng giao diện · Dữ liệu minh họa, chưa chạy AI thật</div>
 
     <!-- Desktop Area -->
     <div class="desktop" id="desktop">
@@ -604,7 +607,7 @@
                         <div class="sys-card">
                             <div class="sys-title">Bản quyền phần mềm đóng (Windows + Office)</div>
                             <div class="sys-value cost-bad">80.000.000đ</div>
-                            <p style="font-size:11px; color: var(--text-sub); margin-top: 4px;">Ước tính cho doanh nghiệp 20 máy tính</p>
+                            <p style="font-size:11px; color: var(--text-sub); margin-top: 4px;">Ước tính minh họa cho 20 máy tính</p>
                         </div>
                         <div class="sys-card">
                             <div class="sys-title">Bản quyền OneBee OS (Mã nguồn mở)</div>
@@ -612,15 +615,16 @@
                             <p style="font-size:11px; color: var(--teal); margin-top: 4px;">Tuân thủ bản quyền 100%, không lo crack lậu</p>
                         </div>
                         <div class="sys-card">
-                            <div class="sys-title">Tỷ lệ tối ưu chi phí hạ tầng</div>
+                            <div class="sys-title">Tỷ lệ tối ưu chi phí hạ tầng (mục tiêu)</div>
                             <div class="sys-value" style="color: var(--purple);">Giảm 80%</div>
+                            <p style="font-size:11px; color: var(--text-sub); margin-top: 4px;">Số liệu thật đo khi thí điểm</p>
                         </div>
                     </div>
                     <div class="sys-card" style="display:flex; flex-direction:column; justify-content:space-between;">
                         <div>
                             <h3 style="font-size:15px; font-weight:700; margin-bottom: 12px; color: var(--teal);">Hiệu năng tối ưu hóa</h3>
                             <p style="font-size:12px; color: var(--text-sub); line-height: 1.5; margin-bottom: 16px;">
-                                OneBee OS tùy biến nhân Linux giúp giảm 40% dung lượng RAM chiếm dụng so với Windows 11, tăng tốc khởi chạy ứng dụng văn phòng. Tích hợp sẵn Ollama AI.
+                                Bản Linux nhẹ giúp tận dụng máy tính cũ; mức tiết kiệm RAM và tốc độ thực tế sẽ được đo khi thí điểm. Thiết kế tích hợp trợ lý AI chạy nội bộ (Ollama).
                             </p>
                         </div>
                         
@@ -658,7 +662,7 @@
         <!-- Window 2: Terminal -->
         <div class="window" id="win-terminal">
             <div class="window-header" onmousedown="dragStart(event, 'win-terminal')">
-                <div class="window-title">🐚 OneBee Terminal (Simulated) — Llama 3 8B Active</div>
+                <div class="window-title">🐚 OneBee Terminal (mô phỏng) — AI nội bộ</div>
                 <div class="window-controls">
                     <button class="win-btn win-min" onclick="minimizeWindow('win-terminal')"></button>
                     <button class="win-btn win-max"></button>
@@ -741,7 +745,7 @@ Gõ 'help' để xem các lệnh khả dụng.
                     <div class="setting-item">
                         <div class="set-info">
                             <h4>Mô hình AI Đang dùng</h4>
-                            <p>Llama 3 8B (Quantized Q4_K_M) — Cục bộ 100%</p>
+                            <p>Llama 3 8B (Q4_K_M) — thiết kế chạy cục bộ (mô phỏng)</p>
                         </div>
                         <span style="font-size:12px; color: var(--teal); font-weight:700;">Đang chạy ✓</span>
                     </div>
@@ -766,7 +770,7 @@ Gõ 'help' để xem các lệnh khả dụng.
         <div class="taskbar-right">
             <div class="taskbar-status">
                 <span class="status-dot"></span>
-                <span>Ollama Online</span>
+                <span>Ollama (mô phỏng)</span>
             </div>
             <span style="border-left: 1px solid var(--border-glass); height: 16px; margin: 0 4px;"></span>
             <span id="clock">12:00 PM</span>
@@ -774,6 +778,7 @@ Gõ 'help' để xem các lệnh khả dụng.
     </div>
 
     <script>
+        function escapeHtml(t) { return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
         // Window Drag Logic
         let dragObj = null;
         let startX = 0, startY = 0;
@@ -934,7 +939,7 @@ Gõ 'help' để xem các lệnh khả dụng.
                 if (cmd === '') return;
 
                 // Echo command
-                termHistory.innerHTML += `\nonebee@os:~$ ${cmd}\n`;
+                termHistory.innerHTML += `\nonebee@os:~$ ${escapeHtml(cmd)}\n`;
                 
                 // Process command
                 processCommand(cmd.toLowerCase());
@@ -963,9 +968,9 @@ Gõ 'help' để xem các lệnh khả dụng.
   RAM: 1.2 GB / 8.0 GB (đang sử dụng 15%)
   Disk: 45 GB / 120 GB
   AI Processor: Ollama active (using local CPU threads)
-  Optimization status: HIGH (Giảm 40% RAM so với Windows 11)`;
+  Optimization status: (mô phỏng — số liệu thật đo khi thí điểm)`;
             } else if (cmd === 'ollama-chat' || cmd === 'ollama run') {
-                termHistory.innerHTML += `\n[Ollama] Đang tải mô hình Llama 3 8B vào RAM...\n[Ollama] Sẵn sàng! Hãy nhập câu hỏi sau dấu nhắc lệnh để trò chuyện. (Gõ 'exit' để thoát khỏi AI Chat).\n`;
+                termHistory.innerHTML += `\n[Ollama] (mô phỏng) Đang tải mô hình Llama 3 8B vào RAM...\n[Ollama] Sẵn sàng! Hãy nhập câu hỏi sau dấu nhắc lệnh để trò chuyện. (Gõ 'exit' để thoát khỏi AI Chat).\n`;
                 currentMode = 'ai';
             } else if (cmd === 'docker ps') {
                 termHistory.innerHTML += `CONTAINER ID   IMAGE         COMMAND                  STATUS          PORTS                    NAMES\n18b56f932f31   n8nio/n8n     "tini -- /docker-ent…"   Up 24 hours     0.0.0.0:5678->5678/tcp   n8n-automation\n9a18fdb9e1a1   postgres:16   "docker-entrypoint.s…"   Up 24 hours     0.0.0.0:5432->5432/tcp   onebee-db\nf72ad3819eac   ollama/ollama "/bin/ollama serve"      Up 24 hours     11434/tcp                llama-ai`;
@@ -985,16 +990,16 @@ Mã nguồn mở 100%, an toàn bảo mật, an tâm sử dụng.`;
                     termHistory.innerHTML += `\n[Ollama] Đã tắt phiên làm việc với AI.\n`;
                 } else {
                     // Simple mock responses for AI chat
-                    let aiReply = "Tôi là AI Llama 3 chạy offline trên máy chủ của bạn. Tôi có thể hỗ trợ các lệnh cơ bản như viết email, soạn thảo tài liệu hoặc giải đáp các kiến thức chuyển đổi số. Bạn muốn hỏi gì thêm?";
+                    let aiReply = "(Mô phỏng) Bản thật sẽ chạy một mô hình AI mã nguồn mở như Llama 3 qua Ollama ngay trên máy chủ nội bộ. Tôi có thể hỗ trợ các lệnh cơ bản như viết email, soạn thảo tài liệu hoặc giải đáp các kiến thức chuyển đổi số. Bạn muốn hỏi gì thêm?";
                     if (cmd.includes('muối tôm') || cmd.includes('tây ninh')) {
-                        aiReply = "Muối tôm Tây Ninh là đặc sản nổi tiếng của vùng đất nắng gió. Tôi có thể hỗ trợ HTX OneBee lập kế hoạch quảng bá muối tôm ra thị trường cả nước bằng các kịch bản email marketing.";
+                        aiReply = "(Mô phỏng) Muối tôm Tây Ninh là đặc sản nổi tiếng của vùng đất nắng gió. Tôi có thể hỗ trợ HTX OneBee lập kế hoạch quảng bá muối tôm ra thị trường cả nước bằng các kịch bản email marketing.";
                     } else if (cmd.includes('linux') || cmd.includes('ubuntu')) {
-                        aiReply = "Linux giúp doanh nghiệp tiết kiệm hàng triệu đồng tiền bản quyền phần mềm, đồng thời tăng tính bảo mật, tránh các mã độc tống tiền (ransomware) thường lây lan trên hệ điều hành lậu.";
+                        aiReply = "(Mô phỏng) Linux giúp doanh nghiệp tiết kiệm hàng triệu đồng tiền bản quyền phần mềm, đồng thời tăng tính bảo mật, tránh các mã độc tống tiền (ransomware) thường lây lan trên hệ điều hành lậu.";
                     }
                     termHistory.innerHTML += `\n[Ollama] ${aiReply}\n`;
                 }
             } else {
-                termHistory.innerHTML += `Không tìm thấy câu lệnh: '${cmd}'. Gõ 'help' để xem danh sách lệnh.`;
+                termHistory.innerHTML += `Không tìm thấy câu lệnh: '${escapeHtml(cmd)}'. Gõ 'help' để xem danh sách lệnh.`;
             }
         }
 
