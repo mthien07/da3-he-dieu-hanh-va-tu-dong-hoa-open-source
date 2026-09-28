@@ -4,7 +4,7 @@
 - [plan.md](plan.md) · Open WebUI license: https://docs.openwebui.com/license/
 
 ## Overview
-- Ưu tiên: Cao · Trạng thái: Chưa bắt đầu · Dự kiến: tuần 4–6
+- Ưu tiên: Cao · Trạng thái: ✅ Code + test Docker lồng đạt (28/9); còn thử máy thật · Dự kiến: tuần 4–6
 - 1 máy trong LAN chạy toàn bộ dịch vụ bằng Docker Compose, dựng bằng 1 lệnh.
 
 ## Key Insights
@@ -36,8 +36,16 @@ Truy cập từ xa (hỗ trợ kỹ thuật): chỉ qua Tailscale/WireGuard, kh�
 3. Anh chạy trên máy Box thật; em đo RAM/CPU khi AI trả lời.
 4. Nối máy trạm: sao lưu hằng ngày → **thử khôi phục 1 file** (bắt buộc).
 
+## Thay đổi so với dự kiến (xem ADR 0002)
+- Ubuntu Server 24.04 thay Debian 13; Ansible như Desktop; Samba cài trên máy chủ (không container);
+  Ollama không mở cổng ra LAN; rest-server chế độ chỉ-thêm; bỏ tên miền box.onebee.lan (dùng IP + cổng).
+
 ## Todo List
-- [ ] Compose 7 dịch vụ  - [ ] Script cài  - [ ] CI  - [ ] Chạy máy thật  - [ ] Sao lưu + khôi phục thử  - [ ] Đo tài nguyên
+- [x] Compose 6 dịch vụ + Samba  - [x] Bộ cài + lệnh onebee-box  - [x] Sao lưu Box → ổ ngoài + khôi phục thử
+- [x] Máy trạm sao lưu lên Box (role backup-client), chỉ-thêm, Box tự dọn
+- [x] Test Docker lồng: 40 mục đạt (28/9), gồm AI hỏi đáp thật và khởi động lại
+- [x] CI: lint mọi lượt; test Box chạy tay (workflow_dispatch) vì tải ~6 GB image
+- [ ] Chạy máy thật  - [ ] Đo tài nguyên AI trên phần cứng thật (Phase 3)
 
 ## Success Criteria
 - Máy sạch → `cai-dat-box.sh` → mọi dịch vụ chạy. Rút điện, bật lại → tự lên.

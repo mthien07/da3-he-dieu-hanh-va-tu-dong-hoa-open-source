@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      box:
+        description: "Chạy cả kiểm thử OneBee Box (tải ~6 GB image, ~15 phút)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -20,18 +26,44 @@ jobs:
       - name: Cài công cụ kiểm tra
         run: pip install -r requirements-dev.txt
       - name: shellcheck
-        run: shellcheck desktop/*.sh tests/desktop/*.sh
+        run: >-
+          shellcheck -e SC2016 desktop/*.sh desktop/ansible/roles/backup-client/files/onebee-sao-luu
+          box/*.sh tests/desktop/*.sh tests/desktop/extended/*.sh tests/box/*.sh
       - name: yamllint
         run: yamllint .
-      - name: ansible-lint
+      - name: ansible-lint (Desktop)
         working-directory: desktop/ansible
+        run: ansible-lint site.yml
+      - name: ansible-lint (Box)
+        working-directory: box/ansible
         run: ansible-lint site.yml
 
   desktop-mint:
-    name: Cài thử OneBee OS Desktop trên Linux Mint 22.3 (container)
+    name: Desktop — cài thử trên Linux Mint 22.3 (container)
     runs-on: ubuntu-24.04
     needs: lint
     steps:
       - uses: actions/checkout@v4
       - name: Cài 2 lần + kiểm tra kết quả
         run: tests/desktop/run-desktop-test-in-mint-container.sh
+
+  desktop-extended:
+    name: Desktop — kiểm thử mở rộng (gõ Telex thật, file Word, systemd, Unikey, Ubuntu)
+    runs-on: ubuntu-24.04
+    needs: desktop-mint
+    steps:
+      - uses: actions/checkout@v4
+      - name: 5 kịch bản
+        run: tests/desktop/run-desktop-extended-tests.sh
+
+  box:
+    name: Box — cài thử + AI + sao lưu/khôi phục (Docker lồng)
+    if: github.event_name == 'workflow_dispatch' && inputs.box
+    runs-on: ubuntu-24.04
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dọn chỗ trống trên máy CI
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+      - name: Kiểm thử Box
+        run: tests/box/run-box-test-in-systemd-container.sh

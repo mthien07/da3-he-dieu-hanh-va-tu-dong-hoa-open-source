@@ -1,0 +1,32 @@
+---
+# Sao lưu dữ liệu Box ra ổ ngoài hằng ngày (restic, mã hóa) + dọn bản cũ. Lệnh: onebee-box sao-luu
+
+- name: Cài lịch sao lưu (systemd)
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - onebee-box-sao-luu.service
+    - onebee-box-sao-luu.timer
+
+- name: Bật lịch sao lưu hằng ngày
+  ansible.builtin.systemd_service:
+    name: onebee-box-sao-luu.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Kiểm tra đã gắn ổ sao lưu chưa
+  ansible.builtin.stat:
+    path: "{{ onebee_box_backup_repo | dirname }}"
+  register: onebee_backup_mount
+
+- name: Nhắc gắn ổ sao lưu
+  ansible.builtin.debug:
+    msg: >-
+      CHƯA có ổ sao lưu tại {{ onebee_box_backup_repo | dirname }}.
+      Gắn ổ ngoài vào đường dẫn này (khai báo trong /etc/fstab), rồi chạy: sudo onebee-box khoi-phuc-thu
+  when: not onebee_backup_mount.stat.exists

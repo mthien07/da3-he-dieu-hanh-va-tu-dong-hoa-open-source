@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# onebee-box — lệnh quản trị OneBee Box (quản lý bởi OneBee OS, không sửa tay)
+#   onebee-box trang-thai          Xem dịch vụ đang chạy, dung lượng ổ
+#   onebee-box them-may <ten-may>  Cấp tài khoản sao lưu cho 1 máy trạm, in cấu hình dán vào máy trạm
+#   onebee-box khoi-tao            Tạo kho sao lưu Box trên ổ ngoài (làm 1 lần sau khi gắn ổ)
+#   onebee-box sao-luu             Sao lưu Box ra ổ ngoài + dọn bản cũ (tự chạy 23:00 hằng ngày)
+#   onebee-box khoi-phuc-thu       Thử khôi phục 1 file từ bản sao lưu Box (kiểm tra sao lưu dùng được)
+#   onebee-box in-khoa             In các khóa bí mật để cất ngoài Box (thiếu khóa thì bản sao lưu vô dụng)
+set -euo pipefail
+LIB=/usr/local/lib/onebee-box
+# shellcheck source=/dev/null
+. "${LIB}/common.sh"
+# shellcheck source=/dev/null
+. "${LIB}/sao-luu.sh"
+
+[[ ${EUID} -eq 0 ]] || die "Hãy chạy bằng quyền quản trị: sudo onebee-box $*"
+
+cmd_trang_thai() {
+  compose ps --format 'table {{ '{{' }}.Name{{ '}}' }}\t{{ '{{' }}.Status{{ '}}' }}'
+  echo; df -h "${DATA}" | tail -1 | awk '{print "Ổ dữ liệu: đã dùng " $3 "/" $2 " (" $5 ")"}'
+  if mountpoint -q "${BACKUP_MOUNT}"; then df -h "${BACKUP_MOUNT}" | tail -1 | awk '{print "Ổ sao lưu: đã dùng " $3 "/" $2 " (" $5 ")"}'
+  else echo "Ổ sao lưu: CHƯA GẮN (${BACKUP_MOUNT})"; fi
+}
+
+cmd_them_may() {
+  local ten="${1:-}" ip http_pw repo_pw
+  [[ "${ten}" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]] || die "Tên máy chỉ gồm chữ thường không dấu, số, dấu gạch (vd: ketoan-01)"
+  ip="$(box_ip)"; [[ -n "${ip}" ]] || die "Không xác định được IP của Box — đặt onebee_box_address trong group_vars"
+  http_pw="$(secret "may-${ten}-http")"
+  repo_pw="$(secret "may-${ten}-repo")"
+  # -i: đọc mật khẩu từ stdin (không lộ trong danh sách tiến trình)
+  htpasswd -B -i "${DATA}/restic/.htpasswd" "${ten}" <<<"${http_pw}" 2>/dev/null
+  echo "# Dán nội dung dưới đây vào máy trạm ${ten}: /etc/onebee/sao-luu.env, rồi chạy lại bộ cài OneBee OS"
+  echo "RESTIC_REPOSITORY=rest:http://${ten}:${http_pw}@${ip}:${REST_PORT}/${ten}/"
+  echo "RESTIC_PASSWORD=${repo_pw}"
+}
+
+cmd_in_khoa() {
+  echo "# KHÓA BÍ MẬT ONEBEE BOX — in ra giấy hoặc chép vào USB cất két. KHÔNG gửi qua Zalo/email."
+  echo "# Hỏng ổ Box thì cần các khóa này để mở bản sao lưu trên ổ ngoài."
+  local f
+  for f in "${SECRETS}"/*; do [[ -f "${f}" ]] && printf '%s=%s\n' "$(basename "${f}")" "$(cat "${f}")"; done
+}
+
+# Không cho 2 lệnh sao lưu chạy chồng nhau (lịch tự động + chạy tay)
+with_lock() { exec 9>/run/onebee-box.lock; flock -n 9 || die "Đang có lệnh sao lưu khác chạy — thử lại sau"; "$@"; }
+
+case "${1:-}" in
+  trang-thai) cmd_trang_thai ;;
+  them-may) shift; cmd_them_may "$@" ;;
+  khoi-tao) with_lock cmd_khoi_tao ;;
+  sao-luu) with_lock cmd_sao_luu ;;
+  khoi-phuc-thu) with_lock cmd_khoi_phuc_thu ;;
+  in-khoa) cmd_in_khoa ;;
+  *) sed -n '2,8p' "$0" | sed 's/^# //'; exit 1 ;;
+esac

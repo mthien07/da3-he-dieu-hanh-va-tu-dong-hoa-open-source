@@ -1,0 +1,87 @@
+# Quản lý bởi OneBee OS (box/ansible/roles/box-stack) — sửa group_vars rồi chạy lại bộ cài, không sửa tay
+name: onebee-box
+
+# Giới hạn nhật ký mỗi dịch vụ (3 file x 10 MB) để không đầy ổ khi chạy 24/7
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  portal:
+    image: {{ onebee_box_images.caddy }}
+    container_name: onebee-portal
+    restart: unless-stopped
+    logging: *logging
+    ports: ["{{ onebee_box_ports.portal }}:80"]
+    volumes:
+      - ./portal/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./portal/site:/srv:ro
+
+  ollama:
+    image: {{ onebee_box_images.ollama }}
+    container_name: onebee-ollama
+    restart: unless-stopped
+    logging: *logging
+    # Không mở cổng ra LAN: chỉ Open WebUI gọi được (API Ollama không có mật khẩu)
+    volumes:
+      - {{ onebee_box_data }}/ollama:/root/.ollama
+
+  open-webui:
+    image: {{ onebee_box_images.open_webui }}
+    container_name: onebee-open-webui
+    restart: unless-stopped
+    logging: *logging
+    depends_on: [ollama]
+    ports: ["{{ onebee_box_ports.open_webui }}:8080"]
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
+      DEFAULT_LOCALE: vi-VN
+      ENABLE_OPENAI_API: "false"   # không gọi AI đám mây — dữ liệu ở lại trong LAN
+      OFFLINE_MODE: "true"
+      SCARF_NO_ANALYTICS: "true"
+      DO_NOT_TRACK: "true"
+      ANONYMIZED_TELEMETRY: "false"
+    volumes:
+      - {{ onebee_box_data }}/open-webui:/app/backend/data
+
+  n8n:
+    image: {{ onebee_box_images.n8n }}
+    container_name: onebee-n8n
+    restart: unless-stopped
+    logging: *logging
+    ports: ["{{ onebee_box_ports.n8n }}:5678"]
+    environment:
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_LISTEN_ADDRESS: 0.0.0.0  # mặc định n8n nghe "::" (IPv6) → lỗi trên máy tắt IPv6
+      GENERIC_TIMEZONE: {{ onebee_timezone }}
+      TZ: {{ onebee_timezone }}
+      N8N_SECURE_COOKIE: "false"   # chạy HTTP trong LAN; truy cập từ xa chỉ qua VPN (Tailscale/WireGuard)
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+    volumes:
+      - {{ onebee_box_data }}/n8n:/home/node/.n8n
+
+  uptime-kuma:
+    image: {{ onebee_box_images.uptime_kuma }}
+    container_name: onebee-uptime-kuma
+    restart: unless-stopped
+    logging: *logging
+    ports: ["{{ onebee_box_ports.uptime_kuma }}:3001"]
+    volumes:
+      - {{ onebee_box_data }}/uptime-kuma:/app/data
+
+  rest-server:
+    image: {{ onebee_box_images.rest_server }}
+    container_name: onebee-rest-server
+    restart: unless-stopped
+    logging: *logging
+    ports: ["{{ onebee_box_ports.rest_server }}:8000"]
+    environment:
+      # Mỗi máy trạm chỉ thấy kho sao lưu của chính nó; chỉ thêm, không xóa được bản cũ (chống mã độc tống tiền)
+      OPTIONS: "--private-repos --append-only"
+    volumes:
+      - {{ onebee_box_data }}/restic:/data

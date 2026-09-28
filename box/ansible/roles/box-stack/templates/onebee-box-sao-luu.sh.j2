@@ -1,0 +1,80 @@
+# shellcheck shell=bash
+# Sao lưu / khôi phục OneBee Box (quản lý bởi OneBee OS, không sửa tay). Được lệnh onebee-box nạp vào.
+
+box_repo_env() {
+  export RESTIC_REPOSITORY="${BACKUP_REPO}"
+  RESTIC_PASSWORD="$(secret restic-box)"; export RESTIC_PASSWORD
+}
+
+# Ổ sao lưu phải là ổ gắn riêng (mountpoint) — nếu chưa gắn, KHÔNG ghi vào ổ hệ thống
+require_backup_disk() {
+  mountpoint -q "${BACKUP_MOUNT}" || die "Chưa gắn ổ sao lưu vào ${BACKUP_MOUNT} — không sao lưu (tránh ghi đầy ổ hệ thống)"
+}
+
+cmd_khoi_tao() {
+  require_backup_disk
+  box_repo_env
+  if restic cat config >/dev/null 2>&1; then echo "Kho sao lưu Box đã có sẵn tại ${BACKUP_REPO}"; return; fi
+  restic init
+  echo "Đã tạo kho sao lưu Box. Chạy tiếp: sudo onebee-box in-khoa (cất khóa ra giấy/USB) rồi sudo onebee-box khoi-phuc-thu"
+}
+
+# Dọn bản cũ trong kho từng máy trạm (kho chỉ-thêm nên máy trạm không tự dọn được)
+prune_workstations() {
+  local f ten repo failed=0
+  for f in "${SECRETS}"/may-*-repo; do
+    [[ -e "${f}" ]] || continue
+    ten="$(basename "${f}")"; ten="${ten#may-}"; ten="${ten%-repo}"
+    repo="${DATA}/restic/${ten}"
+    [[ -f "${repo}/config" ]] || continue
+    export RESTIC_REPOSITORY="${repo}" RESTIC_PASSWORD
+    RESTIC_PASSWORD="$(cat "${f}")"
+    # Bản có ngày ở tương lai = dấu hiệu giả mạo → không dọn kho này, báo ngay
+    if restic snapshots --json 2>/dev/null | python3 -c '
+import json, sys, re, datetime
+lim = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+def t(v): return datetime.datetime.fromisoformat(re.sub(r"(\.\d{6})\d+", r"\1", v).replace("Z", "+00:00"))
+sys.exit(any(t(s["time"]) > lim for s in json.load(sys.stdin)))'; then
+      restic forget --retry-lock 5m --prune "${KEEP_MAY[@]}" || { warn "Không dọn được kho máy ${ten}"; failed=1; }
+    else
+      warn "Kho máy ${ten} có bản sao lưu mang ngày tương lai — KHÔNG dọn, cần kiểm tra máy này"; failed=1
+    fi
+  done
+  return "${failed}"
+}
+
+cmd_sao_luu() {
+  require_backup_disk
+  box_repo_env
+  restic cat config >/dev/null 2>&1 || die "Chưa tạo kho sao lưu Box. Chạy: sudo onebee-box khoi-tao"
+  [[ "$(stat -c %d "${BACKUP_MOUNT}")" != "$(stat -c %d "${DATA}")" ]] || warn "Ổ sao lưu cùng ổ với dữ liệu — hỏng ổ là mất cả hai"
+
+  # Bước 1: tạm dừng dịch vụ có cơ sở dữ liệu, chụp nhanh phần dữ liệu của chúng (nhất quán), chạy lại ngay
+  local svcs=(open-webui n8n uptime-kuma)
+  trap 'compose unpause "${svcs[@]}" >/dev/null 2>&1 || true' EXIT
+  compose pause "${svcs[@]}" >/dev/null 2>&1 || die "Không tạm dừng được dịch vụ ${svcs[*]}"
+  restic backup --retry-lock 5m --tag onebee-box --tag csdl \
+    "${DATA}/open-webui" "${DATA}/n8n" "${DATA}/uptime-kuma" "${BOX_DIR}" "${SECRETS}"
+  compose unpause "${svcs[@]}" >/dev/null 2>&1 || die "Không chạy lại được dịch vụ ${svcs[*]} — kiểm tra: sudo onebee-box trang-thai"
+  trap - EXIT
+  # Bước 2: thư mục chung (có thể lâu) — dịch vụ vẫn chạy. Không sao lưu model AI (tải lại được)
+  # và kho máy trạm (đã là bản sao).
+  restic backup --retry-lock 5m --tag onebee-box --tag chung "${SHARE}"
+  restic forget --retry-lock 5m --tag onebee-box --prune "${KEEP_BOX[@]}"
+  prune_workstations || warn "Có kho máy trạm chưa dọn được (xem các dòng CẢNH BÁO ở trên)"
+  echo "Sao lưu xong: $(date '+%d/%m/%Y %H:%M')"
+}
+
+cmd_khoi_phuc_thu() {
+  local mau="${SHARE}/.onebee-kiem-tra-sao-luu.txt" tmp sum
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "${tmp:-}"; trap - RETURN' RETURN
+  echo "Kiểm tra khôi phục $(date +%s%N)" >"${mau}"
+  sum="$(sha256sum <"${mau}")"
+  cmd_sao_luu >/dev/null
+  rm -f "${mau}"
+  box_repo_env
+  restic restore latest --tag onebee-box,chung --target "${tmp}" --include "${mau}" >/dev/null
+  [[ "$(sha256sum <"${tmp}${mau}")" == "${sum}" ]] || die "KHÔNG ĐẠT: file khôi phục khác bản gốc"
+  echo "ĐẠT: khôi phục đúng file đã xóa từ bản sao lưu"
+}

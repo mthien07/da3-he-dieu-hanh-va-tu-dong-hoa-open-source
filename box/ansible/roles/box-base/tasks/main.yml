@@ -1,0 +1,56 @@
+---
+# Nền tảng máy chủ: gói cơ bản, múi giờ, cập nhật bảo mật tự động, thư mục bí mật
+
+- name: Cập nhật danh mục gói (tối đa 1 lần/giờ)
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Cài gói nền tảng
+  ansible.builtin.apt:
+    name: [ca-certificates, curl, restic, apache2-utils, unattended-upgrades, tzdata, python3, iproute2]
+    state: present
+
+- name: Đặt múi giờ {{ onebee_timezone }}
+  ansible.builtin.file:
+    src: "/usr/share/zoneinfo/{{ onebee_timezone }}"
+    dest: /etc/localtime
+    state: link
+    force: true
+
+- name: Ghi tên múi giờ vào /etc/timezone
+  ansible.builtin.copy:
+    dest: /etc/timezone
+    content: "{{ onebee_timezone }}\n"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Bật cập nhật bảo mật tự động hằng ngày
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      // Quản lý bởi OneBee OS
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Tạo thư mục bí mật (chỉ root đọc được)
+  ansible.builtin.file:
+    path: "{{ onebee_box_secrets }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Ghi phiên bản OneBee Box
+  ansible.builtin.copy:
+    dest: /etc/onebee-release
+    content: |
+      ONEBEE_VERSION={{ onebee_box_version }}
+      ONEBEE_EDITION=box
+    owner: root
+    group: root
+    mode: "0644"

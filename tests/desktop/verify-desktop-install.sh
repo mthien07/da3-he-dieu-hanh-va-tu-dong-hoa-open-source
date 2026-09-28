@@ -37,7 +37,7 @@ fi
 check "Arial → Liberation Sans" font_is Arial "Liberation Sans"
 check "Times New Roman → Liberation Serif" font_is "Times New Roman" "Liberation Serif"
 check "Calibri → Carlito" font_is Calibri Carlito
-check "Cambria → Caladea" font_is Cambria Caladea
+check "Cambria → Noto Serif (Caladea thiếu chữ tiếng Việt)" font_is Cambria "Noto Serif"
 check "Font Noto có đủ dấu tiếng Việt (ạ ử ỗ)" bash -c "fc-list ':charset=1ea1 1eed 1ed7' family | grep -qi noto"
 
 check "Có file cấu hình định dạng mặc định LibreOffice" \
@@ -55,6 +55,9 @@ if [[ -x /usr/bin/mintupdate-automation ]]; then
 else
   check "Bật unattended-upgrades" grep -q 'Unattended-Upgrade "1"' /etc/apt/apt.conf.d/20auto-upgrades
 fi
+
+check "Có lệnh sao lưu onebee-sao-luu + restic" bash -c "test -x /usr/local/sbin/onebee-sao-luu && command -v restic"
+check "Thư mục cấu hình /etc/onebee chỉ root vào (700)" bash -c "[ \"\$(stat -c %a /etc/onebee)\" = 700 ]"
 
 echo "----"
 if [[ ${fails} -eq 0 ]]; then echo "KẾT QUẢ: tất cả mục đạt"; else echo "KẾT QUẢ: ${fails} mục KHÔNG đạt"; exit 1; fi

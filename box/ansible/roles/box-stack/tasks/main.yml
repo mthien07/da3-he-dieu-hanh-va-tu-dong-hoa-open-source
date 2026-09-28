@@ -1,0 +1,103 @@
+---
+# Bộ dịch vụ OneBee Box chạy bằng Docker Compose
+
+- name: Tạo thư mục cài đặt và dữ liệu
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.owner | default('root') }}"
+    mode: "{{ item.mode | default('0755') }}"
+  loop:
+    - {path: "{{ onebee_box_dir }}", mode: "0750"}
+    - {path: "{{ onebee_box_dir }}/portal"}
+    - {path: "{{ onebee_box_dir }}/portal/site"}
+    - {path: "{{ onebee_box_data }}"}
+    - {path: "{{ onebee_box_data }}/ollama", mode: "0700"}
+    - {path: "{{ onebee_box_data }}/open-webui", mode: "0700"}
+    - {path: "{{ onebee_box_data }}/n8n", owner: "1000", mode: "0700"}  # n8n chạy bằng uid 1000
+    - {path: "{{ onebee_box_data }}/uptime-kuma", mode: "0700"}
+    - {path: "{{ onebee_box_data }}/restic", mode: "0700"}
+
+- name: Tạo file tài khoản kho sao lưu (rest-server) nếu chưa có
+  ansible.builtin.copy:
+    dest: "{{ onebee_box_data }}/restic/.htpasswd"
+    content: ""
+    force: false
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Sinh file .env chứa khóa bí mật
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ onebee_box_dir }}/.env"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Sinh cấu hình dịch vụ
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ onebee_box_dir }}/{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - {src: docker-compose.yml.j2, dest: docker-compose.yml}
+    - {src: Caddyfile.j2, dest: portal/Caddyfile}
+    - {src: index.html.j2, dest: portal/site/index.html}
+
+- name: Tạo thư mục thư viện lệnh onebee-box
+  ansible.builtin.file:
+    path: /usr/local/lib/onebee-box
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Cài lệnh quản trị onebee-box
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - {src: onebee-box-common.sh.j2, dest: /usr/local/lib/onebee-box/common.sh, mode: "0640"}
+    - {src: onebee-box-sao-luu.sh.j2, dest: /usr/local/lib/onebee-box/sao-luu.sh, mode: "0640"}
+    - {src: onebee-box.sh.j2, dest: /usr/local/sbin/onebee-box, mode: "0750"}
+
+- name: Khởi chạy / cập nhật các dịch vụ
+  ansible.builtin.command: docker compose up -d --remove-orphans
+  args:
+    chdir: "{{ onebee_box_dir }}"
+  register: onebee_compose_up
+  changed_when: onebee_compose_up.stderr is search('Creat|Recreat|Start|Pull')
+
+- name: Chờ các dịch vụ web sẵn sàng
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ item }}/"
+    status_code: [200, 302, 401]
+  register: onebee_http
+  until: onebee_http.status in [200, 302, 401]
+  retries: 60
+  delay: 5
+  loop:
+    - "{{ onebee_box_ports.portal }}"
+    - "{{ onebee_box_ports.open_webui }}"
+    - "{{ onebee_box_ports.n8n }}"
+    - "{{ onebee_box_ports.uptime_kuma }}"
+
+- name: Kiểm tra model AI đã tải
+  ansible.builtin.command: docker exec onebee-ollama ollama list
+  register: onebee_ollama_list
+  changed_when: false
+  when: onebee_box_ai_models | length > 0
+
+- name: Tải model AI
+  ansible.builtin.command: "docker exec onebee-ollama ollama pull {{ item }}"
+  loop: "{{ onebee_box_ai_models }}"
+  when: item not in onebee_ollama_list.stdout
+  changed_when: true

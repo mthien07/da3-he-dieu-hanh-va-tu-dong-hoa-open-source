@@ -10,6 +10,9 @@
 - Chưa chọn model trước: chấm thử bằng bộ câu hỏi tiếng Việt thật trên phần cứng Box thật.
 - Trợ lý chỉ **gợi ý**, không tự chạy lệnh trên máy người dùng.
 
+- Ghi nhận 28/9 (test Box): model thử qwen2.5:0.5b trả lời "Thủ đô Việt Nam?" 9 lần: 7 đúng, 2 sai
+  ("TP. Hồ Chí Minh") và có lần bịa thêm số liệu → model quá nhỏ không dùng được cho người dùng; phải chấm bộ 30 câu.
+
 ## Requirements
 - Lệnh `hoi "cách gõ dấu"` trên máy trạm → trả lời tiếng Việt, ngắn, từng bước; không cần mạng Internet.
 - Bộ 30 câu hỏi kiểm thử (gõ dấu, in, xuất PDF, chia sẻ file, sao lưu…) + đáp án chuẩn.

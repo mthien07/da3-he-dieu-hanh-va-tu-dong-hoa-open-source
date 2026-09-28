@@ -4,7 +4,7 @@
 - [plan.md](plan.md) · [phase-00](phase-00-chuan-bi-phan-cung-lab-repo.md) · ibus-bamboo: https://github.com/BambooEngine/ibus-bamboo
 
 ## Overview
-- Ưu tiên: Cao · Trạng thái: 🔄 Code + test container đạt (28/9); chờ thử trên VM · Dự kiến: tuần 2–4
+- Ưu tiên: Cao · Trạng thái: ✅ Code + test mở rộng đạt (28/9); còn thử phiên Cinnamon thật · Dự kiến: tuần 2–4
 - Cài Mint 22.3 chuẩn → chạy `desktop/onebee-install.sh` → máy thành "OneBee OS".
 
 ## Key Insights
@@ -32,7 +32,11 @@
 
 ## Todo List
 - [x] Script + khung playbook  - [x] 6 role  - [x] Test container: cài 2 lần (lần 2 changed=0), 31 mục PASS + 4 mục LibreOffice kiểm qua UNO; đã sửa theo code review
-- [x] CI GitHub Actions  - [ ] Chạy VM Mint 22.3 Cinnamon (gõ tiếng Việt, hình nền, đăng nhập lại)
+- [x] CI GitHub Actions
+- [x] Test mở rộng (28/9): gõ Telex thật qua IBus (Bamboo + Unikey) trong màn hình ảo; file Word tiếng Việt → PDF;
+      chính tả; chờ khóa dpkg; giữ LC_*; tự sửa cấu hình lệch; systemd thật; Ubuntu 24.04; chặn sai đầu vào
+- [x] Sửa lỗi test phát hiện: Cambria → Noto Serif (Caladea thiếu chữ Việt); thiếu python3-debian trên Ubuntu gốc
+- [ ] Chạy VM Mint 22.3 Cinnamon (phiên đăng nhập thật: thanh bộ gõ, hình nền, phím tắt)
 - [ ] Chạy máy thật (ở đơn vị pilot)  - [ ] Test 10 file Office thật của HTX
 
 ## Success Criteria
