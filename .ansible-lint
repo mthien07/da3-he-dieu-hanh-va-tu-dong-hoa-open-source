@@ -1,0 +1,4 @@
+---
+# Dự án dùng tiền tố chung "onebee_" cho mọi biến (dễ tra cứu, dùng chung giữa các role)
+skip_list:
+  - var-naming[no-role-prefix]

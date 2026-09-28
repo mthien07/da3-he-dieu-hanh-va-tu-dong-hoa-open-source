@@ -1,0 +1,5 @@
+---
+# Tên engine IBus theo từng bộ gõ (US để vẫn gõ được tiếng Anh)
+onebee_ibus_engines:
+  bamboo: "['BambooUs', 'Bamboo']"
+  unikey: "['xkb:us::eng', 'Unikey']"

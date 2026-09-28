@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Kiểm tra cú pháp (shellcheck, yamllint, ansible-lint)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cài công cụ kiểm tra
+        run: pip install -r requirements-dev.txt
+      - name: shellcheck
+        run: shellcheck desktop/*.sh tests/desktop/*.sh
+      - name: yamllint
+        run: yamllint .
+      - name: ansible-lint
+        working-directory: desktop/ansible
+        run: ansible-lint site.yml
+
+  desktop-mint:
+    name: Cài thử OneBee OS Desktop trên Linux Mint 22.3 (container)
+    runs-on: ubuntu-24.04
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cài 2 lần + kiểm tra kết quả
+        run: tests/desktop/run-desktop-test-in-mint-container.sh

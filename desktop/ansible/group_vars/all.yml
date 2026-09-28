@@ -1,0 +1,25 @@
+---
+# Cấu hình chung OneBee OS Desktop — đổi tại đây, không sửa trong role
+onebee_version: "0.1.0"
+
+# Ngôn ngữ, múi giờ
+onebee_locale: vi_VN.UTF-8
+onebee_timezone: Asia/Ho_Chi_Minh
+
+# Gói nền tảng hữu ích cho máy văn phòng
+onebee_base_packages:
+  - curl
+  - p7zip-full
+  - unzip
+
+# Bộ gõ: "bamboo" (ibus-bamboo, qua PPA chính thức của dự án) hoặc "unikey" (ibus-unikey, kho Ubuntu)
+onebee_input_method: bamboo
+
+# LibreOffice: lưu mặc định theo định dạng Microsoft Office (.docx/.xlsx/.pptx)
+onebee_office_default_ms_formats: true
+
+# Tự động cập nhật (dùng mintupdate trên Linux Mint, unattended-upgrades trên Ubuntu)
+onebee_auto_updates: true
+
+# Hình nền OneBee (chỉ áp dụng khi máy có Cinnamon)
+onebee_wallpaper_dir: /usr/share/backgrounds/onebee

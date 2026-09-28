@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <!-- Hình nền OneBee OS — màu nhận diện: navy #0E1B2C, mật ong #F5A524, ngọc #2DD4BF -->
+  <defs>
+    <radialGradient id="glow" cx="30%" cy="45%" r="75%">
+      <stop offset="0" stop-color="#17304A"/>
+      <stop offset="1" stop-color="#0E1B2C"/>
+    </radialGradient>
+    <pattern id="hex" width="84" height="146" patternUnits="userSpaceOnUse" patternTransform="scale(1.2)">
+      <path d="M42 0 L84 24 L84 73 L42 97 L0 73 L0 24 Z M42 97 L42 146" fill="none" stroke="#F5A524" stroke-opacity="0.05" stroke-width="2"/>
+    </pattern>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#glow)"/>
+  <rect width="1920" height="1080" fill="url(#hex)"/>
+  <g transform="translate(560 540)">
+    <polygon points="0,-150 130,-75 130,75 0,150 -130,75 -130,-75" fill="#F5A524"/>
+    <polygon points="0,-112 97,-56 97,56 0,112 -97,56 -97,-56" fill="#0E1B2C"/>
+    <polyline points="-52,-38 -4,0 -52,38" fill="none" stroke="#F5A524" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="14" y1="36" x2="56" y2="36" stroke="#2DD4BF" stroke-width="22" stroke-linecap="round"/>
+  </g>
+  <text x="760" y="530" font-family="Noto Sans, DejaVu Sans, sans-serif" font-size="112" font-weight="700" fill="#F8FAFC">OneBee OS</text>
+  <text x="764" y="610" font-family="Noto Sans, DejaVu Sans, sans-serif" font-size="46" fill="#2DD4BF">Máy cũ chạy mới · Dữ liệu ở nhà</text>
+  <text x="764" y="670" font-family="Noto Sans, DejaVu Sans, sans-serif" font-size="28" fill="#94A3B8">HTX OneBee · Tây Ninh</text>
+</svg>

@@ -1,0 +1,40 @@
+---
+# Giao diện: hình nền OneBee. Cinnamon của Mint đã có bố cục quen thuộc kiểu Windows
+# (thanh tác vụ dưới, menu bắt đầu) nên v0.1 chỉ đổi hình nền mặc định, không đổi bố cục.
+
+- name: Tạo thư mục hình nền OneBee
+  ansible.builtin.file:
+    path: "{{ onebee_wallpaper_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Chép hình nền OneBee
+  ansible.builtin.copy:
+    src: onebee-wallpaper.png
+    dest: "{{ onebee_wallpaper_dir }}/onebee-wallpaper.png"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Kiểm tra máy có Cinnamon không
+  ansible.builtin.stat:
+    path: /usr/share/glib-2.0/schemas/org.cinnamon.desktop.background.gschema.xml
+  register: onebee_cinnamon_schema
+
+# Tên zz_ để nạp SAU mint-artwork.gschema.override (file nạp sau thắng), nếu không hình nền Mint sẽ đè lên.
+# Người dùng đã tự đổi hình nền thì giữ lựa chọn của họ.
+- name: Đặt hình nền OneBee làm mặc định cho Cinnamon (người dùng vẫn đổi được)
+  ansible.builtin.copy:
+    dest: /usr/share/glib-2.0/schemas/zz_onebee-theme.gschema.override
+    content: |
+      # Quản lý bởi OneBee OS
+      [org.cinnamon.desktop.background]
+      picture-uri='file://{{ onebee_wallpaper_dir }}/onebee-wallpaper.png'
+      picture-options='zoom'
+    owner: root
+    group: root
+    mode: "0644"
+  when: onebee_cinnamon_schema.stat.exists
+  notify: Biên dịch lại gsettings schema

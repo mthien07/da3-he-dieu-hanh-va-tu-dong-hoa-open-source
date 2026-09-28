@@ -1,0 +1,57 @@
+---
+# Nền tảng: cập nhật danh mục gói, gói cơ bản, ngôn ngữ vi_VN, múi giờ Việt Nam
+
+- name: Cập nhật danh mục gói (tối đa 1 lần/giờ)
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Cài gói nền tảng
+  ansible.builtin.apt:
+    name: "{{ ['locales', 'tzdata'] + onebee_base_packages }}"
+    state: present
+
+- name: Kiểm tra các locale đã có
+  ansible.builtin.command: locale -a
+  register: onebee_locales_available
+  changed_when: false
+
+- name: Tạo locale {{ onebee_locale }}
+  ansible.builtin.command: "locale-gen {{ onebee_locale }}"
+  when: (onebee_locale | lower | replace('-', '')) not in (onebee_locales_available.stdout | lower)
+  changed_when: true
+
+- name: Đặt ngôn ngữ mặc định của hệ thống (giữ nguyên các dòng LC_* sẵn có)
+  ansible.builtin.lineinfile:
+    path: /etc/default/locale
+    regexp: '^LANG='
+    line: "LANG={{ onebee_locale }}"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Đặt múi giờ {{ onebee_timezone }}
+  ansible.builtin.file:
+    src: "/usr/share/zoneinfo/{{ onebee_timezone }}"
+    dest: /etc/localtime
+    state: link
+    force: true
+
+- name: Ghi tên múi giờ vào /etc/timezone
+  ansible.builtin.copy:
+    dest: /etc/timezone
+    content: "{{ onebee_timezone }}\n"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Ghi phiên bản OneBee OS
+  ansible.builtin.copy:
+    dest: /etc/onebee-release
+    content: |
+      ONEBEE_VERSION={{ onebee_version }}
+      ONEBEE_EDITION=desktop
+    owner: root
+    group: root
+    mode: "0644"

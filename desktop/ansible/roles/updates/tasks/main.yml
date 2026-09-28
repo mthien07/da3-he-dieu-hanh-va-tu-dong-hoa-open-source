@@ -1,0 +1,20 @@
+---
+# Tự động cập nhật. Linux Mint: bật tự động hóa có sẵn của mintupdate (nâng cấp + dọn gói thừa).
+# Nền Ubuntu không có mintupdate: dùng unattended-upgrades (chỉ bản vá bảo mật).
+
+- name: Kiểm tra có mintupdate-automation không
+  ansible.builtin.stat:
+    path: /usr/bin/mintupdate-automation
+  register: onebee_mintupdate
+
+- name: Bật tự động nâng cấp của Linux Mint
+  ansible.builtin.include_tasks: mintupdate.yml
+  when:
+    - onebee_auto_updates | bool
+    - onebee_mintupdate.stat.exists
+
+- name: Bật unattended-upgrades (máy không có mintupdate)
+  ansible.builtin.include_tasks: unattended-upgrades.yml
+  when:
+    - onebee_auto_updates | bool
+    - not onebee_mintupdate.stat.exists

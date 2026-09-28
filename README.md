@@ -77,29 +77,39 @@ Gói dịch vụ **chuyển đổi hạ tầng CNTT toàn diện**: cài đặt 
 | Monitoring | Grafana, Prometheus, htop |
 | Cài đặt hàng loạt | Preseed, Kickstart |
 
-## 🚀 Chạy Demo
+## 🚀 Cài OneBee OS Desktop (v0.1)
+
+Trên máy đã cài **Linux Mint 22.x** (64-bit), có mạng Internet:
 
 ```bash
-# Clone repo
-git clone https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source.git
-cd da3-he-dieu-hanh-va-tu-dong-hoa-open-source
-
-# Mở demo web (không cần cài đặt)
-open demo/index.html
+sudo apt install -y git
+git clone https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source.git onebee
+cd onebee
+sudo ./desktop/onebee-install.sh
 ```
 
-> 💡 Demo web giả lập giao diện **OneBee OS Desktop** với Terminal AI tương tác.
+Chi tiết: [docs/huong-dan/cai-dat-onebee-os-desktop.md](docs/huong-dan/cai-dat-onebee-os-desktop.md)
+
+Kiểm thử tự động (cần Docker): `tests/desktop/run-desktop-test-in-mint-container.sh`
+
+## 🖥️ Demo web
+
+Mở `demo/index.html` bằng trình duyệt — giao diện **mô phỏng** OneBee OS Desktop, số liệu minh họa.
 
 ## 📁 Cấu trúc dự án
 
 ```
 da3-he-dieu-hanh-va-tu-dong-hoa-open-source/
-├── demo/
-│   └── index.html          # Web demo Linux Desktop simulator
+├── desktop/                 # OneBee OS Desktop: onebee-install.sh + playbook Ansible
+├── tests/desktop/           # Kiểm thử tự động trong container Linux Mint 22.3
+├── demo/index.html          # Web demo mô phỏng
 ├── docs/
-│   ├── m02-m03-ho-so-du-thi.md  # Hồ sơ dự thi M-02 & M-03
-│   ├── pitch-deck.md            # Pitch Deck (10 slides)
-│   └── video-script.md          # Kịch bản video 3 phút
+│   ├── huong-dan/           # Hướng dẫn cài đặt, vận hành
+│   ├── adr/                 # Quyết định kiến trúc
+│   ├── hoi-thi/             # Hồ sơ dự thi M-02/M-03, pitch deck, kịch bản video
+│   └── project-changelog.md
+├── plans/                   # Kế hoạch làm sản phẩm theo phase
+├── LICENSES.md              # Giấy phép các thành phần
 └── README.md
 ```
 
@@ -114,11 +124,14 @@ da3-he-dieu-hanh-va-tu-dong-hoa-open-source/
 
 ## 📌 Trạng thái dự án
 
-- ✅ Hồ sơ dự thi M-02/M-03
-- ✅ Pitch Deck
-- ✅ Video Script
-- ✅ Web Demo tương tác (Linux Desktop Simulator)
-- 🔄 Triển khai pilot nội bộ (theo kế hoạch)
+- ✅ Hồ sơ dự thi M-02/M-03, pitch deck, kịch bản video (`docs/hoi-thi/`)
+- ✅ Web demo mô phỏng
+- ✅ **OneBee OS Desktop v0.1** — bộ cài chạy thật, đã kiểm tự động trên container Linux Mint 22.3
+- 🔄 Kiểm trên máy ảo/máy thật (gõ phím, hiển thị, máy in)
+- ⏳ OneBee Box (máy chủ nội bộ: AI, n8n, sao lưu) — Phase 2
+- ⏳ Trợ lý `hoi`, cài hàng loạt, mô hình điểm tại HTX OneBee — Phase 3–5
+
+Kế hoạch: [plans/260928-1115-onebee-os-san-pham-that/plan.md](plans/260928-1115-onebee-os-san-pham-that/plan.md)
 
 ## 📞 Liên hệ
 

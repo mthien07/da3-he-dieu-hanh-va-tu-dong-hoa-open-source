@@ -1,0 +1,21 @@
+---
+# OneBee OS Desktop v0.1 — biến Linux Mint 22.x thành máy làm việc tiếng Việt cho HTX/SME
+- name: OneBee OS Desktop
+  hosts: desktop
+  become: true
+  gather_facts: true
+  module_defaults:
+    ansible.builtin.apt:
+      lock_timeout: 600  # máy mới cài thường đang tự cập nhật ngầm, chờ tối đa 10 phút
+  roles:
+    - base
+    - vietnamese
+    - fonts
+    - office
+    - theme
+    - updates
+  handlers:
+    # Dùng chung cho role vietnamese (bộ gõ) và theme (hình nền)
+    - name: Biên dịch lại gsettings schema
+      ansible.builtin.command: glib-compile-schemas /usr/share/glib-2.0/schemas
+      changed_when: true

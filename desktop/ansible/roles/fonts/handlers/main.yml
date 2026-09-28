@@ -1,0 +1,4 @@
+---
+- name: Làm mới bộ nhớ đệm font
+  ansible.builtin.command: fc-cache -f
+  changed_when: true

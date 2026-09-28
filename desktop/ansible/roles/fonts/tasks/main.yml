@@ -1,0 +1,15 @@
+---
+# Font tương thích số đo với font Microsoft để file Word/Excel không vỡ bố cục.
+# fontconfig (30-metric-aliases.conf) tự thay: Arial→Liberation Sans, Times New Roman→Liberation Serif,
+# Courier New→Liberation Mono, Calibri→Carlito, Cambria→Caladea. Font Microsoft gốc KHÔNG cài (giấy phép riêng).
+
+- name: Cài font tương thích + font Noto hỗ trợ tiếng Việt
+  ansible.builtin.apt:
+    name:
+      - fontconfig
+      - fonts-liberation2
+      - fonts-crosextra-carlito
+      - fonts-crosextra-caladea
+      - fonts-noto-core
+    state: present
+  notify: Làm mới bộ nhớ đệm font

@@ -1,0 +1,43 @@
+---
+# ibus-bamboo (GPLv3) — PPA chính thức của dự án BambooEngine, khóa ký được lưu sẵn trong repo
+# Vân tay khóa: 5AD2 E0B6 8A04 09AD 907D 462D 36ED 424E 9659 D014 (Launchpad PPA for bamboo-engine)
+
+# Chỉ cho phép lấy đúng gói ibus-bamboo từ PPA; mọi gói khác trong PPA bị chặn (-1)
+# để PPA không thể thay thế gói hệ thống khi máy tự cập nhật.
+- name: Giới hạn PPA ibus-bamboo chỉ cấp gói ibus-bamboo
+  ansible.builtin.copy:
+    dest: /etc/apt/preferences.d/onebee-ibus-bamboo
+    content: |
+      # Quản lý bởi OneBee OS
+      Package: ibus-bamboo
+      Pin: release o=LP-PPA-bamboo-engine-ibus-bamboo
+      Pin-Priority: 500
+
+      Package: *
+      Pin: release o=LP-PPA-bamboo-engine-ibus-bamboo
+      Pin-Priority: -1
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Thêm kho PPA ibus-bamboo
+  ansible.builtin.deb822_repository:
+    name: ibus-bamboo
+    types: deb
+    uris: https://ppa.launchpadcontent.net/bamboo-engine/ibus-bamboo/ubuntu
+    suites: noble
+    components: main
+    signed_by: "{{ lookup('ansible.builtin.file', 'ibus-bamboo-ppa.asc') }}"
+  register: onebee_bamboo_repo
+
+- name: Cập nhật danh mục gói sau khi thêm PPA
+  # noqa: no-handler — phải cập nhật ngay, trước bước cài ibus-bamboo bên dưới
+  ansible.builtin.apt:
+    update_cache: true
+  when: onebee_bamboo_repo is changed
+
+- name: Cài ibus + ibus-bamboo
+  ansible.builtin.apt:
+    name: [ibus, ibus-bamboo]
+    state: present
+    install_recommends: true
