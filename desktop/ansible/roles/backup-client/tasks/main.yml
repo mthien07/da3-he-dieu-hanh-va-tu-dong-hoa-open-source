@@ -1,0 +1,100 @@
+---
+# Sao lưu /home lên OneBee Box hằng ngày. Chỉ bật khi đã có /etc/onebee/sao-luu.env
+# (lấy từ lệnh 'sudo onebee-box them-may <tên-máy>' trên Box).
+
+- name: Cài restic
+  ansible.builtin.apt:
+    name: restic
+    state: present
+
+- name: Tạo thư mục cấu hình OneBee
+  ansible.builtin.file:
+    path: /etc/onebee
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Cài lệnh onebee-sao-luu
+  ansible.builtin.copy:
+    src: onebee-sao-luu
+    dest: /usr/local/sbin/onebee-sao-luu
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Kiểm tra đã có cấu hình sao lưu chưa
+  ansible.builtin.stat:
+    path: /etc/onebee/sao-luu.env
+  register: onebee_backup_conf
+
+- name: Giữ file cấu hình sao lưu kín (chứa mật khẩu)
+  ansible.builtin.file:
+    path: /etc/onebee/sao-luu.env
+    owner: root
+    group: root
+    mode: "0600"
+  when: onebee_backup_conf.stat.exists
+
+- name: Cài lịch sao lưu hằng ngày
+  ansible.builtin.copy:
+    dest: "/etc/systemd/system/{{ item.name }}"
+    content: "{{ item.content }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - name: onebee-sao-luu.service
+      content: |
+        # Quản lý bởi OneBee OS
+        [Unit]
+        Description=OneBee — sao lưu /home lên OneBee Box
+        Wants=network-online.target
+        After=network-online.target
+        ConditionPathExists=/etc/onebee/sao-luu.env
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/local/sbin/onebee-sao-luu
+        Nice=10
+        IOSchedulingClass=idle
+    - name: onebee-sao-luu.timer
+      content: |
+        # Quản lý bởi OneBee OS — 12:00 hằng ngày; máy tắt lúc đó thì chạy bù khi bật lại
+        [Unit]
+        Description=OneBee — lịch sao lưu hằng ngày
+
+        [Timer]
+        OnCalendar=*-*-* 12:00:00
+        Persistent=true
+        RandomizedDelaySec=15min
+
+        [Install]
+        WantedBy=timers.target
+  when: onebee_backup_conf.stat.exists
+
+- name: Bật lịch sao lưu
+  # noqa: command-instead-of-module — chỉ tạo liên kết enable, chạy được cả khi systemd chưa khởi động
+  ansible.builtin.command: systemctl enable onebee-sao-luu.timer
+  args:
+    creates: /etc/systemd/system/timers.target.wants/onebee-sao-luu.timer
+  when: onebee_backup_conf.stat.exists
+
+- name: Kiểm tra máy đang chạy systemd (không phải lúc cài trong chroot/container)
+  ansible.builtin.stat:
+    path: /run/systemd/system
+  register: onebee_backup_systemd
+
+- name: Chạy ngay lịch sao lưu (không cần khởi động lại)
+  ansible.builtin.systemd_service:
+    name: onebee-sao-luu.timer
+    state: started
+    daemon_reload: true
+  when: onebee_backup_conf.stat.exists and onebee_backup_systemd.stat.exists
+
+- name: Nhắc cấu hình sao lưu
+  ansible.builtin.debug:
+    msg: >-
+      Chưa bật sao lưu: chạy 'sudo onebee-box them-may <tên-máy>' trên OneBee Box,
+      dán kết quả vào /etc/onebee/sao-luu.env rồi chạy lại bộ cài.
+  when: not onebee_backup_conf.stat.exists

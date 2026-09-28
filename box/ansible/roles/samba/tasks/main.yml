@@ -1,0 +1,67 @@
+---
+# Thư mục chung trong mạng LAN (\\<tên-box>\chung). Chỉ người có mật khẩu mới vào được, không cho khách.
+
+- name: Cài Samba
+  ansible.builtin.apt:
+    name: samba
+    state: present
+
+- name: Tạo nhóm onebee
+  ansible.builtin.group:
+    name: onebee
+    system: true
+
+- name: Tạo tài khoản dùng thư mục chung (không đăng nhập máy chủ được)
+  ansible.builtin.user:
+    name: "{{ onebee_box_samba_user }}"
+    group: onebee
+    shell: /usr/sbin/nologin
+    create_home: false
+    system: true
+
+- name: Tạo thư mục chung
+  ansible.builtin.file:
+    path: "{{ onebee_box_data }}/{{ onebee_box_samba_share }}"
+    state: directory
+    owner: root
+    group: onebee
+    mode: "2770"
+
+- name: Khai báo thư mục chung trong cấu hình Samba
+  ansible.builtin.blockinfile:
+    path: /etc/samba/smb.conf
+    marker: "# {mark} ONEBEE BOX — quản lý tự động, không sửa tay"
+    block: |
+      [{{ onebee_box_samba_share }}]
+         comment = Thư mục chung OneBee
+         path = {{ onebee_box_data }}/{{ onebee_box_samba_share }}
+         valid users = @onebee
+         hosts allow = {{ onebee_box_samba_hosts_allow }}
+         guest ok = no
+         read only = no
+         force group = onebee
+         create mask = 0660
+         directory mask = 2770
+  notify: Khởi động lại Samba
+
+- name: Kiểm tra tài khoản Samba đã có chưa
+  ansible.builtin.command: pdbedit -L
+  register: onebee_samba_users
+  changed_when: false
+
+- name: Đặt mật khẩu Samba (lấy từ thư mục bí mật, sinh ngẫu nhiên lần đầu)
+  ansible.builtin.command: "smbpasswd -s -a {{ onebee_box_samba_user }}"
+  args:
+    stdin: "{{ onebee_samba_password }}\n{{ onebee_samba_password }}"
+  vars:
+    onebee_samba_password: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/samba-' ~ onebee_box_samba_user,
+                             chars=['ascii_letters', 'digits'], length=20) }}"
+  when: (onebee_box_samba_user ~ ':') not in onebee_samba_users.stdout
+  changed_when: true
+  no_log: true
+
+- name: Bật Samba khởi động cùng máy
+  ansible.builtin.systemd_service:
+    name: smbd
+    enabled: true
+    state: started

@@ -13,8 +13,8 @@ Mốc tính theo tuần kể từ khi anh chốt Phase 0 (Tuần 1), không gắ
 | # | Phase | Tuần | Trạng thái | File |
 |---|-------|------|-----------|------|
 | 0 | Chuẩn bị: lab test, giấy phép, dọn repo, CI | 1 | ✅ Xong (28/9) | [phase-00](phase-00-chuan-bi-phan-cung-lab-repo.md) |
-| 1 | OneBee OS Desktop v0.1 | 2–4 | 🔄 Code + test container xong (28/9); chờ thử VM | [phase-01](phase-01-onebee-os-desktop-v01.md) |
-| 2 | OneBee Box v0.1 | 4–6 | Chưa bắt đầu | [phase-02](phase-02-onebee-box-may-chu-noi-bo-v01.md) |
+| 1 | OneBee OS Desktop v0.1 | 2–4 | ✅ Code + test mở rộng đạt (28/9); còn thử phiên Cinnamon thật | [phase-01](phase-01-onebee-os-desktop-v01.md) |
+| 2 | OneBee Box v0.1 | 4–6 | ✅ Code + test Docker lồng đạt (28/9); còn thử máy thật | [phase-02](phase-02-onebee-box-may-chu-noi-bo-v01.md) |
 | 3 | Trợ lý AI tiếng Việt + workflow n8n mẫu | 6–8 | Chưa bắt đầu | [phase-03](phase-03-tro-ly-ai-tieng-viet-va-workflow-n8n.md) |
 | 4 | Cài hàng loạt, quản lý tập trung, đo đạc | 8–10 | Chưa bắt đầu | [phase-04](phase-04-cai-hang-loat-quan-ly-tap-trung-do-dac.md) |
 | 5 | Mô hình điểm tại HTX OneBee | 10–14 | Chưa bắt đầu | [phase-05](phase-05-mo-hinh-diem-tai-htx-onebee.md) |
@@ -39,4 +39,4 @@ Mốc tính theo tuần kể từ khi anh chốt Phase 0 (Tuần 1), không gắ
 - Làm tiếp trên repo da3 hiện tại; không chạy theo lịch hội thi; không có máy cũ để test.
 
 ## Câu hỏi còn mở
-1. Máy làm Box (Phase 2): dùng máy nào? Có GPU không? Không có → AI chạy CPU, chọn model nhỏ.
+1. Máy làm Box thật: dùng máy nào? Có GPU không? (quyết định model AI ở Phase 3)

@@ -1,0 +1,32 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2034  # biến dùng ở các file nạp thư viện này
+# Thư viện dùng chung cho lệnh onebee-box (quản lý bởi OneBee OS, không sửa tay)
+BOX_DIR="{{ onebee_box_dir }}"
+DATA="{{ onebee_box_data }}"
+SECRETS="{{ onebee_box_secrets }}"
+BACKUP_REPO="{{ onebee_box_backup_repo }}"
+BACKUP_MOUNT="$(dirname "${BACKUP_REPO}")"
+SHARE="${DATA}/{{ onebee_box_samba_share }}"
+REST_PORT="{{ onebee_box_ports.rest_server }}"
+BOX_ADDRESS="{{ onebee_box_address }}"
+KEEP_BOX=({{ onebee_box_backup_keep }})
+# Kho máy trạm: luôn giữ mọi bản trong 30 ngày gần nhất (chặn trường hợp bản giả mạo ngày tương lai đẩy bản thật ra)
+KEEP_MAY=(--keep-within 30d {{ onebee_box_backup_keep }})
+
+die() { printf 'LỖI: %s\n' "$*" >&2; exit 1; }
+warn() { printf 'CẢNH BÁO: %s\n' "$*" >&2; }
+
+# Sinh (một lần) và đọc mật khẩu ngẫu nhiên lưu trong thư mục bí mật
+secret() {
+  local f="${SECRETS}/$1"
+  [[ -s "${f}" ]] || (umask 077; tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32 >"${f}")
+  cat "${f}"
+}
+
+# Địa chỉ IPv4 của Box trong LAN: lấy từ cấu hình, nếu trống thì lấy IP của cổng ra mạng chính (không lấy docker/VPN)
+box_ip() {
+  if [[ -n "${BOX_ADDRESS}" ]]; then echo "${BOX_ADDRESS}"; return; fi
+  ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}'
+}
+
+compose() { docker compose --project-directory "${BOX_DIR}" "$@"; }

@@ -1,0 +1,25 @@
+---
+# Docker + Docker Compose từ kho chính thức của Ubuntu (nhận bản vá bảo mật qua unattended-upgrades).
+# Máy đã cài Docker CE (docker-ce từ kho Docker) thì dùng luôn, không cài đè docker.io (2 gói xung đột).
+
+- name: Kiểm tra máy đã có Docker CE chưa
+  ansible.builtin.command: dpkg-query -W -f=${Status} docker-ce
+  register: onebee_docker_ce
+  changed_when: false
+  failed_when: false
+
+- name: Cài Docker và Docker Compose (kho Ubuntu)
+  ansible.builtin.apt:
+    name: [docker.io, docker-compose-v2]
+    state: present
+  when: "'install ok installed' not in onebee_docker_ce.stdout"
+
+- name: Kiểm tra có lệnh docker compose
+  ansible.builtin.command: docker compose version
+  changed_when: false
+
+- name: Bật Docker khởi động cùng máy
+  ansible.builtin.systemd_service:
+    name: docker
+    enabled: true
+    state: started

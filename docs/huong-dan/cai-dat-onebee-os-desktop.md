@@ -27,10 +27,11 @@ Nhật ký cài đặt nằm ở `/var/log/onebee/`.
 |---|---|
 | Ngôn ngữ | Hệ thống, Firefox, LibreOffice tiếng Việt; kiểm tra chính tả tiếng Việt |
 | Gõ tiếng Việt | IBus + Bamboo (Telex mặc định). Đổi tiếng Việt/tiếng Anh: phím tắt của IBus (mặc định Super + Space) |
-| Font | Mở file Word/Excel có Arial, Times New Roman, Calibri, Cambria không vỡ bố cục (dùng font tương thích) |
+| Font | File Word/Excel dùng Arial, Times New Roman, Calibri: thay bằng font cùng kích thước (Liberation, Carlito) → giữ bố cục. Cambria → Noto Serif (font thay cùng kích thước Caladea thiếu chữ tiếng Việt), bố cục có thể lệch nhẹ |
 | LibreOffice | Lưu mặc định .docx / .xlsx / .pptx, không hỏi lại mỗi lần lưu |
 | Giao diện | Hình nền OneBee (Cinnamon); bố cục kiểu Windows có sẵn của Mint |
 | Cập nhật | Tự động nâng cấp và dọn gói thừa (mintupdate) |
+| Sao lưu | Khi có `/etc/onebee/sao-luu.env` (từ OneBee Box): tự sao lưu `/home` lên Box 12:00 hằng ngày — xem hướng dẫn cài Box |
 | Múi giờ | Asia/Ho_Chi_Minh |
 
 ## 5. Tùy chỉnh
@@ -48,7 +49,7 @@ Tất cả dòng phải là `PASS`.
 - Bộ gõ và hình nền là **giá trị mặc định**: tài khoản đã tự chọn bộ gõ/hình nền trước khi cài OneBee giữ lựa chọn cũ.
   Nên cài OneBee ngay sau khi cài Mint mới, trước khi người dùng tùy chỉnh.
 - Không gỡ riêng Writer/Calc/Impress: cấu hình định dạng mặc định của LibreOffice cần đủ cả 3.
-- Chưa kiểm trên máy thật; đã kiểm tự động trong container Linux Mint 22.3 (không có giao diện đồ họa).
-  Cần thử trên máy ảo: gõ tiếng Việt trong Firefox/LibreOffice, hình nền, đăng nhập lại.
+- Chưa kiểm trên máy thật. Đã kiểm tự động trong container Linux Mint 22.3, gồm gõ Telex thật qua IBus trong
+  màn hình ảo (xem `tests/README.md`). Chưa kiểm phiên Cinnamon thật: thanh bộ gõ, hình nền hiển thị, phím tắt.
 - File Office có macro VBA hoặc bố cục phức tạp có thể hiển thị lệch — giữ bản gốc.
 - Phần mềm chỉ chạy trên Windows (kê khai thuế, BHXH, ký số USB token…) chưa được hỗ trợ.

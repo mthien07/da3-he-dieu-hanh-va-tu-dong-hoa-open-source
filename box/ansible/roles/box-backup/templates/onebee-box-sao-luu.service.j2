@@ -1,0 +1,11 @@
+# Quản lý bởi OneBee OS
+[Unit]
+Description=OneBee Box — sao lưu dữ liệu ra ổ ngoài
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/onebee-box sao-luu
+Nice=10
+IOSchedulingClass=idle

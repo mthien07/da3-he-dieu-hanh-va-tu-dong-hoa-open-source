@@ -90,7 +90,21 @@ sudo ./desktop/onebee-install.sh
 
 Chi tiết: [docs/huong-dan/cai-dat-onebee-os-desktop.md](docs/huong-dan/cai-dat-onebee-os-desktop.md)
 
-Kiểm thử tự động (cần Docker): `tests/desktop/run-desktop-test-in-mint-container.sh`
+## 🖧 Cài OneBee Box (máy chủ nội bộ, v0.1)
+
+Trên máy **Ubuntu Server 24.04 LTS** (64-bit) trong mạng LAN:
+
+```bash
+sudo apt install -y git
+git clone https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source.git onebee
+cd onebee
+sudo ./box/onebee-box-install.sh
+```
+
+Trợ lý AI chạy tại chỗ (Open WebUI + Ollama), tự động hóa n8n, giám sát, thư mục chung, sao lưu máy trạm + Box.
+Chi tiết: [docs/huong-dan/cai-dat-onebee-box.md](docs/huong-dan/cai-dat-onebee-box.md)
+
+Kiểm thử tự động (cần Docker): xem [tests/README.md](tests/README.md)
 
 ## 🖥️ Demo web
 
@@ -101,7 +115,8 @@ Mở `demo/index.html` bằng trình duyệt — giao diện **mô phỏng** One
 ```
 da3-he-dieu-hanh-va-tu-dong-hoa-open-source/
 ├── desktop/                 # OneBee OS Desktop: onebee-install.sh + playbook Ansible
-├── tests/desktop/           # Kiểm thử tự động trong container Linux Mint 22.3
+├── box/                     # OneBee Box: onebee-box-install.sh + playbook Ansible (Docker Compose)
+├── tests/                   # Kiểm thử tự động (Desktop trên Mint 22.3, Box trong Docker lồng)
 ├── demo/index.html          # Web demo mô phỏng
 ├── docs/
 │   ├── huong-dan/           # Hướng dẫn cài đặt, vận hành
@@ -126,10 +141,10 @@ da3-he-dieu-hanh-va-tu-dong-hoa-open-source/
 
 - ✅ Hồ sơ dự thi M-02/M-03, pitch deck, kịch bản video (`docs/hoi-thi/`)
 - ✅ Web demo mô phỏng
-- ✅ **OneBee OS Desktop v0.1** — bộ cài chạy thật, đã kiểm tự động trên container Linux Mint 22.3
-- 🔄 Kiểm trên máy ảo/máy thật (gõ phím, hiển thị, máy in)
-- ⏳ OneBee Box (máy chủ nội bộ: AI, n8n, sao lưu) — Phase 2
-- ⏳ Trợ lý `hoi`, cài hàng loạt, mô hình điểm tại HTX OneBee — Phase 3–5
+- ✅ **OneBee OS Desktop v0.1** — bộ cài chạy được; kiểm tự động trên container Linux Mint 22.3 (gồm gõ Telex thật qua IBus)
+- ✅ **OneBee Box v0.1** — bộ cài chạy được; kiểm tự động trong container Ubuntu 24.04 + systemd (AI hỏi đáp, sao lưu/khôi phục)
+- 🔄 Kiểm trên máy ảo/máy thật (phiên Cinnamon, phần cứng, mạng LAN thật)
+- ⏳ Trợ lý `hoi` + chọn model AI tiếng Việt, cài hàng loạt, mô hình điểm tại HTX OneBee — Phase 3–5
 
 Kế hoạch: [plans/260928-1115-onebee-os-san-pham-that/plan.md](plans/260928-1115-onebee-os-san-pham-that/plan.md)
 

@@ -1,7 +1,8 @@
 ---
 # Font tương thích số đo với font Microsoft để file Word/Excel không vỡ bố cục.
 # fontconfig (30-metric-aliases.conf) tự thay: Arial→Liberation Sans, Times New Roman→Liberation Serif,
-# Courier New→Liberation Mono, Calibri→Carlito, Cambria→Caladea. Font Microsoft gốc KHÔNG cài (giấy phép riêng).
+# Courier New→Liberation Mono, Calibri→Carlito. Riêng Cambria→Noto Serif (Caladea thiếu chữ tiếng Việt).
+# Font Microsoft gốc KHÔNG cài (giấy phép riêng).
 
 - name: Cài font tương thích + font Noto hỗ trợ tiếng Việt
   ansible.builtin.apt:
@@ -12,4 +13,13 @@
       - fonts-crosextra-caladea
       - fonts-noto-core
     state: present
+  notify: Làm mới bộ nhớ đệm font
+
+- name: Thay Cambria bằng Noto Serif (Caladea thiếu chữ tiếng Việt)
+  ansible.builtin.copy:
+    src: 29-onebee-cambria-tieng-viet.conf
+    dest: /etc/fonts/conf.d/29-onebee-cambria-tieng-viet.conf
+    owner: root
+    group: root
+    mode: "0644"
   notify: Làm mới bộ nhớ đệm font

@@ -1,0 +1,11 @@
+# Quản lý bởi OneBee OS
+[Unit]
+Description=OneBee Box — lịch sao lưu hằng ngày
+
+[Timer]
+OnCalendar={{ onebee_box_backup_time }}
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

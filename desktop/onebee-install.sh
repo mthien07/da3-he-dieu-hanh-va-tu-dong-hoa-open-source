@@ -33,14 +33,15 @@ fi
 # 3. Không nhận tham số
 [[ $# -eq 0 ]] || die "Script không nhận tham số. Cách dùng: sudo $0"
 
-# 4. Cài ansible-core + python3-apt từ kho chính thức (nếu chưa có gói)
+# 4. Cài ansible-core + thư viện Python mà các module apt/deb822 cần (nếu chưa có gói)
 #    Máy mới cài thường đang tự cập nhật ngầm → chờ khóa dpkg tối đa 10 phút thay vì báo lỗi ngay.
 export DEBIAN_FRONTEND=noninteractive
 apt_opts=(-q -o DPkg::Lock::Timeout=600)
-if ! dpkg-query -W -f='${Status}\n' ansible-core python3-apt 2>/dev/null | grep -c 'install ok installed' | grep -qx 2; then
+ansible_pkgs=(ansible-core python3-apt python3-debian)
+if ! dpkg-query -W -f='${Status}\n' "${ansible_pkgs[@]}" 2>/dev/null | grep -c 'install ok installed' | grep -qx "${#ansible_pkgs[@]}"; then
   log "Đang cài ansible-core từ kho chính thức..."
   apt-get "${apt_opts[@]}" update
-  apt-get "${apt_opts[@]}" install -y --no-install-recommends ansible-core python3-apt
+  apt-get "${apt_opts[@]}" install -y --no-install-recommends "${ansible_pkgs[@]}"
 fi
 
 # 5. Chạy playbook, ghi log

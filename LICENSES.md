@@ -19,10 +19,17 @@ OneBee OS **không bán phần mềm**; các thành phần bên dưới giữ ng
 
 Nguồn: file `/usr/share/doc/<gói>/copyright` của từng gói trên Linux Mint 22.3.
 
-## OneBee Box (Phase 2 — dự kiến, cần kiểm lại khi đưa vào)
+## OneBee Box (v0.1 — đang dùng)
 | Thành phần | Giấy phép | Lưu ý khi kinh doanh |
 |---|---|---|
+| Ubuntu Server 24.04, Docker (docker.io), Samba | Nguồn mở (Apache-2.0, GPL-3.0…) | Gói từ kho Ubuntu |
+| Ollama | MIT | |
+| Open WebUI | BSD-3 + điều khoản thương hiệu (từ v0.6.6) | >50 người dùng/30 ngày: không được gỡ/đổi thương hiệu "Open WebUI". OneBee không đổi tên/logo. |
 | n8n | Sustainable Use License (fair-code, **không** phải nguồn mở chuẩn OSI) | Theo n8n: chỉ giúp khách dựng n8n nội bộ của chính khách thì không cần giấy phép thương mại. Không bán n8n như dịch vụ host chung. |
-| Open WebUI | BSD-3 + điều khoản thương hiệu (từ v0.6.6) | >50 người dùng/30 ngày: không được gỡ/đổi thương hiệu "Open WebUI". |
+| Uptime Kuma | MIT | |
+| restic, rest-server | BSD-2-Clause | |
+| Caddy | Apache-2.0 | |
 
-→ Khi giới thiệu sản phẩm là "mã nguồn mở", phải nói rõ thành phần nào là fair-code.
+Giấy phép phần Box ghi theo trang của từng dự án — cần kiểm lại khi nâng phiên bản và trước khi phát hành v1.0.
+
+→ Khi giới thiệu sản phẩm là "mã nguồn mở", phải nói rõ n8n là fair-code và điều khoản thương hiệu của Open WebUI.

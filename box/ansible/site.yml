@@ -1,0 +1,15 @@
+---
+# OneBee Box v0.1 — máy chủ nội bộ: AI chạy tại chỗ, tự động hóa n8n, thư mục chung, sao lưu, giám sát
+- name: OneBee Box
+  hosts: box
+  become: true
+  gather_facts: true
+  module_defaults:
+    ansible.builtin.apt:
+      lock_timeout: 600
+  roles:
+    - box-base
+    - docker
+    - samba
+    - box-stack
+    - box-backup

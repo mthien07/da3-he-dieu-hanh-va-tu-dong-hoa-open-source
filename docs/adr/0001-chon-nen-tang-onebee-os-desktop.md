@@ -17,7 +17,8 @@ Cần: giao diện quen kiểu Windows, gõ tiếng Việt, mở file Office, t�
    (vân tay `5AD2 E0B6 8A04 09AD 907D 462D 36ED 424E 9659 D014`). Dự phòng: `ibus-unikey` từ kho Ubuntu
    (đổi `onebee_input_method: unikey` trong `desktop/ansible/group_vars/all.yml`).
 5. **Font: không cài font Microsoft gốc** (giấy phép riêng). Dùng font tương thích số đo
-   (Liberation, Carlito, Caladea) — fontconfig tự thay tên font Microsoft.
+   (Liberation, Carlito) — fontconfig tự thay tên font Microsoft. **Riêng Cambria → Noto Serif**: Caladea (bản tương
+   thích số đo) chỉ có 1/8 ký tự tiếng Việt kiểm thử → chữ có dấu bị lẫn font (phát hiện qua test xuất PDF 28/9).
 6. **LibreOffice lưu mặc định .docx/.xlsx/.pptx** qua file cấu hình hệ thống `.xcd`
    (phải khai báo phụ thuộc writer/calc/impress, nếu không bị đè — đã kiểm bằng UNO).
 7. **Cập nhật tự động: dùng tự động hóa có sẵn của mintupdate** (nâng cấp + dọn gói thừa).

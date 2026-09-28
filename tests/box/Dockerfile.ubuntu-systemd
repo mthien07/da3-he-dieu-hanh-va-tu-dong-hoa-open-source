@@ -1,0 +1,9 @@
+# Máy ảo giả lập "Ubuntu Server 24.04 có systemd" để kiểm thử bộ cài OneBee Box trong container.
+FROM ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update -q \
+ && apt-get install -y -q --no-install-recommends systemd systemd-sysv dbus ca-certificates iproute2 sudo \
+ && rm -rf /var/lib/apt/lists/* \
+ && systemctl mask systemd-logind.service getty.target console-getty.service
+STOPSIGNAL SIGRTMIN+3
+CMD ["/lib/systemd/systemd"]
