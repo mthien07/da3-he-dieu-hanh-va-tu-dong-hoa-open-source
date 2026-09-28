@@ -1,0 +1,28 @@
+---
+# LibreOffice giao diện + trợ giúp + kiểm tra chính tả tiếng Việt; lưu mặc định định dạng Microsoft Office
+
+- name: Cài LibreOffice và gói tiếng Việt
+  ansible.builtin.apt:
+    name:
+      - libreoffice-writer
+      - libreoffice-calc
+      - libreoffice-impress
+      - libreoffice-l10n-vi
+      - libreoffice-help-vi
+      - hunspell-vi
+    state: present
+
+- name: Cấu hình mặc định lưu .docx/.xlsx/.pptx và tắt hộp cảnh báo định dạng
+  ansible.builtin.copy:
+    src: onebee-office-defaults.xcd
+    dest: /usr/lib/libreoffice/share/registry/onebee-office-defaults.xcd
+    owner: root
+    group: root
+    mode: "0644"
+  when: onebee_office_default_ms_formats | bool
+
+- name: Gỡ cấu hình định dạng Microsoft khi tắt tùy chọn
+  ansible.builtin.file:
+    path: /usr/lib/libreoffice/share/registry/onebee-office-defaults.xcd
+    state: absent
+  when: not (onebee_office_default_ms_formats | bool)

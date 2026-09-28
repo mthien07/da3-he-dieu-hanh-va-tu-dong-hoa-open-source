@@ -1,0 +1,45 @@
+---
+# Làm đúng như lệnh `mintupdate-automation <loại> enable`: tạo file đánh dấu + bật timer systemd.
+# Tự viết lại để chạy lặp nhiều lần không báo thay đổi (lệnh gốc luôn chạy lại).
+- name: Tạo thư mục trạng thái của mintupdate
+  ansible.builtin.file:
+    path: /var/lib/linuxmint
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Tạo file đánh dấu bật tự động hóa mintupdate
+  ansible.builtin.copy:
+    dest: "/var/lib/linuxmint/{{ item }}"
+    content: ""
+    force: false
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - mintupdate-automatic-upgrades-enabled
+    - mintupdate-automatic-removals-enabled
+
+- name: Bật timer tự động nâng cấp và dọn gói thừa
+  # noqa: command-instead-of-module — chỉ tạo liên kết enable, chạy được cả khi systemd chưa khởi động (lúc cài)
+  ansible.builtin.command: "systemctl enable {{ item }}"
+  args:
+    creates: "/etc/systemd/system/timers.target.wants/{{ item }}"
+  loop:
+    - mintupdate-automation-upgrade.timer
+    - mintupdate-automation-autoremove.timer
+
+- name: Kiểm tra máy đang chạy systemd (không phải lúc cài trong chroot/container)
+  ansible.builtin.stat:
+    path: /run/systemd/system
+  register: onebee_systemd_booted
+
+- name: Chạy ngay các timer (không cần chờ khởi động lại) khi máy đang chạy systemd
+  # noqa: command-instead-of-module — giống hệt lệnh mintupdate-automation gốc
+  ansible.builtin.command: "systemctl start {{ item }}"
+  loop:
+    - mintupdate-automation-upgrade.timer
+    - mintupdate-automation-autoremove.timer
+  when: onebee_systemd_booted.stat.exists
+  changed_when: false

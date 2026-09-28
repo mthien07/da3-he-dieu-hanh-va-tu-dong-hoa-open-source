@@ -1,0 +1,42 @@
+---
+# Tiếng Việt: gói ngôn ngữ cho hệ thống/ứng dụng + bộ gõ tiếng Việt mặc định
+
+- name: Cài gói ngôn ngữ tiếng Việt
+  ansible.builtin.apt:
+    name:
+      - language-pack-vi
+      - language-pack-gnome-vi
+      - firefox-locale-vi
+      - libglib2.0-bin  # glib-compile-schemas
+    state: present
+
+- name: Cài bộ gõ ibus-bamboo
+  ansible.builtin.include_tasks: ibus-bamboo.yml
+  when: onebee_input_method == 'bamboo'
+
+- name: Cài bộ gõ ibus-unikey (dự phòng, kho Ubuntu)
+  ansible.builtin.apt:
+    name: [ibus, ibus-unikey]
+    state: present
+  when: onebee_input_method == 'unikey'
+
+- name: Chọn IBus làm khung bộ gõ mặc định
+  ansible.builtin.lineinfile:
+    path: /etc/default/im-config
+    regexp: '^IM_CONFIG_DEFAULT_MODE='
+    line: IM_CONFIG_DEFAULT_MODE=ibus
+
+# Thanh bộ gõ IBus đọc khóa gsettings org.freedesktop.ibus.general theo hồ sơ dconf của người dùng,
+# nên đặt mặc định bằng gschema override (tên zz_ để nạp sau các override khác).
+# Người dùng đã tự chọn bộ gõ trước đó thì giữ lựa chọn của họ.
+- name: Nạp sẵn bộ gõ tiếng Việt cho người dùng
+  ansible.builtin.copy:
+    dest: /usr/share/glib-2.0/schemas/zz_onebee-ibus.gschema.override
+    content: |
+      # Quản lý bởi OneBee OS
+      [org.freedesktop.ibus.general]
+      preload-engines={{ onebee_ibus_engines[onebee_input_method] }}
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Biên dịch lại gsettings schema
