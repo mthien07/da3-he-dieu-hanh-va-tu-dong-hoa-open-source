@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Đo 1 máy trạm Linux (trước/sau khi cài OneBee OS) → thêm 1 dòng vào file CSV. Máy Windows: đo tay theo
-docs/huong-dan/do-truoc-sau.md (cùng các cột). Chỉ so sánh số đo trên CÙNG một máy.
+docs/huong-dan/do-truoc-sau.md, ghi vào cùng file với cùng các cột. Chỉ so sánh số đo trên CÙNG một máy.
 
   python3 tests/do-dac/do-may.py --don-vi htx-onebee --may ketoan-01 --giai-doan sau \\
-      -o reports/do-dac/htx-onebee.csv
+      --bam-gio-khoi-dong 48 --bam-gio-van-ban 6.5 --bam-gio-trinh-duyet 4 -o reports/do-dac/htx-onebee.csv
 
-Chạy ngay sau khi khởi động và đăng nhập (chưa mở ứng dụng nào); đo lúc mở ứng dụng lần đầu (khởi động nguội).
-Cần: systemd-analyze (thời gian khởi động), xdotool (đo mở ứng dụng: sudo apt install xdotool).
+Cột "bam_gio_*": đo bằng đồng hồ bấm giờ, CÙNG cách trên Windows và OneBee OS → cột dùng để so sánh trước/sau.
+Cột "tu_do_*": máy tự đo (chỉ có trên Linux) → dùng so sánh giữa các lần đo trên Linux.
+Chạy ngay sau khi khởi động và đăng nhập (chưa mở ứng dụng nào); tự đo lúc mở ứng dụng lần đầu (khởi động nguội).
+Cần: systemd-analyze, xdotool (sudo apt install xdotool).
 """
 import argparse
 import csv
@@ -17,8 +19,9 @@ import shutil
 import subprocess
 import time
 
-COT = ["ngay", "don_vi", "may", "giai_doan", "he_dieu_hanh", "cpu", "ram_tong_mb", "loai_o", "khoi_dong_giay",
-       "da_bat_phut", "ram_trong_mb", "mo_van_ban_giay", "mo_trinh_duyet_giay", "o_trong_gb", "ghi_chu"]
+COT = ["ngay", "don_vi", "may", "giai_doan", "he_dieu_hanh", "cpu", "ram_tong_mb", "loai_o",
+       "bam_gio_khoi_dong_giay", "bam_gio_mo_van_ban_giay", "bam_gio_mo_trinh_duyet_giay", "ram_trong_mb", "o_trong_gb",
+       "tu_do_khoi_dong_giay", "tu_do_mo_van_ban_giay", "tu_do_mo_trinh_duyet_giay", "da_bat_phut", "ghi_chu"]
 
 
 def chay(lenh, timeout=30):
@@ -86,6 +89,8 @@ def main():
     ap.add_argument("--don-vi", required=True)
     ap.add_argument("--may", required=True)
     ap.add_argument("--giai-doan", required=True, choices=["truoc", "sau"])
+    for ten in ("khoi-dong", "van-ban", "trinh-duyet"):
+        ap.add_argument(f"--bam-gio-{ten}", type=float, default=None, metavar="GIÂY")
     ap.add_argument("--ghi-chu", default="")
     ap.add_argument("-o", "--csv", required=True)
     a = ap.parse_args()
@@ -101,10 +106,14 @@ def main():
         "ngay": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), "don_vi": a.don_vi, "may": a.may,
         "giai_doan": a.giai_doan, "he_dieu_hanh": os_rel.get("PRETTY_NAME", ""),
         "cpu": cpu.group(1).strip() if cpu else "", "ram_tong_mb": meminfo("MemTotal"), "loai_o": loai_o(),
-        "khoi_dong_giay": khoi_dong(), "da_bat_phut": da_bat, "ram_trong_mb": meminfo("MemAvailable"),
-        "mo_van_ban_giay": mo_ung_dung(["libreoffice", "--writer", "--norestore"], "LibreOffice Writer"),
-        "mo_trinh_duyet_giay": mo_ung_dung(["firefox", "--new-window", "about:blank"], "Mozilla Firefox"),
-        "o_trong_gb": round(shutil.disk_usage("/").free / 1e9, 1), "ghi_chu": "; ".join(ghi_chu),
+        "bam_gio_khoi_dong_giay": a.bam_gio_khoi_dong if a.bam_gio_khoi_dong is not None else "",
+        "bam_gio_mo_van_ban_giay": a.bam_gio_van_ban if a.bam_gio_van_ban is not None else "",
+        "bam_gio_mo_trinh_duyet_giay": a.bam_gio_trinh_duyet if a.bam_gio_trinh_duyet is not None else "",
+        "ram_trong_mb": meminfo("MemAvailable"), "o_trong_gb": round(shutil.disk_usage("/").free / 1e9, 1),
+        "tu_do_khoi_dong_giay": khoi_dong(),
+        "tu_do_mo_van_ban_giay": mo_ung_dung(["libreoffice", "--writer", "--norestore"], "LibreOffice Writer"),
+        "tu_do_mo_trinh_duyet_giay": mo_ung_dung(["firefox", "--new-window", "about:blank"], "Mozilla Firefox"),
+        "da_bat_phut": da_bat, "ghi_chu": "; ".join(ghi_chu),
     }
     moi = not os.path.exists(a.csv)
     os.makedirs(os.path.dirname(os.path.abspath(a.csv)), exist_ok=True)
