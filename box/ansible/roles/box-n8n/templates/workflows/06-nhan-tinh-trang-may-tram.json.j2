@@ -1,0 +1,43 @@
+{% set js %}
+// Máy trạm gửi tình trạng mỗi giờ (onebee-bao-tinh-trang). Chỉ giữ các trường đã biết, kiểm tra kiểu + giới hạn,
+// ghi đè file <tên>.json. Giờ nhận lấy theo đồng hồ Box (không tin đồng hồ máy trạm).
+const b = $input.first().json.body || {};
+const ten = String(b.ten || '');
+if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(ten)) throw new Error('Tên máy trạm không hợp lệ');
+const num = (v, max) => { const n = Number(v); return v !== null && v !== '' && Number.isFinite(n) && n >= 0 && n <= max ? Math.round(n * 10) / 10 : null; };
+const str = (v, n) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, n) : null);
+const ip = typeof b.ip === 'string' && /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(b.ip) ? b.ip : null;
+const tt = {
+  ten, ip, hostname: str(b.hostname, 64), phien_ban: str(b.phien_ban, 32), he_dieu_hanh: str(b.he_dieu_hanh, 64),
+  cap_nhat_cho: num(b.cap_nhat_cho, 100000), bao_mat_cho: num(b.bao_mat_cho, 100000),
+  can_khoi_dong_lai: b.can_khoi_dong_lai === true,
+  o_trong_phan_tram: num(b.o_trong_phan_tram, 100), o_trong_gb: num(b.o_trong_gb, 1e6),
+  khoi_dong_gio: num(b.khoi_dong_gio, 1e6), sao_luu_cuoi: num(b.sao_luu_cuoi, 1e11),
+  nhan_luc: Math.floor(Date.now() / 1000),
+};
+return [{ json: { ten, ok: true },
+          binary: { data: { data: Buffer.from(JSON.stringify(tt), 'utf8').toString('base64'),
+                            mimeType: 'application/json', fileName: `${ten}.json` } } }];
+{% endset %}
+{
+  "id": "onebeeTinhTrang1",
+  "name": "OneBee — Nhận tình trạng máy trạm",
+  "nodes": [
+    {"id": "tt-1", "name": "Máy trạm gửi tình trạng", "type": "n8n-nodes-base.webhook", "typeVersion": 2.1,
+     "position": [0, 0], "webhookId": "0e7c1b2a-0000-4000-8000-000000000006",
+     "parameters": {"httpMethod": "POST", "path": "onebee-tinh-trang", "authentication": "headerAuth",
+       "responseMode": "lastNode", "options": {}},
+     "credentials": {"httpHeaderAuth": {"id": "onebeeTram000001", "name": "OneBee — khóa máy trạm gửi tình trạng"}}},
+    {"id": "tt-2", "name": "Kiểm tra dữ liệu", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [220, 0],
+     "parameters": {"jsCode": {{ js | to_json }}}},
+    {"id": "tt-3", "name": "Ghi tình trạng", "type": "n8n-nodes-base.readWriteFile", "typeVersion": 1.1, "position": [440, 0],
+     "parameters": {"operation": "write",
+       "fileName": "=/home/node/.n8n-files/tinh-trang-may/{{ '{{' }} $json.ten {{ '}}' }}.json",
+       "dataPropertyName": "data", "options": {}}}
+  ],
+  "connections": {
+    "Máy trạm gửi tình trạng": {"main": [[{"node": "Kiểm tra dữ liệu", "type": "main", "index": 0}]]},
+    "Kiểm tra dữ liệu": {"main": [[{"node": "Ghi tình trạng", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1", "timezone": "{{ onebee_timezone }}", "saveDataSuccessExecution": "none"}
+}

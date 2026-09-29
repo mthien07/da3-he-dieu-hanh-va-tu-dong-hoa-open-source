@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Kiểm thử OneBee Box trong container "Ubuntu 24.04 + systemd" (cần Docker, chạy --privileged để có Docker lồng).
-# Các bước (46 mục): cài 2 lần (idempotent) → verify 26 mục → AI hỏi đáp thật → sao lưu/khôi phục Box ra "ổ ngoài"
-# → máy trạm Mint 22.3 cài OneBee OS Desktop, sao lưu lên Box + khôi phục + thử xóa bản cũ (phải bị chặn) → Box dọn bản cũ
+# Các bước: cài 2 lần (idempotent) → verify 26 mục → AI hỏi đáp thật → sao lưu/khôi phục Box ra "ổ ngoài"
+# → máy trạm Mint 22.3 cài OneBee OS Desktop, sao lưu lên Box + khôi phục + thử xóa bản cũ (phải bị chặn)
+# → quản lý tập trung (báo tình trạng, cập nhật qua SSH) → email báo cáo → Box dọn bản cũ
 # → bản giả mạo ngày tương lai bị phát hiện → chưa gắn ổ ngoài thì từ chối → khởi động lại Box, dịch vụ tự lên.
 # Biến: ONEBEE_TEST_EXTRA_CA (CA proxy), ONEBEE_TEST_FULL_WEBUI=1 (dùng image Open WebUI đầy đủ thay bản slim),
 #       ONEBEE_TEST_KEEP=1 (giữ container để xem lại).
@@ -79,10 +80,10 @@ box 'if onebee-box sao-luu > /root/sl0.log 2>&1; then echo "FAIL  sao-luu chạy
      echo "PASS  in-khoa in đủ khóa để cất ngoài Box"'
 
 echo "===== MÁY TRẠM SAO LƯU LÊN BOX ====="
-box 'onebee-box them-may ketoan-01 | grep -E "^(RESTIC|HOI)_" > /tmp/ketoan-01.env
-     [ "$(grep -c -E "^(RESTIC_REPOSITORY|RESTIC_PASSWORD|HOI_URL|HOI_API_KEY)=" /tmp/ketoan-01.env)" = 4 ] \
+box 'onebee-box them-may ketoan-01 | grep -E "^[A-Z_]+=" > /tmp/ketoan-01.env
+     [ "$(grep -c -E "^(MAY_TRAM|BOX_IP|RESTIC_REPOSITORY|RESTIC_PASSWORD|HOI_URL|HOI_API_KEY|TINH_TRANG_URL|TINH_TRANG_KEY|QUAN_TRI_SSH_KEY)=." /tmp/ketoan-01.env)" = 9 ] \
        || { echo "FAIL  them-may thiếu dòng cấu hình"; cat /tmp/ketoan-01.env | sed "s/=.*/=***/"; exit 1; }
-     echo "PASS  Cấp tài khoản sao lưu + khóa Trợ lý AI cho máy ketoan-01 (4 dòng cấu hình)"'
+     echo "PASS  Cấp cho máy ketoan-01: sao lưu, khóa Trợ lý AI, báo tình trạng, khóa SSH quản trị (9 dòng cấu hình)"'
 # Máy trạm thật: Linux Mint 22.3 + bộ cài OneBee OS Desktop, có sẵn file cấu hình sao lưu lấy từ Box
 docker run -d --name "${CLIENT}" --network "${NET}" -v "${REPO_ROOT}:/onebee:ro" "${ca_opts[@]}" \
   "${ONEBEE_TEST_MINT_IMAGE:-linuxmintd/mint22.3-amd64}" sleep infinity >/dev/null
@@ -122,12 +123,17 @@ docker exec "${CLIENT}" bash -euo pipefail -c '
   n=$(restic snapshots --json | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
   [ "${n}" = 2 ] || { echo "FAIL  Máy trạm xóa được bản sao lưu cũ (còn ${n} bản)"; exit 1; }
   echo "PASS  Máy trạm KHÔNG xóa được bản sao lưu (chế độ chỉ-thêm, chống mã độc tống tiền)"'
+
+echo "===== QUẢN LÝ TẬP TRUNG MÁY TRẠM ====="
+"${REPO_ROOT}/tests/box/check-quan-ly-tap-trung.sh" "${BOX}" "${CLIENT}"
 box 'onebee-box sao-luu > /root/sl.log 2>&1 || { tail -20 /root/sl.log; exit 1; }
      grep -q "onebee-may-tram" /root/sl.log || { echo "FAIL  onebee-box sao-luu không chạy chính sách dọn cho kho máy trạm"; exit 1; }
      echo "PASS  onebee-box sao-luu chạy chính sách giữ bản cho cả kho máy trạm"
      for _ in $(seq 20); do curl -s "http://127.0.0.1:8025/api/v1/search?query=ketoan-01" | grep -q "Sao lưu ĐẠT" && break; sleep 2; done
      curl -s "http://127.0.0.1:8025/api/v1/search?query=ketoan-01" | grep -q "Sao lưu ĐẠT" || { echo "FAIL  Không có email báo cáo sao lưu"; exit 1; }
-     echo "PASS  Sao lưu xong → email báo cáo có tình trạng máy trạm ketoan-01"
+     curl -s "http://127.0.0.1:8025/api/v1/search?query=kho-02" | grep -Eq "[0-9]+ máy trạm cần xử lý" \
+       || { echo "FAIL  Email báo cáo không nêu máy cần xử lý (kho-02)"; exit 1; }
+     echo "PASS  Sao lưu xong → email báo cáo tình trạng từng máy trạm, nêu máy cần xử lý (kho-02)"
      # Box (có mật khẩu kho, truy cập trực tiếp ổ) xóa được bản cũ — việc máy trạm bị chặn ở trên
      export RESTIC_REPOSITORY=/srv/onebee/restic/ketoan-01 RESTIC_PASSWORD="$(cat /etc/onebee-box/secrets/may-ketoan-01-repo)"
      restic forget --keep-last 1 --prune >/dev/null

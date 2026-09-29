@@ -59,6 +59,9 @@ fi
 check "Có lệnh sao lưu onebee-sao-luu + restic" bash -c "test -x /usr/local/sbin/onebee-sao-luu && command -v restic"
 check "Thư mục cấu hình /etc/onebee chỉ root vào (700)" bash -c "[ \"\$(stat -c %a /etc/onebee)\" = 700 ]"
 check "Có lệnh hỏi Trợ lý AI (hoi)" test -x /usr/local/bin/hoi
+check "Có lệnh báo tình trạng về Box" test -x /usr/local/sbin/onebee-bao-tinh-trang
+check "Có hỗ trợ từ xa (onebee-ho-tro + x11vnc + mục menu)" bash -c \
+  "test -x /usr/local/bin/onebee-ho-tro && command -v x11vnc && test -f /usr/share/applications/onebee-ho-tro.desktop"
 
 echo "----"
 if [[ ${fails} -eq 0 ]]; then echo "KẾT QUẢ: tất cả mục đạt"; else echo "KẾT QUẢ: ${fails} mục KHÔNG đạt"; exit 1; fi

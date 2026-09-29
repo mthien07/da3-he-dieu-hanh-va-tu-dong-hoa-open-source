@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # onebee-box — lệnh quản trị OneBee Box (quản lý bởi OneBee OS, không sửa tay)
 #   onebee-box trang-thai          Xem dịch vụ đang chạy, dung lượng ổ
-#   onebee-box them-may <ten-may>  Cấp tài khoản sao lưu + khóa Trợ lý AI cho 1 máy trạm, in cấu hình dán vào máy trạm
+#   onebee-box them-may <ten-may>  Cấp tài khoản sao lưu, khóa Trợ lý AI, quản lý cho 1 máy trạm; in cấu hình dán vào máy trạm
+#   onebee-box may-tram            Tình trạng các máy trạm: sao lưu, cập nhật, ổ đĩa, lần liên lạc cuối
+#   onebee-box cap-nhat-may <ten-may>|--tat-ca   Cập nhật phần mềm máy trạm từ Box (qua SSH)
 #   onebee-box dong-bo-tro-ly      Tạo/cập nhật "Trợ lý OneBee" (model Gemma + lời dặn tiếng Việt) trong Open WebUI
 #   onebee-box khoi-tao            Tạo kho sao lưu Box trên ổ ngoài (làm 1 lần sau khi gắn ổ)
 #   onebee-box sao-luu             Sao lưu Box ra ổ ngoài + dọn bản cũ (tự chạy 23:00 hằng ngày)
@@ -26,7 +28,7 @@ cmd_trang_thai() {
 }
 
 cmd_them_may() {
-  local ten="${1:-}" ip http_pw repo_pw hoi_key
+  local ten="${1:-}" ip http_pw repo_pw hoi_key tram_key
   [[ "${ten}" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]] || die "Tên máy chỉ gồm chữ thường không dấu, số, dấu gạch (vd: ketoan-01)"
   ip="$(box_ip)"; [[ -n "${ip}" ]] || die "Không xác định được IP của Box — đặt onebee_box_address trong group_vars"
   http_pw="$(secret "may-${ten}-http")"
@@ -37,13 +39,62 @@ cmd_them_may() {
     warn "Chưa cấp được khóa Trợ lý AI (Open WebUI chưa chạy?) — sao lưu vẫn dùng được; chạy lại lệnh này sau để bật hoi"
     hoi_key=""
   }
+  tram_key="$(secret tinh-trang-key)"
+  # Cấp lại cho máy đã cài lại hệ điều hành → quên khóa SSH cũ của máy đó (lần cập nhật sau nhận khóa mới)
+  ssh-keygen -q -R "${ten}" -f "${SSH_DIR}/known_hosts" >/dev/null 2>&1 || true
   echo "# Dán nội dung dưới đây vào máy trạm ${ten}: /etc/onebee/may-tram.env, rồi chạy lại bộ cài OneBee OS"
+  echo "MAY_TRAM=${ten}"
+  echo "BOX_IP=${ip}"
   echo "RESTIC_REPOSITORY=rest:http://${ten}:${http_pw}@${ip}:${REST_PORT}/${ten}/"
   echo "RESTIC_PASSWORD=${repo_pw}"
   if [[ -n "${hoi_key}" ]]; then
     echo "HOI_URL=http://${ip}:${AI_PORT}"
     echo "HOI_API_KEY=${hoi_key}"
   fi
+  echo "TINH_TRANG_URL=http://${ip}:${N8N_PORT}/webhook/onebee-tinh-trang"
+  echo "TINH_TRANG_KEY=${tram_key}"
+  echo "QUAN_TRI_SSH_KEY=$(cat "${SSH_DIR}/quan-tri.pub")"
+}
+
+cmd_may_tram() {
+  local -a may=()
+  mapfile -t may < <(gio_sao_luu_may)
+  may_tram_py bang "${may[@]}"
+}
+
+# Cập nhật máy trạm qua SSH (địa chỉ lấy từ lần báo tình trạng gần nhất; máy tắt thì báo "không vào được")
+cmd_cap_nhat_may() {
+  local muc="${1:-}" inv log t st
+  local -a ten=()
+  if [[ "${muc}" == --tat-ca ]]; then
+    mapfile -t ten < <(gio_sao_luu_may | cut -d= -f1)
+  elif [[ "${muc}" =~ ^[a-z0-9][a-z0-9-]{0,31}$ && -e "${SECRETS}/may-${muc}-repo" ]]; then
+    ten=("${muc}")
+  else
+    die "Cách dùng: sudo onebee-box cap-nhat-may <tên-máy-đã-cấp> | --tat-ca"
+  fi
+  [[ ${#ten[@]} -gt 0 ]] || die "Chưa cấp máy trạm nào (sudo onebee-box them-may <tên-máy>)"
+  inv="$(mktemp)"
+  trap 'rm -f "${inv}"; trap - RETURN' RETURN
+  echo "[may_tram]" >"${inv}"
+  may_tram_py kho "${ten[@]}" | while read -r t ip; do
+    echo "${t} ansible_host=${ip} ansible_ssh_extra_args='-o HostKeyAlias=${t}'"
+  done >>"${inv}"
+  for t in "${ten[@]}"; do
+    grep -q "^${t} " "${inv}" || warn "Bỏ qua ${t}: máy chưa báo tình trạng về Box (chưa biết địa chỉ)"
+  done
+  [[ "$(wc -l <"${inv}")" -gt 1 ]] || die "Không có máy nào để cập nhật"
+  mkdir -p /var/log/onebee-box
+  log="/var/log/onebee-box/cap-nhat-may-$(date +%Y%m%d-%H%M%S).log"
+  set +e
+  ANSIBLE_SSH_ARGS="-o UserKnownHostsFile=${SSH_DIR}/known_hosts -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -o ControlMaster=auto -o ControlPersist=60s" \
+  ANSIBLE_PYTHON_INTERPRETER=/usr/bin/python3 ANSIBLE_RETRY_FILES_ENABLED=False ANSIBLE_NOCOLOR=1 ANSIBLE_LOCAL_TEMP=/root/.ansible/tmp \
+    ansible-playbook -i "${inv}" -u onebee-quantri --private-key "${SSH_DIR}/quan-tri" \
+    /usr/local/lib/onebee-box/cap-nhat-may-tram.yml 2>&1 | tee "${log}"
+  st=${PIPESTATUS[0]}
+  set -e
+  [[ ${st} -eq 0 ]] || warn "Có máy chưa cập nhật được (máy tắt, mất mạng hoặc lỗi) — xem ${log}"
+  return "${st}"
 }
 
 cmd_in_khoa() {
@@ -67,6 +118,8 @@ with_lock() { exec 9>/run/onebee-box.lock; flock -n 9 || die "Đang có lệnh s
 case "${1:-}" in
   trang-thai) cmd_trang_thai ;;
   them-may) shift; cmd_them_may "$@" ;;
+  may-tram) cmd_may_tram ;;
+  cap-nhat-may) shift; cmd_cap_nhat_may "$@" ;;
   dong-bo-tro-ly) webui dong-bo-tro-ly ;;
   khoi-tao) with_lock cmd_khoi_tao ;;
   sao-luu) with_lock cmd_sao_luu_co_bao_cao ;;
@@ -75,5 +128,5 @@ case "${1:-}" in
   dat-mat-khau-email) cmd_dat_mat_khau_email ;;
   email-thu) bao_cao_n8n THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
                && echo "Đã chuyển cho n8n gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
-  *) sed -n '2,11p' "$0" | sed 's/^# //'; exit 1 ;;
+  *) sed -n '2,13p' "$0" | sed 's/^# //'; exit 1 ;;
 esac

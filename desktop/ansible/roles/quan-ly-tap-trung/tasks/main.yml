@@ -1,0 +1,141 @@
+---
+# Quản lý tập trung từ OneBee Box: máy trạm báo tình trạng mỗi giờ + cho Box vào cập nhật qua SSH.
+# Chỉ bật khi /etc/onebee/may-tram.env có các dòng từ 'onebee-box them-may' (role backup-client đã đọc → onebee_may_tram).
+
+- name: Kiểm tra máy đang chạy systemd (không phải lúc cài trong chroot/container)
+  ansible.builtin.stat:
+    path: /run/systemd/system
+  register: onebee_ql_systemd
+
+- name: Cài lệnh báo tình trạng về Box
+  ansible.builtin.copy:
+    src: onebee-bao-tinh-trang
+    dest: /usr/local/sbin/onebee-bao-tinh-trang
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Bật báo tình trạng mỗi giờ
+  when: onebee_may_tram.TINH_TRANG_URL | default('') | length > 0
+  block:
+    - name: Cài lịch báo tình trạng
+      ansible.builtin.copy:
+        dest: "/etc/systemd/system/{{ item.name }}"
+        content: "{{ item.content }}"
+        owner: root
+        group: root
+        mode: "0644"
+      loop:
+        - name: onebee-bao-tinh-trang.service
+          content: |
+            # Quản lý bởi OneBee OS
+            [Unit]
+            Description=OneBee — gửi tình trạng máy trạm về OneBee Box
+            Wants=network-online.target
+            After=network-online.target
+            ConditionPathExists=/etc/onebee/may-tram.env
+
+            [Service]
+            Type=oneshot
+            ExecStart=/usr/local/sbin/onebee-bao-tinh-trang
+            Nice=10
+        - name: onebee-bao-tinh-trang.timer
+          content: |
+            # Quản lý bởi OneBee OS — 3 phút sau khi bật máy, rồi mỗi giờ
+            [Unit]
+            Description=OneBee — lịch gửi tình trạng máy trạm
+
+            [Timer]
+            OnBootSec=3min
+            OnUnitActiveSec=1h
+            RandomizedDelaySec=5min
+
+            [Install]
+            WantedBy=timers.target
+    - name: Bật lịch báo tình trạng
+      ansible.builtin.command: systemctl enable onebee-bao-tinh-trang.timer
+      args:
+        creates: /etc/systemd/system/timers.target.wants/onebee-bao-tinh-trang.timer
+    - name: Chạy lịch báo tình trạng ngay
+      ansible.builtin.systemd_service:
+        name: onebee-bao-tinh-trang.timer
+        state: started
+        daemon_reload: true
+      when: onebee_ql_systemd.stat.exists
+
+- name: Cho Box vào cập nhật máy qua SSH
+  when: (onebee_may_tram.QUAN_TRI_SSH_KEY | default('') is match('ssh-ed25519 '))
+        and (onebee_may_tram.BOX_IP | default('') is match('^[0-9.]+$'))
+  block:
+    - name: Cài máy chủ SSH
+      ansible.builtin.apt:
+        name: openssh-server
+        state: present
+
+    # Máy văn phòng không ai dùng SSH bằng mật khẩu → tắt hẳn (chống dò mật khẩu nhân viên trong LAN)
+    - name: Chỉ cho đăng nhập SSH bằng khóa, không cho root
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/10-onebee.conf
+        content: |
+          # Quản lý bởi OneBee OS
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          PermitRootLogin no
+        owner: root
+        group: root
+        mode: "0644"
+      register: onebee_sshd_conf
+
+    - name: Kiểm tra cấu hình SSH hợp lệ
+      ansible.builtin.command: sshd -t
+      changed_when: false
+
+    - name: Tạo tài khoản quản trị của Box (tài khoản hệ thống, không có mật khẩu, không hiện ở màn hình đăng nhập)
+      ansible.builtin.user:
+        name: onebee-quantri
+        system: true
+        shell: /bin/bash
+        home: /var/lib/onebee-quantri
+        create_home: true
+        password: "!"
+        comment: OneBee Box quan tri
+
+    - name: Tạo thư mục khóa SSH
+      ansible.builtin.file:
+        path: /var/lib/onebee-quantri/.ssh
+        state: directory
+        owner: onebee-quantri
+        group: onebee-quantri
+        mode: "0700"
+
+    - name: Chỉ nhận khóa của Box, và chỉ khi kết nối từ IP của Box
+      ansible.builtin.copy:
+        dest: /var/lib/onebee-quantri/.ssh/authorized_keys
+        content: >
+          from="{{ onebee_may_tram.BOX_IP }}",no-agent-forwarding,no-port-forwarding,no-X11-forwarding
+          {{ onebee_may_tram.QUAN_TRI_SSH_KEY }}
+        owner: onebee-quantri
+        group: onebee-quantri
+        mode: "0600"
+
+    - name: Cho Box cài/cập nhật phần mềm (sudo không hỏi mật khẩu)
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/onebee-quantri
+        content: "onebee-quantri ALL=(root) NOPASSWD: ALL\n"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: visudo -cf %s
+
+    # Ubuntu 24.04 (nền Mint 22) bật SSH theo kiểu "socket": sshd chỉ chạy khi có kết nối tới
+    - name: Bật SSH
+      ansible.builtin.systemd_service:
+        name: ssh.socket
+        enabled: true
+        state: started
+      when: onebee_ql_systemd.stat.exists
+
+    - name: Nạp cấu hình SSH mới nếu sshd đang chạy
+      ansible.builtin.command: systemctl try-restart ssh.service
+      when: onebee_ql_systemd.stat.exists and onebee_sshd_conf is changed
+      changed_when: true

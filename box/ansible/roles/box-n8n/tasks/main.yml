@@ -13,6 +13,8 @@
                               if onebee_smtp_pw_file.stat.exists else '' }}"
     onebee_webhook_key: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/n8n-webhook-key',
                             chars=['ascii_letters', 'digits'], length=32) }}"
+    onebee_tram_key: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/tinh-trang-key',
+                         chars=['ascii_letters', 'digits'], length=32) }}"
     onebee_form_password: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/bieu-mau-nhanvien',
                               chars=['ascii_letters', 'digits'], length=12) }}"
   no_log: true

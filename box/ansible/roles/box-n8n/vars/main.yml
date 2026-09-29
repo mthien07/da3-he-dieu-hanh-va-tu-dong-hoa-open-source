@@ -6,3 +6,4 @@ onebee_n8n_workflows:
   - {file: 03-tom-tat-van-ban, id: onebeeTomTat0001}
   - {file: 04-nhap-don-hang, id: onebeeDonHang001}
   - {file: 05-tong-hop-don-hang, id: onebeeTongHopDH1}
+  - {file: 06-nhan-tinh-trang-may-tram, id: onebeeTinhTrang1}

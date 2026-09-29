@@ -1,0 +1,42 @@
+---
+# Cập nhật máy trạm OneBee từ Box qua SSH (lệnh: sudo onebee-box cap-nhat-may <tên>|--tat-ca).
+# Máy trạm cho Box vào bằng tài khoản onebee-quantri (khóa SSH riêng của đơn vị, chỉ nhận kết nối từ IP của Box).
+- name: Cập nhật máy trạm OneBee
+  hosts: may_tram
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Cập nhật danh mục gói và nâng cấp toàn bộ (chờ nếu máy đang tự cập nhật)
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+        autoremove: true
+        lock_timeout: 600
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: Kiểm tra có Flatpak không (Linux Mint cài sẵn)
+      ansible.builtin.stat:
+        path: /usr/bin/flatpak
+      register: onebee_flatpak
+
+    - name: Cập nhật ứng dụng Flatpak
+      ansible.builtin.command: flatpak update -y --noninteractive
+      register: onebee_flatpak_update
+      changed_when: "'Nothing to do' not in onebee_flatpak_update.stdout"
+      when: onebee_flatpak.stat.exists
+
+    - name: Kiểm tra có cần khởi động lại không
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: onebee_reboot
+
+    - name: Gửi tình trạng mới về Box
+      ansible.builtin.command: /usr/local/sbin/onebee-bao-tinh-trang
+      changed_when: false
+      failed_when: false
+
+    - name: Kết quả
+      ansible.builtin.debug:
+        msg: "{{ 'Đã cập nhật — CẦN KHỞI ĐỘNG LẠI máy (nhắc người dùng)' if onebee_reboot.stat.exists
+                 else 'Đã cập nhật xong' }}"

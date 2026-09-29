@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# onebee-ho-tro — cho kỹ thuật xem và điều khiển màn hình để hỗ trợ. CHỈ chạy khi người dùng tự bấm
+# (menu → "Cho phép hỗ trợ từ xa"). Mã 8 số dùng 1 lần, chỉ 1 kết nối, kỹ thuật vào thì người dùng bấm "Cho phép"
+# lần nữa; không ai vào sau 10 phút thì tự đóng; bấm "Dừng hỗ trợ" để ngắt ngay. Chỉ nhận kết nối từ LAN và Tailscale.
+# Cách dùng: onebee-ho-tro            (hiện hộp thoại)
+#            onebee-ho-tro --khong-hoi (in địa chỉ + mã ra màn hình dòng lệnh, dùng khi kỹ thuật hướng dẫn qua điện thoại)
+set -euo pipefail
+PORT=5900
+CHO_GIAY="${ONEBEE_HO_TRO_CHO_GIAY:-600}"
+TIEU_DE="Hỗ trợ từ xa — OneBee"
+
+bao() {  # báo cho người dùng: hộp thoại nếu có, không thì in ra
+  if [[ "${che_do}" == hoi ]] && command -v zenity >/dev/null; then zenity --"$1" --title "${TIEU_DE}" --text "$2" 2>/dev/null || true
+  else printf '%s\n' "$2"; fi
+}
+
+che_do=hoi
+[[ "${1:-}" == --khong-hoi ]] && che_do=in
+[[ -n "${DISPLAY:-}" ]] || { bao error "Chỉ chạy được trong phiên làm việc có màn hình."; exit 1; }
+if [[ "${XDG_SESSION_TYPE:-x11}" == wayland ]]; then
+  bao error "Phiên Wayland chưa hỗ trợ chia sẻ màn hình. Đăng xuất, chọn phiên Cinnamon (X11) rồi thử lại."; exit 1
+fi
+if ss -ltn "sport = :${PORT}" 2>/dev/null | grep -q LISTEN; then
+  bao error "Đang có một phiên hỗ trợ khác mở trên máy này."; exit 1
+fi
+
+ma="$(printf '%08d' $(( $(od -An -N4 -tu4 /dev/urandom) % 100000000 )))"   # 8 số ngẫu nhiên
+pwfile="$(mktemp)"
+printf '%s\n' "${ma}" >"${pwfile}"   # x11vnc đọc xong tự xóa file (rm:) — mã không lộ trong danh sách tiến trình
+ip="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}')"
+# x11vnc so khớp theo tiền tố: LAN 10.x, 192.168.x, 172.16–31.x; Tailscale 100.64–127.x; và chính máy này
+allow="127.0.0.1,10.,192.168.,$(seq -f '172.%g.' 16 31 | paste -sd,),$(seq -f '100.%g.' 64 127 | paste -sd,)"
+# Mỗi lần có máy xin vào: hỏi người dùng (1 phút không trả lời = từ chối) → đoán mã hàng loạt cũng vô ích
+dong_y="zenity --question --timeout 60 --title '${TIEU_DE}' --ok-label 'Cho phép' --cancel-label 'Từ chối' \
+--text \"Máy \$RFB_CLIENT_IP (kỹ thuật) xin xem và điều khiển màn hình của bạn. Cho phép?\""
+thong_bao=()
+command -v notify-send >/dev/null && \
+  thong_bao=(-afteraccept "notify-send -u critical '${TIEU_DE}' 'Kỹ thuật đang xem màn hình của bạn.'")
+
+# Mặc định x11vnc thoát khi người được vào ngắt kết nối (chỉ 1 phiên); -timeout: không ai vào thì tự đóng
+x11vnc -display "${DISPLAY}" -rfbport "${PORT}" -passwdfile "rm:${pwfile}" -timeout "${CHO_GIAY}" -allow "${allow}" \
+  -accept "${dong_y}" -nolookup -quiet -o /dev/null "${thong_bao[@]}" &
+vnc=$!
+trap 'kill "${vnc}" 2>/dev/null || true; rm -f "${pwfile}"' EXIT
+
+loi_nhan="Đọc cho kỹ thuật OneBee:\n\n   Địa chỉ:  ${ip:-không rõ}\n   Mã:  ${ma}\n\nKỹ thuật chỉ vào được 1 lần. Không ai vào sau $((CHO_GIAY / 60)) phút thì tự đóng."
+if [[ "${che_do}" == hoi ]] && command -v zenity >/dev/null; then
+  zenity --info --title "${TIEU_DE}" --text "${loi_nhan}\nBấm \"Dừng hỗ trợ\" để ngắt ngay." --ok-label "Dừng hỗ trợ" 2>/dev/null &
+  hop=$!
+  wait -n "${vnc}" "${hop}" || true      # phiên kết thúc hoặc người dùng bấm Dừng
+  kill "${hop}" 2>/dev/null || true
+else
+  printf '%b\n' "${loi_nhan}"
+  wait "${vnc}" || true
+fi
+echo "Đã đóng hỗ trợ từ xa."

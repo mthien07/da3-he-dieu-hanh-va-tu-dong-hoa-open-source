@@ -7,6 +7,7 @@ onebee_timezone: Asia/Ho_Chi_Minh
 onebee_box_dir: /opt/onebee-box              # docker-compose.yml, .env
 onebee_box_data: /srv/onebee                 # dữ liệu các dịch vụ
 onebee_box_secrets: /etc/onebee-box/secrets  # mật khẩu sinh tự động (chỉ root đọc)
+onebee_box_ssh_dir: /etc/onebee-box/ssh       # khóa SSH quản trị máy trạm (riêng từng Box)
 
 # Phiên bản image (ghim cố định; nâng cấp có kiểm soát bằng cách sửa ở đây rồi chạy lại bộ cài)
 onebee_box_images:

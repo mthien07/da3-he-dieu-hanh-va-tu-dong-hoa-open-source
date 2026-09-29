@@ -10,23 +10,10 @@
     group: root
     mode: "0755"
 
-- name: Kiểm tra đã có cấu hình máy trạm từ Box chưa
-  ansible.builtin.stat:
-    path: /etc/onebee/may-tram.env
-  register: onebee_hoi_src
-
-- name: Đọc cấu hình máy trạm
-  ansible.builtin.slurp:
-    src: /etc/onebee/may-tram.env
-  register: onebee_hoi_env
-  when: onebee_hoi_src.stat.exists
-  no_log: true
-
-- name: Lấy địa chỉ + khóa Trợ lý AI
+- name: Lấy địa chỉ + khóa Trợ lý AI (từ cấu hình máy trạm, role backup-client đã đọc)
   ansible.builtin.set_fact:
-    onebee_hoi_url: "{{ (onebee_hoi_env.content | b64decode | regex_search('(?m)^HOI_URL=(.*)$', '\\1') or ['']) | first | trim }}"
-    onebee_hoi_key: "{{ (onebee_hoi_env.content | b64decode | regex_search('(?m)^HOI_API_KEY=(.*)$', '\\1') or ['']) | first | trim }}"
-  when: onebee_hoi_src.stat.exists
+    onebee_hoi_url: "{{ onebee_may_tram.HOI_URL | default('') }}"
+    onebee_hoi_key: "{{ onebee_may_tram.HOI_API_KEY | default('') }}"
   no_log: true
 
 - name: Tạo cấu hình lệnh hoi (người dùng trên máy đọc được — khóa chỉ gọi được hỏi đáp)
@@ -40,11 +27,11 @@
     owner: root
     group: root
     mode: "0644"
-  when: onebee_hoi_src.stat.exists and onebee_hoi_url and onebee_hoi_key
+  when: (onebee_hoi_url | length > 0) and (onebee_hoi_key | length > 0)
   no_log: true
 
 - name: Gỡ cấu hình hoi cũ khi máy không còn khóa Trợ lý AI
   ansible.builtin.file:
     path: /etc/onebee-hoi.conf
     state: absent
-  when: not (onebee_hoi_src.stat.exists and onebee_hoi_url | default('') and onebee_hoi_key | default(''))
+  when: not ((onebee_hoi_url | length > 0) and (onebee_hoi_key | length > 0))

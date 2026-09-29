@@ -13,4 +13,5 @@ set +a
 restic cat config >/dev/null 2>&1 || restic init
 restic backup --tag onebee-may-tram --exclude-caches \
   --exclude '/home/*/.cache' --exclude '/home/*/.local/share/Trash' /home
+mkdir -p /var/lib/onebee && date +%s >/var/lib/onebee/sao-luu-cuoi   # máy trạm báo về Box (onebee-bao-tinh-trang)
 echo "Sao lưu xong: $(date '+%d/%m/%Y %H:%M')"
