@@ -78,8 +78,8 @@ scenario_mint() {
     su - nhanvien -c "$T/extended/check-ho-tro-tu-xa-inside.sh"
     # Bộ đo trước/sau: chạy được trên máy đã cài, đo được thời gian mở LibreOffice, ghi đủ cột CSV
     su - nhanvien -c "Xvfb :78 >/dev/null 2>&1 & xp=\$!; sleep 2; DISPLAY=:78 python3 /tmp/onebee/tests/do-dac/do-may.py \
-      --don-vi thu --may mint-thu --giai-doan sau -o /tmp/do-dac.csv >/dev/null; kill \$xp"
-    python3 -c "import csv; r=list(csv.DictReader(open(\"/tmp/do-dac.csv\"))); assert len(r)==1 and float(r[0][\"mo_van_ban_giay\"])>0 and len(r[0])==15, r; print(\"PASS  Bộ đo trước/sau: ghi 1 dòng CSV đủ 15 cột, đo được mở LibreOffice Writer (\"+r[0][\"mo_van_ban_giay\"]+\" giây)\")"'
+      --don-vi thu --may mint-thu --giai-doan sau --bam-gio-khoi-dong 45 -o /tmp/do-dac.csv >/dev/null; kill \$xp"
+    python3 -c "import csv; r=list(csv.DictReader(open(\"/tmp/do-dac.csv\"))); assert len(r)==1 and float(r[0][\"tu_do_mo_van_ban_giay\"])>0 and r[0][\"bam_gio_khoi_dong_giay\"]==\"45.0\" and len(r[0])==18, r; print(\"PASS  Bộ đo trước/sau: ghi 1 dòng CSV đủ 18 cột, tự đo được mở LibreOffice Writer (\"+r[0][\"tu_do_mo_van_ban_giay\"]+\" giây)\")"'
 }
 
 scenario_unikey() {
