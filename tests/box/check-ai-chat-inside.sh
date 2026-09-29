@@ -2,7 +2,7 @@
 # Kiểm tra Trợ lý AI thật trên Box: model Gemma nạp vào Ollama → đăng nhập tài khoản quản trị tạo sẵn
 # → "Trợ lý OneBee" có lời dặn tiếng Việt → hỏi 1 câu → nhận câu trả lời tiếng Việt; đăng ký tự do đã tắt.
 set -euo pipefail
-MODEL="${ONEBEE_TEST_MODEL:-gemma3:1b}"
+MODEL="${ONEBEE_TEST_MODEL:-gemma4:e2b-it-qat}"
 API=http://127.0.0.1:3000
 SECRETS=/etc/onebee-box/secrets
 
