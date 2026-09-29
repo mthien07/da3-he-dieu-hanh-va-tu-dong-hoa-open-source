@@ -1,0 +1,51 @@
+{% set js %}
+// Ghi 1 dòng CSV (UTF-8) vào thư mục chung: \\Box\chung\don-hang\don-hang-YYYY-MM.csv
+const j = $input.first().json;
+// Giờ theo múi giờ của quy trình (Asia/Ho_Chi_Minh)
+const thang = $now.toFormat('yyyy-MM');
+const sl = Number(j.so_luong_kg), gia = Number(j.don_gia);
+if (!Number.isFinite(sl) || !Number.isFinite(gia) || sl <= 0 || gia < 0) throw new Error('Số lượng hoặc đơn giá không hợp lệ');
+// Chữ bắt đầu bằng = + - @ sẽ bị Calc/Excel hiểu là công thức → thêm dấu ' phía trước
+const safe = v => { const t = String(v ?? '').replace(/\r?\n/g, ' '); return /^[=+\-@\t]/.test(t) ? "'" + t : t; };
+const esc = v => '"' + safe(v).replace(/"/g, '""') + '"';
+const thanhTien = Math.round(sl * gia);
+const cot = [$now.toFormat('yyyy-MM-dd HH:mm'),
+             j.khach_hang, j.mat_hang, sl, gia, thanhTien, j.ngay_giao, j.ghi_chu];
+const line = cot.map(esc).join(',') + '\n';
+return [{ json: { thang, thanh_tien: thanhTien },
+          binary: { data: { data: Buffer.from(line, 'utf8').toString('base64'), mimeType: 'text/csv', fileName: `don-hang-${thang}.csv` } } }];
+{% endset %}
+{
+  "id": "onebeeDonHang001",
+  "name": "OneBee — Nhập đơn hàng",
+  "nodes": [
+    {"id": "dh-1", "name": "Biểu mẫu đơn hàng", "type": "n8n-nodes-base.formTrigger", "typeVersion": 2.6, "position": [0, 0],
+     "webhookId": "0e7c1b2a-0000-4000-8000-000000000004",
+     "parameters": {"authentication": "basicAuth", "formTitle": "Nhập đơn hàng",
+       "formDescription": "Đơn được lưu vào thư mục chung (don-hang) và tổng hợp gửi email lúc 17:00.",
+       "formFields": {"values": [
+         {"fieldLabel": "Khách hàng", "fieldName": "khach_hang", "fieldType": "text", "requiredField": true},
+         {"fieldLabel": "Mặt hàng", "fieldName": "mat_hang", "fieldType": "text", "requiredField": true},
+         {"fieldLabel": "Số lượng (kg)", "fieldName": "so_luong_kg", "fieldType": "number", "requiredField": true},
+         {"fieldLabel": "Đơn giá (đồng/kg)", "fieldName": "don_gia", "fieldType": "number", "requiredField": true},
+         {"fieldLabel": "Ngày giao", "fieldName": "ngay_giao", "fieldType": "date", "requiredField": true},
+         {"fieldLabel": "Ghi chú", "fieldName": "ghi_chu", "fieldType": "textarea", "requiredField": false}
+       ]},
+       "responseMode": "lastNode", "options": {"path": "onebee-don-hang", "buttonLabel": "Ghi đơn", "appendAttribution": false}},
+     "credentials": {"httpBasicAuth": {"id": "onebeeForm000001", "name": "OneBee — tài khoản biểu mẫu nhân viên"}}},
+    {"id": "dh-2", "name": "Tạo dòng CSV", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [220, 0],
+     "parameters": {"jsCode": {{ js | to_json }}}},
+    {"id": "dh-3", "name": "Ghi vào thư mục chung", "type": "n8n-nodes-base.readWriteFile", "typeVersion": 1.1, "position": [440, 0],
+     "parameters": {"operation": "write", "fileName": "=/home/node/.n8n-files/don-hang/don-hang-{{ '{{' }} $json.thang {{ '}}' }}.csv",
+       "dataPropertyName": "data", "options": {"append": true}}},
+    {"id": "dh-4", "name": "Báo đã ghi", "type": "n8n-nodes-base.form", "typeVersion": 2.5, "position": [660, 0],
+     "parameters": {"operation": "completion", "respondWith": "text", "completionTitle": "Đã ghi đơn hàng",
+       "completionMessage": "={{ '{{' }} 'Thành tiền: ' + $('Tạo dòng CSV').first().json.thanh_tien.toLocaleString('vi-VN') + ' đồng. Đơn đã lưu vào thư mục chung.' {{ '}}' }}"}}
+  ],
+  "connections": {
+    "Biểu mẫu đơn hàng": {"main": [[{"node": "Tạo dòng CSV", "type": "main", "index": 0}]]},
+    "Tạo dòng CSV": {"main": [[{"node": "Ghi vào thư mục chung", "type": "main", "index": 0}]]},
+    "Ghi vào thư mục chung": {"main": [[{"node": "Báo đã ghi", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1", "timezone": "{{ onebee_timezone }}"}
+}

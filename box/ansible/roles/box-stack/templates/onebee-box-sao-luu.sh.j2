@@ -78,3 +78,49 @@ cmd_khoi_phuc_thu() {
   [[ "$(sha256sum <"${tmp}${mau}")" == "${sum}" ]] || die "KHÔNG ĐẠT: file khôi phục khác bản gốc"
   echo "ĐẠT: khôi phục đúng file đã xóa từ bản sao lưu"
 }
+
+# Gửi kết quả sao lưu + tình trạng sao lưu từng máy trạm sang n8n → email cho quản trị
+bao_cao_n8n() {
+  local trang_thai="$1" noi_dung="$2" f ten payload hdr
+  local -a may=()
+  for f in "${SECRETS}"/may-*-repo; do
+    [[ -e "${f}" && "${trang_thai}" != THU ]] || continue   # email thử: không cần đọc kho máy trạm
+    ten="$(basename "${f}")"; ten="${ten#may-}"; ten="${ten%-repo}"
+    local t="null"
+    if [[ -f "${DATA}/restic/${ten}/config" ]]; then
+      t="$(RESTIC_REPOSITORY="${DATA}/restic/${ten}" RESTIC_PASSWORD="$(cat "${f}")" \
+           restic snapshots --latest 1 --json 2>/dev/null | python3 -c '
+import json, sys, re, datetime
+s = json.load(sys.stdin)
+if not s: print("null"); sys.exit()
+t = max(datetime.datetime.fromisoformat(re.sub(r"(\.\d{6})\d+", r"\1", x["time"]).replace("Z", "+00:00")) for x in s)
+print(int((datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() // 3600))' || echo null)"
+    fi
+    may+=("${ten}=${t}")
+  done
+  payload="$(mktemp)"; hdr="$(mktemp)"
+  trap 'rm -f "${payload}" "${hdr}"; trap - RETURN' RETURN
+  python3 - "${trang_thai}" "${noi_dung}" "${may[@]}" >"${payload}" <<'PY'
+import json, sys
+tt, nd, *may = sys.argv[1:]
+rows = [{"ten": m.split("=", 1)[0], "gio_tu_lan_cuoi": None if m.split("=", 1)[1] == "null" else int(m.split("=", 1)[1])} for m in may]
+print(json.dumps({"trang_thai": tt, "noi_dung": nd, "nguong_gio": 72, "may_tram": rows}, ensure_ascii=False))
+PY
+  (umask 077; printf 'X-OneBee-Key: %s\n' "$(cat "${SECRETS}/n8n-webhook-key")" >"${hdr}")
+  curl -fsS -m 30 -X POST "http://127.0.0.1:${N8N_PORT}/webhook/onebee-bao-cao-sao-luu" -H @"${hdr}" \
+    -H 'Content-Type: application/json' --data-binary @"${payload}" >/dev/null
+}
+
+# Sao lưu + luôn gửi báo cáo (kể cả khi lỗi) — lịch 23:00 gọi lệnh này
+cmd_sao_luu_co_bao_cao() {
+  local log st
+  log="$(mktemp)"
+  set +e
+  ( cmd_sao_luu ) 2>&1 | tee "${log}"
+  st=${PIPESTATUS[0]}
+  set -e
+  bao_cao_n8n "$([[ ${st} -eq 0 ]] && echo DAT || echo LOI)" "$(tail -n 12 "${log}")" \
+    || warn "Không gửi được báo cáo sao lưu qua n8n/email"
+  rm -f "${log}"
+  return "${st}"
+}

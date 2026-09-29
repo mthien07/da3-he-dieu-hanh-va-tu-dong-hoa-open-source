@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # onebee-sao-luu — sao lưu thư mục /home của máy trạm lên OneBee Box (restic, mã hóa).
-# Cấu hình: /etc/onebee/sao-luu.env (RESTIC_REPOSITORY, RESTIC_PASSWORD) lấy từ lệnh 'onebee-box them-may' trên Box.
+# Cấu hình: /etc/onebee/may-tram.env (RESTIC_REPOSITORY, RESTIC_PASSWORD) lấy từ lệnh 'onebee-box them-may' trên Box.
 # Kho trên Box ở chế độ chỉ-thêm: máy trạm không xóa được bản cũ (Box tự dọn).
 set -euo pipefail
-CONF=/etc/onebee/sao-luu.env
+CONF=/etc/onebee/may-tram.env
 [[ ${EUID} -eq 0 ]] || { echo "Hãy chạy bằng quyền quản trị: sudo $0" >&2; exit 1; }
 [[ -r ${CONF} ]] || { echo "Chưa cấu hình sao lưu (${CONF})" >&2; exit 1; }
 set -a

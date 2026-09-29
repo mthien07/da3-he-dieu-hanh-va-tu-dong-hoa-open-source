@@ -1,0 +1,38 @@
+---
+# Trợ lý AI: tải model Gemma, cài công cụ quản lý Open WebUI, tạo/cập nhật "Trợ lý OneBee" (lời dặn tiếng Việt)
+
+- name: Cài lời dặn và công cụ quản lý Open WebUI
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "/usr/local/lib/onebee-box/{{ item.src }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - {src: tro-ly-onebee-loi-dan.md, mode: "0644"}
+    - {src: onebee-webui.py, mode: "0750"}
+
+- name: Kiểm tra model AI đã tải
+  ansible.builtin.command: docker exec onebee-ollama ollama list
+  register: onebee_ollama_list
+  changed_when: false
+
+- name: Tải model AI (lần đầu có thể mất vài phút)
+  ansible.builtin.command: "docker exec onebee-ollama ollama pull {{ item }}"
+  loop: "{{ onebee_box_ai_models }}"
+  when: item not in onebee_ollama_list.stdout
+  changed_when: true
+
+- name: Tạo / cập nhật Trợ lý OneBee + cài đặt bảo mật trong Open WebUI
+  ansible.builtin.command: /usr/local/sbin/onebee-box dong-bo-tro-ly
+  register: onebee_tro_ly
+  changed_when: onebee_tro_ly.stdout is search('đã tạo|đã cập nhật')
+  retries: 12
+  delay: 10
+  until: onebee_tro_ly.rc != 1         # 1 = Open WebUI chưa sẵn sàng → thử lại
+  failed_when: onebee_tro_ly.rc not in [0, 3]
+
+- name: Cảnh báo sai mật khẩu quản trị Open WebUI (các phần khác vẫn cài tiếp)
+  ansible.builtin.debug:
+    msg: "{{ onebee_tro_ly.stderr }}"
+  when: onebee_tro_ly.rc == 3

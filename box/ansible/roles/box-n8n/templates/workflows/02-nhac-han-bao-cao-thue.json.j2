@@ -1,0 +1,53 @@
+{% set js %}
+// Lịch hạn nộp — sửa trong box/ansible/group_vars/all.yml (onebee_box_lich_han) rồi chạy lại bộ cài.
+const LICH = {{ onebee_box_lich_han | to_json }};
+const NHAC_TRUOC = {{ onebee_box_nhac_truoc_ngay | to_json }};   // nhắc khi còn N ngày
+const body = ($input.first().json.body) || {};
+// "hom_nay" (YYYY-MM-DD) chỉ dùng khi chạy thử qua webhook
+// Ngày theo múi giờ của quy trình (Asia/Ho_Chi_Minh) — không dùng new Date() vì máy chạy mã có thể để giờ UTC
+const today = new Date((body.hom_nay || $today.toFormat('yyyy-MM-dd')) + 'T00:00:00Z');
+const lastDay = (y, m) => new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+const due = (item, d) => {
+  const y = d.getUTCFullYear(), m = d.getUTCMonth(), day = d.getUTCDate();
+  const want = item.ngay === 'cuoi_thang' ? lastDay(y, m) : Number(item.ngay);
+  if (day !== want) return false;
+  if (item.loai === 'thang') return true;
+  if (item.loai === 'quy') return [0, 3, 6, 9].includes(m);          // tháng đầu mỗi quý
+  if (item.loai === 'nam') return m === Number(item.thang) - 1;
+  return false;
+};
+const fmt = d => d.toISOString().slice(0, 10).split('-').reverse().join('/');
+const lines = [];
+for (const n of NHAC_TRUOC) {
+  const d = new Date(today.getTime() + n * 86400000);
+  for (const item of LICH) if (due(item, d)) lines.push({n, text: `- ${item.ten}: hạn ${fmt(d)} (${n === 0 ? 'HÔM NAY' : 'còn ' + n + ' ngày'})`});
+}
+if (!lines.length) return [];
+lines.sort((a, b) => a.n - b.n);
+return [{ json: {
+  subject: `[OneBee] Nhắc hạn nộp: ${lines.length} việc — gần nhất ${lines[0].n === 0 ? 'HÔM NAY' : 'còn ' + lines[0].n + ' ngày'}`,
+  text: ['Các hạn nộp sắp tới:', '', ...lines.map(l => l.text), '',
+         'Hạn trùng ngày nghỉ thì được lùi sang ngày làm việc kế tiếp. Lịch này là bản mẫu — kế toán kiểm lại theo quy định hiện hành.'
+        ].join('\n') } }];
+{% endset %}
+{
+  "id": "onebeeNhacHan001",
+  "name": "OneBee — Nhắc hạn nộp báo cáo, thuế (email)",
+  "nodes": [
+    {"id": "nh-1", "name": "Mỗi sáng 7:30", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [0, 0],
+     "parameters": {"rule": {"interval": [{"field": "cronExpression", "expression": "30 7 * * *"}]}}},
+    {"id": "nh-2", "name": "Chạy ngay (Box gọi)", "type": "n8n-nodes-base.webhook", "typeVersion": 2.1,
+     "position": [0, 200], "webhookId": "0e7c1b2a-0000-4000-8000-000000000002",
+     "parameters": {"httpMethod": "POST", "path": "onebee-nhac-han", "authentication": "headerAuth", "options": {}},
+     "credentials": {"httpHeaderAuth": {"id": "onebeeHook000001", "name": "OneBee — khóa webhook của Box"}}},
+    {"id": "nh-3", "name": "Tìm hạn sắp tới", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [240, 100],
+     "parameters": {"jsCode": {{ js | to_json }}}},
+    {% include 'workflows/_gui-email.json.j2' %}
+  ],
+  "connections": {
+    "Mỗi sáng 7:30": {"main": [[{"node": "Tìm hạn sắp tới", "type": "main", "index": 0}]]},
+    "Chạy ngay (Box gọi)": {"main": [[{"node": "Tìm hạn sắp tới", "type": "main", "index": 0}]]},
+    "Tìm hạn sắp tới": {"main": [[{"node": "Gửi email", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1", "timezone": "{{ onebee_timezone }}"}
+}

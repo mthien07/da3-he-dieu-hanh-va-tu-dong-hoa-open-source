@@ -46,9 +46,11 @@ Trên Box:
 ```bash
 sudo onebee-box them-may ketoan-01
 ```
-Dán 2 dòng `RESTIC_...` in ra vào máy trạm tại `/etc/onebee/sao-luu.env` (`sudo chmod 600`), rồi chạy lại
-`sudo ./desktop/onebee-install.sh` trên máy trạm. Máy trạm tự sao lưu `/home` lúc 12:00 hằng ngày
-(máy tắt thì chạy bù khi bật). Sao lưu ngay: `sudo onebee-sao-luu`.
+Dán 4 dòng in ra (`RESTIC_REPOSITORY`, `RESTIC_PASSWORD`, `HOI_URL`, `HOI_API_KEY`) vào máy trạm tại
+`/etc/onebee/may-tram.env` (`sudo chmod 600`), rồi chạy lại `sudo ./desktop/onebee-install.sh` trên máy trạm.
+Máy trạm tự sao lưu `/home` lúc 12:00 hằng ngày (máy tắt thì chạy bù khi bật) và dùng được lệnh `hoi`.
+Sao lưu ngay: `sudo onebee-sao-luu`. Trợ lý AI chưa chạy lúc cấp thì chỉ in 2 dòng `RESTIC_…` — chạy lại lệnh sau để lấy khóa `hoi`.
+Máy trạm cài bản v0.1 (file `sao-luu.env`) được bộ cài tự đổi tên sang `may-tram.env`.
 
 ## 5. Lệnh quản trị
 | Lệnh | Việc |

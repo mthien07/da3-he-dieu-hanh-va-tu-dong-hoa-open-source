@@ -1,0 +1,51 @@
+{% set js %}
+// Đọc file đơn hàng tháng này, lọc đơn nhập HÔM NAY, tổng hợp theo mặt hàng
+const homNay = $today.toFormat('yyyy-MM-dd');   // theo múi giờ của quy trình (Asia/Ho_Chi_Minh)
+const raw = String($input.first().json.data || '');
+const parse = line => { const out = []; let cur = '', q = false;
+  for (let i = 0; i < line.length; i++) { const c = line[i];
+    if (q) { if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c; }
+    else if (c === '"') q = true; else if (c === ',') { out.push(cur); cur = ''; } else cur += c; }
+  out.push(cur); return out; };
+const don = raw.split(/\r?\n/).filter(Boolean).map(parse).filter(r => r[0] && r[0].startsWith(homNay));
+const tien = n => Number(n || 0).toLocaleString('vi-VN');
+const ngay = s => /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.split('-').reverse().join('/') : s;
+const theoHang = {};
+for (const r of don) { const k = r[2]; theoHang[k] = theoHang[k] || { kg: 0, tien: 0 }; theoHang[k].kg += Number(r[3]); theoHang[k].tien += Number(r[5]); }
+const tong = don.reduce((s, r) => s + Number(r[5]), 0);
+const text = don.length ? [
+  `Hôm nay ${homNay.split('-').reverse().join('/')} có ${don.length} đơn hàng, tổng ${tien(tong)} đồng.`, '',
+  'Theo mặt hàng:', ...Object.entries(theoHang).map(([k, v]) => `- ${k}: ${tien(v.kg)} kg — ${tien(v.tien)} đồng`), '',
+  'Chi tiết:', ...don.map(r => `- ${r[1]}: ${r[2]} ${tien(r[3])} kg × ${tien(r[4])} = ${tien(r[5])} đồng, giao ${ngay(r[6])}${r[7] ? ' (' + r[7] + ')' : ''}`), '',
+  'File đầy đủ: thư mục chung → don-hang.'].join('\n') : `Hôm nay ${homNay.split('-').reverse().join('/')} chưa có đơn hàng nào được nhập.`;
+return [{ json: { subject: `[OneBee] Đơn hàng hôm nay: ${don.length} đơn — ${tien(tong)} đồng`, text } }];
+{% endset %}
+{
+  "id": "onebeeTongHopDH1",
+  "name": "OneBee — Tổng hợp đơn hàng trong ngày (email)",
+  "nodes": [
+    {"id": "th-1", "name": "Mỗi chiều 17:00", "type": "n8n-nodes-base.scheduleTrigger", "typeVersion": 1.2, "position": [0, 0],
+     "parameters": {"rule": {"interval": [{"field": "cronExpression", "expression": "0 17 * * *"}]}}},
+    {"id": "th-2", "name": "Chạy ngay (Box gọi)", "type": "n8n-nodes-base.webhook", "typeVersion": 2.1,
+     "position": [0, 200], "webhookId": "0e7c1b2a-0000-4000-8000-000000000005",
+     "parameters": {"httpMethod": "POST", "path": "onebee-tong-hop-don-hang", "authentication": "headerAuth", "options": {}},
+     "credentials": {"httpHeaderAuth": {"id": "onebeeHook000001", "name": "OneBee — khóa webhook của Box"}}},
+    {"id": "th-3", "name": "Đọc file đơn tháng này", "type": "n8n-nodes-base.readWriteFile", "typeVersion": 1.1, "position": [240, 100],
+     "onError": "continueRegularOutput", "alwaysOutputData": true,
+     "parameters": {"operation": "read", "fileSelector": "=/home/node/.n8n-files/don-hang/don-hang-{{ '{{' }} $now.toFormat('yyyy-MM') {{ '}}' }}.csv", "options": {}}},
+    {"id": "th-4", "name": "Lấy nội dung", "type": "n8n-nodes-base.extractFromFile", "typeVersion": 1.1, "position": [460, 100],
+     "onError": "continueRegularOutput", "alwaysOutputData": true,
+     "parameters": {"operation": "text", "binaryPropertyName": "data", "destinationKey": "data", "options": {}}},
+    {"id": "th-5", "name": "Tổng hợp", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [680, 100],
+     "parameters": {"jsCode": {{ js | to_json }}}},
+    {% include 'workflows/_gui-email.json.j2' %}
+  ],
+  "connections": {
+    "Mỗi chiều 17:00": {"main": [[{"node": "Đọc file đơn tháng này", "type": "main", "index": 0}]]},
+    "Chạy ngay (Box gọi)": {"main": [[{"node": "Đọc file đơn tháng này", "type": "main", "index": 0}]]},
+    "Đọc file đơn tháng này": {"main": [[{"node": "Lấy nội dung", "type": "main", "index": 0}]]},
+    "Lấy nội dung": {"main": [[{"node": "Tổng hợp", "type": "main", "index": 0}]]},
+    "Tổng hợp": {"main": [[{"node": "Gửi email", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1", "timezone": "{{ onebee_timezone }}"}
+}

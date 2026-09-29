@@ -1,0 +1,62 @@
+# Hướng dẫn dùng Trợ lý AI và quy trình tự động (OneBee Box v0.2)
+
+## 1. Trợ lý AI (Open WebUI)
+- Mở `http://<ip-box>:3000`. Tài khoản quản trị tạo sẵn: `quantri@onebee.lan`, mật khẩu xem bằng `sudo onebee-box in-khoa`
+  (dòng `webui-admin-password`). **Đăng ký tự do đã tắt** — quản trị tạo tài khoản cho nhân viên trong
+  Bảng quản trị → Người dùng.
+- Chọn **"Trợ lý OneBee"**: model Gemma chạy trên Box + lời dặn tiếng Việt (không bịa số liệu, hướng dẫn máy OneBee).
+- Model đang dùng: `onebee_box_ai_model` trong `box/ansible/group_vars/all.yml` (tạm: `gemma3:4b` — chốt sau khi chấm
+  trên máy Box thật, xem ADR 0003). Đổi model → chạy lại bộ cài.
+
+## 2. Lệnh `hoi` trên máy trạm
+```bash
+hoi cách xuất file PDF
+hoi "tóm tắt đoạn này thành 3 ý" < bien-ban.txt
+```
+Bật cho 1 máy: trên Box chạy `sudo onebee-box them-may <tên-máy>` → dán kết quả vào máy trạm tại
+`/etc/onebee/may-tram.env` → chạy lại bộ cài OneBee OS trên máy trạm (vừa bật sao lưu vừa bật `hoi`).
+Khóa của mỗi máy **chỉ gọi được hỏi đáp**; thu hồi: xóa tài khoản `may-<tên>@onebee.lan` trong Open WebUI
+(chạy lại `them-may <tên>` sẽ tạo tài khoản + khóa mới). Cấu hình `hoi` nằm ở `/etc/onebee-hoi.conf` (mọi người đọc được);
+mật khẩu sao lưu ở `/etc/onebee/` chỉ root đọc được.
+
+**Đổi mật khẩu quản trị (Trợ lý AI, n8n) trên giao diện web**: ghi mật khẩu mới vào file tương ứng trong
+`/etc/onebee-box/secrets/` (`webui-admin-password`) — nếu không, bộ cài vẫn chạy nhưng báo cảnh báo và không cập nhật được
+"Trợ lý OneBee". Tài khoản chủ n8n do bộ cài quản lý (`N8N_INSTANCE_OWNER_MANAGED_BY_ENV`) — **không đổi mật khẩu chủ
+n8n trên giao diện** (chưa kiểm n8n có đặt lại theo bộ cài hay không); dùng mật khẩu trong `in-khoa`.
+
+## 3. Quy trình tự động (n8n, `http://<ip-box>:5678`)
+Tài khoản chủ tạo sẵn: `quantri@onebee.lan`, mật khẩu dòng `n8n-owner-password` trong `in-khoa`.
+
+| Quy trình | Chạy khi | Kết quả |
+|---|---|---|
+| Báo cáo sao lưu | Sau mỗi lần sao lưu 23:00 (và `onebee-box email-thu`) | Email ĐẠT/LỖI + máy trạm quá 3 ngày chưa sao lưu |
+| Nhắc hạn nộp báo cáo, thuế | 7:30 hằng ngày | Email khi còn 7, 3, 1 ngày và đúng ngày hạn |
+| Tóm tắt văn bản PDF | Nhân viên mở `http://<ip-box>:5678/form/onebee-tom-tat` | Bản tóm tắt 3/5/7 ý (AI trên Box) |
+| Nhập đơn hàng | Nhân viên mở `http://<ip-box>:5678/form/onebee-don-hang` | Ghi vào thư mục chung `don-hang/` |
+| Tổng hợp đơn hàng | 17:00 hằng ngày | Email số đơn, tổng tiền, theo mặt hàng |
+
+Biểu mẫu đòi tài khoản `nhanvien`, mật khẩu dòng `bieu-mau-nhanvien` trong `in-khoa`.
+
+### Lịch nhắc hạn
+Sửa `onebee_box_lich_han` trong `box/ansible/group_vars/all.yml` rồi chạy lại bộ cài. Lịch mặc định là **bản mẫu**:
+- Thuế — Điều 44 Luật Quản lý thuế 38/2019/QH14: tờ khai tháng ngày 20 tháng sau; tờ khai quý ngày cuối tháng đầu quý sau;
+  quyết toán năm ngày cuối tháng thứ 3. Luật Quản lý thuế 108/2025/QH15 (hiệu lực 1/7/2026) **chưa được đối chiếu**.
+- BHXH — Điều 34 khoản 4 điểm a Luật BHXH 2024: đóng hằng tháng chậm nhất ngày cuối cùng của tháng tiếp theo.
+- **Kế toán kiểm lại theo quy định hiện hành và cách khai của đơn vị.** Hạn trùng ngày nghỉ được lùi sang ngày làm việc kế tiếp
+  (email chỉ nhắc theo ngày trên lịch, không tự lùi).
+
+## 4. Cấu hình email (làm 1 lần)
+1. Khai báo `onebee_box_email` trong `box/ansible/group_vars/all.yml`: `smtp_host`, `smtp_port`, `smtp_user`, `gui_tu`, `nhan`.
+   (Gmail/Google Workspace: `smtp.gmail.com`, cổng 587, cần "mật khẩu ứng dụng".)
+2. `sudo onebee-box dat-mat-khau-email` (nhập mật khẩu, không hiện trên màn hình).
+3. Chạy lại `sudo ./box/onebee-box-install.sh`.
+4. `sudo onebee-box email-thu` → kiểm tra hộp thư (cả mục Spam).
+
+## Giới hạn (v0.2)
+- AI có thể sai; model tạm chưa chấm trên máy Box thật.
+- Tóm tắt chỉ đọc PDF có chữ (không đọc ảnh scan); tối đa 30 trang, cắt bớt nếu quá dài.
+- Email đi qua máy chủ thư của đơn vị (ra Internet) và **có chứa dữ liệu kinh doanh** (tên khách, số lượng, số tiền trong
+  email tổng hợp đơn hàng). Không gửi văn bản PDF hay câu hỏi AI qua email.
+- Chưa kiểm trên máy thật; kiểm tự động trong container (xem `tests/README.md` — kết quả lần chạy gần nhất ghi trong changelog).
+- Nhập lại quy trình mẫu (khi nâng cấp) sẽ ghi đè chỉnh sửa trên giao diện n8n của 5 quy trình mẫu — muốn sửa riêng thì
+  nhân bản quy trình rồi sửa bản sao.

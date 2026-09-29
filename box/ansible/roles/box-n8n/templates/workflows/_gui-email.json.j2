@@ -1,0 +1,5 @@
+{"id": "gui-email", "name": "Gửi email", "type": "n8n-nodes-base.emailSend", "typeVersion": 2.1, "position": [480, 0],
+     "parameters": {"fromEmail": {{ onebee_box_email.gui_tu | to_json }}, "toEmail": {{ onebee_box_email.nhan | to_json }},
+                    "subject": "={{ '{{' }} $json.subject {{ '}}' }}", "emailFormat": "text", "text": "={{ '{{' }} $json.text {{ '}}' }}",
+                    "options": {"appendAttribution": false}},
+     "credentials": {"smtp": {"id": "onebeeSmtp000001", "name": "OneBee — hộp thư gửi (SMTP)"}}}

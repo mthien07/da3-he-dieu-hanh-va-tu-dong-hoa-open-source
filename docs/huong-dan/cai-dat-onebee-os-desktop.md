@@ -31,7 +31,7 @@ Nhật ký cài đặt nằm ở `/var/log/onebee/`.
 | LibreOffice | Lưu mặc định .docx / .xlsx / .pptx, không hỏi lại mỗi lần lưu |
 | Giao diện | Hình nền OneBee (Cinnamon); bố cục kiểu Windows có sẵn của Mint |
 | Cập nhật | Tự động nâng cấp và dọn gói thừa (mintupdate) |
-| Sao lưu | Khi có `/etc/onebee/sao-luu.env` (từ OneBee Box): tự sao lưu `/home` lên Box 12:00 hằng ngày — xem hướng dẫn cài Box |
+| Sao lưu | Khi có `/etc/onebee/may-tram.env` (từ OneBee Box): tự sao lưu `/home` lên Box 12:00 hằng ngày — xem hướng dẫn cài Box |
 | Múi giờ | Asia/Ho_Chi_Minh |
 
 ## 5. Tùy chỉnh

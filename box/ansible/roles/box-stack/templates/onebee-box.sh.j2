@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # onebee-box — lệnh quản trị OneBee Box (quản lý bởi OneBee OS, không sửa tay)
 #   onebee-box trang-thai          Xem dịch vụ đang chạy, dung lượng ổ
-#   onebee-box them-may <ten-may>  Cấp tài khoản sao lưu cho 1 máy trạm, in cấu hình dán vào máy trạm
+#   onebee-box them-may <ten-may>  Cấp tài khoản sao lưu + khóa Trợ lý AI cho 1 máy trạm, in cấu hình dán vào máy trạm
+#   onebee-box dong-bo-tro-ly      Tạo/cập nhật "Trợ lý OneBee" (model Gemma + lời dặn tiếng Việt) trong Open WebUI
 #   onebee-box khoi-tao            Tạo kho sao lưu Box trên ổ ngoài (làm 1 lần sau khi gắn ổ)
 #   onebee-box sao-luu             Sao lưu Box ra ổ ngoài + dọn bản cũ (tự chạy 23:00 hằng ngày)
 #   onebee-box khoi-phuc-thu       Thử khôi phục 1 file từ bản sao lưu Box (kiểm tra sao lưu dùng được)
 #   onebee-box in-khoa             In các khóa bí mật để cất ngoài Box (thiếu khóa thì bản sao lưu vô dụng)
+#   onebee-box dat-mat-khau-email  Nhập mật khẩu hộp thư gửi (SMTP) cho n8n
+#   onebee-box email-thu           Gửi 1 email thử qua n8n (kiểm tra cấu hình email)
 set -euo pipefail
 LIB=/usr/local/lib/onebee-box
 # shellcheck source=/dev/null
@@ -23,16 +26,24 @@ cmd_trang_thai() {
 }
 
 cmd_them_may() {
-  local ten="${1:-}" ip http_pw repo_pw
+  local ten="${1:-}" ip http_pw repo_pw hoi_key
   [[ "${ten}" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]] || die "Tên máy chỉ gồm chữ thường không dấu, số, dấu gạch (vd: ketoan-01)"
   ip="$(box_ip)"; [[ -n "${ip}" ]] || die "Không xác định được IP của Box — đặt onebee_box_address trong group_vars"
   http_pw="$(secret "may-${ten}-http")"
   repo_pw="$(secret "may-${ten}-repo")"
   # -i: đọc mật khẩu từ stdin (không lộ trong danh sách tiến trình)
   htpasswd -B -i "${DATA}/restic/.htpasswd" "${ten}" <<<"${http_pw}" 2>/dev/null
-  echo "# Dán nội dung dưới đây vào máy trạm ${ten}: /etc/onebee/sao-luu.env, rồi chạy lại bộ cài OneBee OS"
+  hoi_key="$(webui cap-khoa "${ten}")" || {
+    warn "Chưa cấp được khóa Trợ lý AI (Open WebUI chưa chạy?) — sao lưu vẫn dùng được; chạy lại lệnh này sau để bật hoi"
+    hoi_key=""
+  }
+  echo "# Dán nội dung dưới đây vào máy trạm ${ten}: /etc/onebee/may-tram.env, rồi chạy lại bộ cài OneBee OS"
   echo "RESTIC_REPOSITORY=rest:http://${ten}:${http_pw}@${ip}:${REST_PORT}/${ten}/"
   echo "RESTIC_PASSWORD=${repo_pw}"
+  if [[ -n "${hoi_key}" ]]; then
+    echo "HOI_URL=http://${ip}:${AI_PORT}"
+    echo "HOI_API_KEY=${hoi_key}"
+  fi
 }
 
 cmd_in_khoa() {
@@ -42,15 +53,27 @@ cmd_in_khoa() {
   for f in "${SECRETS}"/*; do [[ -f "${f}" ]] && printf '%s=%s\n' "$(basename "${f}")" "$(cat "${f}")"; done
 }
 
+cmd_dat_mat_khau_email() {
+  local pw
+  read -rsp "Mật khẩu hộp thư gửi ("{{ (onebee_box_email.smtp_user or 'chưa khai báo smtp_user') | quote }}"): " pw; echo
+  [[ -n "${pw}" ]] || die "Chưa nhập mật khẩu"
+  (umask 077; printf '%s' "${pw}" >"${SECRETS}/smtp-password")
+  echo "Đã lưu. Chạy lại bộ cài OneBee Box để n8n dùng mật khẩu mới, rồi: sudo onebee-box email-thu"
+}
+
 # Không cho 2 lệnh sao lưu chạy chồng nhau (lịch tự động + chạy tay)
 with_lock() { exec 9>/run/onebee-box.lock; flock -n 9 || die "Đang có lệnh sao lưu khác chạy — thử lại sau"; "$@"; }
 
 case "${1:-}" in
   trang-thai) cmd_trang_thai ;;
   them-may) shift; cmd_them_may "$@" ;;
+  dong-bo-tro-ly) webui dong-bo-tro-ly ;;
   khoi-tao) with_lock cmd_khoi_tao ;;
-  sao-luu) with_lock cmd_sao_luu ;;
+  sao-luu) with_lock cmd_sao_luu_co_bao_cao ;;
   khoi-phuc-thu) with_lock cmd_khoi_phuc_thu ;;
   in-khoa) cmd_in_khoa ;;
-  *) sed -n '2,8p' "$0" | sed 's/^# //'; exit 1 ;;
+  dat-mat-khau-email) cmd_dat_mat_khau_email ;;
+  email-thu) bao_cao_n8n THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
+               && echo "Đã chuyển cho n8n gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
+  *) sed -n '2,11p' "$0" | sed 's/^# //'; exit 1 ;;
 esac

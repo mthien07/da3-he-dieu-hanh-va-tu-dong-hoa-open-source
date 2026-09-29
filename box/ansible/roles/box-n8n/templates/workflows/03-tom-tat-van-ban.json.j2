@@ -1,0 +1,47 @@
+{% set js %}
+const text = String($input.first().json.text || '').trim();
+const soY = Number($('Biểu mẫu tóm tắt').first().json.so_y || 5);
+if (!text) return [{ json: { loi: 'Không đọc được chữ trong tệp PDF (có thể là bản scan ảnh).' } }];
+// ~8.000 ký tự tiếng Việt ≈ 3–4 nghìn token → vừa ngữ cảnh 8.192 token đặt bên dưới (mặc định Ollama có thể chỉ 4.096)
+const noiDung = text.length > 8000 ? text.slice(0, 8000) + '\n[... đã cắt bớt phần sau ...]' : text;
+return [{ json: { body: {
+  model: {{ onebee_box_ai_model | to_json }}, stream: false, options: { num_ctx: 8192, temperature: 0.3 },
+  messages: [
+    { role: 'system', content: 'Bạn tóm tắt văn bản bằng tiếng Việt có dấu. Chỉ dùng thông tin trong văn bản, không thêm số liệu hay ý không có trong văn bản.' },
+    { role: 'user', content: `Tóm tắt văn bản sau thành ${soY} ý chính, mỗi ý 1 dòng bắt đầu bằng "-". Giữ nguyên số liệu, ngày tháng, tên riêng.\n\n${noiDung}` },
+  ] } } }];
+{% endset %}
+{
+  "id": "onebeeTomTat0001",
+  "name": "OneBee — Tóm tắt văn bản PDF bằng AI nội bộ",
+  "nodes": [
+    {"id": "tt-1", "name": "Biểu mẫu tóm tắt", "type": "n8n-nodes-base.formTrigger", "typeVersion": 2.6, "position": [0, 0],
+     "webhookId": "0e7c1b2a-0000-4000-8000-000000000003",
+     "parameters": {"authentication": "basicAuth", "formTitle": "Tóm tắt văn bản bằng AI nội bộ",
+       "formDescription": "Tải lên tệp PDF (có chữ, không phải ảnh scan). AI chạy trên OneBee Box — văn bản không gửi ra Internet. AI có thể sai, kiểm tra lại số liệu quan trọng.",
+       "formFields": {"values": [
+         {"fieldLabel": "Tệp PDF", "fieldName": "tep", "fieldType": "file", "multipleFiles": false, "acceptFileTypes": ".pdf", "requiredField": true},
+         {"fieldLabel": "Số ý tóm tắt", "fieldName": "so_y", "fieldType": "dropdown",
+          "fieldOptions": {"values": [{"option": "3"}, {"option": "5"}, {"option": "7"}]}, "requiredField": true}
+       ]},
+       "responseMode": "lastNode", "options": {"path": "onebee-tom-tat", "buttonLabel": "Tóm tắt", "appendAttribution": false}},
+     "credentials": {"httpBasicAuth": {"id": "onebeeForm000001", "name": "OneBee — tài khoản biểu mẫu nhân viên"}}},
+    {"id": "tt-2", "name": "Đọc chữ trong PDF", "type": "n8n-nodes-base.extractFromFile", "typeVersion": 1.1, "position": [220, 0],
+     "parameters": {"operation": "pdf", "binaryPropertyName": "tep", "options": {"joinPages": true, "maxPages": 30}}},
+    {"id": "tt-3", "name": "Soạn yêu cầu cho AI", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [440, 0],
+     "parameters": {"jsCode": {{ js | to_json }}}},
+    {"id": "tt-4", "name": "Hỏi AI trên Box (Ollama)", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [660, 0],
+     "parameters": {"method": "POST", "url": "http://ollama:11434/api/chat", "sendBody": true, "specifyBody": "json",
+       "jsonBody": "={{ '{{' }} JSON.stringify($json.body) {{ '}}' }}", "options": {"timeout": 600000}}},
+    {"id": "tt-5", "name": "Hiện bản tóm tắt", "type": "n8n-nodes-base.form", "typeVersion": 2.5, "position": [880, 0],
+     "parameters": {"operation": "completion", "respondWith": "showText",
+       "responseText": "={{ '{{' }} ($json.message && $json.message.content) || $json.loi || 'Không tóm tắt được, thử lại sau.' {{ '}}' }}"}}
+  ],
+  "connections": {
+    "Biểu mẫu tóm tắt": {"main": [[{"node": "Đọc chữ trong PDF", "type": "main", "index": 0}]]},
+    "Đọc chữ trong PDF": {"main": [[{"node": "Soạn yêu cầu cho AI", "type": "main", "index": 0}]]},
+    "Soạn yêu cầu cho AI": {"main": [[{"node": "Hỏi AI trên Box (Ollama)", "type": "main", "index": 0}]]},
+    "Hỏi AI trên Box (Ollama)": {"main": [[{"node": "Hiện bản tóm tắt", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1", "timezone": "{{ onebee_timezone }}"}
+}

@@ -12,4 +12,6 @@
     - docker
     - samba
     - box-stack
+    - box-ai
+    - box-n8n
     - box-backup

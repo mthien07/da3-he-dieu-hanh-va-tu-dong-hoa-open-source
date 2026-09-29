@@ -28,8 +28,10 @@ onebee_box_ports:
   uptime_kuma: 3001  # Giám sát
   rest_server: 8000  # Nhận sao lưu từ máy trạm
 
-# Model AI tải sẵn khi cài (để trống: chọn model ở Phase 3 sau khi chấm thử tiếng Việt)
-onebee_box_ai_models: []
+# Trợ lý AI — dòng Gemma của Google (anh chốt 29/9). Model TẠM: chốt chính thức sau khi chấm trên máy Box thật (ADR 0003)
+onebee_box_ai_model: gemma3:4b
+onebee_box_ai_models: ["{{ onebee_box_ai_model }}"]   # model tải sẵn khi cài
+onebee_box_admin_email: quantri@onebee.lan             # tài khoản quản trị Trợ lý AI (mật khẩu: onebee-box in-khoa)
 
 # Chỉ cho các dải mạng nội bộ vào thư mục chung
 onebee_box_samba_hosts_allow: "127. 10. 172.16.0.0/12 192.168."
@@ -42,3 +44,26 @@ onebee_box_samba_user: onebee
 onebee_box_backup_repo: /mnt/onebee-sao-luu/restic-box
 onebee_box_backup_time: "*-*-* 23:00:00"
 onebee_box_backup_keep: "--keep-daily 7 --keep-weekly 4 --keep-monthly 6"
+
+# Email (n8n gửi báo cáo, nhắc việc). Để smtp_host trống = chưa cấu hình (quy trình vẫn cài, chưa gửi được).
+# Mật khẩu SMTP KHÔNG ghi ở đây: đặt bằng lệnh  sudo onebee-box dat-mat-khau-email  rồi chạy lại bộ cài.
+onebee_box_email:
+  smtp_host: ""
+  smtp_port: 587
+  smtp_user: ""
+  smtp_ssl: false        # true khi dùng cổng 465
+  smtp_starttls: true    # cổng 587
+  gui_tu: "OneBee Box <box@onebee.lan>"
+  nhan: "quantri@onebee.lan"   # nhiều người nhận: ngăn cách bằng dấu phẩy
+
+# Lịch nhắc hạn nộp — BẢN MẪU, kế toán kiểm lại và sửa theo đơn vị:
+#   thuế: Điều 44 Luật Quản lý thuế 38/2019/QH14 (Luật QLT 108/2025/QH15 hiệu lực 1/7/2026 — chưa đối chiếu điều khoản thời hạn)
+#   BHXH: Điều 34 khoản 4 điểm a Luật BHXH 2024 — đóng hằng tháng chậm nhất ngày cuối cùng của tháng tiếp theo
+# loai: thang | quy (tháng đầu mỗi quý) | nam (kèm thang); ngay: số ngày hoặc cuoi_thang
+onebee_box_lich_han:
+  - {ten: "Nộp tờ khai thuế tháng trước (đơn vị khai theo tháng)", loai: thang, ngay: 20}
+  - {ten: "Đóng BHXH bắt buộc của tháng trước (đơn vị đóng hằng tháng)", loai: thang, ngay: cuoi_thang}
+  - {ten: "Nộp tờ khai thuế quý trước (đơn vị khai theo quý)", loai: quy, ngay: cuoi_thang}
+  - {ten: "Nộp hồ sơ quyết toán thuế năm trước", loai: nam, thang: 3, ngay: cuoi_thang}
+  - {ten: "Gửi báo cáo tình hình hoạt động quý cho xã viên (việc nội bộ — ví dụ)", loai: quy, ngay: 15}
+onebee_box_nhac_truoc_ngay: [7, 3, 1, 0]

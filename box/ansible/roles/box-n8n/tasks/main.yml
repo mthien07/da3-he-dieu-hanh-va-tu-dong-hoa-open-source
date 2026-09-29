@@ -1,0 +1,88 @@
+---
+# Quy trình n8n mẫu: báo cáo sao lưu, nhắc hạn báo cáo/thuế, tóm tắt PDF bằng AI nội bộ, nhập + tổng hợp đơn hàng.
+# Tất cả gửi qua email (SMTP của đơn vị). Nhập bằng CLI của n8n rồi khởi động lại n8n để kích hoạt.
+
+- name: Kiểm tra đã đặt mật khẩu email (SMTP) chưa
+  ansible.builtin.stat:
+    path: "{{ onebee_box_secrets }}/smtp-password"
+  register: onebee_smtp_pw_file
+
+- name: Chuẩn bị khóa cho quy trình
+  ansible.builtin.set_fact:
+    onebee_smtp_password: "{{ lookup('ansible.builtin.file', onebee_box_secrets ~ '/smtp-password')
+                              if onebee_smtp_pw_file.stat.exists else '' }}"
+    onebee_webhook_key: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/n8n-webhook-key',
+                            chars=['ascii_letters', 'digits'], length=32) }}"
+    onebee_form_password: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/bieu-mau-nhanvien',
+                              chars=['ascii_letters', 'digits'], length=12) }}"
+  no_log: true
+
+- name: Sinh thông tin đăng nhập cho n8n (SMTP, khóa webhook, tài khoản biểu mẫu)
+  ansible.builtin.template:
+    src: credentials.json.j2
+    dest: "{{ onebee_box_dir }}/n8n-import/credentials.json"
+    owner: "1000"
+    group: "1000"
+    mode: "0600"
+  register: onebee_n8n_creds
+  no_log: true
+
+- name: Sinh các quy trình mẫu
+  ansible.builtin.template:
+    src: "workflows/{{ item }}.json.j2"
+    dest: "{{ onebee_box_dir }}/n8n-import/workflows/{{ item }}.json"
+    owner: "1000"
+    group: "1000"
+    mode: "0600"
+  loop: "{{ onebee_n8n_workflows | map(attribute='file') | list }}"
+  register: onebee_n8n_wf
+
+- name: Kiểm tra lần nhập trước đã hoàn tất chưa
+  ansible.builtin.stat:
+    path: "{{ onebee_box_dir }}/n8n-import/.da-nhap-xong"
+  register: onebee_n8n_stamp
+
+# Nhập lại khi mẫu đổi HOẶC lần trước lỗi giữa chừng. Lưu ý: nhập lại sẽ ghi đè chỉnh sửa trên giao diện n8n
+# đối với 5 quy trình mẫu (muốn sửa riêng thì nhân bản quy trình rồi sửa bản sao).
+- name: Nhập vào n8n, kích hoạt, khởi động lại n8n
+  when: onebee_n8n_creds is changed or onebee_n8n_wf is changed or not onebee_n8n_stamp.stat.exists
+  block:
+    - name: Xóa dấu "đã nhập xong" (lỡ lỗi giữa chừng thì lần chạy sau nhập lại)
+      ansible.builtin.file:
+        path: "{{ onebee_box_dir }}/n8n-import/.da-nhap-xong"
+        state: absent
+    - name: Nhập thông tin đăng nhập
+      ansible.builtin.command: docker exec onebee-n8n n8n import:credentials --input=/import/credentials.json
+      changed_when: true
+    - name: Nhập quy trình
+      ansible.builtin.command: "docker exec onebee-n8n n8n import:workflow --input=/import/workflows/{{ item.file }}.json"
+      loop: "{{ onebee_n8n_workflows }}"
+      changed_when: true
+    - name: Kích hoạt quy trình
+      ansible.builtin.command: "docker exec onebee-n8n n8n publish:workflow --id={{ item.id }}"
+      loop: "{{ onebee_n8n_workflows }}"
+      changed_when: true
+    - name: Khởi động lại n8n để nhận quy trình mới
+      ansible.builtin.command: docker restart onebee-n8n
+      changed_when: true
+    - name: Chờ n8n chạy lại
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ onebee_box_ports.n8n }}/healthz"
+      register: onebee_n8n_health
+      until: onebee_n8n_health.status == 200
+      retries: 60
+      delay: 3
+    - name: Đánh dấu đã nhập xong
+      ansible.builtin.copy:
+        dest: "{{ onebee_box_dir }}/n8n-import/.da-nhap-xong"
+        content: ""
+        owner: root
+        group: root
+        mode: "0600"
+
+- name: Nhắc cấu hình email
+  ansible.builtin.debug:
+    msg: >-
+      Email chưa gửi được: khai báo onebee_box_email trong box/ansible/group_vars/all.yml,
+      chạy 'sudo onebee-box dat-mat-khau-email', chạy lại bộ cài, rồi thử 'sudo onebee-box email-thu'.
+  when: not onebee_box_email.smtp_host
