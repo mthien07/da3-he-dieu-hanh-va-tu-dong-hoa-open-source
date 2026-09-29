@@ -1,19 +1,22 @@
 {% set js %}
-// Box gửi: trang_thai ("DAT"/"LOI"), noi_dung, may_tram: [{ten, gio_tu_lan_cuoi}], nguong_gio
+// Box gửi: trang_thai ("DAT"/"LOI"/"THU"), noi_dung, may_tram: [{ten, gio_tu_lan_cuoi, canh_bao: [...], tom_tat}]
+// (cảnh báo từng máy do Box tính sẵn: sao lưu, cập nhật, ổ đĩa, khởi động lại, mất liên lạc)
 const b = $input.first().json.body || {};
 if (b.trang_thai === 'THU') return [{ json: { subject: '[OneBee Box] Email thử — cấu hình email đã dùng được', text: b.noi_dung || '' } }];
 const ok = b.trang_thai === 'DAT';
-const nguong = Number(b.nguong_gio || 72);
 const may = Array.isArray(b.may_tram) ? b.may_tram : [];
-const quaHan = may.filter(m => m.gio_tu_lan_cuoi === null || Number(m.gio_tu_lan_cuoi) > nguong);
-const dong = may.map(m => `- ${m.ten}: ${m.gio_tu_lan_cuoi === null ? 'CHƯA từng sao lưu' : 'sao lưu lần cuối ' + m.gio_tu_lan_cuoi + ' giờ trước'}`);
+const canXuLy = may.filter(m => Array.isArray(m.canh_bao) && m.canh_bao.length);
+const dong = may.map(m => {
+  const cb = Array.isArray(m.canh_bao) ? m.canh_bao : [];
+  return `- ${m.ten}: ${cb.length ? 'CẦN XỬ LÝ — ' + cb.join('; ') : 'ổn'}${m.tom_tat ? ' (' + m.tom_tat + ')' : ''}`;
+});
 let subject = `[OneBee Box] Sao lưu ${ok ? 'ĐẠT' : 'LỖI'}`;
-if (quaHan.length) subject += ` — ${quaHan.length} máy trạm quá ${Math.round(nguong / 24)} ngày chưa sao lưu`;
+if (canXuLy.length) subject += ` — ${canXuLy.length} máy trạm cần xử lý`;
 const text = [
   ok ? 'Sao lưu OneBee Box ra ổ ngoài: ĐẠT.' : 'Sao lưu OneBee Box: LỖI — cần kiểm tra ngay (sudo onebee-box trang-thai).',
   '', b.noi_dung || '', '',
-  may.length ? 'Máy trạm:' : 'Chưa có máy trạm nào sao lưu lên Box.', ...dong,
-  quaHan.length ? `\nCẢNH BÁO: ${quaHan.map(m => m.ten).join(', ')} quá hạn — nhắc người dùng bật máy / kiểm tra mạng.` : '',
+  may.length ? 'Tình trạng máy trạm:' : 'Chưa cấp máy trạm nào (sudo onebee-box them-may <tên-máy>).', ...dong,
+  canXuLy.length ? '\nXem chi tiết: sudo onebee-box may-tram · cập nhật tất cả: sudo onebee-box cap-nhat-may --tat-ca' : '',
 ].join('\n');
 return [{ json: { subject, text } }];
 {% endset %}

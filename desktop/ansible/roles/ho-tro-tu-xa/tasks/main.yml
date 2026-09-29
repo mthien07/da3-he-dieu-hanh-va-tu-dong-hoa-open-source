@@ -1,0 +1,31 @@
+---
+# Hỗ trợ từ xa có đồng ý của người dùng (ADR 0004): x11vnc chỉ chạy khi người dùng tự bấm, mã 1 lần, tự đóng.
+
+- name: Cài x11vnc và hộp thoại
+  ansible.builtin.apt:
+    name: [x11vnc, zenity, libnotify-bin]
+    state: present
+
+- name: Cài lệnh onebee-ho-tro
+  ansible.builtin.copy:
+    src: onebee-ho-tro
+    dest: /usr/local/bin/onebee-ho-tro
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Thêm mục "Cho phép hỗ trợ từ xa" vào menu
+  ansible.builtin.copy:
+    dest: /usr/share/applications/onebee-ho-tro.desktop
+    content: |
+      [Desktop Entry]
+      Type=Application
+      Name=Cho phép hỗ trợ từ xa (OneBee)
+      Comment=Cho kỹ thuật OneBee xem màn hình để hỗ trợ — chỉ khi bạn bấm, mã dùng 1 lần
+      Exec=onebee-ho-tro
+      Icon=preferences-desktop-remote-desktop
+      Terminal=false
+      Categories=System;
+    owner: root
+    group: root
+    mode: "0644"

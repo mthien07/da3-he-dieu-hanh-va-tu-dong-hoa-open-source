@@ -27,7 +27,7 @@ rm -rf /tmp/onebee; cp -r /onebee /tmp/onebee; T=/tmp/onebee/tests/desktop'
 # Thành phần có sẵn trên Mint Cinnamon cài thật (image container rút gọn không có)
 MINT_DESKTOP_PARTS='apt-get update -q >/dev/null; apt-get install -y -q mintupdate mint-artwork cinnamon-desktop-data libglib2.0-bin >/dev/null'
 # Công cụ chỉ dùng để kiểm thử (cài SAU OneBee để không che lỗi thiếu gói của bộ cài)
-TEST_TOOLS='apt-get install -y -q python3-uno poppler-utils hunspell xvfb xdotool dbus-x11 python3-gi gir1.2-gtk-3.0 >/dev/null
+TEST_TOOLS='apt-get install -y -q python3-uno poppler-utils hunspell xvfb xdotool dbus-x11 python3-gi gir1.2-gtk-3.0 vncsnapshot >/dev/null
 useradd -m -s /bin/bash nhanvien'
 
 scenario_guards() {
@@ -74,7 +74,12 @@ scenario_mint() {
     $T/verify-desktop-install.sh
     python3 $T/check-libreoffice-default-formats.py
     su - nhanvien -c "$T/extended/check-office-documents-inside.sh"
-    su - nhanvien -c "$T/extended/check-vietnamese-typing-inside.sh" 2>/dev/null | grep -E "^(PASS|FAIL|Gõ|preload|hình nền)"'
+    su - nhanvien -c "$T/extended/check-vietnamese-typing-inside.sh" 2>/dev/null | grep -E "^(PASS|FAIL|Gõ|preload|hình nền)"
+    su - nhanvien -c "$T/extended/check-ho-tro-tu-xa-inside.sh"
+    # Bộ đo trước/sau: chạy được trên máy đã cài, đo được thời gian mở LibreOffice, ghi đủ cột CSV
+    su - nhanvien -c "Xvfb :78 >/dev/null 2>&1 & xp=\$!; sleep 2; DISPLAY=:78 python3 /tmp/onebee/tests/do-dac/do-may.py \
+      --don-vi thu --may mint-thu --giai-doan sau -o /tmp/do-dac.csv >/dev/null; kill \$xp"
+    python3 -c "import csv; r=list(csv.DictReader(open(\"/tmp/do-dac.csv\"))); assert len(r)==1 and float(r[0][\"mo_van_ban_giay\"])>0 and len(r[0])==15, r; print(\"PASS  Bộ đo trước/sau: ghi 1 dòng CSV đủ 15 cột, đo được mở LibreOffice Writer (\"+r[0][\"mo_van_ban_giay\"]+\" giây)\")"'
 }
 
 scenario_unikey() {

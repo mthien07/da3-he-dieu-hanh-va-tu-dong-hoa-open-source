@@ -1,0 +1,33 @@
+---
+# Quản lý tập trung máy trạm: Box nhận tình trạng máy trạm (qua n8n), in báo cáo, cập nhật máy trạm qua SSH.
+
+- name: Cài ansible-core và SSH client (Box điều khiển máy trạm)
+  ansible.builtin.apt:
+    name: [ansible-core, openssh-client]
+    state: present
+
+- name: Tạo thư mục khóa SSH quản trị (chỉ root vào)
+  ansible.builtin.file:
+    path: "{{ onebee_box_ssh_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+# Mỗi Box (mỗi đơn vị) có 1 khóa riêng — không dùng chung giữa các khách hàng
+- name: Sinh khóa SSH quản trị máy trạm (lần đầu)
+  ansible.builtin.command: >-
+    ssh-keygen -q -t ed25519 -N '' -C "onebee-box-{{ ansible_hostname }}" -f {{ onebee_box_ssh_dir }}/quan-tri
+  args:
+    creates: "{{ onebee_box_ssh_dir }}/quan-tri"
+
+- name: Cài công cụ báo cáo và cập nhật máy trạm
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "/usr/local/lib/onebee-box/{{ item.src }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - {src: onebee-may-tram.py, mode: "0750"}
+    - {src: cap-nhat-may-tram.yml, mode: "0640"}

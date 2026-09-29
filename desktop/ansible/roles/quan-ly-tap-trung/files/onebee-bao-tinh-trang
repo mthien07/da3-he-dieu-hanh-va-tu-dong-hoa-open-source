@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+"""onebee-bao-tinh-trang — máy trạm gửi tình trạng về OneBee Box (lịch: mỗi giờ + sau khi bật máy).
+
+Gửi: tên máy, địa chỉ IP trong LAN, phiên bản, số gói chờ cập nhật (bản vá bảo mật riêng), cần khởi động lại không,
+dung lượng ổ còn trống, thời gian đã bật, lần sao lưu cuối. KHÔNG gửi tên file, nội dung hay lịch sử dùng máy.
+Cấu hình: /etc/onebee/may-tram.env (MAY_TRAM, BOX_IP, TINH_TRANG_URL, TINH_TRANG_KEY — lấy từ 'onebee-box them-may').
+"""
+import json
+import os
+import shutil
+import socket
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+
+CONF = "/etc/onebee/may-tram.env"
+
+
+def doc_khoa_gia_tri(duong_dan):
+    kq = {}
+    try:
+        with open(duong_dan, encoding="utf-8") as f:
+            for dong in f:
+                if "=" in dong and not dong.lstrip().startswith("#"):
+                    k, v = dong.strip().split("=", 1)
+                    kq[k] = v.strip('"')
+    except OSError:
+        pass
+    return kq
+
+
+def ip_toi_box(box_ip):
+    """IP của máy trạm trên đường tới Box (không gửi gói tin nào)."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect((box_ip, 9))
+            return s.getsockname()[0]
+    except OSError:
+        return None
+
+
+def goi_cho_cap_nhat():
+    """(số gói chờ, số gói có bản vá bảo mật) — mô phỏng nâng cấp từ danh mục gói đã có, không tải gì."""
+    try:
+        out = subprocess.run(["apt-get", "-s", "-o", "Debug::NoLocking=1", "dist-upgrade"], capture_output=True,
+                             text=True, timeout=120, env={**os.environ, "LC_ALL": "C"}).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None, None
+    inst = [d for d in out.splitlines() if d.startswith("Inst ")]
+    return len(inst), sum(1 for d in inst if "-security" in d)
+
+
+def main():
+    if os.geteuid() != 0:
+        sys.exit("Hãy chạy bằng quyền quản trị: sudo onebee-bao-tinh-trang")
+    conf = doc_khoa_gia_tri(CONF)
+    if not all(conf.get(k) for k in ("MAY_TRAM", "BOX_IP", "TINH_TRANG_URL", "TINH_TRANG_KEY")):
+        print("Máy chưa cấp quản lý từ Box (thiếu cấu hình trong /etc/onebee/may-tram.env) — bỏ qua.")
+        return 0
+    cho, bao_mat = goi_cho_cap_nhat()
+    o = shutil.disk_usage("/")
+    try:
+        with open("/proc/uptime") as f:
+            bat_gio = round(float(f.read().split()[0]) / 3600, 1)
+    except (OSError, ValueError):
+        bat_gio = None
+    try:
+        with open("/var/lib/onebee/sao-luu-cuoi") as f:
+            sao_luu = int(f.read().strip())
+    except (OSError, ValueError):
+        sao_luu = None
+    tt = {
+        "ten": conf["MAY_TRAM"], "ip": ip_toi_box(conf["BOX_IP"]), "hostname": socket.gethostname(),
+        "phien_ban": doc_khoa_gia_tri("/etc/onebee-release").get("ONEBEE_VERSION"),
+        "he_dieu_hanh": doc_khoa_gia_tri("/etc/os-release").get("PRETTY_NAME"),
+        "cap_nhat_cho": cho, "bao_mat_cho": bao_mat,
+        "can_khoi_dong_lai": os.path.exists("/var/run/reboot-required"),
+        "o_trong_phan_tram": round(o.free * 100 / o.total, 1), "o_trong_gb": round(o.free / 1e9, 1),
+        "khoi_dong_gio": bat_gio, "sao_luu_cuoi": sao_luu,
+    }
+    req = urllib.request.Request(conf["TINH_TRANG_URL"], data=json.dumps(tt).encode("utf-8"), method="POST",
+                                 headers={"Content-Type": "application/json", "X-OneBee-Key": conf["TINH_TRANG_KEY"]})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            r.read()
+    except urllib.error.HTTPError as e:
+        sys.exit(f"OneBee Box từ chối tình trạng (mã {e.code}) — kiểm tra khóa TINH_TRANG_KEY hoặc chạy lại 'onebee-box them-may'.")
+    except (urllib.error.URLError, OSError) as e:
+        sys.exit(f"Không gửi được tình trạng về OneBee Box ({e}) — Box tắt hoặc mất mạng, lần sau gửi lại.")
+    print(f"Đã gửi tình trạng máy {tt['ten']} về Box: {cho} gói chờ cập nhật, ổ trống {tt['o_trong_phan_tram']}%.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
