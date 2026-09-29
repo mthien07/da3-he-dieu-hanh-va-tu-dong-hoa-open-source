@@ -24,6 +24,8 @@ Nguồn: file `/usr/share/doc/<gói>/copyright` của từng gói trên Linux Mi
 |---|---|---|
 | Ubuntu Server 24.04, Docker (docker.io), Samba | Nguồn mở (Apache-2.0, GPL-3.0…) | Gói từ kho Ubuntu |
 | Ollama | MIT | |
+| Model Gemma 4 (`gemma4:e2b-it-qat`, Google) | Apache-2.0 (theo model card Gemma 4) | Kiểm lại trang giấy phép chính thức trước khi ghi vào hợp đồng |
+| Mailpit (chỉ dùng trong kiểm thử, không cài cho khách) | MIT | |
 | Open WebUI | BSD-3 + điều khoản thương hiệu (từ v0.6.6) | >50 người dùng/30 ngày: không được gỡ/đổi thương hiệu "Open WebUI". OneBee không đổi tên/logo. |
 | n8n | Sustainable Use License (fair-code, **không** phải nguồn mở chuẩn OSI) | Theo n8n: chỉ giúp khách dựng n8n nội bộ của chính khách thì không cần giấy phép thương mại. Không bán n8n như dịch vụ host chung. |
 | Uptime Kuma | MIT | |

@@ -28,8 +28,9 @@ onebee_box_ports:
   uptime_kuma: 3001  # Giám sát
   rest_server: 8000  # Nhận sao lưu từ máy trạm
 
-# Trợ lý AI — dòng Gemma của Google (anh chốt 29/9). Model TẠM: chốt chính thức sau khi chấm trên máy Box thật (ADR 0003)
-onebee_box_ai_model: gemma3:4b
+# Trợ lý AI — dòng Gemma của Google (anh chốt 29/9). Chọn theo ADR 0003: bản nhẹ nhất vượt ngưỡng chất lượng
+# (chấm trên máy thử 29/9). Tốc độ còn phải đo trên máy Box thật.
+onebee_box_ai_model: gemma4:e2b-it-qat
 onebee_box_ai_models: ["{{ onebee_box_ai_model }}"]   # model tải sẵn khi cài
 onebee_box_admin_email: quantri@onebee.lan             # tài khoản quản trị Trợ lý AI (mật khẩu: onebee-box in-khoa)
 

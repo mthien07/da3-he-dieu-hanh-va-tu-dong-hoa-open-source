@@ -5,7 +5,8 @@ import unicodedata
 
 def normalize(text):
     text = unicodedata.normalize("NFC", text).lower()
-    text = re.sub(r"[*_`#>]+", "", text)  # bỏ định dạng markdown (**đậm**, `mã`, # tiêu đề) trước khi so khớp
+    text = re.sub(r"[*_`#>$]+", "", text)  # bỏ định dạng markdown (**đậm**, `mã`, # tiêu đề) và $công thức$
+    text = text.replace("\\times", "×")
     text = text.replace("hoà", "hòa").replace("thuỷ", "thủy").replace("uỷ", "ủy")  # hai kiểu đặt dấu phổ biến
     return re.sub(r"\s+", " ", text)
 

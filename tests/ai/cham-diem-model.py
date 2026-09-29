@@ -3,9 +3,10 @@
 
 Ví dụ (trên OneBee Box, Ollama chạy trong container onebee-ollama):
   python3 tests/ai/cham-diem-model.py --ollama http://<ip-ollama>:11434 \\
-      --model gemma3:4b --model gemma4:e2b-it-qat --may "Box HTX (i5-8500, 16GB)" --may-box-that
+      --model gemma4:e2b-it-qat --may "Box HTX (mô tả CPU, RAM, GPU)" --may-box-that
 """
 import argparse
+import csv
 import datetime
 import os
 import sys
@@ -23,9 +24,15 @@ LOI_DAN = os.path.join(REPO, "box/ansible/roles/box-ai/files/tro-ly-onebee-loi-d
 TUY_CHON_MODEL = {"temperature": 0.3}
 
 
+def load_saved(path):
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        return list(csv.DictReader(f))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--model", action="append", required=True, help="tên model Ollama (lặp lại để chấm nhiều model)")
+    ap.add_argument("--model", action="append", help="tên model Ollama (lặp lại để chấm nhiều model)")
+    ap.add_argument("--tu-csv", help="chấm LẠI các câu trả lời đã lưu (file *-tra-loi.csv) bằng bộ câu hỏi hiện tại, không gọi model")
     ap.add_argument("--ollama", default="http://127.0.0.1:11434")
     ap.add_argument("--bo-cau-hoi", default=os.path.join(os.path.dirname(__file__), "bo-cau-hoi-tieng-viet.yaml"))
     ap.add_argument("--loi-dan", default=LOI_DAN, help="file lời dặn hệ thống của Trợ lý")
@@ -36,6 +43,8 @@ def main():
     ap.add_argument("--khong-tai", action="store_true", help="không tự tải model")
     ap.add_argument("--ra", default=os.path.join(REPO, "reports/ai"), help="thư mục xuất báo cáo")
     a = ap.parse_args()
+    if not a.model and not a.tu_csv:
+        ap.error("cần --model hoặc --tu-csv")
 
     with open(a.bo_cau_hoi, encoding="utf-8") as f:
         bo = yaml.safe_load(f)
@@ -45,9 +54,25 @@ def main():
     cau_hoi = [q for q in bo["cau_hoi"] if not a.nhom or q["nhom"] in a.nhom]
     so_lan = a.so_lan or nguong["so_lan_chay"]
     client = OllamaClient(a.ollama)
+    saved = load_saved(a.tu_csv) if a.tu_csv else None
+    models = list(dict.fromkeys(r["model"] for r in saved)) if saved else a.model
+    if saved:
+        so_lan = max(int(r["lan"]) for r in saved)
 
     results, all_rows = {}, []
-    for model in a.model:
+    for model in models:
+        if saved:
+            rows = []
+            for q in cau_hoi:
+                for r in (x for x in saved if x["model"] == model and x["id"] == q["id"]):
+                    rows.append({"model": model, "id": q["id"], "nhom": q["nhom"], "lan": int(r["lan"]), "hoi": q["hoi"],
+                                 "tra_loi": r["tra_loi"], "cho_chu_dau_giay": float(r["cho_chu_dau_giay"]),
+                                 "token_moi_giay": float(r["token_moi_giay"]), **score_answer(q, r["tra_loi"])})
+            s, loi = summarize(rows, nguong, ten_nhom, a.may_box_that)
+            results[model] = (s, loi, None, rows)
+            all_rows += rows
+            print(f"== {model} (chấm lại): {'ĐẠT' if not loi else 'KHÔNG ĐẠT: ' + '; '.join(loi)}", flush=True)
+            continue
         if not a.khong_tai:
             print(f"== Tải {model} (nếu chưa có)...", flush=True)
             client.pull(model)
@@ -75,7 +100,7 @@ def main():
     base = os.path.join(a.ra, f"{stamp}-cham-tro-ly")
     meta = {"ngay": datetime.date.today().strftime("%d/%m/%Y"), "may": a.may, "may_box_that": a.may_box_that,
             "so_cau": len(cau_hoi), "so_lan": so_lan, "ten_nhom": {g: ten_nhom[g] for g in {q['nhom'] for q in cau_hoi}},
-            "loi_dan": os.path.relpath(a.loi_dan, REPO)}
+            "loi_dan": os.path.relpath(a.loi_dan, REPO) + (f" (chấm lại từ {os.path.basename(a.tu_csv)})" if saved else "")}
     write_markdown(base + ".md", results, meta)
     write_csv(base + "-tra-loi.csv", all_rows, base + "-phieu-cham-tay.csv")
     print(f"Báo cáo: {base}.md")

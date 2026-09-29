@@ -5,8 +5,9 @@
   (dòng `webui-admin-password`). **Đăng ký tự do đã tắt** — quản trị tạo tài khoản cho nhân viên trong
   Bảng quản trị → Người dùng.
 - Chọn **"Trợ lý OneBee"**: model Gemma chạy trên Box + lời dặn tiếng Việt (không bịa số liệu, hướng dẫn máy OneBee).
-- Model đang dùng: `onebee_box_ai_model` trong `box/ansible/group_vars/all.yml` (tạm: `gemma3:4b` — chốt sau khi chấm
-  trên máy Box thật, xem ADR 0003). Đổi model → chạy lại bộ cài.
+- Model đang dùng: `gemma4:e2b-it-qat` (Gemma 4 của Google, giấy phép Apache-2.0, tải 4,3 GB) — bản Gemma nhẹ nhất vượt
+  ngưỡng chất lượng khi chấm 40 câu × 3 lần (xem ADR 0003, `reports/ai/`). Đổi model: sửa `onebee_box_ai_model` trong
+  `box/ansible/group_vars/all.yml` rồi chạy lại bộ cài. **Tốc độ trên máy Box thật chưa đo.**
 
 ## 2. Lệnh `hoi` trên máy trạm
 ```bash
@@ -60,3 +61,4 @@ Sửa `onebee_box_lich_han` trong `box/ansible/group_vars/all.yml` rồi chạy 
 - Chưa kiểm trên máy thật; kiểm tự động trong container (xem `tests/README.md` — kết quả lần chạy gần nhất ghi trong changelog).
 - Nhập lại quy trình mẫu (khi nâng cấp) sẽ ghi đè chỉnh sửa trên giao diện n8n của 5 quy trình mẫu — muốn sửa riêng thì
   nhân bản quy trình rồi sửa bản sao.
+- n8n tự gọi `api.n8n.io` để tải danh mục máy chủ MCP (thấy trong nhật ký khi test). Chưa rà hết các kết nối ra ngoài khác của n8n.

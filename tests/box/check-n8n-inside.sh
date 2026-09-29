@@ -48,10 +48,19 @@ curl -s -X POST ${N8N}/webhook/onebee-tong-hop-don-hang -H "${KEY}" >/dev/null
 wait_mail "Đơn hàng hôm nay: 2 đơn — 17.500.000 đồng"
 echo "PASS  Tổng hợp đơn trong ngày → email \"2 đơn — 17.500.000 đồng\""
 
-wait_url=$(curl -s -u "${FORM_AUTH}" -X POST ${N8N}/form/onebee-tom-tat \
+read -r wait_path wait_query < <(curl -s -u "${FORM_AUTH}" -X POST ${N8N}/form/onebee-tom-tat \
   -F "field-0=@${HERE}/fixtures/bao-cao-quy-3-mau.pdf;type=application/pdf" -F 'field-1=3' \
-  | python3 -c 'import json,sys,urllib.parse as u; p=u.urlparse(json.load(sys.stdin)["formWaitingUrl"]); print(p.path+"?"+p.query)')
-summary=$(curl -s -m 600 -u "${FORM_AUTH}" "${N8N}${wait_url}" | python3 -c '
+  | python3 -c 'import json,sys,urllib.parse as u; p=u.urlparse(json.load(sys.stdin)["formWaitingUrl"]); print(p.path, p.query)')
+# Giống trình duyệt: hỏi trạng thái cho tới khi AI trả lời xong (mở trang chờ lúc đang chạy thì n8n giữ kết nối mãi)
+st=""
+for _ in $(seq 180); do
+  st=$(curl -s -m 10 -u "${FORM_AUTH}" "${N8N}${wait_path}/n8n-execution-status?${wait_query}")
+  [[ "${st}" == form-waiting || "${st}" == success ]] && break
+  [[ "${st}" == error || "${st}" == crashed ]] && { echo "FAIL  Quy trình tóm tắt lỗi (${st})"; exit 1; }
+  sleep 5
+done
+[[ "${st}" == form-waiting || "${st}" == success ]] || { echo "FAIL  AI tóm tắt quá 15 phút (trạng thái: ${st})"; exit 1; }
+summary=$(curl -s -m 60 -u "${FORM_AUTH}" "${N8N}${wait_path}?${wait_query}" | python3 -c '
 import html, re, sys
 t = re.sub(r"<style.*?</style>|<script.*?</script>", "", sys.stdin.read(), flags=re.S)
 print(re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", t))).strip())')

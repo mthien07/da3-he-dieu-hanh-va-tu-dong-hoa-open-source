@@ -45,8 +45,10 @@ if [[ "${ONEBEE_TEST_FULL_WEBUI:-0}" != 1 ]]; then
   # Bản slim (không kèm model nhúng) để test nhanh, đỡ tốn ổ; chức năng hỏi đáp như bản đầy đủ
   box "sed -i -E 's#(open_webui: .*open-webui:v[0-9.]+)\$#\\1-slim#' /root/onebee-test/box/ansible/group_vars/all.yml"
 fi
-# Model AI nhỏ nhất dòng Gemma để test nhanh; tải sau khi cài (container Ollama cần tin CA proxy của môi trường test)
-box "sed -i -E 's#^onebee_box_ai_model: .*#onebee_box_ai_model: gemma3:1b#; s#^onebee_box_ai_models: .*#onebee_box_ai_models: []#' \
+# Model AI: mặc định đúng model sản phẩm (ADR 0003); ONEBEE_TEST_MODEL=gemma3:1b để test nhanh phần kết nối.
+# Tải sau khi cài (container Ollama cần tin CA proxy của môi trường test)
+TEST_MODEL="${ONEBEE_TEST_MODEL:-gemma4:e2b-it-qat}"
+box "sed -i -E 's#^onebee_box_ai_model: .*#onebee_box_ai_model: ${TEST_MODEL}#; s#^onebee_box_ai_models: .*#onebee_box_ai_models: []#' \
      /root/onebee-test/box/ansible/group_vars/all.yml"
 # Email: gửi vào hộp thư giả lập Mailpit (khởi chạy trong check-n8n-inside.sh)
 box "sed -i -E 's#^  smtp_host: .*#  smtp_host: \"mailpit\"#; s#^  smtp_port: .*#  smtp_port: 1025#; s#^  smtp_starttls: .*#  smtp_starttls: false#' \
@@ -62,7 +64,7 @@ box '/root/onebee-test/box/onebee-box-install.sh > /tmp/run2.log 2>&1
 echo "===== KIỂM TRA DỊCH VỤ ====="
 box 'apt-get install -y -q smbclient python3 >/dev/null 2>&1; /root/onebee-test/tests/box/verify-box-install.sh'
 echo "===== AI HỎI ĐÁP THẬT ====="
-box '/root/onebee-test/tests/box/check-ai-chat-inside.sh'
+box "ONEBEE_TEST_MODEL=${TEST_MODEL} /root/onebee-test/tests/box/check-ai-chat-inside.sh"
 echo "===== QUY TRÌNH n8n QUA EMAIL ====="
 box '/root/onebee-test/tests/box/check-n8n-inside.sh'
 echo "===== SAO LƯU BOX RA Ổ NGOÀI + KHÔI PHỤC ====="

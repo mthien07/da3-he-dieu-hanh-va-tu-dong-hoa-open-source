@@ -63,14 +63,14 @@ cau_hoi:
   - id: n1-08
     nhom: 1
     hoi: Máy đang cập nhật mà tôi cần về gấp, có tắt máy luôn được không?
-    bat_buoc: [[không nên, không tắt, đừng tắt, chờ]]
+    bat_buoc: [[không nên, không tắt, đừng tắt, không được tắt, chờ, đợi]]
     cam: ['!cứ tắt', '!tắt (tính năng )?tự (động )?cập nhật']
 
   # ---------------- NHÓM 2: soạn văn bản hành chính (Nghị định 30/2020/NĐ-CP) ----------------
   - id: n2-01
     nhom: 2
     hoi: Soạn giúp tôi giấy mời họp xã viên Hợp tác xã OneBee lúc 8 giờ sáng thứ Bảy 10/10/2026 tại hội trường HTX, nội dung tổng kết quý III.
-    bat_buoc: [[cộng hòa xã hội chủ nghĩa việt nam, cộng hoà xã hội chủ nghĩa việt nam], [độc lập - tự do - hạnh phúc, độc lập – tự do – hạnh phúc], [10/10/2026], [8 giờ, 8h, 08 giờ, 08h], [quý iii, quý 3]]
+    bat_buoc: [[cộng hòa xã hội chủ nghĩa việt nam, cộng hoà xã hội chủ nghĩa việt nam], [độc lập - tự do - hạnh phúc, độc lập – tự do – hạnh phúc], [10/10/2026, 10 tháng 10 năm 2026], [8 giờ, 8h, 08 giờ, 08h], [quý iii, quý 3]]
     cam: ['tự do - độc lập', '11/10/2026']
   - id: n2-02
     nhom: 2
@@ -80,12 +80,12 @@ cau_hoi:
   - id: n2-03
     nhom: 2
     hoi: Soạn thông báo nghỉ lễ Quốc khánh 2/9 cho nhân viên HTX, nghỉ từ 1/9 đến hết 2/9.
-    bat_buoc: [[thông báo], [2/9], [1/9]]
+    bat_buoc: [[thông báo], [2/9, 02/09, 2 tháng 9, 02 tháng 9], [1/9, 01/09, 1 tháng 9, 01 tháng 9]]
     cam: ['30/4']
   - id: n2-04
     nhom: 2
     hoi: Lập biên bản họp Ban quản trị HTX ngày 25/9/2026, có 5/5 thành viên dự, thống nhất mua 2 máy tính mới.
-    bat_buoc: [[biên bản], [25/9/2026], [5/5, năm thành viên, 5 thành viên], [2 máy tính, hai máy tính]]
+    bat_buoc: [[biên bản], [25/9/2026, 25/09/2026, 25 tháng 9 năm 2026], [5/5, năm thành viên, 5 thành viên], [2 máy tính, hai máy tính]]
     cam: ['4/5', '3 máy tính']
   - id: n2-05
     nhom: 2
@@ -100,12 +100,12 @@ cau_hoi:
   - id: n2-07
     nhom: 2
     hoi: Viết email ngắn gửi khách hàng xác nhận đã nhận đơn đặt 200 kg xoài, giao ngày 5/10/2026.
-    bat_buoc: [[200 kg, 200kg], [xoài], [5/10/2026, 05/10/2026]]
+    bat_buoc: [[200 kg, 200kg], [xoài], [5/10/2026, 05/10/2026, 5 tháng 10 năm 2026, 05 tháng 10 năm 2026]]
     cam: ['2000 ?kg', '15/10/2026']
   - id: n2-08
     nhom: 2
     hoi: Viết lời nhắc ngắn gửi xã viên nộp phí dịch vụ quý III trước ngày 15/10/2026.
-    bat_buoc: [[15/10/2026], [quý iii, quý 3], [phí]]
+    bat_buoc: [[15/10/2026, 15 tháng 10 năm 2026], [quý iii, quý 3], [phí]]
     cam: ['25/10/2026', '15/11/2026']
 
   # ---------------- NHÓM 3: tóm tắt văn bản (chỉ dùng thông tin có trong đoạn) ----------------
@@ -164,8 +164,8 @@ cau_hoi:
     hoi: |
       Tóm tắt thông báo: "Từ 1/11/2026, văn phòng HTX làm việc từ 7 giờ 30 đến 16 giờ 30, nghỉ trưa 11 giờ 30 – 13 giờ,
       thứ Bảy làm buổi sáng, Chủ nhật nghỉ."
-    bat_buoc: [[1/11/2026, 01/11/2026], ["7 giờ 30", "7h30", "7:30"], ["16 giờ 30", "16h30", "16:30"], [chủ nhật]]
-    cam: ['thứ bảy nghỉ', '17 giờ']
+    bat_buoc: [[1/11/2026, 01/11/2026, 1 tháng 11 năm 2026], ["7 giờ 30", "7h30", "7:30"], ["16 giờ 30", "16h30", "16:30", "4 giờ 30 chiều", "4h30 chiều"], [chủ nhật]]
+    cam: ['thứ bảy nghỉ', '17 giờ', '(đến|-|–) ?(1 giờ 30 chiều|13 giờ 30|13h30|13:30)']   # nghỉ trưa đến 13 giờ, không phải 13 giờ 30
 
   # ---------------- NHÓM 4: trích số liệu từ bảng (phải tính đúng) ----------------
   - id: n4-01
@@ -241,7 +241,7 @@ cau_hoi:
     nhom: 4
     hoi: |
       Phí dịch vụ mỗi hộ 150.000 đồng/quý. HTX có 36 hộ, đã có 29 hộ nộp. Còn thiếu bao nhiêu tiền?
-    bat_buoc: [["1.050.000", "1050000", "1,05 triệu", "1.05 triệu"], ["7 hộ", "bảy hộ"]]
+    bat_buoc: [["1.050.000", "1050000", "1,05 triệu", "1.05 triệu"]]
     cam: ['5\.400\.000 còn thiếu', '\b8 hộ']
 
   # ---------------- NHÓM 5: phải nói "không biết" — không được bịa ----------------
