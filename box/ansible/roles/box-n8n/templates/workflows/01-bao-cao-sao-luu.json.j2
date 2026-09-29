@@ -1,0 +1,37 @@
+{% set js %}
+// Box gửi: trang_thai ("DAT"/"LOI"), noi_dung, may_tram: [{ten, gio_tu_lan_cuoi}], nguong_gio
+const b = $input.first().json.body || {};
+if (b.trang_thai === 'THU') return [{ json: { subject: '[OneBee Box] Email thử — cấu hình email đã dùng được', text: b.noi_dung || '' } }];
+const ok = b.trang_thai === 'DAT';
+const nguong = Number(b.nguong_gio || 72);
+const may = Array.isArray(b.may_tram) ? b.may_tram : [];
+const quaHan = may.filter(m => m.gio_tu_lan_cuoi === null || Number(m.gio_tu_lan_cuoi) > nguong);
+const dong = may.map(m => `- ${m.ten}: ${m.gio_tu_lan_cuoi === null ? 'CHƯA từng sao lưu' : 'sao lưu lần cuối ' + m.gio_tu_lan_cuoi + ' giờ trước'}`);
+let subject = `[OneBee Box] Sao lưu ${ok ? 'ĐẠT' : 'LỖI'}`;
+if (quaHan.length) subject += ` — ${quaHan.length} máy trạm quá ${Math.round(nguong / 24)} ngày chưa sao lưu`;
+const text = [
+  ok ? 'Sao lưu OneBee Box ra ổ ngoài: ĐẠT.' : 'Sao lưu OneBee Box: LỖI — cần kiểm tra ngay (sudo onebee-box trang-thai).',
+  '', b.noi_dung || '', '',
+  may.length ? 'Máy trạm:' : 'Chưa có máy trạm nào sao lưu lên Box.', ...dong,
+  quaHan.length ? `\nCẢNH BÁO: ${quaHan.map(m => m.ten).join(', ')} quá hạn — nhắc người dùng bật máy / kiểm tra mạng.` : '',
+].join('\n');
+return [{ json: { subject, text } }];
+{% endset %}
+{
+  "id": "onebeeBaoCaoSL01",
+  "name": "OneBee — Báo cáo sao lưu (email)",
+  "nodes": [
+    {"id": "sl-1", "name": "Box gửi kết quả sao lưu", "type": "n8n-nodes-base.webhook", "typeVersion": 2.1,
+     "position": [0, 0], "webhookId": "0e7c1b2a-0000-4000-8000-000000000001",
+     "parameters": {"httpMethod": "POST", "path": "onebee-bao-cao-sao-luu", "authentication": "headerAuth", "options": {}},
+     "credentials": {"httpHeaderAuth": {"id": "onebeeHook000001", "name": "OneBee — khóa webhook của Box"}}},
+    {"id": "sl-2", "name": "Soạn báo cáo", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [240, 0],
+     "parameters": {"jsCode": {{ js | to_json }}}},
+    {% include 'workflows/_gui-email.json.j2' %}
+  ],
+  "connections": {
+    "Box gửi kết quả sao lưu": {"main": [[{"node": "Soạn báo cáo", "type": "main", "index": 0}]]},
+    "Soạn báo cáo": {"main": [[{"node": "Gửi email", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1", "timezone": "{{ onebee_timezone }}"}
+}

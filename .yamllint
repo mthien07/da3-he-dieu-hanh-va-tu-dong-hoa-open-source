@@ -3,6 +3,8 @@ extends: default
 rules:
   line-length:
     max: 140
+    ignore: |
+      tests/ai/bo-cau-hoi-tieng-viet.yaml
   truthy:
     allowed-values: ["true", "false"]
     check-keys: false

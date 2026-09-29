@@ -15,6 +15,7 @@
     - theme
     - updates
     - backup-client
+    - ai-cli
   handlers:
     # Dùng chung cho role vietnamese (bộ gõ) và theme (hình nền)
     - name: Biên dịch lại gsettings schema

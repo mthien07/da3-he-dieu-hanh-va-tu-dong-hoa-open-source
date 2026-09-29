@@ -38,6 +38,17 @@ services:
     environment:
       OLLAMA_BASE_URL: http://ollama:11434
       WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
+      # Tạo sẵn tài khoản quản trị lúc khởi động lần đầu → tự tắt đăng ký tự do (không còn "ai mở trước thành quản trị")
+      WEBUI_ADMIN_EMAIL: {{ onebee_box_admin_email }}
+      WEBUI_ADMIN_PASSWORD: ${WEBUI_ADMIN_PASSWORD}
+      WEBUI_ADMIN_NAME: Quản trị OneBee
+      ENABLE_SIGNUP: "false"
+      DEFAULT_MODELS: onebee-tro-ly
+      # Khóa API cho lệnh "hoi" trên máy trạm — chỉ gọi được hỏi đáp và danh sách model
+      ENABLE_API_KEYS: "true"
+      USER_PERMISSIONS_FEATURES_API_KEYS: "true"
+      ENABLE_API_KEYS_ENDPOINT_RESTRICTIONS: "true"
+      API_KEYS_ALLOWED_ENDPOINTS: /api/chat/completions,/api/models
       DEFAULT_LOCALE: vi-VN
       ENABLE_OPENAI_API: "false"   # không gọi AI đám mây — dữ liệu ở lại trong LAN
       OFFLINE_MODE: "true"
@@ -62,8 +73,19 @@ services:
       N8N_DIAGNOSTICS_ENABLED: "false"
       N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
       N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      # Địa chỉ n8n in vào đường dẫn biểu mẫu (người dùng trong LAN mở được)
+      WEBHOOK_URL: http://{{ onebee_box_address or ansible_default_ipv4.address | default('127.0.0.1') }}:{{ onebee_box_ports.n8n }}/
+      # Tạo sẵn tài khoản chủ n8n (mật khẩu: onebee-box in-khoa) — không còn "ai mở trước thành chủ"
+      N8N_INSTANCE_OWNER_MANAGED_BY_ENV: "true"
+      N8N_INSTANCE_OWNER_EMAIL: {{ onebee_box_admin_email }}
+      N8N_INSTANCE_OWNER_FIRST_NAME: Quản trị
+      N8N_INSTANCE_OWNER_LAST_NAME: OneBee
+      N8N_INSTANCE_OWNER_PASSWORD_HASH: ${N8N_OWNER_HASH}
     volumes:
       - {{ onebee_box_data }}/n8n:/home/node/.n8n
+      - {{ onebee_box_dir }}/n8n-import:/import:ro
+      - {{ onebee_box_data }}/{{ onebee_box_samba_share }}/don-hang:/home/node/.n8n-files/don-hang
 
   uptime-kuma:
     image: {{ onebee_box_images.uptime_kuma }}

@@ -1,0 +1,8 @@
+---
+# Danh sách quy trình mẫu (tên file mẫu + ID cố định trong n8n)
+onebee_n8n_workflows:
+  - {file: 01-bao-cao-sao-luu, id: onebeeBaoCaoSL01}
+  - {file: 02-nhac-han-bao-cao-thue, id: onebeeNhacHan001}
+  - {file: 03-tom-tat-van-ban, id: onebeeTomTat0001}
+  - {file: 04-nhap-don-hang, id: onebeeDonHang001}
+  - {file: 05-tong-hop-don-hang, id: onebeeTongHopDH1}

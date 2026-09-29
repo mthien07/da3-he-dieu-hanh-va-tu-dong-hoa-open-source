@@ -1,5 +1,5 @@
 ---
-# Sao lưu /home lên OneBee Box hằng ngày. Chỉ bật khi đã có /etc/onebee/sao-luu.env
+# Sao lưu /home lên OneBee Box hằng ngày. Chỉ bật khi đã có /etc/onebee/may-tram.env (RESTIC_*)
 # (lấy từ lệnh 'sudo onebee-box them-may <tên-máy>' trên Box).
 
 - name: Cài restic
@@ -7,7 +7,7 @@
     name: restic
     state: present
 
-- name: Tạo thư mục cấu hình OneBee
+- name: Tạo thư mục cấu hình OneBee (chỉ root vào — chứa mật khẩu sao lưu)
   ansible.builtin.file:
     path: /etc/onebee
     state: directory
@@ -23,14 +23,26 @@
     group: root
     mode: "0750"
 
-- name: Kiểm tra đã có cấu hình sao lưu chưa
+# Bản v0.1 dùng tên sao-luu.env — đổi sang may-tram.env (thêm khóa Trợ lý AI) mà không làm dừng sao lưu
+- name: Kiểm tra file cấu hình tên cũ (v0.1)
   ansible.builtin.stat:
     path: /etc/onebee/sao-luu.env
+  register: onebee_backup_conf_cu
+
+- name: Đổi tên file cấu hình cũ sao-luu.env → may-tram.env
+  ansible.builtin.command: mv -n /etc/onebee/sao-luu.env /etc/onebee/may-tram.env
+  args:
+    creates: /etc/onebee/may-tram.env
+  when: onebee_backup_conf_cu.stat.exists
+
+- name: Kiểm tra đã có cấu hình sao lưu chưa
+  ansible.builtin.stat:
+    path: /etc/onebee/may-tram.env
   register: onebee_backup_conf
 
 - name: Giữ file cấu hình sao lưu kín (chứa mật khẩu)
   ansible.builtin.file:
-    path: /etc/onebee/sao-luu.env
+    path: /etc/onebee/may-tram.env
     owner: root
     group: root
     mode: "0600"
@@ -51,7 +63,7 @@
         Description=OneBee — sao lưu /home lên OneBee Box
         Wants=network-online.target
         After=network-online.target
-        ConditionPathExists=/etc/onebee/sao-luu.env
+        ConditionPathExists=/etc/onebee/may-tram.env
 
         [Service]
         Type=oneshot
@@ -96,5 +108,5 @@
   ansible.builtin.debug:
     msg: >-
       Chưa bật sao lưu: chạy 'sudo onebee-box them-may <tên-máy>' trên OneBee Box,
-      dán kết quả vào /etc/onebee/sao-luu.env rồi chạy lại bộ cài.
+      dán kết quả vào /etc/onebee/may-tram.env rồi chạy lại bộ cài.
   when: not onebee_backup_conf.stat.exists

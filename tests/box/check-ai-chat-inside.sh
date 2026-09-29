@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Kiểm tra chuỗi AI thật trên Box: tải model nhỏ vào Ollama → tạo tài khoản quản trị Open WebUI qua API
-# → hỏi 1 câu tiếng Việt → nhận câu trả lời. Model mặc định chỉ để thử (chưa phải model chọn cho sản phẩm).
+# Kiểm tra Trợ lý AI thật trên Box: model Gemma nạp vào Ollama → đăng nhập tài khoản quản trị tạo sẵn
+# → "Trợ lý OneBee" có lời dặn tiếng Việt → hỏi 1 câu → nhận câu trả lời tiếng Việt; đăng ký tự do đã tắt.
 set -euo pipefail
-MODEL="${ONEBEE_TEST_MODEL:-qwen2.5:0.5b}"
+MODEL="${ONEBEE_TEST_MODEL:-gemma3:1b}"
 API=http://127.0.0.1:3000
+SECRETS=/etc/onebee-box/secrets
 
 # Chỉ trong môi trường test có proxy HTTPS tự ký: cho container Ollama tin CA của proxy
 EXTRA_CA=/usr/local/share/ca-certificates/onebee-test-extra.crt
@@ -13,26 +14,30 @@ if [[ -f "${EXTRA_CA}" ]] && ! docker exec onebee-ollama test -f "${EXTRA_CA}"; 
   docker restart onebee-ollama >/dev/null
 fi
 docker exec onebee-ollama ollama pull "${MODEL}" >/dev/null 2>&1
-echo "PASS  Tải model thử ${MODEL} vào Ollama"
+echo "PASS  Tải model ${MODEL} vào Ollama"
 
-token="$(curl -s -m 30 -X POST "${API}/api/v1/auths/signup" -H 'Content-Type: application/json' \
-  -d '{"name":"Quản trị OneBee","email":"quantri@onebee.lan","password":"KiemThu-OneBee-2026"}' \
-  | python3 -c 'import json,sys; print(json.load(sys.stdin).get("token",""))')"
-[[ -n "${token}" ]] || { echo "FAIL  Tạo tài khoản quản trị Open WebUI"; exit 1; }
-echo "PASS  Tạo tài khoản quản trị đầu tiên trên Open WebUI"
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "${API}/api/v1/auths/signup" -H 'Content-Type: application/json' \
+  -d '{"name":"Người lạ","email":"nguoila@onebee.lan","password":"KhongDuocVao-2026"}')
+[[ "${code}" != 200 ]] || { echo "FAIL  Người lạ vẫn tự đăng ký được (có thể chiếm quyền quản trị)"; exit 1; }
+echo "PASS  Đăng ký tự do đã tắt (người lạ nhận mã ${code})"
 
-if ! curl -s -m 60 "${API}/api/models" -H "Authorization: Bearer ${token}" | grep -q "${MODEL}"; then
-  echo "FAIL  Open WebUI không thấy model"; exit 1
-fi
-echo "PASS  Open WebUI thấy model trong Ollama"
+token="$(curl -s -m 30 -X POST "${API}/api/v1/auths/signin" -H 'Content-Type: application/json' \
+  -d "{\"email\":\"quantri@onebee.lan\",\"password\":\"$(cat ${SECRETS}/webui-admin-password)\"}" \
+  | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("token","") if d.get("role")=="admin" else "")')"
+[[ -n "${token}" ]] || { echo "FAIL  Đăng nhập tài khoản quản trị tạo sẵn"; exit 1; }
+echo "PASS  Tài khoản quản trị tạo sẵn đăng nhập được (mật khẩu trong in-khoa)"
+
+system="$(curl -s -m 30 "${API}/api/v1/models/model?id=onebee-tro-ly" -H "Authorization: Bearer ${token}" \
+  | python3 -c 'import json,sys; print((json.load(sys.stdin).get("params") or {}).get("system",""))')"
+grep -q "Trợ lý OneBee" <<<"${system}" || { echo "FAIL  Chưa có Trợ lý OneBee với lời dặn"; exit 1; }
+echo "PASS  Có \"Trợ lý OneBee\" với lời dặn tiếng Việt"
 
 answer="$(curl -s -m 300 -X POST "${API}/api/chat/completions" -H "Authorization: Bearer ${token}" \
   -H 'Content-Type: application/json' \
-  -d "{\"model\":\"${MODEL}\",\"stream\":false,\"messages\":[{\"role\":\"user\",\"content\":\"Thủ đô của Việt Nam là thành phố nào? Trả lời ngắn.\"}]}" \
+  -d '{"model":"onebee-tro-ly","stream":false,"messages":[{"role":"user","content":"Làm sao để lưu văn bản thành file PDF?"}]}' \
   | python3 -c 'import json,sys; print(json.load(sys.stdin)["choices"][0]["message"]["content"])')"
-echo "Câu trả lời của AI: ${answer}"
-# Chỉ kiểm chuỗi kỹ thuật chạy được (có câu trả lời tiếng Việt). Độ ĐÚNG của câu trả lời phụ thuộc model
-# → chấm ở Phase 3. Model 0.5b dùng để thử từng trả lời sai "TP. Hồ Chí Minh" (28/9/2026).
+echo "Câu trả lời của AI (${MODEL}, 150 ký tự đầu): ${answer:0:150}"
+# Chỉ kiểm chuỗi kỹ thuật chạy được (có câu trả lời tiếng Việt). Chất lượng chấm bằng tests/ai/cham-diem-model.py.
 grep -q "[ạảãàáâậầấẩẫăắằặẳẵêếềệểễôốồộổỗơớờợởỡưứừựửữđ]" <<<"${answer}" \
   || { echo "FAIL  Không có câu trả lời tiếng Việt"; exit 1; }
-echo "PASS  Hỏi đáp tiếng Việt qua Open WebUI → Ollama chạy tại chỗ"
+echo "PASS  Hỏi đáp tiếng Việt qua Trợ lý OneBee → Ollama chạy tại chỗ"

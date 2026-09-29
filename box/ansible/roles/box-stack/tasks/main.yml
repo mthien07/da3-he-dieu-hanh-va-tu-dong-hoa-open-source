@@ -18,6 +18,8 @@
     - {path: "{{ onebee_box_data }}/n8n", owner: "1000", mode: "0700"}  # n8n chạy bằng uid 1000
     - {path: "{{ onebee_box_data }}/uptime-kuma", mode: "0700"}
     - {path: "{{ onebee_box_data }}/restic", mode: "0700"}
+    - {path: "{{ onebee_box_dir }}/n8n-import", owner: "1000", mode: "0700"}
+    - {path: "{{ onebee_box_dir }}/n8n-import/workflows", owner: "1000", mode: "0700"}
 
 - name: Tạo file tài khoản kho sao lưu (rest-server) nếu chưa có
   ansible.builtin.copy:
@@ -27,6 +29,21 @@
     owner: root
     group: root
     mode: "0600"
+
+- name: Sinh mật khẩu chủ n8n (lần đầu)
+  ansible.builtin.set_fact:
+    onebee_n8n_owner_password: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/n8n-owner-password',
+                                   chars=['ascii_letters', 'digits'], length=24) }}"
+  no_log: true
+
+- name: Băm mật khẩu chủ n8n bằng bcrypt (lưu 1 lần để .env không đổi mỗi lần chạy)
+  ansible.builtin.shell: >-
+    set -o pipefail;
+    htpasswd -niBC 10 onebee < {{ onebee_box_secrets }}/n8n-owner-password | cut -d: -f2 | tr -d '\n'
+    > {{ onebee_box_secrets }}/n8n-owner-hash && chmod 600 {{ onebee_box_secrets }}/n8n-owner-hash
+  args:
+    creates: "{{ onebee_box_secrets }}/n8n-owner-hash"
+    executable: /bin/bash
 
 - name: Sinh file .env chứa khóa bí mật
   ansible.builtin.template:
@@ -89,15 +106,3 @@
     - "{{ onebee_box_ports.open_webui }}"
     - "{{ onebee_box_ports.n8n }}"
     - "{{ onebee_box_ports.uptime_kuma }}"
-
-- name: Kiểm tra model AI đã tải
-  ansible.builtin.command: docker exec onebee-ollama ollama list
-  register: onebee_ollama_list
-  changed_when: false
-  when: onebee_box_ai_models | length > 0
-
-- name: Tải model AI
-  ansible.builtin.command: "docker exec onebee-ollama ollama pull {{ item }}"
-  loop: "{{ onebee_box_ai_models }}"
-  when: item not in onebee_ollama_list.stdout
-  changed_when: true

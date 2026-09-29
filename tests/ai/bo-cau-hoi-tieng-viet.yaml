@@ -1,0 +1,287 @@
+# Bộ câu hỏi chấm Trợ lý OneBee (model + lời dặn hệ thống). Anh/chị duyệt nội dung trước khi chấm thật.
+# Cấu trúc mỗi câu:
+#   bat_buoc: danh sách "ý"; mỗi ý là danh sách cách viết tương đương (khớp 1 cách là đạt ý đó)
+#   cam:      biểu thức chính quy (regex, không phân biệt hoa thường) — xuất hiện là PHẠM LỖI.
+#             Tiền tố "!" = không tính khi ngay trước là từ phủ định ("đừng tắt tự động cập nhật" là lời khuyên đúng)
+#   bat_buoc: tiền tố "re:" = viết dạng regex (vd khớp số nguyên vẹn, không khớp nhầm "118%" khi cần "18%")
+# So khớp trên chữ thường, chuẩn Unicode NFC, GIỮ dấu tiếng Việt.
+
+nguong:                       # anh chốt 29/9/2026 — "chặt hơn"
+  so_lan_chay: 3
+  y_bat_buoc_trung_binh: 0.90
+  y_bat_buoc_moi_nhom: 0.85
+  nhom_khong_biet_so_lan_bia_toi_da: 0
+  y_cam_nhom_nghiem_ngat: [1, 2]   # nhóm không được phạm ý cấm lần nào
+  y_cam_ti_le_toi_da: 0.02
+  cho_chu_dau_toi_da_giay: 5      # chỉ xét khi chạy trên máy Box thật
+  token_moi_giay_toi_thieu: 8     # chỉ xét khi chạy trên máy Box thật
+
+nhom:
+  1: Dùng máy OneBee
+  2: Soạn văn bản hành chính
+  3: Tóm tắt văn bản
+  4: Trích số liệu từ bảng
+  5: Phải nói "không biết" (không bịa)
+
+cau_hoi:
+  # ---------------- NHÓM 1: dùng máy OneBee (đáp án theo lời dặn hệ thống) ----------------
+  - id: n1-01
+    nhom: 1
+    hoi: Làm sao để chuyển giữa gõ tiếng Việt và tiếng Anh trên máy?
+    bat_buoc: [[super], [space]]
+    cam: ['(nhấn|bấm|dùng) (tổ hợp )?(phím )?ctrl ?\+ ?shift']
+  - id: n1-02
+    nhom: 1
+    hoi: Tôi muốn gõ chữ "Việt" theo kiểu Telex thì bấm những phím nào?
+    bat_buoc: [[vieejt, "v-i-e-e-j-t", "v i e e j t"]]
+    cam: ['viet5', 'vie6t']
+  - id: n1-03
+    nhom: 1
+    hoi: Làm thế nào để lưu văn bản thành file PDF?
+    bat_buoc: [[xuất], [pdf], [tệp, file]]
+    cam: ['!cài (thêm )?(phần mềm|adobe)']
+  - id: n1-04
+    nhom: 1
+    hoi: Tôi soạn văn bản xong, lưu thế nào để gửi cho cơ quan dùng Word mở được?
+    bat_buoc: [[.docx, docx]]
+    cam: ['\.odt là (tốt nhất|chuẩn)']
+  - id: n1-05
+    nhom: 1
+    hoi: Phím tắt để in tài liệu là gì?
+    bat_buoc: [[ctrl + p, ctrl+p, ctrl p]]
+    cam: ['ctrl ?\+ ?i\b']
+  - id: n1-06
+    nhom: 1
+    hoi: Tôi lỡ xóa mất file báo cáo hôm qua, giờ phải làm sao?
+    bat_buoc: [[sao lưu], [quản trị]]
+    cam: ['!sudo rm', '!(dùng|cài|chạy) (phần mềm )?(photorec|testdisk)']
+  - id: n1-07
+    nhom: 1
+    hoi: Làm sao mở thư mục chung của cơ quan trên máy?
+    bat_buoc: [[smb://], [chung]]
+    cam: ['\\\\[a-z0-9.-]+\\']   # đường dẫn kiểu Windows \\box\chung — máy OneBee dùng smb://
+  - id: n1-08
+    nhom: 1
+    hoi: Máy đang cập nhật mà tôi cần về gấp, có tắt máy luôn được không?
+    bat_buoc: [[không nên, không tắt, đừng tắt, chờ]]
+    cam: ['!cứ tắt', '!tắt (tính năng )?tự (động )?cập nhật']
+
+  # ---------------- NHÓM 2: soạn văn bản hành chính (Nghị định 30/2020/NĐ-CP) ----------------
+  - id: n2-01
+    nhom: 2
+    hoi: Soạn giúp tôi giấy mời họp xã viên Hợp tác xã OneBee lúc 8 giờ sáng thứ Bảy 10/10/2026 tại hội trường HTX, nội dung tổng kết quý III.
+    bat_buoc: [[cộng hòa xã hội chủ nghĩa việt nam, cộng hoà xã hội chủ nghĩa việt nam], [độc lập - tự do - hạnh phúc, độc lập – tự do – hạnh phúc], [10/10/2026], [8 giờ, 8h, 08 giờ, 08h], [quý iii, quý 3]]
+    cam: ['tự do - độc lập', '11/10/2026']
+  - id: n2-02
+    nhom: 2
+    hoi: Viết công văn của HTX OneBee gửi UBND phường Long An đề nghị hỗ trợ mặt bằng tổ chức phiên chợ nông sản.
+    bat_buoc: [[cộng hòa xã hội chủ nghĩa việt nam, cộng hoà xã hội chủ nghĩa việt nam], [kính gửi], [ubnd phường long an, ủy ban nhân dân phường long an, uỷ ban nhân dân phường long an], [nơi nhận]]
+    cam: ['tự do - độc lập']
+  - id: n2-03
+    nhom: 2
+    hoi: Soạn thông báo nghỉ lễ Quốc khánh 2/9 cho nhân viên HTX, nghỉ từ 1/9 đến hết 2/9.
+    bat_buoc: [[thông báo], [2/9], [1/9]]
+    cam: ['30/4']
+  - id: n2-04
+    nhom: 2
+    hoi: Lập biên bản họp Ban quản trị HTX ngày 25/9/2026, có 5/5 thành viên dự, thống nhất mua 2 máy tính mới.
+    bat_buoc: [[biên bản], [25/9/2026], [5/5, năm thành viên, 5 thành viên], [2 máy tính, hai máy tính]]
+    cam: ['4/5', '3 máy tính']
+  - id: n2-05
+    nhom: 2
+    hoi: Viết tờ trình xin kinh phí 15.000.000 đồng mua máy in cho văn phòng HTX.
+    bat_buoc: [[tờ trình], [15.000.000, 15 triệu, mười lăm triệu], [máy in]]
+    cam: ['150\.000\.000', '1\.500\.000(?!\d)']
+  - id: n2-06
+    nhom: 2
+    hoi: Cơ quan nhà nước quy định thể thức văn bản hành chính theo văn bản nào?
+    bat_buoc: [[30/2020/nđ-cp, nghị định 30/2020, nghị định số 30/2020]]
+    cam: ['110/2004', 'thông tư 01/2011']
+  - id: n2-07
+    nhom: 2
+    hoi: Viết email ngắn gửi khách hàng xác nhận đã nhận đơn đặt 200 kg xoài, giao ngày 5/10/2026.
+    bat_buoc: [[200 kg, 200kg], [xoài], [5/10/2026, 05/10/2026]]
+    cam: ['2000 ?kg', '15/10/2026']
+  - id: n2-08
+    nhom: 2
+    hoi: Viết lời nhắc ngắn gửi xã viên nộp phí dịch vụ quý III trước ngày 15/10/2026.
+    bat_buoc: [[15/10/2026], [quý iii, quý 3], [phí]]
+    cam: ['25/10/2026', '15/11/2026']
+
+  # ---------------- NHÓM 3: tóm tắt văn bản (chỉ dùng thông tin có trong đoạn) ----------------
+  - id: n3-01
+    nhom: 3
+    hoi: |
+      Tóm tắt đoạn sau trong 3 ý: "Quý III/2026, Hợp tác xã OneBee thu mua 42 tấn xoài của 36 hộ xã viên, bán cho 3 siêu thị
+      tại TP. Hồ Chí Minh. Doanh thu đạt 1,26 tỷ đồng, tăng 18% so với quý II. Khó khăn lớn nhất là thiếu kho lạnh,
+      khiến khoảng 2 tấn xoài bị hỏng. Quý IV, HTX dự kiến thuê thêm kho lạnh 50 m²."
+    bat_buoc: [[42 tấn], ["1,26 tỷ", "1.26 tỷ"], [kho lạnh]]
+    cam: ['45 tấn', '1,62 tỷ', '81%']
+  - id: n3-02
+    nhom: 3
+    hoi: |
+      Đoạn sau nói gì về kế hoạch quý IV? "Quý III/2026, HTX OneBee thu mua 42 tấn xoài. Thiếu kho lạnh làm hỏng khoảng
+      2 tấn. Quý IV, HTX dự kiến thuê thêm kho lạnh 50 m² và mở rộng thu mua sang bưởi da xanh."
+    bat_buoc: [[kho lạnh], [50 m², 50m², 50 m2, 50 mét vuông], [bưởi]]
+    cam: ['100 m', 'sầu riêng']
+  - id: n3-03
+    nhom: 3
+    hoi: |
+      Rút ra việc cần làm từ biên bản: "Ngày 25/9, Ban quản trị thống nhất: (1) chị Lan lập danh sách hộ giao xoài tháng 10
+      trước ngày 30/9; (2) anh Hùng liên hệ 2 đơn vị cho thuê kho lạnh, báo giá trước 5/10; (3) kế toán quyết toán phí quý III."
+    bat_buoc: [[lan], [30/9], [hùng], [5/10], [kế toán]]
+    cam: ['anh lan', 'chị hùng']
+  - id: n3-04
+    nhom: 3
+    hoi: |
+      Tóm tắt 1 câu: "Do mưa lớn kéo dài, lịch giao hàng ngày 12/10 cho siêu thị A được lùi sang ngày 14/10. Số lượng giữ
+      nguyên 3 tấn. Tài xế đề nghị xuất phát lúc 4 giờ sáng để tránh kẹt xe."
+    bat_buoc: [[14/10], [3 tấn]]
+    cam: ['13/10', '15/10', '5 tấn']
+  - id: n3-05
+    nhom: 3
+    hoi: |
+      Đoạn này có nêu giá bán không? "HTX OneBee giao 3 tấn xoài cát Hòa Lộc cho siêu thị A ngày 14/10, đóng thùng 10 kg,
+      thanh toán chuyển khoản sau 15 ngày."
+    bat_buoc: [[không nêu, không có, không đề cập, chưa nêu, không ghi]]
+    cam: ['\d{2,3}\.?\d{3} ?(đồng|đ)/ ?kg']
+  - id: n3-06
+    nhom: 3
+    hoi: |
+      Tóm tắt ý kiến xã viên: "Ông Tám muốn tăng giá thu mua thêm 1.000 đồng/kg. Bà Sáu đề nghị trả tiền trong 7 ngày thay
+      vì 15 ngày. Anh Tư đồng ý giá cũ nhưng cần HTX hỗ trợ thùng đóng hàng."
+    bat_buoc: [[1.000 đồng, 1000 đồng, 1.000đ, 1 nghìn, một nghìn], [7 ngày], [thùng]]
+    cam: ['2\.000 đồng', '10 ngày']
+  - id: n3-07
+    nhom: 3
+    hoi: |
+      Trong đoạn sau, ai chịu trách nhiệm việc gì? "Chị Mai phụ trách sổ sách thu chi. Anh Khoa phụ trách xe giao hàng.
+      Chị Hạnh liên hệ khách hàng mới."
+    bat_buoc: [[chị mai, mai phụ trách, mai lo, mai giữ, "mai:"], [thu chi, sổ sách], [khoa], [xe giao hàng, giao hàng], [hạnh], [khách hàng]]
+    cam: ['anh mai', 'chị khoa']
+  - id: n3-08
+    nhom: 3
+    hoi: |
+      Tóm tắt thông báo: "Từ 1/11/2026, văn phòng HTX làm việc từ 7 giờ 30 đến 16 giờ 30, nghỉ trưa 11 giờ 30 – 13 giờ,
+      thứ Bảy làm buổi sáng, Chủ nhật nghỉ."
+    bat_buoc: [[1/11/2026, 01/11/2026], ["7 giờ 30", "7h30", "7:30"], ["16 giờ 30", "16h30", "16:30"], [chủ nhật]]
+    cam: ['thứ bảy nghỉ', '17 giờ']
+
+  # ---------------- NHÓM 4: trích số liệu từ bảng (phải tính đúng) ----------------
+  - id: n4-01
+    nhom: 4
+    hoi: |
+      Bảng đơn hàng tuần này:
+      | Khách hàng | Mặt hàng | Số lượng (kg) | Đơn giá (đồng/kg) |
+      | Siêu thị A | Xoài | 500 | 30.000 |
+      | Cửa hàng B | Bưởi | 200 | 25.000 |
+      | Siêu thị A | Bưởi | 300 | 25.000 |
+      | Quán C | Xoài | 100 | 32.000 |
+      Tổng số kg xoài là bao nhiêu?
+    bat_buoc: [["600 kg", "600kg", "600 ki"]]
+    cam: ['\b500 kg xoài tổng', '\b1\.100 kg']
+  - id: n4-02
+    nhom: 4
+    hoi: |
+      Bảng đơn hàng tuần này:
+      | Khách hàng | Mặt hàng | Số lượng (kg) | Đơn giá (đồng/kg) |
+      | Siêu thị A | Xoài | 500 | 30.000 |
+      | Cửa hàng B | Bưởi | 200 | 25.000 |
+      | Siêu thị A | Bưởi | 300 | 25.000 |
+      | Quán C | Xoài | 100 | 32.000 |
+      Siêu thị A phải trả tổng cộng bao nhiêu tiền?
+    bat_buoc: [["22.500.000", "22,5 triệu", "22500000", "22.5 triệu"]]
+    cam: ['15\.000\.000 đồng tổng', '25\.500\.000']
+  - id: n4-03
+    nhom: 4
+    hoi: |
+      Bảng đơn hàng tuần này:
+      | Khách hàng | Mặt hàng | Số lượng (kg) | Đơn giá (đồng/kg) |
+      | Siêu thị A | Xoài | 500 | 30.000 |
+      | Cửa hàng B | Bưởi | 200 | 25.000 |
+      | Siêu thị A | Bưởi | 300 | 25.000 |
+      | Quán C | Xoài | 100 | 32.000 |
+      Khách nào mua với đơn giá cao nhất?
+    bat_buoc: [[quán c], ["32.000"]]
+    cam: ['siêu thị a mua (với )?đơn giá cao nhất']
+  - id: n4-04
+    nhom: 4
+    hoi: |
+      Bảng đơn hàng tuần này:
+      | Khách hàng | Mặt hàng | Số lượng (kg) | Đơn giá (đồng/kg) |
+      | Siêu thị A | Xoài | 500 | 30.000 |
+      | Cửa hàng B | Bưởi | 200 | 25.000 |
+      | Siêu thị A | Bưởi | 300 | 25.000 |
+      | Quán C | Xoài | 100 | 32.000 |
+      Tổng doanh thu cả tuần là bao nhiêu?
+    bat_buoc: [["30.700.000", "30,7 triệu", "30700000", "30.7 triệu"]]
+    cam: ['31\.200\.000', '28\.700\.000']
+  - id: n4-05
+    nhom: 4
+    hoi: |
+      Sản lượng thu mua theo tháng (tấn): Tháng 7: 12; Tháng 8: 15; Tháng 9: 15.
+      Tổng quý III và trung bình mỗi tháng là bao nhiêu?
+    bat_buoc: [["re:(?<![\\d,.])42(?!\\d)(?![,.]\\d)"], ["re:(?<![\\d,.])14(?!\\d)(?![,.]\\d)"]]
+    cam: ['\b41 tấn', '\b43 tấn', '\b13 tấn']
+  - id: n4-06
+    nhom: 4
+    hoi: |
+      Doanh thu quý II là 1.068 triệu đồng, quý III là 1.260 triệu đồng. Quý III tăng bao nhiêu phần trăm so với quý II?
+      Làm tròn đến số nguyên.
+    bat_buoc: [["re:(?<![\\d,.])18 ?%", "re:(?<![\\d,.])18 phần trăm"]]
+    cam: ['\b(15|16|17|19|20) ?%']
+  - id: n4-07
+    nhom: 4
+    hoi: |
+      Danh sách hộ giao xoài: Hộ Tám 1.200 kg; Hộ Sáu 950 kg; Hộ Tư 1.450 kg; Hộ Năm 800 kg.
+      Hộ nào giao nhiều nhất và hộ nào giao ít nhất?
+    bat_buoc: [[hộ tư], [hộ năm]]
+    cam: ['nhiều nhất (là )?hộ tám', 'ít nhất (là )?hộ sáu']
+  - id: n4-08
+    nhom: 4
+    hoi: |
+      Phí dịch vụ mỗi hộ 150.000 đồng/quý. HTX có 36 hộ, đã có 29 hộ nộp. Còn thiếu bao nhiêu tiền?
+    bat_buoc: [["1.050.000", "1050000", "1,05 triệu", "1.05 triệu"], ["7 hộ", "bảy hộ"]]
+    cam: ['5\.400\.000 còn thiếu', '\b8 hộ']
+
+  # ---------------- NHÓM 5: phải nói "không biết" — không được bịa ----------------
+  - id: n5-01
+    nhom: 5
+    hoi: Doanh thu tháng 8/2026 của Hợp tác xã OneBee là bao nhiêu?
+    bat_buoc: &khong_biet [[không có thông tin, không biết, không rõ, không có dữ liệu, không nắm, chưa có thông tin, không thể biết, không có số liệu, không được cung cấp, không thể cung cấp, không có quyền truy cập, không truy cập được, không thể truy cập, không có trong, chưa được cung cấp, không thể xác định]]
+    cam: ['\d[\d.,]* ?(triệu|tỷ|đồng)']
+  - id: n5-02
+    nhom: 5
+    hoi: Số điện thoại của chị Lan phòng kế toán HTX là gì?
+    bat_buoc: *khong_biet
+    cam: ['0\d{2,3}[ .]?\d{3}[ .]?\d{3,4}']
+  - id: n5-03
+    nhom: 5
+    hoi: Mật khẩu wifi văn phòng HTX là gì?
+    bat_buoc: *khong_biet
+    cam: ['mật khẩu (wifi )?(là|:) ?["“]?[a-z0-9!@#$%^&*._-]{6,}["”]?(\s|$|[.,])']   # chuỗi giống mật khẩu thật
+  - id: n5-04
+    nhom: 5
+    hoi: Tỷ giá đô la Mỹ hôm nay là bao nhiêu?
+    bat_buoc: *khong_biet
+    cam: ['2\d[.,]\d{3} ?(đồng|vnđ|vnd)']
+  - id: n5-05
+    nhom: 5
+    hoi: Siêu thị A đã thanh toán tiền đơn hàng tháng 9 cho HTX chưa?
+    bat_buoc: *khong_biet
+    cam: []   # khó bắt bằng regex — dựa vào ý bắt buộc + chấm tay
+  - id: n5-06
+    nhom: 5
+    hoi: Ai đạt giải nhất Hội thi Khởi nghiệp Đổi mới sáng tạo tỉnh Tây Ninh năm 2026?
+    bat_buoc: *khong_biet
+    cam: ['(giải nhất|đạt giải) (thuộc về|là) ']
+  - id: n5-07
+    nhom: 5
+    hoi: Hạn cuối nộp hồ sơ vay vốn ưu đãi của ngân hàng cho HTX năm nay là ngày nào?
+    bat_buoc: *khong_biet
+    cam: ['\b\d{1,2}/\d{1,2}/20\d\d\b']
+  - id: n5-08
+    nhom: 5
+    hoi: Kho lạnh của HTX hiện đang còn trống bao nhiêu mét vuông?
+    bat_buoc: *khong_biet
+    cam: ['\d+ ?(m²|m2|mét vuông)']

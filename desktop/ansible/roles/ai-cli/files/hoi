@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""hoi — hỏi Trợ lý OneBee (AI chạy trên OneBee Box trong mạng nội bộ) ngay từ cửa sổ dòng lệnh.
+
+Cách dùng:
+  hoi cách xuất file PDF
+  hoi "tóm tắt đoạn này" < van-ban.txt      (nội dung đưa vào qua dấu < được gửi kèm câu hỏi)
+Cấu hình: /etc/onebee-hoi.conf (do bộ cài OneBee OS tạo). Câu hỏi không gửi ra Internet.
+"""
+import json
+import os
+import select
+import stat
+import sys
+import urllib.error
+import urllib.request
+
+CONF = "/etc/onebee-hoi.conf"
+NOTE = "(Trợ lý AI có thể sai — kiểm tra lại số liệu, thông tin quan trọng.)"
+
+
+def read_conf():
+    conf = {}
+    try:
+        with open(CONF, encoding="utf-8") as f:
+            for line in f:
+                if "=" in line and not line.lstrip().startswith("#"):
+                    k, v = line.strip().split("=", 1)
+                    conf[k] = v
+    except OSError:
+        sys.exit(f"Chưa cấu hình Trợ lý AI ({CONF}). Báo người quản trị OneBee.")
+    for k in ("HOI_URL", "HOI_API_KEY"):
+        if not conf.get(k):
+            sys.exit(f"Thiếu {k} trong {CONF}. Báo người quản trị OneBee.")
+    return conf
+
+
+def read_piped_input():
+    """Đọc nội dung đưa vào qua dấu < hoặc | . Không chờ mãi khi chạy từ script/ssh mà không có gì đưa vào."""
+    if sys.stdin is None or sys.stdin.isatty():
+        return ""
+    mode = os.fstat(sys.stdin.fileno()).st_mode
+    if stat.S_ISREG(mode):
+        return sys.stdin.read().strip()
+    if stat.S_ISFIFO(mode) and select.select([sys.stdin], [], [], 2.0)[0]:
+        return sys.stdin.read().strip()
+    return ""
+
+
+def main():
+    question = " ".join(sys.argv[1:]).strip()
+    extra = read_piped_input()
+    if extra:
+        question = f"{question}\n\n{extra}" if question else extra
+    if not question or question in ("-h", "--help"):
+        print(__doc__)
+        return 0 if question else 1
+    conf = read_conf()
+    body = {"model": conf.get("HOI_MODEL", "onebee-tro-ly"), "stream": False,
+            "messages": [{"role": "user", "content": question}]}
+    req = urllib.request.Request(conf["HOI_URL"].rstrip("/") + "/api/chat/completions",
+                                 data=json.dumps(body).encode("utf-8"),
+                                 headers={"Content-Type": "application/json",
+                                          "Authorization": f"Bearer {conf['HOI_API_KEY']}"})
+    print("Đang hỏi Trợ lý OneBee...", file=sys.stderr, flush=True)
+    try:
+        with urllib.request.urlopen(req, timeout=300) as r:
+            answer = json.load(r)["choices"][0]["message"]["content"].strip()
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            sys.exit("Khóa Trợ lý AI của máy này không hợp lệ hoặc đã bị thu hồi. Báo người quản trị OneBee.")
+        sys.exit(f"OneBee Box báo lỗi {e.code}. Thử lại sau hoặc báo người quản trị.")
+    except (urllib.error.URLError, TimeoutError, OSError):
+        sys.exit("Không kết nối được OneBee Box. Kiểm tra mạng nội bộ hoặc báo người quản trị.")
+    except (KeyError, IndexError, ValueError):
+        sys.exit("OneBee Box trả về dữ liệu không đọc được. Báo người quản trị.")
+    print(answer)
+    print(f"\n{NOTE}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

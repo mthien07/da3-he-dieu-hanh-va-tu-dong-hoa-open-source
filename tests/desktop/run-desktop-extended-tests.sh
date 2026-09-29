@@ -48,6 +48,9 @@ scenario_guards() {
 scenario_mint() {
   docker run "${docker_opts[@]}" "${MINT_IMAGE}" bash -c "${PREP}; ${MINT_DESKTOP_PARTS}"'
     printf "LANG=en_US.UTF-8\nLC_TIME=en_GB.UTF-8\n" > /etc/default/locale
+    # Máy trạm nâng cấp từ v0.1: file cấu hình sao lưu tên cũ, quyền lỏng
+    mkdir -p /etc/onebee && chmod 755 /etc/onebee
+    printf "RESTIC_REPOSITORY=rest:http://may:mk@127.0.0.1:1/may/\nRESTIC_PASSWORD=thu\n" > /etc/onebee/sao-luu.env
     # Giữ khóa dpkg 40 giây như lúc máy mới cài đang tự cập nhật ngầm (khóa fcntl giống apt)
     python3 -c "import fcntl,time; f=open(\"/var/lib/dpkg/lock-frontend\",\"w\"); fcntl.lockf(f,fcntl.LOCK_EX); time.sleep(40)" &
     sleep 1; start=$(date +%s)
@@ -55,6 +58,11 @@ scenario_mint() {
     echo "PASS  Chờ khóa dpkg rồi cài thành công ($(( $(date +%s) - start ))s)"
     grep -q "^LC_TIME=en_GB.UTF-8$" /etc/default/locale && grep -q "^LANG=vi_VN.UTF-8$" /etc/default/locale \
       && echo "PASS  Đổi LANG, giữ nguyên LC_TIME sẵn có" || { echo "FAIL  /etc/default/locale"; exit 1; }
+    [ ! -e /etc/onebee/sao-luu.env ] && [ "$(stat -c %a /etc/onebee/may-tram.env)" = 600 ] \
+      && [ "$(stat -c %a /etc/onebee)" = 700 ] && [ -e /etc/systemd/system/timers.target.wants/onebee-sao-luu.timer ] \
+      && [ ! -e /etc/onebee-hoi.conf ] \
+      && echo "PASS  Nâng cấp từ v0.1: sao-luu.env → may-tram.env (600), vẫn bật lịch sao lưu; chưa có khóa AI thì không tạo cấu hình hoi" \
+      || { echo "FAIL  Chuyển cấu hình sao lưu v0.1"; ls -la /etc/onebee /etc/onebee-hoi.conf; exit 1; }
     /tmp/onebee/desktop/onebee-install.sh >/tmp/run2.log 2>&1
     grep -Eq "changed=0 .*failed=0" /tmp/run2.log && echo "PASS  Chạy lần 2 không thay đổi gì" || { echo "FAIL  idempotent"; exit 1; }
     # Làm lệch cấu hình rồi chạy lại: bộ cài phải tự sửa

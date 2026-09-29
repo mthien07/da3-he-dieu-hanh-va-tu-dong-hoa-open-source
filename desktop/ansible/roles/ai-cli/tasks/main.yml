@@ -1,0 +1,50 @@
+---
+# Lệnh "hoi": hỏi Trợ lý OneBee trên Box. Khóa lấy từ /etc/onebee/may-tram.env (lệnh 'onebee-box them-may' trên Box).
+# /etc/onebee (chứa mật khẩu sao lưu) chỉ root vào được → cấu hình hoi để riêng ở /etc/onebee-hoi.conf cho mọi người đọc.
+
+- name: Cài lệnh hoi
+  ansible.builtin.copy:
+    src: hoi
+    dest: /usr/local/bin/hoi
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Kiểm tra đã có cấu hình máy trạm từ Box chưa
+  ansible.builtin.stat:
+    path: /etc/onebee/may-tram.env
+  register: onebee_hoi_src
+
+- name: Đọc cấu hình máy trạm
+  ansible.builtin.slurp:
+    src: /etc/onebee/may-tram.env
+  register: onebee_hoi_env
+  when: onebee_hoi_src.stat.exists
+  no_log: true
+
+- name: Lấy địa chỉ + khóa Trợ lý AI
+  ansible.builtin.set_fact:
+    onebee_hoi_url: "{{ (onebee_hoi_env.content | b64decode | regex_search('(?m)^HOI_URL=(.*)$', '\\1') or ['']) | first | trim }}"
+    onebee_hoi_key: "{{ (onebee_hoi_env.content | b64decode | regex_search('(?m)^HOI_API_KEY=(.*)$', '\\1') or ['']) | first | trim }}"
+  when: onebee_hoi_src.stat.exists
+  no_log: true
+
+- name: Tạo cấu hình lệnh hoi (người dùng trên máy đọc được — khóa chỉ gọi được hỏi đáp)
+  ansible.builtin.copy:
+    dest: /etc/onebee-hoi.conf
+    content: |
+      # Quản lý bởi OneBee OS
+      HOI_URL={{ onebee_hoi_url }}
+      HOI_API_KEY={{ onebee_hoi_key }}
+      HOI_MODEL=onebee-tro-ly
+    owner: root
+    group: root
+    mode: "0644"
+  when: onebee_hoi_src.stat.exists and onebee_hoi_url and onebee_hoi_key
+  no_log: true
+
+- name: Gỡ cấu hình hoi cũ khi máy không còn khóa Trợ lý AI
+  ansible.builtin.file:
+    path: /etc/onebee-hoi.conf
+    state: absent
+  when: not (onebee_hoi_src.stat.exists and onebee_hoi_url | default('') and onebee_hoi_key | default(''))

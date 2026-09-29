@@ -30,3 +30,13 @@ box_ip() {
 }
 
 compose() { docker compose --project-directory "${BOX_DIR}" "$@"; }
+
+# Gọi công cụ quản lý Open WebUI (tạo Trợ lý OneBee, cấp khóa API cho máy trạm)
+webui() {
+  WEBUI_URL="http://127.0.0.1:{{ onebee_box_ports.open_webui }}" WEBUI_ADMIN_EMAIL={{ onebee_box_admin_email | quote }} \
+  WEBUI_ADMIN_PASSWORD="$(cat "${SECRETS}/webui-admin-password")" ONEBEE_AI_MODEL="{{ onebee_box_ai_model }}" \
+  ONEBEE_LOI_DAN=/usr/local/lib/onebee-box/tro-ly-onebee-loi-dan.md ONEBEE_SECRETS="${SECRETS}" \
+    python3 /usr/local/lib/onebee-box/onebee-webui.py "$@"
+}
+AI_PORT="{{ onebee_box_ports.open_webui }}"
+N8N_PORT="{{ onebee_box_ports.n8n }}"
