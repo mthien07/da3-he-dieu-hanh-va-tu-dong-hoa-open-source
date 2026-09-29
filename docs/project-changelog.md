@@ -16,8 +16,9 @@
 - Phiên bản ghi trong `/etc/onebee-release` và Box: 0.4.0 (trước đó vẫn ghi 0.1.0).
 - Hướng dẫn cài Box: bỏ mục "ai mở trước thành quản trị" cho Trợ lý AI/n8n (đã tạo sẵn từ 0.3.0).
 ### Kiểm thử (29/9, container)
-- KẾT_QUẢ_BOX
-- Desktop kịch bản mint: cài 2 lần + tự sửa + văn phòng + gõ Telex + hỗ trợ từ xa (6 mục) + bộ đo: ĐẠT.
+- Box: 67 mục ĐẠT (thêm 8 mục quản lý tập trung: SSH chỉ nhận khóa Box từ IP Box, báo tình trạng, chặn khóa sai/tên bậy,
+  `may-tram` nêu máy cần xử lý, cảnh báo cần khởi động lại, cập nhật qua SSH 30 giây, email nêu máy cần xử lý).
+- Desktop mở rộng: 5 kịch bản, 79 mục ĐẠT (có hỗ trợ từ xa 6 mục, bộ đo trước/sau).
 - Chưa thử trên máy thật (cài 3 máy, SSH bật kiểu socket, Tailscale, đo trước/sau).
 
 ## [0.3.0] — 29/9/2026 — Trợ lý AI Gemma + quy trình n8n qua email

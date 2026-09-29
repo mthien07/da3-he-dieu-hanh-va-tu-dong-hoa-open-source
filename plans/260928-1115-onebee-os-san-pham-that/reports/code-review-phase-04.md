@@ -118,3 +118,20 @@ thì trả `""` và thêm ghi chú "ứng dụng đang mở — không đo".
   sshd; `visudo -cf` validate; `sudoers` 0440; `sshd_config.d/10-*` đứng trước `50-cloud-init.conf` nên được ưu tiên.
 - Mảng bash rỗng `"${may[@]}"` dưới `set -u` không lỗi (bash 5.2); `PIPESTATUS[0]` lấy trong `set +e`.
 - Parser cấu hình mới (regex Ansible, Python) chịu được CRLF và dòng trùng (dòng sau thắng).
+
+
+## Đã xử lý (29/9)
+| # | Việc | Cách xử lý |
+|---|---|---|
+| 1 | `{#` trong template Jinja | Đổi sang `[[ -n "${ten[*]:-}" ]]`; đã parse lại toàn bộ `*.j2` |
+| 2 | Dòng khóa SSH làm hỏng `onebee-sao-luu` | `onebee-sao-luu` chỉ nạp dòng `RESTIC_` (bỏ `\r`); `them-may` đặt khóa trong ngoặc kép; Ansible bỏ ngoặc khi đọc |
+| 3 | IP cũ/giả → cập nhật nhầm máy | `kho` chỉ lấy báo cáo ≤ 2 giờ; playbook kiểm `MAY_TRAM` đúng tên trước khi làm; `them-may` không còn xóa known_hosts |
+| 4 | Khóa SSH Box không có trong bản sao lưu | Chuyển vào `/etc/onebee-box/secrets/ssh` (đã được sao lưu) |
+| 5 | `sshd -t` thiếu `/run/sshd` | Tạo `/run/sshd` trước khi kiểm |
+| 6 | Không có keepalive | Thêm `ServerAliveInterval=30`, `ServerAliveCountMax=6` |
+| 7 | Tạo nhiều file tình trạng | Ghi nhận rủi ro trong ADR 0004 (tên giới hạn, báo cáo bỏ qua tên chưa cấp) |
+| 8 | Bỏ qua SSH không báo | Thêm thông báo khi `QUAN_TRI_SSH_KEY`/`BOX_IP` sai dạng |
+| 9 | Ứng dụng đang mở → đo ~0 giây | Bỏ trống số đo nếu cửa sổ đã có sẵn |
+| 10 | Lỗi đọc kho = "chưa từng sao lưu" | Tách "không đọc được kho"; thêm cảnh báo bản sao lưu ghi ngày tương lai (lúc test phát hiện) |
+
+Kiểm lại: test Box 67 mục ĐẠT, desktop mở rộng 79 mục ĐẠT, unit test 8/8.
