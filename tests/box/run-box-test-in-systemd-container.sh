@@ -103,7 +103,8 @@ docker exec "${CLIENT}" bash -euo pipefail -c '
   [ "$(stat -c %a /etc/onebee-hoi.conf)" = 644 ] || { echo "FAIL  Chưa tạo /etc/onebee-hoi.conf"; exit 1; }
   [ "$(stat -c %a /etc/onebee)" = 700 ] || { echo "FAIL  /etc/onebee (mật khẩu sao lưu) không còn chỉ root vào"; exit 1; }
   useradd -m nhanvien
-  ans=$(su - nhanvien -c "hoi Làm sao để lưu văn bản thành file PDF?" 2>/dev/null)
+  ans=$(su - nhanvien -c "hoi Làm sao để lưu văn bản thành file PDF?" 2>/tmp/hoi.err) \
+    || { echo "FAIL  Lệnh hoi lỗi: $(cat /tmp/hoi.err)"; exit 1; }
   [ -n "${ans}" ] || { echo "FAIL  Lệnh hoi không có câu trả lời"; exit 1; }
   echo "PASS  Nhân viên trên máy trạm hỏi Trợ lý bằng lệnh hoi: ${ans:0:80}..."
   . <(grep ^HOI_ /etc/onebee-hoi.conf)
