@@ -1,6 +1,6 @@
 # ADR 0003 — Chọn model AI cho Trợ lý OneBee
 
-- Ngày: 29/9/2026 · Trạng thái: Chốt **có điều kiện** — còn đo tốc độ trên máy Box thật và anh chấm tay nhóm 2–3
+- Ngày: 29/9/2026 · Trạng thái: **Đã chốt** — anh xem kết quả và duyệt (29/9, 18:04: "anh xem thấy ok"); đo tốc độ trên máy Box thật để sau
 
 ## Bối cảnh
 Anh chốt 29/9: dùng dòng **Gemma của Google**, ưu tiên **gọn nhẹ**, ngưỡng chất lượng **chặt**
@@ -30,7 +30,9 @@ Chi tiết + toàn bộ câu trả lời: `reports/ai/260929-*`. Bộ chấm đ�
 - Model "suy nghĩ" trước khi trả lời → chờ chữ đầu ~47 giây trên máy thử (CPU yếu). Trên Box thật phải đo lại;
   không đạt ≤ 5 giây thì thử tắt chế độ suy nghĩ hoặc chọn máy có GPU.
 
-## Việc còn lại trước khi chốt hẳn
-1. Chạy `tests/ai/cham-diem-model.py --may-box-that` trên máy Box thật (đo tốc độ).
-2. Anh chấm tay phiếu `reports/ai/260929-luot2-gemma4-e2b-3-lan-phieu-cham-tay.csv` (nhóm 2–3, điểm 1–5, cần ≥ 4).
+## Việc còn lại
+1. **Để sau (anh chốt 29/9):** chạy `tests/ai/cham-diem-model.py --may-box-that` trên máy Box thật để đo tốc độ
+   (ngưỡng: chữ đầu ≤ 5 giây, ≥ 8 token/giây). Không đạt → thử tắt chế độ suy nghĩ hoặc dùng máy có GPU.
+2. Phiếu chấm tay nhóm 2–3 (`reports/ai/260929-luot2-gemma4-e2b-3-lan-phieu-cham-tay.csv`): anh đã xem và duyệt chung,
+   chưa ghi điểm từng câu.
 3. Kiểm giấy phép Gemma 4 trên trang chính thức trước khi ghi vào hợp đồng dịch vụ.

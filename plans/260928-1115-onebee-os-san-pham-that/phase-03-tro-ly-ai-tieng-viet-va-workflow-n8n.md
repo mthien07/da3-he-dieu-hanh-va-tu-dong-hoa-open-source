@@ -5,7 +5,7 @@
 - n8n license FAQ: https://support.n8n.io/article/can-i-use-your-license-for-my-use-case
 
 ## Overview
-- Ưu tiên: Cao · Trạng thái: ✅ Code + test (29/9) — model `gemma4:e2b-it-qat` (ADR 0003); còn đo tốc độ trên Box thật, anh chấm tay nhóm 2–3 · Dự kiến: tuần 6–8
+- Ưu tiên: Cao · Trạng thái: ✅ Xong (29/9) — model `gemma4:e2b-it-qat` (ADR 0003), anh duyệt kết quả; đo tốc độ trên Box thật để sau · Dự kiến: tuần 6–8
 - Mục tiêu: AI trên Box **trả lời đúng, có ích cho HTX**, chọn bằng số đo (không chọn theo cảm tính);
   máy trạm hỏi được bằng lệnh `hoi`; 3–4 quy trình tự động chạy sẵn trên n8n.
 
