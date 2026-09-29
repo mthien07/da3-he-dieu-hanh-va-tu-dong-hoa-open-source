@@ -68,6 +68,8 @@ def mo_ung_dung(lenh, ten_cua_so, cho=120):
     """Giây từ lúc bấm mở tới khi cửa sổ hiện ra; rồi đóng ứng dụng. '' nếu không có ứng dụng/xdotool/màn hình."""
     if not (shutil.which(lenh[0]) and shutil.which("xdotool") and os.environ.get("DISPLAY")):
         return ""
+    if chay(["xdotool", "search", "--onlyvisible", "--name", ten_cua_so], timeout=5).strip():
+        return ""  # ứng dụng đang mở sẵn → không đo được lần mở nguội
     bat_dau = time.monotonic()
     p = subprocess.Popen(lenh, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     try:

@@ -12,7 +12,11 @@ hỗ trợ từ xa khi người dùng gặp sự cố — nhưng **người dùn
    và dùng IP động — Box biết được lần liên lạc cuối và IP hiện tại của từng máy mà không cần IP cố định.
    - Khóa gửi tình trạng dùng chung cho mọi máy của 1 Box, **tách riêng** khóa webhook của Box (máy trạm không gửi giả
      được báo cáo sao lưu). Máy trạm A có thể gửi thay tên máy B → tình trạng máy trạm chỉ để tham khảo; **tình trạng
-     sao lưu lấy từ kho trên Box**, không lấy từ máy trạm tự báo.
+     sao lưu lấy từ kho trên Box**, không lấy từ máy trạm tự báo. Có khóa này cũng tạo được file `<tên-bất-kỳ>.json`
+     (tên chỉ gồm a-z, 0-9, "-", tối đa 32 ký tự; báo cáo bỏ qua tên chưa cấp) — rủi ro chấp nhận ở v0.4: khóa chỉ nằm trên
+     máy trạm của đơn vị, file root mới đọc được.
+   - Box chỉ SSH tới IP máy trạm báo trong **2 giờ gần nhất**, và việc đầu tiên khi vào là **kiểm tra đúng tên máy**
+     (`MAY_TRAM` trong cấu hình máy trạm) — IP động đã sang máy khác thì dừng, không cập nhật nhầm.
 2. **Cập nhật qua SSH bằng Ansible chạy trên Box** (`onebee-box cap-nhat-may`). Mỗi Box sinh **1 khóa SSH riêng**
    (không dùng chung giữa các khách hàng). Máy trạm có tài khoản hệ thống `onebee-quantri` (không mật khẩu, không hiện ở màn
    hình đăng nhập, sudo không hỏi mật khẩu), `authorized_keys` có `from="<IP Box>"`. SSH của máy trạm **tắt đăng nhập bằng mật

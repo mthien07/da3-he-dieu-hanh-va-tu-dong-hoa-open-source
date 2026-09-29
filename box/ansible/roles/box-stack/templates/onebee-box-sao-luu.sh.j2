@@ -93,7 +93,7 @@ import json, sys, re, datetime
 s = json.load(sys.stdin)
 if not s: print("null"); sys.exit()
 t = max(datetime.datetime.fromisoformat(re.sub(r"(\.\d{6})\d+", r"\1", x["time"]).replace("Z", "+00:00")) for x in s)
-print(int((datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() // 3600))' || echo null)"
+print(int((datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() // 3600))' || echo loi)"
     fi
     echo "${ten}=${t}"
   done

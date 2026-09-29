@@ -4,9 +4,11 @@
   onebee-may-tram.py bang    <thu-muc-tinh-trang> ten=gio ...        In bảng cho người quản trị
   onebee-may-tram.py payload <thu-muc-tinh-trang> <trang_thai> <noi_dung> ten=gio ...
                                                                      JSON báo cáo gửi n8n (email hằng ngày)
-  onebee-may-tram.py kho     <thu-muc-tinh-trang> ten ...            In "ten ip" của máy đã báo tình trạng (để cập nhật qua SSH)
+  onebee-may-tram.py kho     <thu-muc-tinh-trang> ten ...            In "ten ip" của máy đã báo tình trạng trong 2 giờ qua
+                                                                     (để cập nhật qua SSH)
 
-ten=gio: tên máy trạm đã cấp (onebee-box them-may) = số giờ từ lần sao lưu cuối (Box tự đọc kho sao lưu, "null" = chưa có).
+ten=gio: tên máy trạm đã cấp (onebee-box them-may) = số giờ từ lần sao lưu cuối (Box tự đọc kho sao lưu;
+"null" = chưa có bản nào, "loi" = không đọc được kho, ví dụ đang bận dọn).
 Tình trạng khác (cập nhật, ổ đĩa...) do máy trạm tự gửi mỗi giờ qua n8n → <thu-muc>/<ten>.json.
 """
 import ipaddress
@@ -20,6 +22,7 @@ NGUONG_SAO_LUU_GIO = 72      # quá 3 ngày chưa sao lưu → cảnh báo
 NGUONG_IM_LANG_GIO = 48      # quá 2 ngày không báo tình trạng → máy tắt/mất mạng/gỡ bộ cài?
 NGUONG_O_TRONG = 10          # ổ hệ thống còn dưới 10% → sắp đầy
 NGUONG_GOI_CHO = 30          # quá 30 gói chờ cập nhật → tự động cập nhật có vấn đề
+NGUONG_IP_GIO = 2            # chỉ SSH tới IP máy trạm báo trong 2 giờ gần nhất (IP động có thể đã đổi chủ)
 TEN_HOP_LE = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
 
 
@@ -46,7 +49,9 @@ def gio_truoc(gio):
 def danh_gia(ten, gio_sao_luu, tt, bay_gio):
     """Trả về (danh sách cảnh báo, tóm tắt 1 dòng) cho 1 máy trạm."""
     canh_bao, tom_tat = [], []
-    if gio_sao_luu is None:
+    if gio_sao_luu == "loi":
+        canh_bao.append("Box không đọc được kho sao lưu của máy này (đang bận? thử lại sau)")
+    elif gio_sao_luu is None:
         canh_bao.append("chưa từng sao lưu lên Box")
     else:
         tom_tat.append(f"sao lưu {gio_truoc(gio_sao_luu)}")
@@ -85,10 +90,10 @@ def tong_hop(thu_muc, cap):
         ten, _, gio = muc.partition("=")
         if not TEN_HOP_LE.match(ten):
             continue
-        gio_sao_luu = None if gio in ("", "null") else int(gio)
+        gio_sao_luu = None if gio in ("", "null") else "loi" if not gio.isdigit() else int(gio)
         tt = doc_tinh_trang(thu_muc, ten)
         canh_bao, tom_tat = danh_gia(ten, gio_sao_luu, tt, bay_gio)
-        rows.append({"ten": ten, "gio_tu_lan_cuoi": gio_sao_luu, "canh_bao": canh_bao, "tom_tat": tom_tat,
+        rows.append({"ten": ten, "gio_tu_lan_cuoi": gio_sao_luu if gio_sao_luu != "loi" else None, "canh_bao": canh_bao, "tom_tat": tom_tat,
                      "ip": (tt or {}).get("ip"), "phien_ban": (tt or {}).get("phien_ban")})
     return rows
 
@@ -115,6 +120,9 @@ def main(argv):
     if lenh == "kho":
         for ten in argv[3:]:
             tt = doc_tinh_trang(thu_muc, ten) if TEN_HOP_LE.match(ten) else None
+            nhan = so(tt or {}, "nhan_luc")
+            if nhan is None or time.time() - nhan > NGUONG_IP_GIO * 3600:
+                continue
             try:
                 ip = str(ipaddress.IPv4Address((tt or {}).get("ip", "")))
             except ValueError:

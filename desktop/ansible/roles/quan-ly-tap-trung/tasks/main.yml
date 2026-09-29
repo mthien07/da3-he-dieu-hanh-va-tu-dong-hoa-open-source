@@ -86,6 +86,14 @@
         mode: "0644"
       register: onebee_sshd_conf
 
+    - name: Tạo thư mục chạy của sshd (máy mới cài SSH theo kiểu socket chưa có)
+      ansible.builtin.file:
+        path: /run/sshd
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
     - name: Kiểm tra cấu hình SSH hợp lệ
       ansible.builtin.command: sshd -t
       changed_when: false
@@ -139,3 +147,11 @@
       ansible.builtin.command: systemctl try-restart ssh.service
       when: onebee_ql_systemd.stat.exists and onebee_sshd_conf is changed
       changed_when: true
+
+- name: Báo cấu hình quản trị SSH sai (không bật được cập nhật từ Box)
+  ansible.builtin.debug:
+    msg: "Dòng QUAN_TRI_SSH_KEY hoặc BOX_IP trong /etc/onebee/may-tram.env không đúng dạng — chép lại nguyên văn từ 'onebee-box them-may'."
+  when:
+    - (onebee_may_tram.QUAN_TRI_SSH_KEY | default('') | length > 0) or (onebee_may_tram.BOX_IP | default('') | length > 0)
+    - not ((onebee_may_tram.QUAN_TRI_SSH_KEY | default('') is match('ssh-ed25519 '))
+           and (onebee_may_tram.BOX_IP | default('') is match('^[0-9.]+$')))

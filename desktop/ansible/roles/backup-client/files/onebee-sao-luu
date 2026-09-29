@@ -6,9 +6,10 @@ set -euo pipefail
 CONF=/etc/onebee/may-tram.env
 [[ ${EUID} -eq 0 ]] || { echo "Hãy chạy bằng quyền quản trị: sudo $0" >&2; exit 1; }
 [[ -r ${CONF} ]] || { echo "Chưa cấu hình sao lưu (${CONF})" >&2; exit 1; }
+# Chỉ nạp 2 dòng RESTIC_ (file còn các dòng khác, có thể có ký tự xuống dòng kiểu Windows khi dán)
 set -a
 # shellcheck disable=SC1090
-. "${CONF}"
+. <(grep -E '^RESTIC_(REPOSITORY|PASSWORD)=' "${CONF}" | tr -d '\r')
 set +a
 restic cat config >/dev/null 2>&1 || restic init
 restic backup --tag onebee-may-tram --exclude-caches \

@@ -40,8 +40,6 @@ cmd_them_may() {
     hoi_key=""
   }
   tram_key="$(secret tinh-trang-key)"
-  # Cấp lại cho máy đã cài lại hệ điều hành → quên khóa SSH cũ của máy đó (lần cập nhật sau nhận khóa mới)
-  ssh-keygen -q -R "${ten}" -f "${SSH_DIR}/known_hosts" >/dev/null 2>&1 || true
   echo "# Dán nội dung dưới đây vào máy trạm ${ten}: /etc/onebee/may-tram.env, rồi chạy lại bộ cài OneBee OS"
   echo "MAY_TRAM=${ten}"
   echo "BOX_IP=${ip}"
@@ -53,7 +51,7 @@ cmd_them_may() {
   fi
   echo "TINH_TRANG_URL=http://${ip}:${N8N_PORT}/webhook/onebee-tinh-trang"
   echo "TINH_TRANG_KEY=${tram_key}"
-  echo "QUAN_TRI_SSH_KEY=$(cat "${SSH_DIR}/quan-tri.pub")"
+  echo "QUAN_TRI_SSH_KEY=\"$(cat "${SSH_DIR}/quan-tri.pub")\""
 }
 
 cmd_may_tram() {
@@ -73,7 +71,7 @@ cmd_cap_nhat_may() {
   else
     die "Cách dùng: sudo onebee-box cap-nhat-may <tên-máy-đã-cấp> | --tat-ca"
   fi
-  [[ ${#ten[@]} -gt 0 ]] || die "Chưa cấp máy trạm nào (sudo onebee-box them-may <tên-máy>)"
+  [[ -n "${ten[*]:-}" ]] || die "Chưa cấp máy trạm nào (sudo onebee-box them-may <tên-máy>)"
   inv="$(mktemp)"
   trap 'rm -f "${inv}"; trap - RETURN' RETURN
   echo "[may_tram]" >"${inv}"
@@ -81,19 +79,20 @@ cmd_cap_nhat_may() {
     echo "${t} ansible_host=${ip} ansible_ssh_extra_args='-o HostKeyAlias=${t}'"
   done >>"${inv}"
   for t in "${ten[@]}"; do
-    grep -q "^${t} " "${inv}" || warn "Bỏ qua ${t}: máy chưa báo tình trạng về Box (chưa biết địa chỉ)"
+    grep -q "^${t} " "${inv}" || warn "Bỏ qua ${t}: máy chưa báo tình trạng trong 2 giờ qua (máy tắt? chưa biết địa chỉ)"
   done
   [[ "$(wc -l <"${inv}")" -gt 1 ]] || die "Không có máy nào để cập nhật"
   mkdir -p /var/log/onebee-box
   log="/var/log/onebee-box/cap-nhat-may-$(date +%Y%m%d-%H%M%S).log"
   set +e
-  ANSIBLE_SSH_ARGS="-o UserKnownHostsFile=${SSH_DIR}/known_hosts -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -o ControlMaster=auto -o ControlPersist=60s" \
+  ANSIBLE_SSH_ARGS="-o UserKnownHostsFile=${SSH_DIR}/known_hosts -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -o ControlMaster=auto -o ControlPersist=60s" \
   ANSIBLE_PYTHON_INTERPRETER=/usr/bin/python3 ANSIBLE_RETRY_FILES_ENABLED=False ANSIBLE_NOCOLOR=1 ANSIBLE_LOCAL_TEMP=/root/.ansible/tmp \
     ansible-playbook -i "${inv}" -u onebee-quantri --private-key "${SSH_DIR}/quan-tri" \
     /usr/local/lib/onebee-box/cap-nhat-may-tram.yml 2>&1 | tee "${log}"
   st=${PIPESTATUS[0]}
   set -e
-  [[ ${st} -eq 0 ]] || warn "Có máy chưa cập nhật được (máy tắt, mất mạng hoặc lỗi) — xem ${log}"
+  [[ ${st} -eq 0 ]] || warn "Có máy chưa cập nhật được (máy tắt, mất mạng hoặc lỗi) — xem ${log}. Máy đã cài lại hệ điều hành
+  (báo HOST IDENTIFICATION HAS CHANGED): sudo ssh-keygen -R <tên-máy> -f ${SSH_DIR}/known_hosts rồi chạy lại"
   return "${st}"
 }
 

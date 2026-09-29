@@ -11,7 +11,7 @@ TT=/srv/onebee/tinh-trang-may
 
 # Container máy trạm không chạy systemd → bật sshd bằng tay (máy thật: ssh.socket do bộ cài bật)
 tram 'mkdir -p /run/sshd && /usr/sbin/sshd
-  grep -q "^from=\"$(. /etc/onebee/may-tram.env; echo "${BOX_IP}")\"," /var/lib/onebee-quantri/.ssh/authorized_keys
+  grep -q "^from=\"$(grep -oP "^BOX_IP=\K.*" /etc/onebee/may-tram.env)\"," /var/lib/onebee-quantri/.ssh/authorized_keys
   [ "$(id -u onebee-quantri)" -lt 1000 ] && [ "$(stat -c %a /etc/sudoers.d/onebee-quantri)" = 440 ]
   sshd -T | grep -qx "passwordauthentication no" && sshd -T | grep -qx "permitrootlogin no"
   echo "PASS  Máy trạm: tài khoản quản trị của Box (ẩn, chỉ nhận khóa từ IP Box), SSH tắt đăng nhập mật khẩu và root"'
@@ -50,7 +50,7 @@ box 'start=$(date +%s)
   echo "PASS  Máy chưa báo tình trạng (chưa biết địa chỉ) → báo rõ, không treo"'
 
 # Khóa của Box dùng từ nơi khác (không phải IP Box) → bị từ chối; đăng nhập bằng mật khẩu → bị từ chối
-docker exec "${BOX}" cat /etc/onebee-box/ssh/quan-tri | docker exec -i "${CLIENT}" bash -c 'umask 077; cat > /tmp/khoa-box'
+docker exec "${BOX}" cat /etc/onebee-box/secrets/ssh/quan-tri | docker exec -i "${CLIENT}" bash -c 'umask 077; cat > /tmp/khoa-box'
 tram 'if ssh -i /tmp/khoa-box -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 onebee-quantri@127.0.0.1 true 2>/dev/null; then
     echo "FAIL  Khóa của Box dùng được từ máy khác"; exit 1; fi
   rm -f /tmp/khoa-box
