@@ -113,7 +113,7 @@ docker exec "${CLIENT}" bash -euo pipefail -c '
   [ "${code}" = 403 ] || { echo "FAIL  Khóa máy trạm gọi được API ngoài hỏi đáp (mã ${code})"; exit 1; }
   echo "PASS  Khóa của máy trạm chỉ gọi được hỏi đáp (API khác bị chặn 403)"
   rm /home/nv/bao-cao.txt
-  set -a; . /etc/onebee/may-tram.env; set +a
+  set -a; . <(grep ^RESTIC_ /etc/onebee/may-tram.env); set +a
   restic restore latest --target /tmp/kp --include /home/nv/bao-cao.txt >/dev/null
   [ "$(sha256sum < /tmp/kp/home/nv/bao-cao.txt)" = "${sum}" ] || { echo "FAIL  File khôi phục khác bản gốc"; exit 1; }
   echo "PASS  Máy trạm khôi phục đúng file đã xóa"
@@ -152,7 +152,7 @@ echo "===== MÁY TRẠM SAU KHI BOX DỌN + CHỐNG BẢN GIẢ MẠO NGÀY TƯ�
 docker exec "${CLIENT}" bash -euo pipefail -c '
   echo "lần 3" >> /home/nv/ghi-chu.txt; onebee-sao-luu >/dev/null
   echo "PASS  Máy trạm vẫn sao lưu được sau khi Box dọn kho"
-  set -a; . /etc/onebee/may-tram.env; set +a
+  set -a; . <(grep ^RESTIC_ /etc/onebee/may-tram.env); set +a
   restic backup --time "2031-01-01 00:00:00" --tag gia-mao /home >/dev/null
   echo "PASS  (giả lập) Kẻ xấu tạo bản sao lưu mang ngày tương lai"'
 box 'n0=$(RESTIC_REPOSITORY=/srv/onebee/restic/ketoan-01 RESTIC_PASSWORD="$(cat /etc/onebee-box/secrets/may-ketoan-01-repo)" restic snapshots --json | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")

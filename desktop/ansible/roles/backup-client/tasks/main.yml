@@ -50,7 +50,7 @@
 
 - name: Tách các dòng cấu hình máy trạm
   ansible.builtin.set_fact:
-    onebee_may_tram: "{{ dict(onebee_may_tram_raw.content | b64decode | regex_findall('(?m)^([A-Z_]+)=(.*?)\\s*$'))
+    onebee_may_tram: "{{ dict(onebee_may_tram_raw.content | b64decode | regex_findall('(?m)^([A-Z_]+)=\"?(.*?)\"?\\s*$'))
                          if onebee_backup_conf.stat.exists else {} }}"
   no_log: true
 

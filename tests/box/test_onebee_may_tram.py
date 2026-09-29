@@ -60,6 +60,21 @@ class DocFile(unittest.TestCase):
                 mt.main(["x", "kho", d, "a", "c", "../c"])
             self.assertEqual(buf.getvalue(), "")  # IP bậy không lọt vào danh sách máy để SSH
 
+    def test_kho_bo_bao_cao_cu_hon_2_gio(self):
+        with tempfile.TemporaryDirectory() as d:
+            for ten, tuoi in (("moi", 600), ("cu", 3 * 3600)):
+                with open(os.path.join(d, f"{ten}.json"), "w") as f:
+                    json.dump({"ten": ten, "ip": "192.168.1.9", "nhan_luc": time.time() - tuoi}, f)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                mt.main(["x", "kho", d, "moi", "cu"])
+            self.assertEqual(buf.getvalue(), "moi 192.168.1.9\n")  # IP cũ có thể đã sang máy khác
+
+    def test_loi_doc_kho_khac_chua_sao_luu(self):
+        rows = mt.tong_hop("/khong-co", ["a=loi", "b=null"])
+        self.assertIn("không đọc được kho", rows[0]["canh_bao"][0])
+        self.assertIn("chưa từng sao lưu", rows[1]["canh_bao"][0])
+
     def test_payload_thu_khong_doc_may(self):
         buf = io.StringIO()
         with redirect_stdout(buf):

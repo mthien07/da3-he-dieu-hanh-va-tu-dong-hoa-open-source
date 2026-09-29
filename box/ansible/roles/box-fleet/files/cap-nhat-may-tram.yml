@@ -6,6 +6,19 @@
   become: true
   gather_facts: false
   tasks:
+    # IP lấy từ báo cáo của máy trạm (IP động) → kiểm tra đúng máy trước khi làm gì
+    - name: Đọc cấu hình máy trạm
+      ansible.builtin.slurp:
+        src: /etc/onebee/may-tram.env
+      register: onebee_cfg
+      no_log: true
+
+    - name: Kiểm tra đúng máy {{ inventory_hostname }}
+      ansible.builtin.assert:
+        that: ("MAY_TRAM=" ~ inventory_hostname) in (onebee_cfg.content | b64decode).splitlines() | map('trim') | list
+        fail_msg: "Máy ở địa chỉ này không phải {{ inventory_hostname }} (IP đã đổi?) — không cập nhật"
+        quiet: true
+
     - name: Cập nhật danh mục gói và nâng cấp toàn bộ (chờ nếu máy đang tự cập nhật)
       ansible.builtin.apt:
         update_cache: true
