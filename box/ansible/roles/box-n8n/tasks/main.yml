@@ -45,7 +45,7 @@
   register: onebee_n8n_stamp
 
 # Nhập lại khi mẫu đổi HOẶC lần trước lỗi giữa chừng. Lưu ý: nhập lại sẽ ghi đè chỉnh sửa trên giao diện n8n
-# đối với 5 quy trình mẫu (muốn sửa riêng thì nhân bản quy trình rồi sửa bản sao).
+# đối với các quy trình mẫu (muốn sửa riêng thì nhân bản quy trình rồi sửa bản sao).
 - name: Nhập vào n8n, kích hoạt, khởi động lại n8n
   when: onebee_n8n_creds is changed or onebee_n8n_wf is changed or not onebee_n8n_stamp.stat.exists
   block:
