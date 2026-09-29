@@ -14,6 +14,7 @@ import secrets
 import string
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 URL = os.environ.get("WEBUI_URL", "http://127.0.0.1:3000").rstrip("/")
@@ -81,31 +82,45 @@ def enforce_settings(token):
     return changed
 
 
-def dong_bo_tro_ly():
-    with open(os.environ["ONEBEE_LOI_DAN"], encoding="utf-8") as f:
-        loi_dan = f.read()
-    form = {"id": PRESET_ID, "name": PRESET_NAME, "base_model_id": os.environ["ONEBEE_AI_MODEL"],
-            "meta": {"description": "Trợ lý AI chạy tại chỗ trên OneBee Box — trả lời tiếng Việt, không bịa số liệu."},
-            "params": {**PARAMS, "system": loi_dan}, "access_grants": PUBLIC_READ, "is_active": True}
-    token = admin_token()
-    settings_changed = enforce_settings(token)
-    status, current = call("GET", f"/api/v1/models/model?id={PRESET_ID}", token)
+def luu_model(token, form):
+    """Tạo/cập nhật 1 bản ghi model (mở quyền đọc cho mọi người). Trả về "đã tạo" / "đã cập nhật" / None (không đổi)."""
+    status, current = call("GET", f"/api/v1/models/model?id={urllib.parse.quote(form['id'])}", token)
     if status == 200 and current:
-        cur_params = current.get("params") or {}
-        same = (current.get("base_model_id") == form["base_model_id"] and current.get("name") == PRESET_NAME
+        cur_params, cur_meta = current.get("params") or {}, current.get("meta") or {}
+        if (current.get("base_model_id") == form["base_model_id"] and current.get("name") == form["name"]
                 and all(cur_params.get(k) == v for k, v in form["params"].items())
-                and any(g.get("principal_id") == "*" for g in current.get("access_grants") or []))
-        if same:
-            print("Trợ lý OneBee: đã cập nhật cài đặt quản trị" if settings_changed else "Trợ lý OneBee: không đổi")
-            return
-        status, data = call("POST", f"/api/v1/models/model/update?id={PRESET_ID}", token, form)
+                and all(cur_meta.get(k) == v for k, v in form["meta"].items())
+                and any(g.get("principal_id") == "*" for g in current.get("access_grants") or [])):
+            return None
+        status, data = call("POST", f"/api/v1/models/model/update?id={urllib.parse.quote(form['id'])}", token, form)
         verb = "đã cập nhật"
     else:
         status, data = call("POST", "/api/v1/models/create", token, form)
         verb = "đã tạo"
     if status != 200:
-        sys.exit(f"LỖI: không lưu được Trợ lý OneBee ({status}): {data}")
-    print(f"Trợ lý OneBee: {verb} (model nền {form['base_model_id']})")
+        sys.exit(f"LỖI: không lưu được model {form['id']} ({status}): {data}")
+    return verb
+
+
+def dong_bo_tro_ly():
+    with open(os.environ["ONEBEE_LOI_DAN"], encoding="utf-8") as f:
+        loi_dan = f.read()
+    base = os.environ["ONEBEE_AI_MODEL"]
+    # Open WebUI (từ v0.11): người dùng thường chỉ dùng được Trợ lý khi model nền cũng có bản ghi + quyền đọc.
+    # Ẩn model nền khỏi danh sách chọn để nhân viên luôn dùng "Trợ lý OneBee" (có lời dặn tiếng Việt).
+    base_form = {"id": base, "name": base, "base_model_id": None, "meta": {"hidden": True},
+                 "params": {}, "access_grants": PUBLIC_READ, "is_active": True}
+    form = {"id": PRESET_ID, "name": PRESET_NAME, "base_model_id": base,
+            "meta": {"description": "Trợ lý AI chạy tại chỗ trên OneBee Box — trả lời tiếng Việt, không bịa số liệu."},
+            "params": {**PARAMS, "system": loi_dan}, "access_grants": PUBLIC_READ, "is_active": True}
+    token = admin_token()
+    settings_changed = enforce_settings(token)
+    base_verb = luu_model(token, base_form)
+    verb = luu_model(token, form)
+    if verb or base_verb:
+        print(f"Trợ lý OneBee: {verb or 'đã cập nhật quyền model nền'} (model nền {base})")
+    else:
+        print("Trợ lý OneBee: đã cập nhật cài đặt quản trị" if settings_changed else "Trợ lý OneBee: không đổi")
 
 
 def cap_khoa(ten):
