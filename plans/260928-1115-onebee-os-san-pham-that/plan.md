@@ -16,7 +16,7 @@ Mốc tính theo tuần kể từ khi anh chốt Phase 0 (Tuần 1), không gắ
 | 1 | OneBee OS Desktop v0.1 | 2–4 | ✅ Code + test mở rộng đạt (28/9); còn thử phiên Cinnamon thật | [phase-01](phase-01-onebee-os-desktop-v01.md) |
 | 2 | OneBee Box v0.1 | 4–6 | ✅ Code + test Docker lồng đạt (28/9); còn thử máy thật | [phase-02](phase-02-onebee-box-may-chu-noi-bo-v01.md) |
 | 3 | Trợ lý AI tiếng Việt + workflow n8n mẫu | 6–8 | ✅ Xong (29/9) — model gemma4:e2b-it-qat, anh duyệt; đo tốc độ trên Box thật để sau | [phase-03](phase-03-tro-ly-ai-tieng-viet-va-workflow-n8n.md) |
-| 4 | Cài hàng loạt, quản lý tập trung, đo đạc | 8–10 | Chưa bắt đầu | [phase-04](phase-04-cai-hang-loat-quan-ly-tap-trung-do-dac.md) |
+| 4 | Cài hàng loạt, quản lý tập trung, đo đạc | 8–10 | 🔄 Code + test container (29/9); chờ máy thật: cài 3 máy, đo trước/sau | [phase-04](phase-04-cai-hang-loat-quan-ly-tap-trung-do-dac.md) |
 | 5 | Mô hình điểm tại HTX OneBee | 10–14 | Chưa bắt đầu | [phase-05](phase-05-mo-hinh-diem-tai-htx-onebee.md) |
 | 6 | Đóng gói dịch vụ bán được, release v1.0 | 14–16 | Chưa bắt đầu | [phase-06](phase-06-dong-goi-dich-vu-release-v1.md) |
 

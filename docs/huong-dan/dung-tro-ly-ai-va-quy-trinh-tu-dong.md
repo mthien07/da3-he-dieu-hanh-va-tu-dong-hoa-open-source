@@ -30,11 +30,12 @@ Tài khoản chủ tạo sẵn: `quantri@onebee.lan`, mật khẩu dòng `n8n-ow
 
 | Quy trình | Chạy khi | Kết quả |
 |---|---|---|
-| Báo cáo sao lưu | Sau mỗi lần sao lưu 23:00 (và `onebee-box email-thu`) | Email ĐẠT/LỖI + máy trạm quá 3 ngày chưa sao lưu |
+| Báo cáo sao lưu | Sau mỗi lần sao lưu 23:00 (và `onebee-box email-thu`) | Email ĐẠT/LỖI + tình trạng từng máy trạm (sao lưu, cập nhật, ổ đĩa, mất liên lạc) |
 | Nhắc hạn nộp báo cáo, thuế | 7:30 hằng ngày | Email khi còn 7, 3, 1 ngày và đúng ngày hạn |
 | Tóm tắt văn bản PDF | Nhân viên mở `http://<ip-box>:5678/form/onebee-tom-tat` | Bản tóm tắt 3/5/7 ý (AI trên Box) |
 | Nhập đơn hàng | Nhân viên mở `http://<ip-box>:5678/form/onebee-don-hang` | Ghi vào thư mục chung `don-hang/` |
 | Tổng hợp đơn hàng | 17:00 hằng ngày | Email số đơn, tổng tiền, theo mặt hàng |
+| Nhận tình trạng máy trạm | Máy trạm gửi mỗi giờ | Lưu tình trạng cho `onebee-box may-tram` và email báo cáo 23:00 ([quan-ly-may-tram.md](quan-ly-may-tram.md)) |
 
 Biểu mẫu đòi tài khoản `nhanvien`, mật khẩu dòng `bieu-mau-nhanvien` trong `in-khoa`.
 
@@ -59,6 +60,6 @@ Sửa `onebee_box_lich_han` trong `box/ansible/group_vars/all.yml` rồi chạy 
 - Email đi qua máy chủ thư của đơn vị (ra Internet) và **có chứa dữ liệu kinh doanh** (tên khách, số lượng, số tiền trong
   email tổng hợp đơn hàng). Không gửi văn bản PDF hay câu hỏi AI qua email.
 - Chưa kiểm trên máy thật; kiểm tự động trong container (xem `tests/README.md` — kết quả lần chạy gần nhất ghi trong changelog).
-- Nhập lại quy trình mẫu (khi nâng cấp) sẽ ghi đè chỉnh sửa trên giao diện n8n của 5 quy trình mẫu — muốn sửa riêng thì
+- Nhập lại quy trình mẫu (khi nâng cấp) sẽ ghi đè chỉnh sửa trên giao diện n8n của các quy trình mẫu — muốn sửa riêng thì
   nhân bản quy trình rồi sửa bản sao.
 - n8n tự gọi `api.n8n.io` để tải danh mục máy chủ MCP (thấy trong nhật ký khi test). Chưa rà hết các kết nối ra ngoài khác của n8n.

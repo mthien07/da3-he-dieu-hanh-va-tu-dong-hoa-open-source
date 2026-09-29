@@ -1,5 +1,25 @@
 # Nhật ký thay đổi
 
+## [0.4.0] — 29/9/2026 — Quản lý tập trung máy trạm, hỗ trợ từ xa, bộ đo trước/sau
+### Thêm
+- Máy trạm báo tình trạng về Box mỗi giờ (IP, gói chờ cập nhật, bản vá bảo mật, cần khởi động lại, ổ trống, sao lưu cuối)
+  qua n8n (quy trình 06, khóa riêng cho máy trạm).
+- `onebee-box may-tram`: bảng tình trạng + cảnh báo (quá 3 ngày chưa sao lưu, 2 ngày mất liên lạc, ổ < 10%, bản vá bảo mật
+  chưa cài, cần khởi động lại); email báo cáo 23:00 nêu từng máy.
+- `onebee-box cap-nhat-may <tên>|--tat-ca`: cập nhật máy trạm qua SSH (Ansible trên Box, khóa riêng từng Box,
+  tài khoản `onebee-quantri` chỉ nhận khóa từ IP của Box; SSH máy trạm tắt mật khẩu và root).
+- `them-may` in 9 dòng cấu hình (thêm tên máy, IP Box, khóa báo tình trạng, khóa SSH quản trị).
+- Hỗ trợ từ xa có đồng ý (`onebee-ho-tro`, x11vnc): mã 1 lần, người dùng bấm "Cho phép" mỗi kết nối, tự đóng (ADR 0004).
+- `tests/do-dac/do-may.py` + hướng dẫn đo trước/sau; hướng dẫn cài hàng loạt và đường lui bằng Clonezilla.
+### Sửa
+- Lệnh sao lưu máy trạm chỉ nạp dòng `RESTIC_` (dán cấu hình có ký tự xuống dòng Windows vẫn chạy).
+- Phiên bản ghi trong `/etc/onebee-release` và Box: 0.4.0 (trước đó vẫn ghi 0.1.0).
+- Hướng dẫn cài Box: bỏ mục "ai mở trước thành quản trị" cho Trợ lý AI/n8n (đã tạo sẵn từ 0.3.0).
+### Kiểm thử (29/9, container)
+- KẾT_QUẢ_BOX
+- Desktop kịch bản mint: cài 2 lần + tự sửa + văn phòng + gõ Telex + hỗ trợ từ xa (6 mục) + bộ đo: ĐẠT.
+- Chưa thử trên máy thật (cài 3 máy, SSH bật kiểu socket, Tailscale, đo trước/sau).
+
 ## [0.3.0] — 29/9/2026 — Trợ lý AI Gemma + quy trình n8n qua email
 ### Thêm
 - Trợ lý OneBee trên Box: model `gemma4:e2b-it-qat` (ADR 0003), lời dặn tiếng Việt (có mục soạn văn bản theo NĐ 30/2020),

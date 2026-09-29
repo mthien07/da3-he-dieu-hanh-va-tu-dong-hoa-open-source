@@ -8,7 +8,7 @@
                                                                      (để cập nhật qua SSH)
 
 ten=gio: tên máy trạm đã cấp (onebee-box them-may) = số giờ từ lần sao lưu cuối (Box tự đọc kho sao lưu;
-"null" = chưa có bản nào, "loi" = không đọc được kho, ví dụ đang bận dọn).
+"null" = chưa có bản nào, "loi" = không đọc được kho, ví dụ đang bận dọn; số âm = có bản ghi ngày tương lai).
 Tình trạng khác (cập nhật, ổ đĩa...) do máy trạm tự gửi mỗi giờ qua n8n → <thu-muc>/<ten>.json.
 """
 import ipaddress
@@ -53,6 +53,8 @@ def danh_gia(ten, gio_sao_luu, tt, bay_gio):
         canh_bao.append("Box không đọc được kho sao lưu của máy này (đang bận? thử lại sau)")
     elif gio_sao_luu is None:
         canh_bao.append("chưa từng sao lưu lên Box")
+    elif gio_sao_luu < 0:
+        canh_bao.append("có bản sao lưu ghi ngày tương lai — nghi bị giả mạo, kiểm tra máy ngay")
     else:
         tom_tat.append(f"sao lưu {gio_truoc(gio_sao_luu)}")
         if gio_sao_luu > NGUONG_SAO_LUU_GIO:
@@ -90,7 +92,7 @@ def tong_hop(thu_muc, cap):
         ten, _, gio = muc.partition("=")
         if not TEN_HOP_LE.match(ten):
             continue
-        gio_sao_luu = None if gio in ("", "null") else "loi" if not gio.isdigit() else int(gio)
+        gio_sao_luu = None if gio in ("", "null") else int(gio) if re.fullmatch(r"-?\d+", gio) else "loi"
         tt = doc_tinh_trang(thu_muc, ten)
         canh_bao, tom_tat = danh_gia(ten, gio_sao_luu, tt, bay_gio)
         rows.append({"ten": ten, "gio_tu_lan_cuoi": gio_sao_luu if gio_sao_luu != "loi" else None, "canh_bao": canh_bao, "tom_tat": tom_tat,

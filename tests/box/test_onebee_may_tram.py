@@ -71,9 +71,10 @@ class DocFile(unittest.TestCase):
             self.assertEqual(buf.getvalue(), "moi 192.168.1.9\n")  # IP cũ có thể đã sang máy khác
 
     def test_loi_doc_kho_khac_chua_sao_luu(self):
-        rows = mt.tong_hop("/khong-co", ["a=loi", "b=null"])
+        rows = mt.tong_hop("/khong-co", ["a=loi", "b=null", "c=-5000"])
         self.assertIn("không đọc được kho", rows[0]["canh_bao"][0])
         self.assertIn("chưa từng sao lưu", rows[1]["canh_bao"][0])
+        self.assertIn("ngày tương lai", rows[2]["canh_bao"][0])  # bản giả mạo không được coi là "vừa sao lưu"
 
     def test_payload_thu_khong_doc_may(self):
         buf = io.StringIO()
