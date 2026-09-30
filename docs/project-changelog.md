@@ -8,7 +8,7 @@ Bản đủ tính năng; mọi mục đã kiểm tự động trong container (k
 - `onebee-box khoi-phuc-toan-bo [file-khóa]`: hỏng ổ Box → cài lại → lấy lại toàn bộ dữ liệu, khóa bí mật, khóa SSH bằng khóa in ra giấy;
   máy trạm chạy tiếp không phải cấu hình lại.
 - Trang giới thiệu Box có lối vào 3 biểu mẫu (báo cần hỗ trợ, nhập đơn hàng, tóm tắt PDF).
-- Tự phát hành: gắn tag `v*` → GitHub Actions đóng gói + SHA256SUMS + tạo bản phát hành (tag có `-rc` = bản thử).
+- Tự phát hành: đẩy tag `v*` (hoặc nhánh `phat-hanh/v*`) → GitHub Actions đóng gói + SHA256SUMS + tạo bản phát hành (tag có `-rc` = bản thử).
 - Hướng dẫn tự thử trên máy ảo có danh sách kiểm tra (`docs/huong-dan/thu-nghiem-tren-may-ao.md`); ảnh chụp màn hình thật trong tài liệu.
 ### Sửa
 - Trợ lý OneBee biết ngày hôm nay (biến ngày của Open WebUI, múi giờ Việt Nam) và soạn ngay văn bản khi được nhờ, chỗ thiếu để [ngoặc vuông]

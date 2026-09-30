@@ -1,9 +1,12 @@
 name: Phát hành
 
-# Gắn tag vX.Y.Z (hoặc vX.Y.Z-rc.N = bản thử) → đóng gói + SHA256SUMS → tạo bản phát hành trên GitHub
+# Tạo bản phát hành trên GitHub (đóng gói + SHA256SUMS), 1 trong 2 cách:
+#   - gắn tag vX.Y.Z (hoặc vX.Y.Z-rc.N = bản thử) rồi đẩy tag;
+#   - đẩy nhánh phat-hanh/vX.Y.Z → workflow tự tạo tag vX.Y.Z tại commit đó (dùng khi môi trường không đẩy được tag).
 on:
   push:
     tags: ["v*"]
+    branches: ["phat-hanh/v*"]
 
 permissions:
   contents: write
@@ -14,13 +17,15 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Xác định tag
+        run: echo "TAG=${GITHUB_REF_NAME#phat-hanh/}" >> "$GITHUB_ENV"
       - name: Đóng gói (kiểm phiên bản khớp group_vars + changelog)
-        run: scripts/dong-goi-ban-phat-hanh.sh "${GITHUB_REF_NAME#v}"
+        run: scripts/dong-goi-ban-phat-hanh.sh "${TAG#v}"
       - name: Tạo bản phát hành
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           thu=""
-          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then thu="--prerelease"; fi
-          gh release create "${GITHUB_REF_NAME}" dist/onebee-os-*.tar.gz dist/SHA256SUMS \
-            --title "OneBee OS ${GITHUB_REF_NAME#v}" --notes-file dist/ghi-chu-phat-hanh.md ${thu}
+          if [[ "${TAG}" == *-* ]]; then thu="--prerelease"; fi
+          gh release create "${TAG}" dist/onebee-os-*.tar.gz dist/SHA256SUMS --target "${GITHUB_SHA}" \
+            --title "OneBee OS ${TAG#v}" --notes-file dist/ghi-chu-phat-hanh.md ${thu}
