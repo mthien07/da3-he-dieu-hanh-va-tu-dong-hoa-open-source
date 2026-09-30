@@ -90,9 +90,10 @@ sleep 3
   || { echo "FAIL  Sổ xử lý/khảo sát: $(ls -la /srv/onebee/ho-tro)"; exit 1; }
 echo "PASS  Kỹ thuật ghi xử lý (tài khoản riêng, nhân viên không mở được); khảo sát ẩn danh ghi 3 phiếu"
 md=$(onebee-box bao-cao-tuan)
-grep -q "Mới trong tuần: \*\*1\*\* (gấp: 1)" <<<"${md}" && grep -q "Xử lý xong trong tuần: \*\*1\*\*" <<<"${md}" \
-  && grep -q "| Được hỗ trợ kịp thời | 4 |" <<<"${md}" && ! grep -q "Chị Hoa\|driver\|giấy" <<<"${md}" \
-  || { echo "FAIL  Nhật ký tuần:"; echo "${md}"; exit 1; }
+if ! { grep -q "Mới trong tuần: \*\*1\*\* (gấp: 1)" <<<"${md}" && grep -q "Xử lý xong trong tuần: \*\*1\*\*" <<<"${md}" \
+       && grep -q "| Được hỗ trợ kịp thời | 4 |" <<<"${md}" && ! grep -q "Chị Hoa\|driver\|giấy" <<<"${md}"; }; then
+  echo "FAIL  Nhật ký tuần:"; echo "${md}"; exit 1
+fi
 echo "PASS  onebee-box bao-cao-tuan: đếm đúng yêu cầu/xử lý/khảo sát, không lộ tên người báo và nội dung"
 
 # Gửi biểu mẫu hỗ trợ, chờ xong như trình duyệt, in trạng thái + chữ trên trang kết quả
@@ -115,6 +116,7 @@ echo "PASS  Biểu mẫu hỗ trợ chỉ nhận loại sự cố có sẵn (ch�
 docker stop mailpit >/dev/null
 kq=$(gui_ho_tro -F 'field-0=kho-02' -F 'field-1=Mạng / Internet' -F 'field-2=Gấp (đang dừng việc)' -F 'field-3=mất mạng')
 docker start mailpit >/dev/null
-grep -q "CHƯA gửi được email cho kỹ thuật" <<<"${kq}" && [[ "$(wc -l < /srv/onebee/ho-tro/yeu-cau.csv)" == $((n0 + 1)) ]] \
-  || { echo "FAIL  Email lỗi: ${kq:0:300}"; exit 1; }
+if ! { grep -q "CHƯA gửi được email cho kỹ thuật" <<<"${kq}" && [[ "$(wc -l < /srv/onebee/ho-tro/yeu-cau.csv)" == $((n0 + 1)) ]]; }; then
+  echo "FAIL  Email lỗi: ${kq:0:300}"; exit 1
+fi
 echo "PASS  Máy chủ email hỏng → yêu cầu vẫn ghi sổ, người báo được dặn gọi điện"
