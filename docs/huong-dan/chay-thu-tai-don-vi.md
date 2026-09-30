@@ -4,14 +4,9 @@
 con số giả định trong hồ sơ, bảng giá, demo.
 
 ## 1. Trước khi cài (tuần 0)
-**Anh chốt ngưỡng "đạt" trước khi bắt đầu** — đề xuất (anh sửa rồi ghi vào `reports/pilot/nguong-dat.md`):
-| Tiêu chí | Đề xuất |
-|---|---|
-| Mất dữ liệu | 0 lần |
-| Số yêu cầu hỗ trợ tuần 4 | thấp hơn tuần 1 |
-| Máy/phần mềm phải quay về Windows | ≤ 1 máy, có lý do ghi rõ |
-| Khảo sát cuối tuần 4, câu 5 "muốn tiếp tục dùng" | trung bình ≥ 3,5/5 |
-| Yêu cầu "gấp" được xử lý trong ngày | 100% |
+**Anh chốt ngưỡng "đạt" trước khi bắt đầu** — 9 tiêu chí, điều kiện bắt đầu (≥ 3 người dùng, danh sách việc bắt buộc)
+và cách kết luận ở [`reports/pilot/nguong-dat.md`](../../reports/pilot/nguong-dat.md). Phần lớn số liệu lấy tự động từ
+`sudo onebee-box bao-cao-tuan`; phần còn lại ghi tay trong nhật ký tuần.
 
 Khảo sát từng máy (ghi vào bảng ở [cai-hang-loat.md](cai-hang-loat.md), mục 5):
 - [ ] Người dùng, công việc chính, **phần mềm đang dùng** (phần mềm kế toán, hóa đơn điện tử, chữ ký số, phần mềm ngân hàng,

@@ -5,7 +5,7 @@
 
 ## Overview
 - Ưu tiên: Cao · Trạng thái: 🔄 Công cụ + tài liệu chạy thử xong (30/9); chờ máy + anh chốt ngưỡng đạt để bắt đầu 4 tuần · Dự kiến: tuần 10–14 (4 tuần dùng thật)
-- 2–5 máy + 1 Box tại chính HTX OneBee, dùng cho công việc thật.
+- 2–5 máy + 1 Box tại chính HTX OneBee, dùng cho công việc thật; ≥ 3 người dùng (để khảo sát ẩn danh đo được).
 
 ## Key Insights
 - Đây là nơi sinh ra số liệu thật để thay mọi con số "giả định" trong hồ sơ và demo.
@@ -34,7 +34,7 @@
 
 ## Success Criteria
 - 4 tuần dùng thật, không mất dữ liệu; có báo cáo pilot với số đo thật.
-- Ngưỡng "đạt" (vd: số yêu cầu hỗ trợ tuần 4 thấp hơn tuần 1) do anh chốt trước khi bắt đầu.
+- Ngưỡng "đạt" (9 tiêu chí, `reports/pilot/nguong-dat.md` v2) do anh chốt trước khi bắt đầu.
 
 ## Risk Assessment
 - Người dùng phản ứng vì đổi thói quen → đào tạo, dán phím tắt, giữ 1 máy Windows dự phòng.
