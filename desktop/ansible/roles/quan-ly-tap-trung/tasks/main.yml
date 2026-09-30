@@ -53,6 +53,7 @@
             [Install]
             WantedBy=timers.target
     - name: Bật lịch báo tình trạng
+      # noqa: command-instead-of-module — chỉ tạo liên kết enable, chạy được cả khi systemd chưa khởi động
       ansible.builtin.command: systemctl enable onebee-bao-tinh-trang.timer
       args:
         creates: /etc/systemd/system/timers.target.wants/onebee-bao-tinh-trang.timer
@@ -144,6 +145,7 @@
       when: onebee_ql_systemd.stat.exists
 
     - name: Nạp cấu hình SSH mới nếu sshd đang chạy
+      # noqa: command-instead-of-module — module systemd không có "try-restart" (chỉ khởi động lại khi đang chạy)
       ansible.builtin.command: systemctl try-restart ssh.service
       when: onebee_ql_systemd.stat.exists and onebee_sshd_conf is changed
       changed_when: true

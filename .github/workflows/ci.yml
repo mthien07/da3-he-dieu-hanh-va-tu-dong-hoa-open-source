@@ -28,7 +28,13 @@ jobs:
       - name: shellcheck
         run: >-
           shellcheck -e SC2016 desktop/*.sh desktop/ansible/roles/backup-client/files/onebee-sao-luu
+          desktop/ansible/roles/ho-tro-tu-xa/files/onebee-ho-tro
           box/*.sh tests/desktop/*.sh tests/desktop/extended/*.sh tests/box/*.sh
+      - name: Kiểm thử đơn vị (Python) + mẫu Jinja đọc được
+        run: |
+          python3 -m unittest discover -s tests/box -p 'test_*.py'
+          python3 -m unittest tests/ai/test_scoring_and_report.py
+          python3 tests/kiem-tra-mau-jinja.py
       - name: yamllint
         run: yamllint .
       - name: ansible-lint (Desktop)
