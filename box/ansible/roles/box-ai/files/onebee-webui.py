@@ -111,7 +111,10 @@ def dong_bo_tro_ly():
     base_form = {"id": base, "name": base, "base_model_id": None, "meta": {"hidden": True},
                  "params": {}, "access_grants": PUBLIC_READ, "is_active": True}
     form = {"id": PRESET_ID, "name": PRESET_NAME, "base_model_id": base,
-            "meta": {"description": "Trợ lý AI chạy tại chỗ trên OneBee Box — trả lời tiếng Việt, không bịa số liệu."},
+            # Tắt "công cụ có sẵn" của Open WebUI (lịch, ghi chú, tìm kiếm…): model nhỏ hay gọi nhầm (vd tạo lịch thay vì
+            # soạn thông báo) rồi trả lời tiếng Anh; lệnh hoi (API) vốn không dùng công cụ → web và hoi trả lời như nhau
+            "meta": {"description": "Trợ lý AI chạy tại chỗ trên OneBee Box — trả lời tiếng Việt, không bịa số liệu.",
+                     "capabilities": {"builtin_tools": False}},
             "params": {**PARAMS, "system": loi_dan}, "access_grants": PUBLIC_READ, "is_active": True}
     token = admin_token()
     settings_changed = enforce_settings(token)

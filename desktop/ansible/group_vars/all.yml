@@ -1,6 +1,6 @@
 ---
 # Cấu hình chung OneBee OS Desktop — đổi tại đây, không sửa trong role
-onebee_version: "0.6.0"
+onebee_version: "1.0.0-rc.1"
 
 # Ngôn ngữ, múi giờ
 onebee_locale: vi_VN.UTF-8

@@ -10,6 +10,7 @@ import csv
 import datetime
 import os
 import sys
+import time
 
 import yaml
 
@@ -50,6 +51,10 @@ def main():
         bo = yaml.safe_load(f)
     with open(a.loi_dan, encoding="utf-8") as f:
         loi_dan = f.read()
+    # Giống Open WebUI: thay biến ngày trong lời dặn (Trợ lý thật nhận ngày hôm nay)
+    hom_nay = time.localtime()
+    loi_dan = loi_dan.replace("{{CURRENT_DATE}}", time.strftime("%Y-%m-%d", hom_nay)).replace(
+        "{{CURRENT_WEEKDAY}}", time.strftime("%A", hom_nay))
     nguong, ten_nhom = bo["nguong"], {int(k): v for k, v in bo["nhom"].items()}
     cau_hoi = [q for q in bo["cau_hoi"] if not a.nhom or q["nhom"] in a.nhom]
     so_lan = a.so_lan or nguong["so_lan_chay"]

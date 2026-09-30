@@ -80,7 +80,7 @@ cau_hoi:
   - id: n2-03
     nhom: 2
     hoi: Soạn thông báo nghỉ lễ Quốc khánh 2/9 cho nhân viên HTX, nghỉ từ 1/9 đến hết 2/9.
-    bat_buoc: [[thông báo], [2/9, 02/09, 2 tháng 9, 02 tháng 9], [1/9, 01/09, 1 tháng 9, 01 tháng 9]]
+    bat_buoc: [[thông báo], [2/9, 02/09, 2 tháng 9, 02 tháng 9, 2 tháng 09, 02 tháng 09], [1/9, 01/09, 1 tháng 9, 01 tháng 9, 1 tháng 09, 01 tháng 09]]
     cam: ['30/4']
   - id: n2-04
     nhom: 2

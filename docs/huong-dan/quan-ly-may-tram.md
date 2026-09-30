@@ -13,7 +13,11 @@ kho-02     CẦN XỬ LÝ
            → chưa từng sao lưu lên Box
            → chưa báo tình trạng (máy chưa cài bản mới hoặc chưa bật lần nào)
 ```
-Box cảnh báo khi: quá 3 ngày chưa sao lưu · quá 2 ngày không liên lạc · ổ hệ thống còn dưới 10% · có bản vá bảo mật chưa cài
+Giám sát dịch vụ của chính Box (Uptime Kuma, `http://<ip-box>:3001`):
+
+![Giám sát dịch vụ trên Box](anh/04-giam-sat-uptime-kuma.png)
+
+Box cảnh báo máy trạm khi: quá 3 ngày chưa sao lưu · quá 2 ngày không liên lạc · ổ hệ thống còn dưới 10% · có bản vá bảo mật chưa cài
 (hoặc từ 30 gói chờ cập nhật) · cần khởi động lại. Bảng này đi kèm **email báo cáo sao lưu 23:00 hằng ngày**.
 
 Máy trạm gửi mỗi giờ: tên, IP, phiên bản, số gói chờ cập nhật, cần khởi động lại không, ổ còn trống, đã bật bao lâu,

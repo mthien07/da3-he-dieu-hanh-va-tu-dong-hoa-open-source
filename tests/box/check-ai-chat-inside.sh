@@ -31,6 +31,14 @@ system="$(curl -s -m 30 "${API}/api/v1/models/model?id=onebee-tro-ly" -H "Author
   | python3 -c 'import json,sys; print((json.load(sys.stdin).get("params") or {}).get("system",""))')"
 grep -q "Trợ lý OneBee" <<<"${system}" || { echo "FAIL  Chưa có Trợ lý OneBee với lời dặn"; exit 1; }
 echo "PASS  Có \"Trợ lý OneBee\" với lời dặn tiếng Việt"
+curl -s -m 30 "${API}/api/v1/models/model?id=onebee-tro-ly" -H "Authorization: Bearer ${token}" | python3 -c '
+import json, sys
+m = json.load(sys.stdin)
+p, cap = m.get("params") or {}, (m.get("meta") or {}).get("capabilities") or {}
+assert "{{CURRENT_DATE}}" in p.get("system", ""), "lời dặn thiếu ngày hôm nay"
+assert cap.get("builtin_tools") is False, "chưa tắt công cụ có sẵn của Open WebUI"' \
+  || { echo "FAIL  Trợ lý OneBee: lời dặn/công cụ chưa đúng"; exit 1; }
+echo "PASS  Trợ lý biết ngày hôm nay; tắt công cụ có sẵn (web trả lời giống lệnh hoi, không gọi nhầm \"tạo lịch\")"
 
 answer="$(curl -s -m 300 -X POST "${API}/api/chat/completions" -H "Authorization: Bearer ${token}" \
   -H 'Content-Type: application/json' \

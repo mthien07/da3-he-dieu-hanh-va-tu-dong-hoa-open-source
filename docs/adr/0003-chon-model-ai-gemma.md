@@ -36,3 +36,9 @@ Chi tiết + toàn bộ câu trả lời: `reports/ai/260929-*`. Bộ chấm đ�
 2. Phiếu chấm tay nhóm 2–3 (`reports/ai/260929-luot2-gemma4-e2b-3-lan-phieu-cham-tay.csv`): anh đã xem và duyệt chung,
    chưa ghi điểm từng câu.
 3. Kiểm giấy phép Gemma 4 trên trang chính thức trước khi ghi vào hợp đồng dịch vụ.
+
+## Cập nhật 30/9 (1.0.0-rc.1)
+- Lời dặn thêm ngày hôm nay (biến `{{CURRENT_DATE}}` của Open WebUI), soạn ngay văn bản khi được nhờ, cách mở thư mục chung, chuỗi phím Telex.
+  Chấm lại 40 câu × 1 lần: ĐẠT 98% (N1 94%, N2 94%, N3–N5 100%, 0 bịa) — `reports/ai/260930-luot3-*`. Model giữ nguyên.
+- Phát hiện khi thử giao diện web: Open WebUI cho model gọi "công cụ có sẵn" → Gemma gọi nhầm "tạo lịch". Đã tắt cho "Trợ lý OneBee".
+  Bài học: bộ chấm gọi thẳng Ollama, không đi qua Open WebUI → mỗi lần nâng cấp Open WebUI phải thử cả giao diện web.
