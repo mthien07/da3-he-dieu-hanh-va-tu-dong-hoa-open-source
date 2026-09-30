@@ -30,4 +30,5 @@
     mode: "{{ item.mode }}"
   loop:
     - {src: onebee-may-tram.py, mode: "0750"}
+    - {src: onebee-bao-cao-tuan.py, mode: "0750"}
     - {src: cap-nhat-may-tram.yml, mode: "0640"}

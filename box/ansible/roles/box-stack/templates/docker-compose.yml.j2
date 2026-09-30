@@ -87,6 +87,7 @@ services:
       - {{ onebee_box_dir }}/n8n-import:/import:ro
       - {{ onebee_box_data }}/{{ onebee_box_samba_share }}/don-hang:/home/node/.n8n-files/don-hang
       - {{ onebee_box_data }}/tinh-trang-may:/home/node/.n8n-files/tinh-trang-may
+      - {{ onebee_box_data }}/ho-tro:/home/node/.n8n-files/ho-tro
 
   uptime-kuma:
     image: {{ onebee_box_images.uptime_kuma }}

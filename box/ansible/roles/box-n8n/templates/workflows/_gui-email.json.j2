@@ -1,5 +1,9 @@
+{# Nút gửi email dùng chung. Tùy chọn (đặt bằng {% set %} trước khi include):
+   email_tu_nut = tên nút lấy subject/text (mặc định: nút ngay trước); email_bo_qua_loi = true → lỗi email không làm hỏng quy trình #}
+{% set _nguon = ("$('" ~ email_tu_nut ~ "').first().json") if email_tu_nut is defined else "$json" %}
 {"id": "gui-email", "name": "Gửi email", "type": "n8n-nodes-base.emailSend", "typeVersion": 2.1, "position": [480, 0],
+     {% if email_bo_qua_loi is defined and email_bo_qua_loi %}"onError": "continueRegularOutput",{% endif %}
      "parameters": {"fromEmail": {{ onebee_box_email.gui_tu | to_json }}, "toEmail": {{ onebee_box_email.nhan | to_json }},
-                    "subject": "={{ '{{' }} $json.subject {{ '}}' }}", "emailFormat": "text", "text": "={{ '{{' }} $json.text {{ '}}' }}",
+                    "subject": "={{ '{{' }} {{ _nguon }}.subject {{ '}}' }}", "emailFormat": "text", "text": "={{ '{{' }} {{ _nguon }}.text {{ '}}' }}",
                     "options": {"appendAttribution": false}},
      "credentials": {"smtp": {"id": "onebeeSmtp000001", "name": "OneBee — hộp thư gửi (SMTP)"}}}
