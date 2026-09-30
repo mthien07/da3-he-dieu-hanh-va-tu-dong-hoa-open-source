@@ -19,7 +19,11 @@ Bản đủ tính năng; mọi mục đã kiểm tự động trong container (k
 - Lời dặn: mở thư mục chung bằng trình quản lý tệp (không phải trình duyệt), ghi đúng chuỗi phím Telex khi được hỏi cách gõ.
 - Chấm lại 40 câu × 1 lần với lời dặn mới: ĐẠT 98% (N1 94%, N2 94%, N3–N5 100%, 0 bịa, 0 ý cấm) — `reports/ai/260930-luot3-*`.
 ### Kiểm thử (30/9, container)
-- KẾT_QUẢ_RC1
+- Box (Docker-in-Docker, systemd): **81/81 bước ĐẠT** — cài 2 lần, dịch vụ, AI hỏi đáp thật, quy trình n8n + email, sổ hỗ trợ,
+  Uptime Kuma báo email, quản lý máy trạm qua SSH, sao lưu/khôi phục, diễn tập hỏng ổ Box → khôi phục toàn bộ, khởi động lại.
+- Desktop: 5 kịch bản mở rộng (chặn sai máy, Mint, bộ gõ, systemd + SSH quản trị, Ubuntu) ĐẠT; 14 unit test Python ĐẠT; mẫu Jinja đọc được.
+- Trợ lý AI: bộ chấm 40 câu ĐẠT 98%.
+- Chưa thử: máy ảo/máy thật (phiên Cinnamon thật, phần cứng, LAN thật, email qua máy chủ thư thật, tốc độ AI).
 
 ## [0.6.0] — 30/9/2026 — Chuẩn bị đóng gói dịch vụ (trước v1.0)
 ### Thêm
