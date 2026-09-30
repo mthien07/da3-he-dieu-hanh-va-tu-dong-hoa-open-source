@@ -39,7 +39,8 @@ sudo onebee-box bao-cao-tuan > nhat-ky-tuan-1.md      # hoặc: sudo onebee-box 
 Nhật ký không chứa tên người báo, nội dung mô tả, góp ý → đưa vào báo cáo được.
 
 Cuối tuần 2 và tuần 4: gửi đường link khảo sát `http://<ip-box>:5678/form/onebee-khao-sat` (ẩn danh, 5 câu, 2 phút).
-Cần ít nhất 3 phiếu thì nhật ký mới hiện điểm (giữ ẩn danh ở đơn vị nhỏ).
+Cần ít nhất 3 phiếu thì nhật ký mới hiện điểm (giữ ẩn danh ở đơn vị nhỏ). Gửi link cho mọi người cùng lúc, **chạy
+`bao-cao-tuan` sau khi đã thu đủ phiếu** (chạy giữa chừng rồi chạy lại sau 1 phiếu mới có thể đoán ra điểm của người đó).
 
 ## 3. Đường lui
 Việc gấp không làm được trên OneBee OS: dùng máy Windows dự phòng ngay, ghi yêu cầu hỗ trợ loại "Phần mềm chỉ chạy trên Windows".

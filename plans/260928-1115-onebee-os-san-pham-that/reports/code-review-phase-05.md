@@ -77,3 +77,18 @@ n8n does not enforce dropdown options on the server. The integration test relies
 - The trailing newline of `_csv-js.j2` is stripped, which produces `…});// Nhân viên…` on one line. The JS is still valid.
 - In 07 the node x-positions (360 → 480 → 720) are uneven.
 - The changelog still contains the placeholder `KẾT_QUẢ_BOX_05`.
+
+
+## Đã xử lý (30/9)
+| # | Cách xử lý |
+|---|---|
+| M1 | Quy trình 07/08 chỉ nhận nhãn có sẵn (từ `vars/main.yml`); báo cáo chỉ in nhãn biết trước, lạ → "Khác". Test tích hợp: chữ tự gõ bị từ chối, không ghi sổ |
+| M2 | Báo cáo chỉ tính mã xử lý có trong sổ yêu cầu |
+| M3 | Thời gian từ báo đến xong tính tới lần xử lý xong; công xử lý cộng mọi lần trong tuần |
+| M4 | Email lỗi → trang kết quả dặn "CHƯA gửi được email… hãy gọi điện" (test tích hợp tắt Mailpit). Chưa đặt thời gian chờ SMTP riêng (lần thử chỉ mất 2 giây vì bị từ chối ngay; máy chủ thư không trả lời thì chờ lâu hơn — ghi nhận) |
+| L1 | Ghi hướng dẫn: chạy báo cáo sau khi thu đủ phiếu |
+| L2 | Ngày sai → thông báo rõ, không traceback |
+| L3 | Unit test so nhãn giữa báo cáo và `vars/main.yml` |
+| L4 | `saveDataSuccessExecution: none` cho 07–09 |
+| L6 | Email ghi đúng địa chỉ Box (còn cổng 5678 cố định trong mục menu máy trạm — giữ nguyên) |
+| L5, L7 | Giữ nguyên (theo kiểu test 04; hình thức) |

@@ -11,8 +11,9 @@
 ### Sửa
 - Sổ hỗ trợ `/srv/onebee/ho-tro` có trong bản sao lưu Box.
 ### Kiểm thử (30/9, container)
-- KẾT_QUẢ_BOX_05
-- Unit test: 12 mục ĐẠT (báo cáo máy trạm + nhật ký tuần, gồm kiểm tra không lộ tên/nội dung).
+- Box: 73 mục ĐẠT (thêm 6 mục: báo cần hỗ trợ + email GẤP, kỹ thuật ghi xử lý bằng tài khoản riêng, khảo sát ẩn danh,
+  nhật ký tuần không lộ tên/nội dung, chỉ nhận loại sự cố có sẵn, máy chủ email hỏng vẫn ghi sổ + dặn gọi điện; menu máy trạm).
+- Unit test: 14 mục ĐẠT (báo cáo máy trạm + nhật ký tuần: không lộ tên/nội dung, mã gõ nhầm, nhiều lần xử lý, nhãn khớp biểu mẫu).
 
 ## [0.4.0] — 29/9/2026 — Quản lý tập trung máy trạm, hỗ trợ từ xa, bộ đo trước/sau
 ### Thêm
