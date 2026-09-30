@@ -1,5 +1,11 @@
 # Nhật ký thay đổi
 
+## [Chưa phát hành]
+### Thêm
+- Ngưỡng đạt chạy thử v2 (`reports/pilot/nguong-dat.md`, chờ chốt): 9 tiêu chí, 3 bắt buộc, cách kết luận; nhật ký tuần tự tính
+  yêu cầu gấp có phản hồi trong 4 giờ làm việc, số máy từng phải quay về Windows (tính dồn, kể cả đã sửa), số phiếu khảo sát ≤ 2 điểm,
+  tuổi bản sao lưu của mọi máy; điểm khảo sát in 2 số lẻ.
+
 ## [1.0.0-rc.1] — 30/9/2026 — Bản thử trước v1.0 (để thử trên máy ảo/máy thật)
 Bản đủ tính năng; mọi mục đã kiểm tự động trong container (không có máy ảo/máy thật). Thử trên máy thật đạt thì phát hành 1.0.0.
 ### Thêm

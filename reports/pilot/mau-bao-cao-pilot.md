@@ -4,8 +4,19 @@
 Số máy, cấu hình (bảng), số người dùng, công việc chính. Phần mềm giữ trên Windows (nếu có) và lý do.
 
 ## 2. Kết quả so với ngưỡng đã chốt (`nguong-dat.md`)
-| Tiêu chí | Ngưỡng | Kết quả | Đạt? |
-|---|---|---|---|
+| # | Tiêu chí | Ngưỡng | Kết quả | Đạt? |
+|---|---|---|---|---|
+| 1 | Mất dữ liệu + thử khôi phục tuần 2, 4 | | | |
+| 2 | Sao lưu đều | | | |
+| 3 | Việc bắt buộc | | | |
+| 4 | Quay về Windows vì lỗi OneBee | | | |
+| 5 | Yêu cầu hỗ trợ tuần 4 | | | |
+| 6 | Yêu cầu gấp phản hồi đúng hạn | | | |
+| 7 | File công việc | | | |
+| 8 | Khảo sát câu 5 | | | |
+| 9 | Tốc độ trước/sau | | | |
+
+**Kết luận:** Đạt / Đạt có điều kiện / Không đạt / Dừng (theo mục "Cách kết luận" trong `nguong-dat.md`).
 
 ## 3. Số liệu
 - Yêu cầu hỗ trợ theo tuần (bảng tuần 1–4, theo loại), công xử lý, thời gian từ báo đến xong.
