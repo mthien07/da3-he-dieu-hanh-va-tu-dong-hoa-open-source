@@ -18,7 +18,7 @@ Mốc tính theo tuần kể từ khi anh chốt Phase 0 (Tuần 1), không gắ
 | 3 | Trợ lý AI tiếng Việt + workflow n8n mẫu | 6–8 | ✅ Xong (29/9) — model gemma4:e2b-it-qat, anh duyệt; đo tốc độ trên Box thật để sau | [phase-03](phase-03-tro-ly-ai-tieng-viet-va-workflow-n8n.md) |
 | 4 | Cài hàng loạt, quản lý tập trung, đo đạc | 8–10 | 🔄 Code + test container (29/9), đã gộp main; chờ máy thật: cài 3 máy, đo trước/sau | [phase-04](phase-04-cai-hang-loat-quan-ly-tap-trung-do-dac.md) |
 | 5 | Mô hình điểm tại HTX OneBee | 10–14 | 🔄 Công cụ + tài liệu xong (30/9), đã gộp main; chờ máy, anh chốt ngưỡng đạt | [phase-05](phase-05-mo-hinh-diem-tai-htx-onebee.md) |
-| 6 | Đóng gói dịch vụ bán được, release v1.0 | 14–16 | 🔄 Phần làm trước được xong (30/9, v0.6.0); giá, video, v1.0 chờ số liệu chạy thử | [phase-06](phase-06-dong-goi-dich-vu-release-v1.md) |
+| 6 | Đóng gói dịch vụ bán được, release v1.0 | 14–16 | 🔄 Bản thử 1.0.0-rc.1 (30/9); anh thử máy ảo/máy thật → 1.0.0; giá, video chờ chạy thử | [phase-06](phase-06-dong-goi-dich-vu-release-v1.md) |
 
 ## Nguyên tắc
 - YAGNI/KISS: dùng phần mềm có sẵn (Mint, Ansible, Docker Compose, Ollama, n8n, restic). Chỉ viết phần "keo dán" + tiếng Việt hóa.

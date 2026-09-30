@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Hội_thi-KNĐMST_2026-f4b942?style=flat-square" alt="Contest"/>
-  <img src="https://img.shields.io/badge/Phiên_bản-0.5_(chạy_thử)-00d4aa?style=flat-square" alt="Stage"/>
+  <img src="https://img.shields.io/badge/Phiên_bản-1.0.0--rc.1_(bản_thử)-00d4aa?style=flat-square" alt="Stage"/>
   <img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="License"/>
   <img src="https://img.shields.io/badge/HTX_OneBee-MST_1102128064-grey?style=flat-square" alt="Tax ID"/>
 </p>
@@ -39,6 +39,9 @@
 ```
 
 ## 🚀 Cài đặt
+Bản phát hành (file nén + SHA256SUMS): [Releases](https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source/releases).
+Tự thử trên máy ảo trước khi cài cho đơn vị: [thu-nghiem-tren-may-ao.md](docs/huong-dan/thu-nghiem-tren-may-ao.md).
+
 **Máy trạm** — Linux Mint 22.x 64-bit, có Internet:
 ```bash
 sudo apt install -y git
@@ -59,11 +62,14 @@ cd onebee && sudo ./desktop/onebee-install.sh
 | Kinh doanh: cách tính giá, mẫu hợp đồng (nháp), khảo sát khách | [docs/kinh-doanh/](docs/kinh-doanh/) |
 | Quyết định kiến trúc | [docs/adr/](docs/adr/) · Thay đổi: [project-changelog.md](docs/project-changelog.md) |
 
-## 📌 Trạng thái (v0.5)
-- ✅ Bộ cài Desktop và Box chạy được; **kiểm tự động trong container** (Desktop 79 mục, Box 73 mục — xem [tests/README.md](tests/README.md), CI chạy phần Desktop).
-- ✅ Model AI chọn bằng bộ chấm 40 câu tiếng Việt × 3 lần trên máy thử: [ADR 0003](docs/adr/0003-chon-model-ai-gemma.md), [reports/ai/](reports/ai/).
-- ⏳ **Chưa thử trên máy thật**: phiên Cinnamon thật, phần cứng (wifi, máy in), tốc độ AI trên máy Box thật, mạng LAN thật.
-- ⏳ Chạy thử 4 tuần tại HTX OneBee ([plan Phase 5](plans/260928-1115-onebee-os-san-pham-that/phase-05-mo-hinh-diem-tai-htx-onebee.md)) → số liệu thật cho giá, tài liệu có ảnh, video, bản v1.0.
+## 📌 Trạng thái (1.0.0-rc.1 — bản thử)
+- ✅ Đủ tính năng cho 1 đơn vị: máy trạm, Box, Trợ lý AI, quy trình email, quản lý máy trạm, hỗ trợ từ xa, sổ hỗ trợ + khảo sát,
+  giám sát, **khôi phục toàn bộ Box khi hỏng ổ** (đã diễn tập tự động).
+- ✅ Kiểm tự động trong container: TEST_COUNTS — xem [tests/README.md](tests/README.md); CI chạy phần Desktop mỗi lần đẩy code.
+- ✅ Model AI chọn bằng bộ chấm 40 câu tiếng Việt: [ADR 0003](docs/adr/0003-chon-model-ai-gemma.md), [reports/ai/](reports/ai/).
+- ⏳ **Chưa thử trên máy ảo/máy thật** (phiên Cinnamon thật, phần cứng, LAN thật, tốc độ AI) → làm theo
+  [danh sách thử](docs/huong-dan/thu-nghiem-tren-may-ao.md); đạt thì phát hành 1.0.0.
+- ⏳ Chạy thử 4 tuần tại HTX OneBee → số liệu thật cho giá, video hướng dẫn.
 
 Mọi con số về tốc độ, chi phí, tiết kiệm chỉ công bố khi có file đo trong `reports/`. Hiện **chưa có** số đo trên máy thật.
 

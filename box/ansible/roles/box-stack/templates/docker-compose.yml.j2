@@ -37,6 +37,7 @@ services:
     ports: ["{{ onebee_box_ports.open_webui }}:8080"]
     environment:
       OLLAMA_BASE_URL: http://ollama:11434
+      TZ: {{ onebee_timezone }}   # "hôm nay" trong lời dặn Trợ lý theo giờ Việt Nam
       WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
       # Tạo sẵn tài khoản quản trị lúc khởi động lần đầu → tự tắt đăng ký tự do (không còn "ai mở trước thành quản trị")
       WEBUI_ADMIN_EMAIL: {{ onebee_box_admin_email }}

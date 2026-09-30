@@ -1,5 +1,26 @@
 # Nhật ký thay đổi
 
+## [1.0.0-rc.1] — 30/9/2026 — Bản thử trước v1.0 (để thử trên máy ảo/máy thật)
+Bản đủ tính năng; mọi mục đã kiểm tự động trong container (không có máy ảo/máy thật). Thử trên máy thật đạt thì phát hành 1.0.0.
+### Thêm
+- Giám sát: tài khoản quản trị Uptime Kuma tạo sẵn (hết "ai mở trước thành quản trị" ở mọi trang của Box), 5 mục theo dõi dịch vụ,
+  email báo khi dịch vụ ngừng; bỏ trang chọn cơ sở dữ liệu lúc mở lần đầu.
+- `onebee-box khoi-phuc-toan-bo [file-khóa]`: hỏng ổ Box → cài lại → lấy lại toàn bộ dữ liệu, khóa bí mật, khóa SSH bằng khóa in ra giấy;
+  máy trạm chạy tiếp không phải cấu hình lại.
+- Trang giới thiệu Box có lối vào 3 biểu mẫu (báo cần hỗ trợ, nhập đơn hàng, tóm tắt PDF).
+- Tự phát hành: gắn tag `v*` → GitHub Actions đóng gói + SHA256SUMS + tạo bản phát hành (tag có `-rc` = bản thử).
+- Hướng dẫn tự thử trên máy ảo có danh sách kiểm tra (`docs/huong-dan/thu-nghiem-tren-may-ao.md`); ảnh chụp màn hình thật trong tài liệu.
+### Sửa
+- Trợ lý OneBee biết ngày hôm nay (biến ngày của Open WebUI, múi giờ Việt Nam) và soạn ngay văn bản khi được nhờ, chỗ thiếu để [ngoặc vuông]
+  — trước đó hỏi lại ngày và lấy ví dụ năm sai (phát hiện khi chụp màn hình). Bộ chấm AI thay biến ngày giống Open WebUI.
+- Trên giao diện web, Open WebUI v0.11 cho model gọi "công cụ có sẵn" (lịch, ghi chú…) → Gemma gọi nhầm "tạo lịch" thay vì soạn thông báo
+  và trả lời tiếng Anh. Tắt công cụ có sẵn cho "Trợ lý OneBee" → web trả lời giống lệnh `hoi` và bộ chấm. (Bộ chấm gọi thẳng Ollama nên
+  không bắt được lỗi này — chỉ thấy khi thử trên giao diện; có kiểm tự động cấu hình này.)
+- Lời dặn: mở thư mục chung bằng trình quản lý tệp (không phải trình duyệt), ghi đúng chuỗi phím Telex khi được hỏi cách gõ.
+- Chấm lại 40 câu × 1 lần với lời dặn mới: ĐẠT 98% (N1 94%, N2 94%, N3–N5 100%, 0 bịa, 0 ý cấm) — `reports/ai/260930-luot3-*`.
+### Kiểm thử (30/9, container)
+- KẾT_QUẢ_RC1
+
 ## [0.6.0] — 30/9/2026 — Chuẩn bị đóng gói dịch vụ (trước v1.0)
 ### Thêm
 - `scripts/dong-goi-ban-phat-hanh.sh <phiên-bản>`: gói `dist/onebee-os-<phiên-bản>.tar.gz` + `SHA256SUMS` + ghi chú phát hành

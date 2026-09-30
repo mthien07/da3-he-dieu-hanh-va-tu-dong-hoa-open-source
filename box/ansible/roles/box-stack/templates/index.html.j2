@@ -15,6 +15,10 @@
   a.card:hover, a.card:focus { outline:2px solid var(--teal); }
   a.card b { display:block; font-size:20px; }
   a.card span { color:var(--sub); }
+  h2 { margin:28px 0 12px; font-size:16px; color:var(--sub); font-weight:600; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+  .grid a.card { margin:0; border-left-color:var(--teal); }
+  .grid a.card b { font-size:17px; }
   .note { margin-top:20px; color:var(--sub); font-size:14px; }
   code { color:var(--teal); }
 </style>
@@ -26,13 +30,19 @@
   <a class="card" data-port="{{ onebee_box_ports.open_webui }}" href="#"><b>Trợ lý AI</b><span>Hỏi đáp, soạn thảo văn bản bằng AI chạy ngay tại đơn vị</span></a>
   <a class="card" data-port="{{ onebee_box_ports.n8n }}" href="#"><b>Tự động hóa (n8n)</b><span>Quy trình tự động: nhắc việc, báo cáo, chuyển dữ liệu</span></a>
   <a class="card" data-port="{{ onebee_box_ports.uptime_kuma }}" href="#"><b>Giám sát</b><span>Theo dõi máy chủ và dịch vụ còn chạy hay không</span></a>
+  <h2>Biểu mẫu cho nhân viên (tài khoản do quản trị cấp)</h2>
+  <div class="grid">
+    <a class="card" data-port="{{ onebee_box_ports.n8n }}" data-path="form/onebee-ho-tro" href="#"><b>Báo cần hỗ trợ</b><span>Gửi kỹ thuật OneBee</span></a>
+    <a class="card" data-port="{{ onebee_box_ports.n8n }}" data-path="form/onebee-don-hang" href="#"><b>Nhập đơn hàng</b><span>Ghi vào thư mục chung</span></a>
+    <a class="card" data-port="{{ onebee_box_ports.n8n }}" data-path="form/onebee-tom-tat" href="#"><b>Tóm tắt văn bản PDF</b><span>Bằng AI tại đơn vị</span></a>
+  </div>
   <p class="note">Thư mục chung: mở trình quản lý tệp, gõ <code id="smb">smb://tên-máy-chủ/{{ onebee_box_samba_share }}</code></p>
   <p class="note">OneBee Box {{ onebee_box_version }} · HTX OneBee</p>
 </main>
 <script>
   var host = window.location.hostname;
   document.querySelectorAll("a.card").forEach(function (a) {
-    a.href = window.location.protocol + "//" + host + ":" + a.getAttribute("data-port") + "/";
+    a.href = window.location.protocol + "//" + host + ":" + a.getAttribute("data-port") + "/" + (a.getAttribute("data-path") || "");
   });
   document.getElementById("smb").textContent = "smb://" + host + "/{{ onebee_box_samba_share }}";
 </script>

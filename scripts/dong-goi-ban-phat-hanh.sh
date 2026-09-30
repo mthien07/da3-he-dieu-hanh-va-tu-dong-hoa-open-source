@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 ver="${1:-}"
 die() { printf 'LỖI: %s\n' "$*" >&2; exit 1; }
-[[ "${ver}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Cách dùng: $0 <phiên-bản, ví dụ 0.5.0>"
+[[ "${ver}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]] || die "Cách dùng: $0 <phiên-bản, ví dụ 1.0.0 hoặc 1.0.0-rc.1>"
 [[ -z "$(git status --porcelain)" ]] || die "Còn thay đổi chưa commit — commit trước khi đóng gói"
 grep -q "^onebee_version: \"${ver}\"$" desktop/ansible/group_vars/all.yml || die "desktop/ansible/group_vars/all.yml chưa ghi phiên bản ${ver}"
 grep -q "^onebee_box_version: \"${ver}\"$" box/ansible/group_vars/all.yml || die "box/ansible/group_vars/all.yml chưa ghi phiên bản ${ver}"

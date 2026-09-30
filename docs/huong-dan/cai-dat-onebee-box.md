@@ -24,12 +24,15 @@ git clone https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-sourc
 cd onebee
 sudo ./box/onebee-box-install.sh
 ```
-Lần đầu tải vài GB image. Xong sẽ in địa chỉ trang giới thiệu.
+Lần đầu tải vài GB image. Xong sẽ in địa chỉ trang giới thiệu:
+
+![Trang giới thiệu OneBee Box](anh/01-trang-gioi-thieu-box.png)
 
 ## 3. Việc làm ngay sau khi cài
 1. **Trợ lý AI** và **n8n**: tài khoản quản trị `quantri@onebee.lan` đã tạo sẵn, đăng ký tự do đã tắt. Mật khẩu: `sudo onebee-box in-khoa`
    (dòng `webui-admin-password`, `n8n-owner-password`). Model AI (`gemma4:e2b-it-qat`) tự tải khi cài.
-2. **Uptime Kuma** (`:3001`): vẫn lấy người mở đầu tiên làm quản trị → kỹ thuật viên mở và tạo tài khoản ngay sau khi cài.
+2. **Giám sát (Uptime Kuma, `:3001`)**: tài khoản `quantri` tạo sẵn (mật khẩu dòng `uptime-kuma-password`), đã có 5 mục theo dõi
+   các dịch vụ của Box; khi đã cấu hình email, dịch vụ nào ngừng sẽ có email báo.
 3. **Email báo cáo**: làm theo mục 4 của [dung-tro-ly-ai-va-quy-trinh-tu-dong.md](dung-tro-ly-ai-va-quy-trinh-tu-dong.md).
 4. **Thư mục chung**: tài khoản `onebee`, mật khẩu xem bằng `sudo cat /etc/onebee-box/secrets/samba-onebee`.
 5. **Ổ sao lưu**: gắn ổ ngoài vào `/mnt/onebee-sao-luu`. Khai báo trong `/etc/fstab` có `nofail` để máy vẫn khởi động
@@ -66,15 +69,16 @@ Máy trạm cài bản v0.1 (file `sao-luu.env`) được bộ cài tự đổi 
 | `sudo onebee-box sao-luu` | Sao lưu Box ra ổ ngoài ngay + dọn bản cũ (tự chạy 23:00 hằng ngày) |
 | `sudo onebee-box in-khoa` | In khóa bí mật để cất ngoài Box |
 | `sudo onebee-box khoi-phuc-thu` | Thử khôi phục 1 file — kiểm tra sao lưu dùng được |
+| `sudo onebee-box khoi-phuc-toan-bo [file-khóa]` | Hỏng ổ Box: lấy lại toàn bộ trên Box cài lại (mục dưới) |
 
-## Khôi phục toàn bộ khi hỏng ổ Box (tóm tắt)
-1. Cài lại Ubuntu Server 24.04 + chạy `sudo ./box/onebee-box-install.sh`.
-2. Gắn ổ sao lưu; lấy khóa `restic-box` từ bản in (`in-khoa`).
-3. `sudo systemctl stop docker`; khôi phục 2 nhóm dữ liệu:
-   `RESTIC_REPOSITORY=/mnt/onebee-sao-luu/restic-box restic restore latest --tag onebee-box,csdl --target /`
-   và `... restic restore latest --tag onebee-box,chung --target /`
-4. `sudo systemctl start docker && cd /opt/onebee-box && sudo docker compose up -d`.
-Chưa diễn tập quy trình này trên máy thật — cần làm ở Phase 5.
+## Khôi phục toàn bộ khi hỏng ổ Box
+1. Cài lại Ubuntu Server 24.04 + chạy `sudo ./box/onebee-box-install.sh` (như máy mới).
+2. Gắn ổ sao lưu cũ vào `/mnt/onebee-sao-luu` (mục 3). Chép file khóa đã in từ `in-khoa` (hoặc gõ tay dòng `restic-box`).
+3. `sudo onebee-box khoi-phuc-toan-bo /đường/dẫn/khoa.txt` — lấy lại dữ liệu Trợ lý AI, n8n, giám sát, sổ hỗ trợ, thư mục chung,
+   toàn bộ khóa bí mật (mật khẩu cũ dùng lại được), khóa SSH quản trị máy trạm.
+4. Chạy lại bộ cài, rồi `sudo onebee-box khoi-phuc-thu`. **Máy trạm không phải làm gì**: sao lưu, `hoi`, cập nhật từ Box chạy tiếp
+   (kho sao lưu máy trạm là bản sao nên không nằm trong bản sao lưu Box — máy trạm tự tạo kho mới ở lần sao lưu sau).
+Đã diễn tập tự động trong container (`tests/box/check-khoi-phuc-toan-bo.sh`); nên diễn tập 1 lần trên máy ảo trước khi bán.
 
 ## Quyền riêng tư
 Box giữ mật khẩu kho sao lưu của từng máy trạm (để tự dọn bản cũ) → người quản trị Box **đọc được** bản sao lưu `/home`
@@ -87,4 +91,4 @@ khi triển khai, và giữ Box kín (chỉ kỹ thuật viên có mật khẩu)
 - Chưa kiểm trên máy thật; đã kiểm tự động trong container "Ubuntu 24.04 + systemd" (xem `tests/box/`).
 - HTTP trong LAN, chưa có TLS nội bộ.
 - Chưa có bản sao ngoài đơn vị (chưa đủ quy tắc 3-2-1).
-- Uptime Kuma chưa cài sẵn danh sách theo dõi — thêm tay ở lần đầu.
+- Giám sát chưa theo dõi Samba và chính máy Box (CPU, ổ đĩa) — ổ đĩa Box xem bằng `sudo onebee-box trang-thai`.

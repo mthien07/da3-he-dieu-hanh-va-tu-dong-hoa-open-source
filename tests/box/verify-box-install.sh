@@ -15,13 +15,14 @@ check "Trang giới thiệu :80 hiển thị OneBee Box" bash -c "curl -s -m 10 
 check "Open WebUI :3000 khỏe (/health)" bash -c "curl -s -m 10 http://127.0.0.1:3000/health | grep -q true"
 check "n8n :5678 khỏe (/healthz)" bash -c "curl -s -m 10 http://127.0.0.1:5678/healthz | grep -q ok"
 check "Uptime Kuma :3001 trả lời" code_in http://127.0.0.1:3001/ 200 302
+# Uptime Kuma mở cổng web trước khi đọc xong CSDL (vừa khởi động lại) → thử lại tối đa 1 phút
 check "Uptime Kuma: tài khoản quản trị tạo sẵn + 5 mục theo dõi (không còn \"ai mở trước thành quản trị\")" bash -c \
-  "docker exec -i -w /app -e KUMA_USER=quantri -e KUMA_PASS=\"\$(cat /etc/onebee-box/secrets/uptime-kuma-password)\" onebee-uptime-kuma node -e '
+  "for lan in 1 2 3 4 5 6; do [ \$lan = 1 ] || sleep 10; docker exec -i -w /app -e KUMA_USER=quantri -e KUMA_PASS=\"\$(cat /etc/onebee-box/secrets/uptime-kuma-password)\" onebee-uptime-kuma node -e '
 const s = require(\"socket.io-client\").io(\"http://127.0.0.1:3001\", {transports: [\"websocket\"]});
 s.on(\"connect\", () => s.emit(\"needSetup\", (need) => { if (need) process.exit(1);
   s.once(\"monitorList\", (l) => process.exit(Object.keys(l).length >= 5 ? 0 : 2));
   s.emit(\"login\", {username: process.env.KUMA_USER, password: process.env.KUMA_PASS, token: \"\"}, (r) => { if (!r.ok) process.exit(3); }); }));
-setTimeout(() => process.exit(4), 20000);'"
+setTimeout(() => process.exit(4), 20000);' && exit 0; done; exit 1"
 check "Kho sao lưu :8000 đòi mật khẩu (401)" code_in http://127.0.0.1:8000/ 401
 check "Ollama KHÔNG mở cổng ra ngoài (11434)" bash -c "! curl -s -m 3 http://127.0.0.1:11434/ >/dev/null"
 check "Ollama chạy được bên trong (Open WebUI gọi tới)" bash -c "docker exec onebee-open-webui curl -s -m 10 http://ollama:11434/api/version | grep -q version"

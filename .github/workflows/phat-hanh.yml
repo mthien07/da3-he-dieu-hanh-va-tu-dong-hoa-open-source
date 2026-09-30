@@ -1,0 +1,26 @@
+name: Phát hành
+
+# Gắn tag vX.Y.Z (hoặc vX.Y.Z-rc.N = bản thử) → đóng gói + SHA256SUMS → tạo bản phát hành trên GitHub
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  phat-hanh:
+    name: Đóng gói và tạo bản phát hành
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Đóng gói (kiểm phiên bản khớp group_vars + changelog)
+        run: scripts/dong-goi-ban-phat-hanh.sh "${GITHUB_REF_NAME#v}"
+      - name: Tạo bản phát hành
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          thu=""
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then thu="--prerelease"; fi
+          gh release create "${GITHUB_REF_NAME}" dist/onebee-os-*.tar.gz dist/SHA256SUMS \
+            --title "OneBee OS ${GITHUB_REF_NAME#v}" --notes-file dist/ghi-chu-phat-hanh.md ${thu}
