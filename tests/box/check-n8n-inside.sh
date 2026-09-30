@@ -120,3 +120,11 @@ if ! { grep -q "CHƯA gửi được email cho kỹ thuật" <<<"${kq}" && [[ "$
   echo "FAIL  Email lỗi: ${kq:0:300}"; exit 1
 fi
 echo "PASS  Máy chủ email hỏng → yêu cầu vẫn ghi sổ, người báo được dặn gọi điện"
+
+# Giám sát: dịch vụ ngừng → Uptime Kuma gửi email (tài khoản, danh sách theo dõi, email do bộ cài tạo sẵn)
+docker stop onebee-ollama >/dev/null
+for _ in $(seq 60); do subjects | grep -q "Ollama" && break; sleep 5; done
+subjects | grep -q "Ollama" || { echo "FAIL  Uptime Kuma không gửi email khi Ollama ngừng"; subjects; exit 1; }
+docker start onebee-ollama >/dev/null
+for _ in $(seq 30); do docker exec onebee-open-webui curl -s -m 5 http://ollama:11434/api/version | grep -q version && break; sleep 2; done
+echo "PASS  Dịch vụ ngừng (Ollama) → Uptime Kuma gửi email báo quản trị"

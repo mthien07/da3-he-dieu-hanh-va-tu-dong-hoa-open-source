@@ -100,10 +100,26 @@ scenario_systemd() {
   docker exec "${name}" bash -c "${PREP}; ${MINT_DESKTOP_PARTS}"'
     test -d /run/systemd/system || { echo "FAIL  systemd chưa chạy"; exit 1; }
     echo "PASS  Container chạy systemd thật"
+    # Cấu hình máy trạm như lấy từ Box (Box giả = chính máy này, 127.0.0.1) để thử SSH quản trị + các lịch
+    apt-get install -y -q openssh-client >/dev/null; ssh-keygen -q -t ed25519 -N "" -f /root/khoa-box
+    mkdir -p /etc/onebee; { echo "MAY_TRAM=may-thu"; echo "BOX_IP=127.0.0.1"
+      echo "RESTIC_REPOSITORY=rest:http://may-thu:mk@127.0.0.1:1/may-thu/"; echo "RESTIC_PASSWORD=thu"
+      echo "TINH_TRANG_URL=http://127.0.0.1:1/webhook/onebee-tinh-trang"; echo "TINH_TRANG_KEY=thu"
+      echo "QUAN_TRI_SSH_KEY=\"$(cat /root/khoa-box.pub)\""; } > /etc/onebee/may-tram.env
     /tmp/onebee/desktop/onebee-install.sh >/tmp/run1.log 2>&1 || { tail -30 /tmp/run1.log; exit 1; }
-    for t in mintupdate-automation-upgrade.timer mintupdate-automation-autoremove.timer; do
+    for t in mintupdate-automation-upgrade.timer mintupdate-automation-autoremove.timer onebee-sao-luu.timer onebee-bao-tinh-trang.timer; do
       [ "$(systemctl is-active $t)" = active ] && echo "PASS  $t đang chạy ngay sau khi cài" || { echo "FAIL  $t"; exit 1; }
-    done'
+    done
+    [ "$(systemctl is-active ssh.socket)" = active ] && [ "$(systemctl is-enabled ssh.socket)" = enabled ] \
+      || { echo "FAIL  ssh.socket: $(systemctl is-active ssh.socket) $(systemctl is-enabled ssh.socket)"; exit 1; }
+    ssh -i /root/khoa-box -o BatchMode=yes -o StrictHostKeyChecking=no onebee-quantri@127.0.0.1 "sudo -n true" \
+      || { echo "FAIL  Box không vào được bằng khóa quản trị"; exit 1; }
+    out=$(ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o PreferredAuthentications=password root@127.0.0.1 true 2>&1 || true)
+    grep -q "Permission denied (publickey)" <<<"${out}" || { echo "FAIL  SSH còn nhận mật khẩu: ${out}"; exit 1; }
+    echo "PASS  systemd thật: SSH bật kiểu socket, Box vào bằng khóa quản trị + sudo; không nhận mật khẩu"
+    /tmp/onebee/desktop/onebee-install.sh >/tmp/run2.log 2>&1
+    grep -Eq "changed=0 .*failed=0" /tmp/run2.log && echo "PASS  Cài lần 2 (có cấu hình Box đầy đủ) không thay đổi gì" \
+      || { echo "FAIL  idempotent khi có cấu hình Box"; grep -E "changed:|FAILED" /tmp/run2.log | head; exit 1; }'
 }
 
 scenario_ubuntu() {

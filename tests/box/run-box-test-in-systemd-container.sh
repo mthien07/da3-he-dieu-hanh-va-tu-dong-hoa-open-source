@@ -3,6 +3,7 @@
 # Các bước: cài 2 lần (idempotent) → verify 26 mục → AI hỏi đáp thật → sao lưu/khôi phục Box ra "ổ ngoài"
 # → máy trạm Mint 22.3 cài OneBee OS Desktop, sao lưu lên Box + khôi phục + thử xóa bản cũ (phải bị chặn)
 # → quản lý tập trung (báo tình trạng, cập nhật qua SSH) → email báo cáo → Box dọn bản cũ
+# → diễn tập hỏng ổ Box: cài lại + khôi phục toàn bộ bằng khóa in ra giấy
 # → bản giả mạo ngày tương lai bị phát hiện → chưa gắn ổ ngoài thì từ chối → khởi động lại Box, dịch vụ tự lên.
 # Biến: ONEBEE_TEST_EXTRA_CA (CA proxy), ONEBEE_TEST_FULL_WEBUI=1 (dùng image Open WebUI đầy đủ thay bản slim),
 #       ONEBEE_TEST_KEEP=1 (giữ container để xem lại).
@@ -161,6 +162,9 @@ box 'n0=$(RESTIC_REPOSITORY=/srv/onebee/restic/ketoan-01 RESTIC_PASSWORD="$(cat 
      n1=$(RESTIC_REPOSITORY=/srv/onebee/restic/ketoan-01 RESTIC_PASSWORD="$(cat /etc/onebee-box/secrets/may-ketoan-01-repo)" restic snapshots --json | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
      [ "${n0}" = "${n1}" ] || { echo "FAIL  Box vẫn dọn kho có bản giả mạo (${n0} → ${n1})"; exit 1; }
      echo "PASS  Box phát hiện bản ngày tương lai, KHÔNG dọn kho đó (${n1} bản giữ nguyên)"'
+
+echo "===== HỎNG Ổ BOX → CÀI LẠI + KHÔI PHỤC TOÀN BỘ ====="
+"${REPO_ROOT}/tests/box/check-khoi-phuc-toan-bo.sh" "${BOX}" "${CLIENT}"
 
 echo "===== CHƯA GẮN Ổ SAO LƯU ====="
 box 'umount /mnt/onebee-sao-luu

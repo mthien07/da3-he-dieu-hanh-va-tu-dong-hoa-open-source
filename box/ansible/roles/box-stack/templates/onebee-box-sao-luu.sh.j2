@@ -127,3 +127,39 @@ cmd_sao_luu_co_bao_cao() {
   rm -f "${log}"
   return "${st}"
 }
+
+# Khôi phục toàn bộ Box khi hỏng ổ: chạy trên Box ĐÃ CÀI LẠI (bộ cài OneBee Box), đã gắn ổ sao lưu cũ.
+# $1 = file khóa in từ 'onebee-box in-khoa' (dùng dòng restic-box=…); không đưa file thì hỏi khóa.
+cmd_khoi_phuc_toan_bo() {
+  local tep="${1:-}" khoa f ten
+  require_backup_disk
+  if [[ -n "${tep}" ]]; then
+    [[ -r "${tep}" ]] || die "Không đọc được file khóa ${tep}"
+    khoa="$(grep -m1 '^restic-box=' "${tep}" | cut -d= -f2- | tr -d '\r')"
+  else
+    read -rsp "Khóa sao lưu Box (dòng restic-box trong bản in 'in-khoa'): " khoa; echo
+  fi
+  [[ -n "${khoa}" ]] || die "Thiếu khóa restic-box"
+  export RESTIC_REPOSITORY="${BACKUP_REPO}" RESTIC_PASSWORD="${khoa}"
+  restic cat config >/dev/null 2>&1 || die "Khóa sai, hoặc ổ không có kho sao lưu Box tại ${BACKUP_REPO}"
+  restic snapshots --latest 1 --tag onebee-box,csdl --json \
+    | python3 -c 'import json, sys; sys.exit(0 if json.load(sys.stdin) else 1)' || die "Kho không có bản sao lưu dữ liệu Box"
+  echo "Dừng dịch vụ, khôi phục cơ sở dữ liệu, khóa bí mật, cấu hình, thư mục chung…"
+  compose stop >/dev/null 2>&1 || true
+  # Xóa dữ liệu của bản cài mới trước khi chép bản cũ vào (restic không xóa file thừa; file tạm của CSDL mới
+  # lẫn với CSDL cũ có thể làm hỏng dữ liệu)
+  rm -rf "${DATA}/open-webui" "${DATA}/n8n" "${DATA}/uptime-kuma" "${DATA}/ho-tro"
+  restic restore latest --tag onebee-box,csdl --target / || die "Khôi phục dữ liệu Box lỗi — chưa chạy lại dịch vụ"
+  restic restore latest --tag onebee-box,chung --target / || warn "Khôi phục thư mục chung lỗi — thử lại lệnh này"
+  # Kho sao lưu máy trạm không nằm trong bản sao lưu Box → cấp lại tài khoản kho bằng mật khẩu cũ
+  # (máy trạm dùng cấu hình cũ, tự tạo kho mới ở lần sao lưu sau)
+  : >"${DATA}/restic/.htpasswd"
+  for f in "${SECRETS}"/may-*-http; do
+    [[ -e "${f}" ]] || continue
+    ten="$(basename "${f}")"; ten="${ten#may-}"; ten="${ten%-http}"
+    htpasswd -B -i "${DATA}/restic/.htpasswd" "${ten}" <"${f}" 2>/dev/null
+  done
+  compose up -d >/dev/null
+  echo "Đã khôi phục. Việc tiếp theo: chạy lại bộ cài (sudo ./box/onebee-box-install.sh) để đồng bộ cấu hình, rồi"
+  echo "sudo onebee-box khoi-phuc-thu. Máy trạm không cần làm gì (dùng lại cấu hình cũ)."
+}
