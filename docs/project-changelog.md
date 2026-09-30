@@ -1,5 +1,18 @@
 # Nhật ký thay đổi
 
+## [0.6.0] — 30/9/2026 — Chuẩn bị đóng gói dịch vụ (trước v1.0)
+### Thêm
+- `scripts/dong-goi-ban-phat-hanh.sh <phiên-bản>`: gói `dist/onebee-os-<phiên-bản>.tar.gz` + `SHA256SUMS` + ghi chú phát hành
+  (chỉ file đã commit; kiểm phiên bản khớp; chặn file giống khóa bí mật).
+- Kinh doanh: cách tính giá từ chi phí thật (`docs/kinh-doanh/bang-gia.md`), mẫu hợp đồng triển khai + bảo trì có SLA (**bản nháp,
+  cần luật sư xem**), biên bản khảo sát khách hàng. Kịch bản 5 video hướng dẫn.
+- CI: chạy unit test Python và kiểm mọi mẫu Jinja đọc được; shellcheck thêm `onebee-ho-tro`.
+### Sửa
+- CI đỏ từ 0.4.0 (shellcheck SC2015 trong test, ansible-lint `command-instead-of-module`) → xanh lại.
+- README viết lại theo sản phẩm thật: bỏ số liệu không có nguồn ("hàng trăm triệu"), bỏ công nghệ không dùng (vLLM, Grafana,
+  Rocky, Preseed); trạng thái nói rõ chưa thử máy thật; bảng giấy phép OSI / fair-code.
+- Demo web: model mô phỏng đổi sang Gemma 4 (đúng sản phẩm), bỏ câu "tiết kiệm hàng triệu đồng" chưa có nguồn.
+
 ## [0.5.0] — 30/9/2026 — Chuẩn bị chạy thử tại đơn vị (mô hình điểm)
 ### Thêm
 - Biểu mẫu "Báo cần hỗ trợ" (n8n quy trình 07): ghi sổ `/srv/onebee/ho-tro/yeu-cau.csv`, email cho kỹ thuật (GẤP ghi ở tiêu đề;

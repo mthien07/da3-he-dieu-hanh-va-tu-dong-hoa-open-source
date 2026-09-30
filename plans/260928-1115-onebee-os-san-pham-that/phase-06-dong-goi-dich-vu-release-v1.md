@@ -4,7 +4,7 @@
 - [plan.md](plan.md) · [phase-05](phase-05-mo-hinh-diem-tai-htx-onebee.md)
 
 ## Overview
-- Ưu tiên: Trung bình · Trạng thái: Chưa bắt đầu · Dự kiến: tuần 14–16
+- Ưu tiên: Trung bình · Trạng thái: 🔄 Phần làm trước được xong (30/9, v0.6.0); phần cần số liệu chạy thử chờ Phase 5 · Dự kiến: tuần 14–16
 
 ## Requirements
 - Tài liệu người dùng tiếng Việt có ảnh; 5 video hướng dẫn ngắn; checklist khảo sát khách.
@@ -25,7 +25,10 @@
 4. Gắn tag v1.0.
 
 ## Todo List
-- [ ] Tài liệu  - [ ] Video  - [ ] Bảng giá  - [ ] Mẫu hợp đồng  - [ ] Demo + README  - [ ] LICENSES.md  - [ ] Release v1.0
+- [x] Tài liệu chữ (hướng dẫn, đào tạo, phím tắt)  - [ ] Ảnh chụp màn hình thật trong tài liệu  - [x] Kịch bản video  - [ ] Quay video
+- [x] Cách tính giá  - [ ] Giá chính thức (cần chi phí thật)  - [x] Mẫu hợp đồng nháp  - [ ] Luật sư xem hợp đồng
+- [x] README + demo bỏ số không nguồn  - [x] LICENSES.md + bảng OSI/fair-code trong README  - [x] Script đóng gói + checksum
+- [ ] Người ngoài đội cài thử theo tài liệu trên máy sạch  - [ ] Tag + GitHub release v1.0
 
 ## Success Criteria
 - Người ngoài đội làm theo tài liệu tự cài được Desktop + Box trên máy sạch.

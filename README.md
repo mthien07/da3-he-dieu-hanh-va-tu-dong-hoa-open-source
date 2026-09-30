@@ -5,12 +5,12 @@
 <h1 align="center">🐧 Hệ điều hành & Tự động hóa Open Source</h1>
 
 <p align="center">
-  <strong>OneBee OS — Linux + AI on-premise cho doanh nghiệp tự chủ công nghệ</strong>
+  <strong>OneBee OS — máy văn phòng Linux tiếng Việt + máy chủ nội bộ có AI chạy tại chỗ, cho HTX và doanh nghiệp nhỏ</strong>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Hội_thi-KNĐMST_2026-f4b942?style=flat-square" alt="Contest"/>
-  <img src="https://img.shields.io/badge/Giai_đoạn-Ý_tưởng-00d4aa?style=flat-square" alt="Stage"/>
+  <img src="https://img.shields.io/badge/Phiên_bản-0.5_(chạy_thử)-00d4aa?style=flat-square" alt="Stage"/>
   <img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="License"/>
   <img src="https://img.shields.io/badge/HTX_OneBee-MST_1102128064-grey?style=flat-square" alt="Tax ID"/>
 </p>
@@ -18,135 +18,70 @@
 ---
 
 ## 🎯 Vấn đề
+- Máy văn phòng ở HTX, hộ kinh doanh, doanh nghiệp nhỏ thường dùng phần mềm không bản quyền → rủi ro pháp lý, dễ nhiễm mã độc.
+- Không có người chuyên CNTT: không ai sao lưu, cập nhật, không ai hỗ trợ khi máy hỏng.
+- Muốn dùng AI nhưng ngại đưa dữ liệu nội bộ lên dịch vụ nước ngoài.
 
-- Chi phí bản quyền Windows + Office cho 20 máy tính có thể lên đến **hàng trăm triệu đồng**
-- Rủi ro pháp lý khi sử dụng phần mềm bẻ khóa
-- Dữ liệu doanh nghiệp phụ thuộc hoàn toàn vào cloud nước ngoài
-- Thiếu giải pháp AI chạy nội bộ (on-premise) cho doanh nghiệp nhỏ
-
-## 💡 Giải pháp
-
-Gói dịch vụ **chuyển đổi hạ tầng CNTT toàn diện**: cài đặt Linux, tùy biến giao diện thân thiện, triển khai AI cục bộ và đào tạo vận hành — giúp doanh nghiệp **tự chủ công nghệ** với chi phí hợp lý.
-
-## 🏗️ Kiến trúc hệ thống
+## 💡 Sản phẩm
+| Thành phần | Làm gì |
+|---|---|
+| **OneBee OS Desktop** | Bộ cài biến Linux Mint 22 thành máy văn phòng tiếng Việt: gõ Telex (IBus + Bamboo), LibreOffice lưu mặc định .docx/.xlsx, font thay thế giữ bố cục file Word, tự cập nhật, tự sao lưu lên Box, lệnh `hoi` hỏi Trợ lý AI, báo cần hỗ trợ, hỗ trợ từ xa có đồng ý |
+| **OneBee Box** | Bộ cài máy chủ nội bộ (Ubuntu Server 24.04): Trợ lý AI tiếng Việt chạy tại chỗ (Gemma 4 qua Ollama + Open WebUI), tự động hóa n8n gửi email (báo cáo sao lưu, nhắc hạn thuế/BHXH, đơn hàng, tóm tắt PDF, sổ hỗ trợ), thư mục chung, sao lưu 2 tầng chống mã độc tống tiền, quản lý và cập nhật máy trạm từ 1 lệnh |
+| **Dịch vụ** | Khảo sát → sao lưu nguyên ổ Windows → cài → đào tạo 3 buổi → bảo trì (theo dõi báo cáo hằng ngày, xử lý yêu cầu hỗ trợ có đo thời gian) |
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                  🏢 HẠ TẦNG DOANH NGHIỆP                    │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │              🖥️ Linux Desktop (Client)               │    │
-│  │  Ubuntu/Linux Mint │ LibreOffice │ Firefox           │    │
-│  │  Theme tùy biến (giống Windows) │ Shortcut quen      │    │
-│  └─────────────────────┬───────────────────────────────┘    │
-│                        │ LAN / VPN                          │
-│  ┌─────────────────────▼───────────────────────────────┐    │
-│  │              🖧 Linux Server                         │    │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────────────┐   │    │
-│  │  │ Ollama   │  │ n8n      │  │ Harness          │   │    │
-│  │  │ vLLM     │  │ Workflow │  │ Engineering      │   │    │
-│  │  │ AI local │  │ Engine   │  │ Auto-ops         │   │    │
-│  │  └──────────┘  └──────────┘  └──────────────────┘   │    │
-│  │                                                     │    │
-│  │  🔒 Auto-backup │ 🔄 Auto-update │ 📊 Monitoring   │    │
-│  └─────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
+ Máy trạm (Linux Mint + OneBee OS)                 OneBee Box (Ubuntu Server 24.04, trong LAN)
+ ├─ gõ tiếng Việt, LibreOffice          sao lưu    ├─ Trợ lý AI: Open WebUI + Ollama (Gemma 4) — không gửi dữ liệu ra ngoài
+ ├─ onebee-sao-luu (12:00)         ───────────────▶├─ restic rest-server (chỉ-thêm) → ổ ngoài 23:00
+ ├─ onebee-bao-tinh-trang (mỗi giờ) ──────────────▶├─ n8n: email báo cáo, nhắc hạn, đơn hàng, sổ hỗ trợ, khảo sát
+ ├─ hoi "câu hỏi"                   ──────────────▶├─ Samba: thư mục chung
+ └─ onebee-ho-tro (khi người dùng bấm)◀──SSH────── └─ onebee-box: them-may, may-tram, cap-nhat-may, bao-cao-tuan …
 ```
 
-## ✨ Tính năng chính
-
-| Tính năng | Mô tả |
-|-----------|-------|
-| 🐧 **Linux Desktop thân thiện** | Giao diện tùy biến giống Windows, dễ chuyển đổi |
-| 📝 **LibreOffice** | Thay thế MS Office, tương thích file .docx/.xlsx/.pptx |
-| 🤖 **AI on-premise** | Ollama + LLM mã nguồn mở (Llama, Mistral, Gemma) |
-| 🔧 **Harness Engineering** | Tự động backup, update, monitoring, security |
-| ⚡ **n8n Automation** | Workflow tự động hóa quy trình nội bộ |
-| 🔒 **Bảo mật nội bộ** | Dữ liệu không rời khỏi mạng LAN doanh nghiệp |
-| 💬 **AI Terminal** | Chatbot CLI hỗ trợ người dùng Linux mới bằng tiếng Việt |
-
-## 🛠️ Công nghệ sử dụng
-
-| Lớp | Công nghệ |
-|-----|-----------|
-| Desktop OS | Ubuntu, Linux Mint |
-| Server OS | Debian, Rocky Linux |
-| Văn phòng | LibreOffice, GIMP, Inkscape |
-| AI/LLM | Ollama, vLLM (Llama 3, Mistral, Gemma) |
-| Tự động hóa | n8n, Bash scripting, systemd |
-| Monitoring | Grafana, Prometheus, htop |
-| Cài đặt hàng loạt | Preseed, Kickstart |
-
-## 🚀 Cài OneBee OS Desktop (v0.1)
-
-Trên máy đã cài **Linux Mint 22.x** (64-bit), có mạng Internet:
-
+## 🚀 Cài đặt
+**Máy trạm** — Linux Mint 22.x 64-bit, có Internet:
 ```bash
 sudo apt install -y git
 git clone https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source.git onebee
-cd onebee
-sudo ./desktop/onebee-install.sh
+cd onebee && sudo ./desktop/onebee-install.sh
 ```
+**Box** — Ubuntu Server 24.04 LTS 64-bit trong LAN: như trên, lệnh cuối là `sudo ./box/onebee-box-install.sh`.
 
-Chi tiết: [docs/huong-dan/cai-dat-onebee-os-desktop.md](docs/huong-dan/cai-dat-onebee-os-desktop.md)
+## 📚 Tài liệu
+| Việc | Tài liệu |
+|---|---|
+| Cài máy trạm / Box | [cai-dat-onebee-os-desktop.md](docs/huong-dan/cai-dat-onebee-os-desktop.md) · [cai-dat-onebee-box.md](docs/huong-dan/cai-dat-onebee-box.md) |
+| Cài nhiều máy, sao lưu Windows bằng Clonezilla | [cai-hang-loat.md](docs/huong-dan/cai-hang-loat.md) |
+| Trợ lý AI, quy trình tự động, email | [dung-tro-ly-ai-va-quy-trinh-tu-dong.md](docs/huong-dan/dung-tro-ly-ai-va-quy-trinh-tu-dong.md) |
+| Quản lý, cập nhật máy trạm, hỗ trợ từ xa | [quan-ly-may-tram.md](docs/huong-dan/quan-ly-may-tram.md) |
+| Chạy thử tại đơn vị, đào tạo, tờ phím tắt | [chay-thu-tai-don-vi.md](docs/huong-dan/chay-thu-tai-don-vi.md) · [dao-tao-buoi-1-3.md](docs/huong-dan/dao-tao-buoi-1-3.md) · [to-phim-tat.md](docs/huong-dan/to-phim-tat.md) |
+| Đo trước/sau | [do-truoc-sau.md](docs/huong-dan/do-truoc-sau.md) |
+| Kinh doanh: cách tính giá, mẫu hợp đồng (nháp), khảo sát khách | [docs/kinh-doanh/](docs/kinh-doanh/) |
+| Quyết định kiến trúc | [docs/adr/](docs/adr/) · Thay đổi: [project-changelog.md](docs/project-changelog.md) |
 
-## 🖧 Cài OneBee Box (máy chủ nội bộ, v0.1)
+## 📌 Trạng thái (v0.5)
+- ✅ Bộ cài Desktop và Box chạy được; **kiểm tự động trong container** (Desktop 79 mục, Box 73 mục — xem [tests/README.md](tests/README.md), CI chạy phần Desktop).
+- ✅ Model AI chọn bằng bộ chấm 40 câu tiếng Việt × 3 lần trên máy thử: [ADR 0003](docs/adr/0003-chon-model-ai-gemma.md), [reports/ai/](reports/ai/).
+- ⏳ **Chưa thử trên máy thật**: phiên Cinnamon thật, phần cứng (wifi, máy in), tốc độ AI trên máy Box thật, mạng LAN thật.
+- ⏳ Chạy thử 4 tuần tại HTX OneBee ([plan Phase 5](plans/260928-1115-onebee-os-san-pham-that/phase-05-mo-hinh-diem-tai-htx-onebee.md)) → số liệu thật cho giá, tài liệu có ảnh, video, bản v1.0.
 
-Trên máy **Ubuntu Server 24.04 LTS** (64-bit) trong mạng LAN:
+Mọi con số về tốc độ, chi phí, tiết kiệm chỉ công bố khi có file đo trong `reports/`. Hiện **chưa có** số đo trên máy thật.
 
-```bash
-sudo apt install -y git
-git clone https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source.git onebee
-cd onebee
-sudo ./box/onebee-box-install.sh
-```
+## 💰 Giá dịch vụ
+Chưa có giá chính thức — tính từ chi phí thật của đợt chạy thử: [bang-gia.md](docs/kinh-doanh/bang-gia.md).
+Dải giá trong hồ sơ hội thi là giả định nội bộ, chưa có cơ sở chi phí.
 
-Trợ lý AI chạy tại chỗ (Open WebUI + Ollama), tự động hóa n8n, giám sát, thư mục chung, sao lưu máy trạm + Box.
-Chi tiết: [docs/huong-dan/cai-dat-onebee-box.md](docs/huong-dan/cai-dat-onebee-box.md)
+## ⚖️ Giấy phép
+Mã nguồn repo: **MIT**. Thành phần giữ giấy phép của tác giả ([LICENSES.md](LICENSES.md)). Lưu ý khi giới thiệu "mã nguồn mở":
+| Thành phần | Giấy phép |
+|---|---|
+| Linux Mint/Ubuntu, LibreOffice, IBus/Bamboo, Ollama, restic, Samba, Caddy, Uptime Kuma, x11vnc | Nguồn mở (chuẩn OSI) |
+| Gemma 4 | Apache-2.0 (theo model card — kiểm lại trước khi ghi vào hợp đồng) |
+| Open WebUI | BSD-3 + điều khoản thương hiệu (không gỡ/đổi thương hiệu khi > 50 người dùng) |
+| n8n | Sustainable Use License — **fair-code, không phải nguồn mở chuẩn OSI**; chỉ cài cho nhu cầu nội bộ của khách |
 
-Kiểm thử tự động (cần Docker): xem [tests/README.md](tests/README.md)
-
-## 🖥️ Demo web
-
-Mở `demo/index.html` bằng trình duyệt — giao diện **mô phỏng** OneBee OS Desktop, số liệu minh họa.
-
-## 📁 Cấu trúc dự án
-
-```
-da3-he-dieu-hanh-va-tu-dong-hoa-open-source/
-├── desktop/                 # OneBee OS Desktop: onebee-install.sh + playbook Ansible
-├── box/                     # OneBee Box: onebee-box-install.sh + playbook Ansible (Docker Compose)
-├── tests/                   # Kiểm thử tự động (Desktop trên Mint 22.3, Box trong Docker lồng)
-├── demo/index.html          # Web demo mô phỏng
-├── docs/
-│   ├── huong-dan/           # Hướng dẫn cài đặt, vận hành
-│   ├── adr/                 # Quyết định kiến trúc
-│   ├── hoi-thi/             # Hồ sơ dự thi M-02/M-03, pitch deck, kịch bản video
-│   └── project-changelog.md
-├── plans/                   # Kế hoạch làm sản phẩm theo phase
-├── LICENSES.md              # Giấy phép các thành phần
-└── README.md
-```
-
-## 💰 Bảng giá dịch vụ
-
-| Gói | Đối tượng | Nội dung | Giá |
-|-----|-----------|----------|-----|
-| 🌱 **Starter** | HTX, Hộ KD (≤5 máy) | Ubuntu + LibreOffice + Ollama | 5-10 triệu |
-| 🏢 **Business** | SME (5-20 máy) | Server + Client + n8n + AI CLI | 20-40 triệu |
-| 🏭 **Enterprise** | DN (20-100 máy) | Server cluster + AI on-premise + Custom Distro | 50-150 triệu |
-| 🔧 **Bảo trì** | Tất cả | Hỗ trợ kỹ thuật, update, nâng cấp AI | 2-5 triệu/tháng |
-
-## 📌 Trạng thái dự án
-
-- ✅ Hồ sơ dự thi M-02/M-03, pitch deck, kịch bản video (`docs/hoi-thi/`)
-- ✅ Web demo mô phỏng
-- ✅ **OneBee OS Desktop v0.1** — bộ cài chạy được; kiểm tự động trên container Linux Mint 22.3 (gồm gõ Telex thật qua IBus)
-- ✅ **OneBee Box v0.1** — bộ cài chạy được; kiểm tự động trong container Ubuntu 24.04 + systemd (AI hỏi đáp, sao lưu/khôi phục)
-- 🔄 Kiểm trên máy ảo/máy thật (phiên Cinnamon, phần cứng, mạng LAN thật)
-- ⏳ Trợ lý `hoi` + chọn model AI tiếng Việt, cài hàng loạt, mô hình điểm tại HTX OneBee — Phase 3–5
-
-Kế hoạch: [plans/260928-1115-onebee-os-san-pham-that/plan.md](plans/260928-1115-onebee-os-san-pham-that/plan.md)
+## 🖥️ Demo web và hồ sơ hội thi
+`demo/index.html` là giao diện **mô phỏng** (số liệu minh họa, không chạy AI thật). Hồ sơ dự thi: `docs/hoi-thi/`.
 
 ## 📞 Liên hệ
 

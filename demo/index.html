@@ -695,7 +695,7 @@ Gõ 'help' để xem các lệnh khả dụng.
             <div class="window-content">
                 <div class="settings-nav">
                     <button class="set-nav-btn active" onclick="switchSettingTab('general', this)">Tổng quan</button>
-                    <button class="set-nav-btn" onclick="switchSettingTab('auto', this)">Harness Automation</button>
+                    <button class="set-nav-btn" onclick="switchSettingTab('auto', this)">Tự động hóa</button>
                     <button class="set-nav-btn" onclick="switchSettingTab('ai', this)">Cấu hình AI On-premise</button>
                 </div>
                 
@@ -738,14 +738,14 @@ Gõ 'help' để xem các lệnh khả dụng.
                     <div class="setting-item">
                         <div class="set-info">
                             <h4>Khởi chạy Ollama khi bật máy</h4>
-                            <p>Nạp mô hình ngôn ngữ lớn (Llama 3 8B) vào bộ nhớ VRAM để sẵn sàng phản hồi chatbot.</p>
+                            <p>Nạp model Gemma 4 (gemma4:e2b-it-qat) để sẵn sàng trả lời "Trợ lý OneBee" — bản thật chạy trên OneBee Box.</p>
                         </div>
                         <div class="toggle-switch active" onclick="toggleSwitch(this)"></div>
                     </div>
                     <div class="setting-item">
                         <div class="set-info">
                             <h4>Mô hình AI Đang dùng</h4>
-                            <p>Llama 3 8B (Q4_K_M) — thiết kế chạy cục bộ (mô phỏng)</p>
+                            <p>Gemma 4 E2B (gemma4:e2b-it-qat) — chạy tại chỗ trên OneBee Box (mô phỏng)</p>
                         </div>
                         <span style="font-size:12px; color: var(--teal); font-weight:700;">Đang chạy ✓</span>
                     </div>
@@ -901,18 +901,18 @@ Gõ 'help' để xem các lệnh khả dụng.
             }, 4000);
         }
 
-        // Simulate n8n/Harness Backup
+        // Mô phỏng sao lưu (bản thật: restic, máy trạm → Box 12:00, Box → ổ ngoài 23:00)
         function simulateBackup() {
             openWindow('win-terminal');
             const history = document.getElementById('termHistory');
             
             let logs = [
-                "\n[Harness] Starting backup sequence...",
-                "[Harness] Checking database integrity (Supabase local cache)...",
-                "[Harness] Compressing transaction records...",
-                "[Harness] Encrypting backup with GPG (AES-256)...",
-                "[Harness] Sending archive to Local NAS (IP: 192.168.1.200)...",
-                "[Harness] Backup completed successfully! (Size: 4.8MB, Hash: sha256:d82f...91f)\n"
+                "\n[onebee-sao-luu] (mô phỏng) Bắt đầu sao lưu /home lên OneBee Box...",
+                "[restic] Quét thay đổi từ lần sao lưu trước...",
+                "[restic] Nén và loại trùng dữ liệu...",
+                "[restic] Mã hóa bản sao lưu...",
+                "[restic] Gửi lên kho chỉ-thêm trên OneBee Box (máy trạm không xóa được bản cũ)...",
+                "[onebee-sao-luu] Sao lưu xong (số liệu minh họa)\n"
             ];
 
             let index = 0;
@@ -956,7 +956,7 @@ Gõ 'help' để xem các lệnh khả dụng.
                 termHistory.innerHTML += `Lệnh khả dụng:
   help          - Hiển thị hướng dẫn
   sys-info      - Xem thông số cấu hình và tối ưu hóa hệ thống
-  ollama-chat   - Khởi chạy khung chat với Llama 3 cục bộ
+  ollama-chat   - Khởi chạy khung chat với Trợ lý OneBee (bản thật: lệnh hoi)
   docker ps     - Xem các container microservices đang chạy
   backup-db     - Chạy script sao lưu dữ liệu tự động
   apt update    - Kiểm tra cập nhật bảo mật hệ thống
@@ -972,7 +972,7 @@ Gõ 'help' để xem các lệnh khả dụng.
   AI Processor: Ollama active (using local CPU threads)
   Optimization status: (mô phỏng — số liệu thật đo khi thí điểm)`;
             } else if (cmd === 'ollama-chat' || cmd === 'ollama run') {
-                termHistory.innerHTML += `\n[Ollama] (mô phỏng) Đang tải mô hình Llama 3 8B vào RAM...\n[Ollama] Sẵn sàng! Hãy nhập câu hỏi sau dấu nhắc lệnh để trò chuyện. (Gõ 'exit' để thoát khỏi AI Chat).\n`;
+                termHistory.innerHTML += `\n[Ollama] (mô phỏng) Đang nạp Gemma 4 (gemma4:e2b-it-qat)...\n[Ollama] Sẵn sàng! Hãy nhập câu hỏi sau dấu nhắc lệnh để trò chuyện. (Gõ 'exit' để thoát khỏi AI Chat).\n`;
                 currentMode = 'ai';
             } else if (cmd === 'docker ps') {
                 termHistory.innerHTML += `CONTAINER ID   IMAGE         COMMAND                  STATUS          PORTS                    NAMES\n18b56f932f31   n8nio/n8n     "tini -- /docker-ent…"   Up 24 hours     0.0.0.0:5678->5678/tcp   n8n-automation\n9a18fdb9e1a1   postgres:16   "docker-entrypoint.s…"   Up 24 hours     0.0.0.0:5432->5432/tcp   onebee-db\nf72ad3819eac   ollama/ollama "/bin/ollama serve"      Up 24 hours     11434/tcp                llama-ai`;
@@ -992,11 +992,11 @@ Mã nguồn mở 100%, an toàn bảo mật, an tâm sử dụng.`;
                     termHistory.innerHTML += `\n[Ollama] Đã tắt phiên làm việc với AI.\n`;
                 } else {
                     // Simple mock responses for AI chat
-                    let aiReply = "(Mô phỏng) Bản thật sẽ chạy một mô hình AI mã nguồn mở như Llama 3 qua Ollama ngay trên máy chủ nội bộ. Tôi có thể hỗ trợ các lệnh cơ bản như viết email, soạn thảo tài liệu hoặc giải đáp các kiến thức chuyển đổi số. Bạn muốn hỏi gì thêm?";
+                    let aiReply = "(Mô phỏng) Bản thật dùng Gemma 4 qua Ollama trên OneBee Box, hỏi bằng lệnh hoi hoặc trình duyệt. Tôi có thể hỗ trợ các lệnh cơ bản như viết email, soạn thảo tài liệu hoặc giải đáp các kiến thức chuyển đổi số. Bạn muốn hỏi gì thêm?";
                     if (cmd.includes('muối tôm') || cmd.includes('tây ninh')) {
                         aiReply = "(Mô phỏng) Muối tôm Tây Ninh là đặc sản nổi tiếng của vùng đất nắng gió. Tôi có thể hỗ trợ HTX OneBee lập kế hoạch quảng bá muối tôm ra thị trường cả nước bằng các kịch bản email marketing.";
                     } else if (cmd.includes('linux') || cmd.includes('ubuntu')) {
-                        aiReply = "(Mô phỏng) Linux giúp doanh nghiệp tiết kiệm hàng triệu đồng tiền bản quyền phần mềm, đồng thời tăng tính bảo mật, tránh các mã độc tống tiền (ransomware) thường lây lan trên hệ điều hành lậu.";
+                        aiReply = "(Mô phỏng) Linux và phần mềm nguồn mở không mất phí bản quyền; chi phí dịch vụ và mức tiết kiệm thực tế sẽ tính từ đợt chạy thử tại HTX OneBee.";
                     }
                     termHistory.innerHTML += `\n[Ollama] ${aiReply}\n`;
                 }
