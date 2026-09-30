@@ -65,7 +65,7 @@ cd onebee && sudo ./desktop/onebee-install.sh
 ## 📌 Trạng thái (1.0.0-rc.1 — bản thử)
 - ✅ Đủ tính năng cho 1 đơn vị: máy trạm, Box, Trợ lý AI, quy trình email, quản lý máy trạm, hỗ trợ từ xa, sổ hỗ trợ + khảo sát,
   giám sát, **khôi phục toàn bộ Box khi hỏng ổ** (đã diễn tập tự động).
-- ✅ Kiểm tự động trong container: TEST_COUNTS — xem [tests/README.md](tests/README.md); CI chạy phần Desktop mỗi lần đẩy code.
+- ✅ Kiểm tự động trong container: Box 81/81 bước, Desktop 5 kịch bản, 14 unit test, Trợ lý AI 98% bộ chấm 40 câu — xem [tests/README.md](tests/README.md); CI chạy phần Desktop mỗi lần đẩy code.
 - ✅ Model AI chọn bằng bộ chấm 40 câu tiếng Việt: [ADR 0003](docs/adr/0003-chon-model-ai-gemma.md), [reports/ai/](reports/ai/).
 - ⏳ **Chưa thử trên máy ảo/máy thật** (phiên Cinnamon thật, phần cứng, LAN thật, tốc độ AI) → làm theo
   [danh sách thử](docs/huong-dan/thu-nghiem-tren-may-ao.md); đạt thì phát hành 1.0.0.
