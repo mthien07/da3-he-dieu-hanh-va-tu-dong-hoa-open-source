@@ -1,0 +1,44 @@
+{% set js %}
+{% include 'workflows/_csv-js.j2' %}
+// Kỹ thuật ghi kết quả xử lý 1 yêu cầu → ho-tro/xu-ly.csv (dùng cho báo cáo tuần: thời gian xử lý, cách xử lý)
+const j = $input.first().json;
+const ma = String(j.ma || '').trim();
+if (!/^\d{6}-\d{6}-\d{2}$/.test(ma)) throw new Error('Mã yêu cầu không đúng dạng (ví dụ 260930-143012-47)');
+const phut = Number(j.so_phut);
+if (!Number.isFinite(phut) || phut < 0 || phut > 10000) throw new Error('Số phút xử lý không hợp lệ');
+const line = dongCsv([ma, $now.toFormat('yyyy-MM-dd HH:mm'), j.cach_xu_ly, Math.round(phut), j.ghi_chu]);
+return [{ json: { ma }, binary: tep(line, 'xu-ly.csv') }];
+{% endset %}
+{
+  "id": "onebeeXuLyHT001",
+  "name": "OneBee — Xử lý yêu cầu hỗ trợ (kỹ thuật)",
+  "nodes": [
+    {"id": "xl-1", "name": "Biểu mẫu xử lý", "type": "n8n-nodes-base.formTrigger", "typeVersion": 2.6, "position": [0, 0],
+     "webhookId": "0e7c1b2a-0000-4000-8000-000000000008",
+     "parameters": {"authentication": "basicAuth", "formTitle": "Xử lý yêu cầu hỗ trợ",
+       "formDescription": "Dành cho kỹ thuật OneBee: ghi lại sau khi xử lý xong 1 yêu cầu.",
+       "formFields": {"values": [
+         {"fieldLabel": "Mã yêu cầu", "fieldName": "ma", "fieldType": "text", "requiredField": true},
+         {"fieldLabel": "Cách xử lý", "fieldName": "cach_xu_ly", "fieldType": "dropdown", "requiredField": true,
+          "fieldOptions": {"values": [{% for l in onebee_ho_tro_cach_xu_ly %}{"option": {{ l | to_json }}}{{ '' if loop.last else ', ' }}{% endfor %}]}},
+         {"fieldLabel": "Số phút xử lý", "fieldName": "so_phut", "fieldType": "number", "requiredField": true},
+         {"fieldLabel": "Ghi chú (không ghi mật khẩu, dữ liệu khách)", "fieldName": "ghi_chu", "fieldType": "textarea", "requiredField": false}
+       ]},
+       "responseMode": "lastNode", "options": {"path": "onebee-xu-ly", "buttonLabel": "Ghi", "appendAttribution": false}},
+     "credentials": {"httpBasicAuth": {"id": "onebeeKyThuat001", "name": "OneBee — tài khoản biểu mẫu kỹ thuật"}}},
+    {"id": "xl-2", "name": "Kiểm tra", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [220, 0],
+     "parameters": {"jsCode": {{ js | to_json }}}},
+    {"id": "xl-3", "name": "Ghi sổ xử lý", "type": "n8n-nodes-base.readWriteFile", "typeVersion": 1.1, "position": [440, 0],
+     "parameters": {"operation": "write", "fileName": "/home/node/.n8n-files/ho-tro/xu-ly.csv",
+       "dataPropertyName": "data", "options": {"append": true}}},
+    {"id": "xl-4", "name": "Đã ghi", "type": "n8n-nodes-base.form", "typeVersion": 2.5, "position": [660, 0],
+     "parameters": {"operation": "completion", "respondWith": "text", "completionTitle": "Đã ghi kết quả xử lý",
+       "completionMessage": "={{ '{{' }} 'Yêu cầu ' + $('Kiểm tra').first().json.ma + ' đã ghi xử lý xong.' {{ '}}' }}"}}
+  ],
+  "connections": {
+    "Biểu mẫu xử lý": {"main": [[{"node": "Kiểm tra", "type": "main", "index": 0}]]},
+    "Kiểm tra": {"main": [[{"node": "Ghi sổ xử lý", "type": "main", "index": 0}]]},
+    "Ghi sổ xử lý": {"main": [[{"node": "Đã ghi", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1", "timezone": "{{ onebee_timezone }}"}
+}

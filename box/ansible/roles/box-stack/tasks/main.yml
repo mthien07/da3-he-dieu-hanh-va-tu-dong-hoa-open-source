@@ -17,6 +17,7 @@
     - {path: "{{ onebee_box_data }}/open-webui", mode: "0700"}
     - {path: "{{ onebee_box_data }}/n8n", owner: "1000", mode: "0700"}  # n8n chạy bằng uid 1000
     - {path: "{{ onebee_box_data }}/tinh-trang-may", owner: "1000", mode: "0700"}  # máy trạm báo tình trạng (qua n8n)
+    - {path: "{{ onebee_box_data }}/ho-tro", owner: "1000", mode: "0700"}  # sổ yêu cầu hỗ trợ + khảo sát (qua n8n)
     - {path: "{{ onebee_box_data }}/uptime-kuma", mode: "0700"}
     - {path: "{{ onebee_box_data }}/restic", mode: "0700"}
     - {path: "{{ onebee_box_dir }}/n8n-import", owner: "1000", mode: "0700"}

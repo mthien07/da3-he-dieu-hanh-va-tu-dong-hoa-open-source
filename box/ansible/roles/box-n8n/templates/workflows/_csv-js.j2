@@ -1,0 +1,5 @@
+// Ghi CSV an toàn: chữ bắt đầu bằng = + - @ bị Calc/Excel hiểu là công thức → thêm dấu ' phía trước
+const safe = v => { const t = String(v ?? '').replace(/\r?\n/g, ' ').trim(); return /^[=+\-@\t]/.test(t) ? "'" + t : t; };
+const esc = v => '"' + safe(v).replace(/"/g, '""') + '"';
+const dongCsv = cot => cot.map(esc).join(',') + '\n';
+const tep = (line, ten) => ({ data: { data: Buffer.from(line, 'utf8').toString('base64'), mimeType: 'text/csv', fileName: ten } });

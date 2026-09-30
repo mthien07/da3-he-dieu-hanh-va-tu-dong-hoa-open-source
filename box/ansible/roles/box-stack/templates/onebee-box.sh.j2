@@ -4,6 +4,7 @@
 #   onebee-box them-may <ten-may>  Cấp tài khoản sao lưu, khóa Trợ lý AI, quản lý cho 1 máy trạm; in cấu hình dán vào máy trạm
 #   onebee-box may-tram            Tình trạng các máy trạm: sao lưu, cập nhật, ổ đĩa, lần liên lạc cuối
 #   onebee-box cap-nhat-may <ten-may>|--tat-ca   Cập nhật phần mềm máy trạm từ Box (qua SSH)
+#   onebee-box bao-cao-tuan [YYYY-MM-DD]   Nhật ký tuần: yêu cầu hỗ trợ, khảo sát, tình trạng máy (Markdown)
 #   onebee-box dong-bo-tro-ly      Tạo/cập nhật "Trợ lý OneBee" (model Gemma + lời dặn tiếng Việt) trong Open WebUI
 #   onebee-box khoi-tao            Tạo kho sao lưu Box trên ổ ngoài (làm 1 lần sau khi gắn ổ)
 #   onebee-box sao-luu             Sao lưu Box ra ổ ngoài + dọn bản cũ (tự chạy 23:00 hằng ngày)
@@ -52,6 +53,14 @@ cmd_them_may() {
   echo "TINH_TRANG_URL=http://${ip}:${N8N_PORT}/webhook/onebee-tinh-trang"
   echo "TINH_TRANG_KEY=${tram_key}"
   echo "QUAN_TRI_SSH_KEY=\"$(cat "${SSH_DIR}/quan-tri.pub")\""
+}
+
+cmd_bao_cao_tuan() {
+  local ngay="${1:-$(date +%F)}"
+  local -a may=()
+  [[ "${ngay}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || die "Ngày theo dạng YYYY-MM-DD, ví dụ $(date +%F)"
+  mapfile -t may < <(gio_sao_luu_may)
+  may_tram_py payload DAT "" "${may[@]}" | python3 /usr/local/lib/onebee-box/onebee-bao-cao-tuan.py "${DATA}/ho-tro" "${ngay}"
 }
 
 cmd_may_tram() {
@@ -118,6 +127,7 @@ case "${1:-}" in
   trang-thai) cmd_trang_thai ;;
   them-may) shift; cmd_them_may "$@" ;;
   may-tram) cmd_may_tram ;;
+  bao-cao-tuan) shift; cmd_bao_cao_tuan "$@" ;;
   cap-nhat-may) shift; cmd_cap_nhat_may "$@" ;;
   dong-bo-tro-ly) webui dong-bo-tro-ly ;;
   khoi-tao) with_lock cmd_khoi_tao ;;
@@ -127,5 +137,5 @@ case "${1:-}" in
   dat-mat-khau-email) cmd_dat_mat_khau_email ;;
   email-thu) bao_cao_n8n THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
                && echo "Đã chuyển cho n8n gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
-  *) sed -n '2,13p' "$0" | sed 's/^# //'; exit 1 ;;
+  *) sed -n '2,14p' "$0" | sed 's/^# //'; exit 1 ;;
 esac

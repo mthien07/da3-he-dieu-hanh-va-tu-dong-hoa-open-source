@@ -1,0 +1,46 @@
+{% set js %}
+{% include 'workflows/_csv-js.j2' %}
+// Khảo sát hài lòng ẩn danh (không hỏi tên, không ghi máy) → ho-tro/khao-sat.csv
+const j = $input.first().json;
+const diem = [1, 2, 3, 4, 5].map(i => Number(String(j['c' + i] || '').slice(0, 1)));
+if (diem.some(d => !(d >= 1 && d <= 5))) throw new Error('Mỗi câu chọn điểm 1–5');
+return [{ json: {}, binary: tep(dongCsv([$now.toFormat('yyyy-MM-dd HH:mm'), ...diem, j.gop_y]), 'khao-sat.csv') }];
+{% endset %}
+{% set cau = [
+  "1. Máy chạy ổn định, nhanh như mong muốn",
+  "2. Mở, sửa, gửi file Word/Excel với bên ngoài không gặp khó",
+  "3. Gõ tiếng Việt thuận tiện",
+  "4. Khi gặp sự cố, được hỗ trợ kịp thời",
+  "5. Tôi muốn tiếp tục dùng OneBee OS"] %}
+{
+  "id": "onebeeKhaoSat001",
+  "name": "OneBee — Khảo sát hài lòng (ẩn danh)",
+  "nodes": [
+    {"id": "ks-1", "name": "Biểu mẫu khảo sát", "type": "n8n-nodes-base.formTrigger", "typeVersion": 2.6, "position": [0, 0],
+     "webhookId": "0e7c1b2a-0000-4000-8000-000000000009",
+     "parameters": {"authentication": "basicAuth", "formTitle": "Khảo sát sau khi dùng OneBee OS",
+       "formDescription": "Ẩn danh — không hỏi tên, không ghi máy. 1 = rất không đồng ý … 5 = rất đồng ý.",
+       "formFields": {"values": [
+         {% for c in cau %}{"fieldLabel": {{ c | to_json }}, "fieldName": "c{{ loop.index }}", "fieldType": "dropdown", "requiredField": true,
+          "fieldOptions": {"values": [{"option": "1 — Rất không đồng ý"}, {"option": "2"}, {"option": "3"}, {"option": "4"}, {"option": "5 — Rất đồng ý"}]}},
+         {% endfor %}
+         {"fieldLabel": "Góp ý thêm (không bắt buộc)", "fieldName": "gop_y", "fieldType": "textarea", "requiredField": false}
+       ]},
+       "responseMode": "lastNode", "options": {"path": "onebee-khao-sat", "buttonLabel": "Gửi", "appendAttribution": false}},
+     "credentials": {"httpBasicAuth": {"id": "onebeeForm000001", "name": "OneBee — tài khoản biểu mẫu nhân viên"}}},
+    {"id": "ks-2", "name": "Kiểm tra", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [220, 0],
+     "parameters": {"jsCode": {{ js | to_json }}}},
+    {"id": "ks-3", "name": "Ghi phiếu", "type": "n8n-nodes-base.readWriteFile", "typeVersion": 1.1, "position": [440, 0],
+     "parameters": {"operation": "write", "fileName": "/home/node/.n8n-files/ho-tro/khao-sat.csv",
+       "dataPropertyName": "data", "options": {"append": true}}},
+    {"id": "ks-4", "name": "Cảm ơn", "type": "n8n-nodes-base.form", "typeVersion": 2.5, "position": [660, 0],
+     "parameters": {"operation": "completion", "respondWith": "text", "completionTitle": "Cảm ơn anh/chị",
+       "completionMessage": "Phiếu đã ghi (ẩn danh)."}}
+  ],
+  "connections": {
+    "Biểu mẫu khảo sát": {"main": [[{"node": "Kiểm tra", "type": "main", "index": 0}]]},
+    "Kiểm tra": {"main": [[{"node": "Ghi phiếu", "type": "main", "index": 0}]]},
+    "Ghi phiếu": {"main": [[{"node": "Cảm ơn", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1", "timezone": "{{ onebee_timezone }}"}
+}

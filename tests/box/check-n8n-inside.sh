@@ -67,3 +67,30 @@ print(re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", t))).strip())')
 echo "Bản tóm tắt AI (200 ký tự đầu): ${summary:0:200}"
 grep -q "xoài" <<<"${summary,,}" || { echo "FAIL  Bản tóm tắt không nói về nội dung PDF"; exit 1; }
 echo "PASS  Tóm tắt PDF bằng AI nội bộ qua biểu mẫu n8n"
+
+# Hỗ trợ + khảo sát (chuẩn bị chạy thử): báo sự cố → email kỹ thuật → kỹ thuật ghi xử lý → khảo sát → nhật ký tuần
+KT_AUTH="kythuat:$(cat ${S}/bieu-mau-kythuat)"
+out=$(curl -s -u "${FORM_AUTH}" -X POST ${N8N}/form/onebee-ho-tro -F 'field-0=ketoan-01' -F 'field-1=Máy in / máy quét' \
+  -F 'field-2=Gấp (đang dừng việc)' -F 'field-3=Máy in không in được, báo lỗi giấy' -F 'field-4=Chị Hoa')
+sleep 3
+ma=$(python3 -c 'import csv,sys; r=list(csv.reader(open(sys.argv[1]))); print(r[-1][0])' /srv/onebee/ho-tro/yeu-cau.csv) \
+  || { echo "FAIL  Không ghi sổ yêu cầu hỗ trợ: ${out:0:300}"; exit 1; }
+wait_mail "GẤP — Yêu cầu hỗ trợ ${ma}: Máy in / máy quét"
+echo "PASS  Nhân viên báo cần hỗ trợ → ghi sổ (mã ${ma}) + email GẤP cho kỹ thuật"
+code=$(curl -s -o /dev/null -w '%{http_code}' -u "${FORM_AUTH}" ${N8N}/form/onebee-xu-ly)
+[[ "${code}" == 401 ]] || { echo "FAIL  Tài khoản nhân viên mở được biểu mẫu kỹ thuật (${code})"; exit 1; }
+curl -s -u "${KT_AUTH}" -X POST ${N8N}/form/onebee-xu-ly -F "field-0=${ma}" -F 'field-1=Sửa cấu hình' -F 'field-2=25' \
+  -F 'field-3=cài lại driver' >/dev/null
+for d in 4 5 3; do
+  curl -s -u "${FORM_AUTH}" -X POST ${N8N}/form/onebee-khao-sat -F "field-0=${d}" -F 'field-1=4' -F 'field-2=5 — Rất đồng ý' \
+    -F 'field-3=4' -F 'field-4=5 — Rất đồng ý' -F 'field-5=Chị Hoa góp ý' >/dev/null
+done
+sleep 3
+[[ "$(wc -l < /srv/onebee/ho-tro/xu-ly.csv)" == 1 && "$(wc -l < /srv/onebee/ho-tro/khao-sat.csv)" == 3 ]] \
+  || { echo "FAIL  Sổ xử lý/khảo sát: $(ls -la /srv/onebee/ho-tro)"; exit 1; }
+echo "PASS  Kỹ thuật ghi xử lý (tài khoản riêng, nhân viên không mở được); khảo sát ẩn danh ghi 3 phiếu"
+md=$(onebee-box bao-cao-tuan)
+grep -q "Mới trong tuần: \*\*1\*\* (gấp: 1)" <<<"${md}" && grep -q "Xử lý xong trong tuần: \*\*1\*\*" <<<"${md}" \
+  && grep -q "| Được hỗ trợ kịp thời | 4 |" <<<"${md}" && ! grep -q "Chị Hoa\|driver\|giấy" <<<"${md}" \
+  || { echo "FAIL  Nhật ký tuần:"; echo "${md}"; exit 1; }
+echo "PASS  onebee-box bao-cao-tuan: đếm đúng yêu cầu/xử lý/khảo sát, không lộ tên người báo và nội dung"

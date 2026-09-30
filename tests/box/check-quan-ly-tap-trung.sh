@@ -14,7 +14,10 @@ tram 'mkdir -p /run/sshd && /usr/sbin/sshd
   grep -q "^from=\"$(grep -oP "^BOX_IP=\K.*" /etc/onebee/may-tram.env)\"," /var/lib/onebee-quantri/.ssh/authorized_keys
   [ "$(id -u onebee-quantri)" -lt 1000 ] && [ "$(stat -c %a /etc/sudoers.d/onebee-quantri)" = 440 ]
   sshd -T | grep -qx "passwordauthentication no" && sshd -T | grep -qx "permitrootlogin no"
-  echo "PASS  Máy trạm: tài khoản quản trị của Box (ẩn, chỉ nhận khóa từ IP Box), SSH tắt đăng nhập mật khẩu và root"'
+  echo "PASS  Máy trạm: tài khoản quản trị của Box (ẩn, chỉ nhận khóa từ IP Box), SSH tắt đăng nhập mật khẩu và root"
+  grep -q "^Exec=xdg-open http://$(grep -oP "^BOX_IP=\K.*" /etc/onebee/may-tram.env):5678/form/onebee-ho-tro$" \
+    /usr/share/applications/onebee-bao-ho-tro.desktop || { echo "FAIL  Thiếu mục menu Báo cần hỗ trợ"; exit 1; }
+  echo "PASS  Menu máy trạm có \"Báo cần hỗ trợ (OneBee)\" mở đúng biểu mẫu trên Box"'
 
 tram 'onebee-bao-tinh-trang'
 box "f=${TT}/ketoan-01.json; [ -s \$f ] || { echo 'FAIL  Box chưa nhận tình trạng máy trạm'; exit 1; }

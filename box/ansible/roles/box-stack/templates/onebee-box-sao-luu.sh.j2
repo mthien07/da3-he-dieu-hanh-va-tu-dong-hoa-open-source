@@ -54,7 +54,7 @@ cmd_sao_luu() {
   trap 'compose unpause "${svcs[@]}" >/dev/null 2>&1 || true' EXIT
   compose pause "${svcs[@]}" >/dev/null 2>&1 || die "Không tạm dừng được dịch vụ ${svcs[*]}"
   restic backup --retry-lock 5m --tag onebee-box --tag csdl \
-    "${DATA}/open-webui" "${DATA}/n8n" "${DATA}/uptime-kuma" "${BOX_DIR}" "${SECRETS}"
+    "${DATA}/open-webui" "${DATA}/n8n" "${DATA}/uptime-kuma" "${DATA}/ho-tro" "${BOX_DIR}" "${SECRETS}"
   compose unpause "${svcs[@]}" >/dev/null 2>&1 || die "Không chạy lại được dịch vụ ${svcs[*]} — kiểm tra: sudo onebee-box trang-thai"
   trap - EXIT
   # Bước 2: thư mục chung (có thể lâu) — dịch vụ vẫn chạy. Không sao lưu model AI (tải lại được)

@@ -7,3 +7,24 @@ onebee_n8n_workflows:
   - {file: 04-nhap-don-hang, id: onebeeDonHang001}
   - {file: 05-tong-hop-don-hang, id: onebeeTongHopDH1}
   - {file: 06-nhan-tinh-trang-may-tram, id: onebeeTinhTrang1}
+  - {file: 07-yeu-cau-ho-tro, id: onebeeYeuCauHT1}
+  - {file: 08-xu-ly-yeu-cau, id: onebeeXuLyHT001}
+  - {file: 09-khao-sat-hai-long, id: onebeeKhaoSat001}
+
+# Danh mục dùng trong biểu mẫu hỗ trợ (báo cáo tuần đếm theo đúng các nhãn này)
+onebee_ho_tro_loai:
+  - File không mở được / sai định dạng
+  - Phần mềm chỉ chạy trên Windows
+  - Máy in / máy quét
+  - Mạng / Internet
+  - Gõ tiếng Việt
+  - Máy chậm / treo
+  - Sao lưu / mất file
+  - Khác
+onebee_ho_tro_cach_xu_ly:
+  - Hướng dẫn người dùng
+  - Sửa cấu hình
+  - Cài thêm phần mềm
+  - Thay phần cứng
+  - Quay về Windows (máy/phần mềm)
+  - Chưa xử lý được
