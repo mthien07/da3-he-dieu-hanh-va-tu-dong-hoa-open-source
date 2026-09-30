@@ -108,3 +108,60 @@
     - "{{ onebee_box_ports.open_webui }}"
     - "{{ onebee_box_ports.n8n }}"
     - "{{ onebee_box_ports.uptime_kuma }}"
+
+# Giám sát: tạo sẵn tài khoản quản trị Uptime Kuma (không còn "ai mở trước thành quản trị"), danh sách theo dõi
+# các dịch vụ của Box, email báo khi dịch vụ ngừng (khi đã cấu hình email)
+- name: Cài công cụ cấu hình Uptime Kuma
+  ansible.builtin.copy:
+    src: onebee-kuma.js
+    dest: /usr/local/lib/onebee-box/onebee-kuma.js
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Chuẩn bị tài khoản quản trị giám sát
+  ansible.builtin.set_fact:
+    onebee_kuma_password: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/uptime-kuma-password',
+                              chars=['ascii_letters', 'digits'], length=24) }}"
+    onebee_kuma_smtp_pw: "{{ lookup('ansible.builtin.file', onebee_box_secrets ~ '/smtp-password', errors='ignore') | default('', true) }}"
+  no_log: true
+
+- name: Cấu hình Uptime Kuma (tài khoản, theo dõi dịch vụ, email báo)
+  ansible.builtin.shell: >-
+    set -o pipefail;
+    docker exec -i -w /app -e KUMA_USER -e KUMA_PASS -e KUMA_MONITORS -e KUMA_SMTP onebee-uptime-kuma
+    node - < /usr/local/lib/onebee-box/onebee-kuma.js
+  args:
+    executable: /bin/bash
+  environment:
+    KUMA_USER: quantri
+    KUMA_PASS: "{{ onebee_kuma_password }}"
+    KUMA_MONITORS: "{{ onebee_kuma_monitors | to_json }}"
+    KUMA_SMTP: "{{ (onebee_kuma_smtp | to_json) if onebee_box_email.smtp_host else '' }}"
+  vars:
+    onebee_kuma_monitors:
+      - {name: "Trang giới thiệu", url: "http://portal/"}
+      - {name: "Trợ lý AI (Open WebUI)", url: "http://open-webui:8080/health"}
+      - {name: "AI chạy tại chỗ (Ollama)", url: "http://ollama:11434/"}
+      - {name: "Tự động hóa (n8n)", url: "http://n8n:5678/healthz"}
+      - {name: "Kho sao lưu máy trạm", url: "http://rest-server:8000/", accepted_statuscodes: ["401"]}
+    onebee_kuma_smtp:
+      smtpHost: "{{ onebee_box_email.smtp_host }}"
+      smtpPort: "{{ onebee_box_email.smtp_port | int }}"
+      smtpSecure: "{{ onebee_box_email.smtp_ssl | bool }}"
+      smtpIgnoreTLSError: false
+      smtpUsername: "{{ onebee_box_email.smtp_user }}"
+      smtpPassword: "{{ onebee_kuma_smtp_pw }}"
+      smtpFrom: "{{ onebee_box_email.gui_tu }}"
+      smtpTo: "{{ onebee_box_email.nhan }}"
+  register: onebee_kuma
+  changed_when: onebee_kuma.stdout is search('đã tạo|đã cập nhật')
+  retries: 12
+  delay: 10
+  until: onebee_kuma.rc != 1          # 1 = Uptime Kuma chưa sẵn sàng → thử lại
+  failed_when: onebee_kuma.rc not in [0, 3]
+  no_log: true
+
+- name: Báo kết quả cấu hình giám sát
+  ansible.builtin.debug:
+    msg: "{{ onebee_kuma.stdout_lines | default([]) }}"

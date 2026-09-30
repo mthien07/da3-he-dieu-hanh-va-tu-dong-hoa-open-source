@@ -95,6 +95,8 @@ services:
     restart: unless-stopped
     logging: *logging
     ports: ["{{ onebee_box_ports.uptime_kuma }}:3001"]
+    environment:
+      UPTIME_KUMA_DB_TYPE: sqlite   # bỏ trang chọn cơ sở dữ liệu lúc mở lần đầu (ai mở trước chọn được)
     volumes:
       - {{ onebee_box_data }}/uptime-kuma:/app/data
 

@@ -9,6 +9,7 @@
 #   onebee-box khoi-tao            Tạo kho sao lưu Box trên ổ ngoài (làm 1 lần sau khi gắn ổ)
 #   onebee-box sao-luu             Sao lưu Box ra ổ ngoài + dọn bản cũ (tự chạy 23:00 hằng ngày)
 #   onebee-box khoi-phuc-thu       Thử khôi phục 1 file từ bản sao lưu Box (kiểm tra sao lưu dùng được)
+#   onebee-box khoi-phuc-toan-bo [file-khóa]   Hỏng ổ Box: trên Box cài lại, lấy lại toàn bộ dữ liệu từ ổ sao lưu
 #   onebee-box in-khoa             In các khóa bí mật để cất ngoài Box (thiếu khóa thì bản sao lưu vô dụng)
 #   onebee-box dat-mat-khau-email  Nhập mật khẩu hộp thư gửi (SMTP) cho n8n
 #   onebee-box email-thu           Gửi 1 email thử qua n8n (kiểm tra cấu hình email)
@@ -133,9 +134,10 @@ case "${1:-}" in
   khoi-tao) with_lock cmd_khoi_tao ;;
   sao-luu) with_lock cmd_sao_luu_co_bao_cao ;;
   khoi-phuc-thu) with_lock cmd_khoi_phuc_thu ;;
+  khoi-phuc-toan-bo) shift; with_lock cmd_khoi_phuc_toan_bo "$@" ;;
   in-khoa) cmd_in_khoa ;;
   dat-mat-khau-email) cmd_dat_mat_khau_email ;;
   email-thu) bao_cao_n8n THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
                && echo "Đã chuyển cho n8n gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
-  *) sed -n '2,14p' "$0" | sed 's/^# //'; exit 1 ;;
+  *) sed -n '2,15p' "$0" | sed 's/^# //'; exit 1 ;;
 esac
