@@ -3,13 +3,16 @@
 {% include 'workflows/_csv-js.j2' %}
 // Nhân viên báo cần hỗ trợ → ghi ho-tro/yeu-cau.csv + email cho kỹ thuật
 const j = $input.first().json;
+// n8n không tự kiểm giá trị ô chọn → chỉ nhận đúng nhãn có sẵn (báo cáo tuần đếm theo nhãn)
+if (!{{ onebee_ho_tro_loai | to_json }}.includes(j.loai)) throw new Error('Loại sự cố không hợp lệ');
+if (!['Bình thường', 'Gấp (đang dừng việc)'].includes(j.muc_do)) throw new Error('Mức độ không hợp lệ');
 const ma = $now.toFormat('yyMMdd-HHmmss') + '-' + String(Math.floor(Math.random() * 90) + 10);
 const gap = String(j.muc_do || '').startsWith('Gấp');
 const line = dongCsv([ma, $now.toFormat('yyyy-MM-dd HH:mm'), j.may, j.loai, gap ? 'gap' : 'binh-thuong', j.nguoi_bao, j.mo_ta]);
 const subject = `[OneBee] ${gap ? 'GẤP — ' : ''}Yêu cầu hỗ trợ ${ma}: ${safe(j.loai)}`;
 const text = [`Mã: ${ma}`, `Máy: ${safe(j.may) || '(không ghi)'}`, `Người báo: ${safe(j.nguoi_bao) || '(không ghi)'}`,
   `Loại: ${safe(j.loai)} · Mức độ: ${safe(j.muc_do)}`, '', safe(j.mo_ta), '',
-  'Xử lý xong: mở biểu mẫu "Xử lý yêu cầu hỗ trợ" trên Box (http://<ip-box>:5678/form/onebee-xu-ly), nhập mã trên.'].join('\n');
+  'Xử lý xong: mở biểu mẫu "Xử lý yêu cầu hỗ trợ" trên Box (http://{{ onebee_box_address or ansible_default_ipv4.address | default('<ip-box>') }}:{{ onebee_box_ports.n8n }}/form/onebee-xu-ly), nhập mã trên.'].join('\n');
 return [{ json: { ma, subject, text }, binary: tep(line, 'yeu-cau.csv') }];
 {% endset %}
 {
@@ -38,7 +41,7 @@ return [{ json: { ma, subject, text }, binary: tep(line, 'yeu-cau.csv') }];
        "dataPropertyName": "data", "options": {"append": true}}},
     {"id": "yc-4", "name": "Báo đã nhận", "type": "n8n-nodes-base.form", "typeVersion": 2.5, "position": [720, 0],
      "parameters": {"operation": "completion", "respondWith": "text", "completionTitle": "Đã gửi yêu cầu hỗ trợ",
-       "completionMessage": "={{ '{{' }} 'Mã yêu cầu: ' + $('Tạo yêu cầu').first().json.ma + '. Kỹ thuật OneBee sẽ liên hệ.' {{ '}}' }}"}},
+       "completionMessage": "={{ '{{' }} 'Mã yêu cầu: ' + $('Tạo yêu cầu').first().json.ma + ($('Gửi email').first().json.error ? '. Đã ghi sổ nhưng CHƯA gửi được email cho kỹ thuật — việc gấp hãy gọi điện.' : '. Kỹ thuật OneBee sẽ liên hệ.') {{ '}}' }}"}},
     {% include 'workflows/_gui-email.json.j2' %}
   ],
   "connections": {
@@ -47,5 +50,5 @@ return [{ json: { ma, subject, text }, binary: tep(line, 'yeu-cau.csv') }];
     "Ghi sổ yêu cầu": {"main": [[{"node": "Gửi email", "type": "main", "index": 0}]]},
     "Gửi email": {"main": [[{"node": "Báo đã nhận", "type": "main", "index": 0}]]}
   },
-  "settings": {"executionOrder": "v1", "timezone": "{{ onebee_timezone }}"}
+  "settings": {"executionOrder": "v1", "timezone": "{{ onebee_timezone }}", "saveDataSuccessExecution": "none"}
 }

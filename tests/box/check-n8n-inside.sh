@@ -94,3 +94,27 @@ grep -q "Mới trong tuần: \*\*1\*\* (gấp: 1)" <<<"${md}" && grep -q "Xử l
   && grep -q "| Được hỗ trợ kịp thời | 4 |" <<<"${md}" && ! grep -q "Chị Hoa\|driver\|giấy" <<<"${md}" \
   || { echo "FAIL  Nhật ký tuần:"; echo "${md}"; exit 1; }
 echo "PASS  onebee-box bao-cao-tuan: đếm đúng yêu cầu/xử lý/khảo sát, không lộ tên người báo và nội dung"
+
+# Gửi biểu mẫu hỗ trợ, chờ xong như trình duyệt, in trạng thái + chữ trên trang kết quả
+gui_ho_tro() {
+  local p q st=""
+  read -r p q < <(curl -s -u "${FORM_AUTH}" -X POST ${N8N}/form/onebee-ho-tro "$@" \
+    | python3 -c 'import json,sys,urllib.parse as u; p=u.urlparse(json.load(sys.stdin)["formWaitingUrl"]); print(p.path, p.query)')
+  for _ in $(seq 60); do
+    st=$(curl -s -u "${FORM_AUTH}" "${N8N}${p}/n8n-execution-status?${q}")
+    [[ "${st}" =~ ^(form-waiting|success|error|crashed)$ ]] && break; sleep 2
+  done
+  echo "${st} $(curl -s -m 30 -u "${FORM_AUTH}" "${N8N}${p}?${q}" | python3 -c 'import sys,re,html
+t = re.sub(r"<style.*?</style>|<script.*?</script>|<svg.*?</svg>", "", sys.stdin.read(), flags=re.S)
+print(re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", t))))')"
+}
+n0=$(wc -l < /srv/onebee/ho-tro/yeu-cau.csv)
+kq=$(gui_ho_tro -F 'field-0=x' -F 'field-1=Chị Hoa | lương' -F 'field-2=Bình thường' -F 'field-3=abc')
+[[ "${kq}" == error* && "$(wc -l < /srv/onebee/ho-tro/yeu-cau.csv)" == "${n0}" ]] || { echo "FAIL  Nhận loại sự cố tự gõ: ${kq:0:200}"; exit 1; }
+echo "PASS  Biểu mẫu hỗ trợ chỉ nhận loại sự cố có sẵn (chữ tự gõ bị từ chối, không ghi sổ)"
+docker stop mailpit >/dev/null
+kq=$(gui_ho_tro -F 'field-0=kho-02' -F 'field-1=Mạng / Internet' -F 'field-2=Gấp (đang dừng việc)' -F 'field-3=mất mạng')
+docker start mailpit >/dev/null
+grep -q "CHƯA gửi được email cho kỹ thuật" <<<"${kq}" && [[ "$(wc -l < /srv/onebee/ho-tro/yeu-cau.csv)" == $((n0 + 1)) ]] \
+  || { echo "FAIL  Email lỗi: ${kq:0:300}"; exit 1; }
+echo "PASS  Máy chủ email hỏng → yêu cầu vẫn ghi sổ, người báo được dặn gọi điện"

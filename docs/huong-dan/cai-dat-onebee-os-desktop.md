@@ -1,4 +1,4 @@
-# Hướng dẫn cài OneBee OS Desktop (v0.1)
+# Hướng dẫn cài OneBee OS Desktop
 
 Dành cho kỹ thuật viên OneBee. Thời gian: phụ thuộc tốc độ mạng (tải LibreOffice tiếng Việt, font, bộ gõ).
 
@@ -33,6 +33,9 @@ Nhật ký cài đặt nằm ở `/var/log/onebee/`.
 | Cập nhật | Tự động nâng cấp và dọn gói thừa (mintupdate) |
 | Sao lưu | Khi có `/etc/onebee/may-tram.env` (từ OneBee Box): tự sao lưu `/home` lên Box 12:00 hằng ngày — xem hướng dẫn cài Box |
 | Múi giờ | Asia/Ho_Chi_Minh |
+| Trợ lý AI | Lệnh `hoi` (khi có khóa từ Box) |
+| Quản lý từ Box | Báo tình trạng mỗi giờ; Box cập nhật máy qua SSH — xem [quan-ly-may-tram.md](quan-ly-may-tram.md) |
+| Menu OneBee | "Báo cần hỗ trợ (OneBee)" (mở biểu mẫu trên Box), "Cho phép hỗ trợ từ xa (OneBee)" |
 
 ## 5. Tùy chỉnh
 Sửa `desktop/ansible/group_vars/all.yml` rồi chạy lại bộ cài (chạy lại nhiều lần an toàn), ví dụ:

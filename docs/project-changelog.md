@@ -1,5 +1,19 @@
 # Nhật ký thay đổi
 
+## [0.5.0] — 30/9/2026 — Chuẩn bị chạy thử tại đơn vị (mô hình điểm)
+### Thêm
+- Biểu mẫu "Báo cần hỗ trợ" (n8n quy trình 07): ghi sổ `/srv/onebee/ho-tro/yeu-cau.csv`, email cho kỹ thuật (GẤP ghi ở tiêu đề;
+  email lỗi không làm mất yêu cầu). Mục menu "Báo cần hỗ trợ (OneBee)" trên máy trạm.
+- Biểu mẫu kỹ thuật ghi xử lý (quy trình 08, tài khoản `kythuat` riêng) và khảo sát hài lòng 5 câu ẩn danh (quy trình 09).
+- `onebee-box bao-cao-tuan [ngày]`: nhật ký tuần Markdown (yêu cầu theo loại, còn mở, công xử lý, thời gian từ báo đến xong,
+  số lần quay về Windows, khảo sát khi ≥ 3 phiếu, tình trạng máy) — không in tên người báo, mô tả, góp ý.
+- Tài liệu: quy trình chạy thử 4 tuần, giáo án đào tạo 3 buổi, tờ phím tắt; `reports/pilot/` (ngưỡng đạt đề xuất, mẫu báo cáo).
+### Sửa
+- Sổ hỗ trợ `/srv/onebee/ho-tro` có trong bản sao lưu Box.
+### Kiểm thử (30/9, container)
+- KẾT_QUẢ_BOX_05
+- Unit test: 12 mục ĐẠT (báo cáo máy trạm + nhật ký tuần, gồm kiểm tra không lộ tên/nội dung).
+
 ## [0.4.0] — 29/9/2026 — Quản lý tập trung máy trạm, hỗ trợ từ xa, bộ đo trước/sau
 ### Thêm
 - Máy trạm báo tình trạng về Box mỗi giờ (IP, gói chờ cập nhật, bản vá bảo mật, cần khởi động lại, ổ trống, sao lưu cuối)
