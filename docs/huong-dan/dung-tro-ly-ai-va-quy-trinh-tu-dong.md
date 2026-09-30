@@ -35,9 +35,13 @@ Tài khoản chủ tạo sẵn: `quantri@onebee.lan`, mật khẩu dòng `n8n-ow
 | Tóm tắt văn bản PDF | Nhân viên mở `http://<ip-box>:5678/form/onebee-tom-tat` | Bản tóm tắt 3/5/7 ý (AI trên Box) |
 | Nhập đơn hàng | Nhân viên mở `http://<ip-box>:5678/form/onebee-don-hang` | Ghi vào thư mục chung `don-hang/` |
 | Tổng hợp đơn hàng | 17:00 hằng ngày | Email số đơn, tổng tiền, theo mặt hàng |
+| Báo cần hỗ trợ | Nhân viên mở menu "Báo cần hỗ trợ" hoặc `/form/onebee-ho-tro` | Ghi sổ + email kỹ thuật (GẤP ghi ở tiêu đề) |
+| Xử lý yêu cầu hỗ trợ | Kỹ thuật mở `/form/onebee-xu-ly` (tài khoản `kythuat`) | Ghi cách xử lý, số phút |
+| Khảo sát hài lòng | Gửi link `/form/onebee-khao-sat` (ẩn danh) | Ghi phiếu; `onebee-box bao-cao-tuan` tổng hợp |
 | Nhận tình trạng máy trạm | Máy trạm gửi mỗi giờ | Lưu tình trạng cho `onebee-box may-tram` và email báo cáo 23:00 ([quan-ly-may-tram.md](quan-ly-may-tram.md)) |
 
-Biểu mẫu đòi tài khoản `nhanvien`, mật khẩu dòng `bieu-mau-nhanvien` trong `in-khoa`.
+Biểu mẫu đòi tài khoản `nhanvien`, mật khẩu dòng `bieu-mau-nhanvien` trong `in-khoa` (biểu mẫu xử lý: tài khoản `kythuat`, dòng `bieu-mau-kythuat`).
+Sổ hỗ trợ và khảo sát nằm ở `/srv/onebee/ho-tro/` trên Box (chỉ root đọc, có trong bản sao lưu Box).
 
 ### Lịch nhắc hạn
 Sửa `onebee_box_lich_han` trong `box/ansible/group_vars/all.yml` rồi chạy lại bộ cài. Lịch mặc định là **bản mẫu**:

@@ -35,6 +35,29 @@ def lam(thu_muc, khao_sat):
 
 
 class BaoCaoTuan(unittest.TestCase):
+    def test_nhan_khop_voi_bieu_mau(self):
+        import yaml
+        v = yaml.safe_load(open(os.path.join(HERE, "../../box/ansible/roles/box-n8n/vars/main.yml"), encoding="utf-8"))
+        self.assertEqual(v["onebee_ho_tro_loai"], bct.LOAI)
+        self.assertEqual(v["onebee_ho_tro_cach_xu_ly"], bct.CACH_XU_LY)
+
+    def test_chu_tu_do_ma_sai_va_nhieu_lan_xu_ly(self):
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "yeu-cau.csv"), "w", encoding="utf-8") as f:
+                f.write('"261005-080000-12","2026-10-05 08:00","m","Chị Lan 0909 | lương","gap","",""\n')
+                f.write('"261005-090000-13","2026-10-05 09:00","m","Khác","binh-thuong","",""\n')
+            with open(os.path.join(d, "xu-ly.csv"), "w", encoding="utf-8") as f:
+                f.write('"261005-080000-12","2026-10-05 10:00","Chưa xử lý được","60",""\n')
+                f.write('"261005-080000-12","2026-10-06 10:00","Sửa cấu hình","30",""\n')
+                f.write('"999999-999999-99","2026-10-06 11:00","Sửa cấu hình","5",""\n')  # gõ nhầm mã
+            md = bct.bao_cao(d, dt.date(2026, 10, 8), {})
+        self.assertNotIn("Chị Lan", md)
+        self.assertIn("| Khác | 2 |", md)
+        self.assertIn("Xử lý xong trong tuần: **1**", md)        # mã gõ nhầm không tính
+        self.assertIn("Còn mở đến cuối tuần: **1** (mã: 261005-090000-13)", md)
+        self.assertIn("Công xử lý: tổng 90 phút", md)             # cộng cả lần chưa xong
+        self.assertIn("trung vị 26 giờ, lâu nhất 26 giờ", md)     # tính đến lần xử lý xong
+
     def test_dem_dung_trong_tuan(self):
         with tempfile.TemporaryDirectory() as d:
             md = lam(d, KHAO_SAT_2)
@@ -43,7 +66,7 @@ class BaoCaoTuan(unittest.TestCase):
         self.assertIn("Xử lý xong trong tuần: **2**", md)
         self.assertIn("Còn mở đến cuối tuần: **1** (mã: 261007-100000-14)", md)
         self.assertIn("| Máy in / máy quét | 2 |", md)
-        self.assertIn("Công xử lý: tổng 130 phút, trung vị 65 phút", md)
+        self.assertIn("Công xử lý: tổng 130 phút, trung vị 65 phút/lần", md)
         self.assertIn("Phải quay về Windows trong tuần: **1** lần", md)
         self.assertIn("- kho-02: ổ đĩa sắp đầy (còn 5%)", md)
 

@@ -1,6 +1,6 @@
 ---
 # Cấu hình chung OneBee Box — đổi tại đây, không sửa trong role
-onebee_box_version: "0.4.0"
+onebee_box_version: "0.5.0"
 onebee_timezone: Asia/Ho_Chi_Minh
 
 # Thư mục

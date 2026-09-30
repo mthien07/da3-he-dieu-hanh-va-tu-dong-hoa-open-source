@@ -4,6 +4,7 @@
 const j = $input.first().json;
 const ma = String(j.ma || '').trim();
 if (!/^\d{6}-\d{6}-\d{2}$/.test(ma)) throw new Error('Mã yêu cầu không đúng dạng (ví dụ 260930-143012-47)');
+if (!{{ onebee_ho_tro_cach_xu_ly | to_json }}.includes(j.cach_xu_ly)) throw new Error('Cách xử lý không hợp lệ');
 const phut = Number(j.so_phut);
 if (!Number.isFinite(phut) || phut < 0 || phut > 10000) throw new Error('Số phút xử lý không hợp lệ');
 const line = dongCsv([ma, $now.toFormat('yyyy-MM-dd HH:mm'), j.cach_xu_ly, Math.round(phut), j.ghi_chu]);
@@ -40,5 +41,5 @@ return [{ json: { ma }, binary: tep(line, 'xu-ly.csv') }];
     "Kiểm tra": {"main": [[{"node": "Ghi sổ xử lý", "type": "main", "index": 0}]]},
     "Ghi sổ xử lý": {"main": [[{"node": "Đã ghi", "type": "main", "index": 0}]]}
   },
-  "settings": {"executionOrder": "v1", "timezone": "{{ onebee_timezone }}"}
+  "settings": {"executionOrder": "v1", "timezone": "{{ onebee_timezone }}", "saveDataSuccessExecution": "none"}
 }
