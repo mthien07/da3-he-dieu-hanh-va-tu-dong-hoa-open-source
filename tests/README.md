@@ -20,3 +20,10 @@ Tất cả chạy trên máy có Docker. Mạng có proxy HTTPS tự ký: đặt
 - Mạng LAN thật: truy cập Box từ máy khác, Samba từ Windows; gửi email qua máy chủ thư thật của đơn vị.
 - Quản lý tập trung trên máy thật: SSH bật kiểu socket (ssh.socket) sau khi cài, cập nhật qua Wi-Fi, hỗ trợ từ xa qua Tailscale, phiên Cinnamon thật (hộp thoại, thông báo).
 - Cài hàng loạt / Clonezilla (chỉ có tài liệu, chưa làm thử).
+
+## Đóng gói bản phát hành
+```bash
+scripts/dong-goi-ban-phat-hanh.sh 0.6.0     # cần: đã commit hết, phiên bản trong group_vars + changelog khớp
+```
+Ra `dist/onebee-os-<phiên-bản>.tar.gz`, `SHA256SUMS`, `ghi-chu-phat-hanh.md` (đính kèm khi tạo GitHub release).
+Trước khi phát hành: giải nén gói ra thư mục khác, chạy `tests/desktop/run-desktop-test-in-mint-container.sh` từ trong đó.

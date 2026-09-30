@@ -12,6 +12,9 @@
 - README viết lại theo sản phẩm thật: bỏ số liệu không có nguồn ("hàng trăm triệu"), bỏ công nghệ không dùng (vLLM, Grafana,
   Rocky, Preseed); trạng thái nói rõ chưa thử máy thật; bảng giấy phép OSI / fair-code.
 - Demo web: model mô phỏng đổi sang Gemma 4 (đúng sản phẩm), bỏ câu "tiết kiệm hàng triệu đồng" chưa có nguồn.
+### Kiểm thử (30/9)
+- Gói `onebee-os-0.6.0.tar.gz`: `sha256sum -c` đạt; giải nén ra thư mục riêng rồi chạy test cài Desktop trên Mint 22.3 (container): đạt.
+- CI: lint + unit test xanh.
 
 ## [0.5.0] — 30/9/2026 — Chuẩn bị chạy thử tại đơn vị (mô hình điểm)
 ### Thêm
