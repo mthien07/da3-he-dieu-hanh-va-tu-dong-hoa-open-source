@@ -1,0 +1,38 @@
+---
+# Tường lửa: chỉ máy trong mạng LAN cho phép mới vào được dịch vụ của Box.
+# Docker đi vòng ufw nên chặn thẳng bằng iptables (DOCKER-USER + INPUT) — xem files/onebee-tuong-lua.
+
+- name: Cài iptables
+  ansible.builtin.apt:
+    name: [iptables]
+    state: present
+
+- name: Ghi danh sách mạng được vào Box
+  ansible.builtin.template:
+    src: tuong-lua.conf.j2
+    dest: /etc/onebee-box/tuong-lua.conf
+    owner: root
+    group: root
+    mode: "0644"
+  register: onebee_tuong_lua_conf
+
+- name: Cài lệnh và dịch vụ tường lửa
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - {src: onebee-tuong-lua, dest: /usr/local/sbin/onebee-tuong-lua, mode: "0750"}
+    - {src: onebee-tuong-lua.service, dest: /etc/systemd/system/onebee-tuong-lua.service, mode: "0644"}
+  register: onebee_tuong_lua_files
+
+- name: Bật tường lửa cùng máy (áp dụng lại khi cấu hình đổi)
+  ansible.builtin.systemd_service:
+    name: onebee-tuong-lua.service
+    enabled: "{{ onebee_box_tuong_lua_bat }}"
+    state: >-
+      {{ 'stopped' if not onebee_box_tuong_lua_bat
+         else ('restarted' if (onebee_tuong_lua_conf.changed or onebee_tuong_lua_files.changed) else 'started') }}
+    daemon_reload: true

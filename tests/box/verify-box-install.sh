@@ -41,6 +41,10 @@ check "Thư mục chung: ghi được file qua mạng" bash -c \
 check "Lịch sao lưu Box đã bật" systemctl is-enabled onebee-box-sao-luu.timer
 check "Có lệnh quản trị onebee-box" test -x /usr/local/sbin/onebee-box
 check "Bật cập nhật bảo mật tự động" grep -q 'Unattended-Upgrade "1"' /etc/apt/apt.conf.d/20auto-upgrades
+check "Tường lửa bật: chỉ mạng LAN cho phép vào dịch vụ của Box (dịch vụ Docker + Samba/SSH)" bash -c \
+  "systemctl is-active onebee-tuong-lua && iptables -S DOCKER-USER | grep -q ONEBEE-LAN-DOCKER && iptables -S INPUT | grep -q ONEBEE-LAN-BOX"
+check "Cổng dịch vụ chỉ mở IPv4 (cổng IPv6 của Docker đi vòng tường lửa)" bash -c \
+  "! ss -Htln | awk '{print \$4}' | grep -Eq '^\\[::\\]:(80|3000|3001|5678|8000)\$'"
 
 echo "----"
 if [[ ${fails} -eq 0 ]]; then echo "KẾT QUẢ: Box đạt tất cả mục"; else echo "KẾT QUẢ: ${fails} mục KHÔNG đạt"; exit 1; fi

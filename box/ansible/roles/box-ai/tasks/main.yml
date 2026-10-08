@@ -22,6 +22,11 @@
   loop: "{{ onebee_box_ai_models }}"
   when: item not in onebee_ollama_list.stdout
   changed_when: true
+  register: onebee_ollama_pull
+  # Model vài GB; mạng chập chờn → thử lại (Ollama giữ phần đã tải)
+  retries: 5
+  delay: 30
+  until: onebee_ollama_pull.rc == 0
 
 - name: Tạo / cập nhật Trợ lý OneBee + cài đặt bảo mật trong Open WebUI
   ansible.builtin.command: /usr/local/sbin/onebee-box dong-bo-tro-ly

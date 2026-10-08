@@ -8,12 +8,13 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 IMAGE="${ONEBEE_TEST_IMAGE:-linuxmintd/mint22.3-amd64}"
 # Mạng có proxy HTTPS riêng (chứng chỉ tự ký): đặt ONEBEE_TEST_EXTRA_CA=/đường/dẫn/ca.crt để container tin chứng chỉ đó
+# Dạng ${mảng[@]+"${mảng[@]}"} bên dưới: mảng rỗng vẫn chạy với set -u trên bash 3.2 (macOS)
 extra_ca=()
 if [[ -n "${ONEBEE_TEST_EXTRA_CA:-}" ]]; then
   extra_ca=(-v "${ONEBEE_TEST_EXTRA_CA}:/usr/local/share/ca-certificates/onebee-test-extra.crt:ro")
 fi
 
-docker run --rm "${extra_ca[@]}" -v "${REPO_ROOT}:/onebee:ro" "${IMAGE}" bash -euo pipefail -c '
+docker run --rm ${extra_ca[@]+"${extra_ca[@]}"} -v "${REPO_ROOT}:/onebee:ro" "${IMAGE}" bash -euo pipefail -c '
   export DEBIAN_FRONTEND=noninteractive
   if [ -f /usr/local/share/ca-certificates/onebee-test-extra.crt ]; then update-ca-certificates >/dev/null; fi
   # Mô phỏng thành phần có sẵn trên bản Mint Cinnamon cài đặt thật (image container rút gọn không có)

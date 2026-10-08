@@ -13,7 +13,12 @@ if [[ -f "${EXTRA_CA}" ]] && ! docker exec onebee-ollama test -f "${EXTRA_CA}"; 
   docker exec onebee-ollama update-ca-certificates >/dev/null 2>&1
   docker restart onebee-ollama >/dev/null
 fi
-docker exec onebee-ollama ollama pull "${MODEL}" >/dev/null 2>&1
+# Mạng chập chờn → thử lại tối đa 5 lần; lỗi thì in vài dòng cuối (trước đây giấu hết, chỉ thấy EXIT=1)
+for lan in 1 2 3 4 5; do
+  docker exec onebee-ollama ollama pull "${MODEL}" > /tmp/ollama-pull.log 2>&1 && break
+  [[ ${lan} -lt 5 ]] || { echo "FAIL  Tải model ${MODEL} (5 lần): $(tr '\r' '\n' < /tmp/ollama-pull.log | grep -v '^ *$' | tail -2)"; exit 1; }
+  echo "Tải model lần ${lan} lỗi, thử lại sau 30 giây"; sleep 30
+done
 echo "PASS  Tải model ${MODEL} vào Ollama"
 
 code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "${API}/api/v1/auths/signup" -H 'Content-Type: application/json' \

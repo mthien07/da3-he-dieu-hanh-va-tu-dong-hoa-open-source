@@ -28,7 +28,7 @@ jobs:
       - name: shellcheck
         run: >-
           shellcheck -e SC2016 desktop/*.sh desktop/ansible/roles/backup-client/files/onebee-sao-luu
-          desktop/ansible/roles/ho-tro-tu-xa/files/onebee-ho-tro
+          desktop/ansible/roles/ho-tro-tu-xa/files/onebee-ho-tro box/ansible/roles/box-firewall/files/onebee-tuong-lua
           box/*.sh tests/desktop/*.sh tests/desktop/extended/*.sh tests/box/*.sh
       - name: Kiểm thử đơn vị (Python) + mẫu Jinja đọc được
         run: |

@@ -1,0 +1,16 @@
+# Quản lý bởi OneBee OS (box/ansible/roles/box-firewall)
+[Unit]
+Description=Tường lửa OneBee Box (chỉ mạng LAN cho phép vào dịch vụ của Box)
+After=docker.service network-online.target
+Wants=network-online.target
+# Docker khởi động lại → dựng lại quy tắc
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/onebee-tuong-lua bat
+ExecStop=/usr/local/sbin/onebee-tuong-lua tat
+
+[Install]
+WantedBy=multi-user.target docker.service

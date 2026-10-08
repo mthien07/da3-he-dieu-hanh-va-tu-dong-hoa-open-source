@@ -3,6 +3,7 @@
 # Các bước: cài 2 lần (idempotent) → verify 26 mục → AI hỏi đáp thật → sao lưu/khôi phục Box ra "ổ ngoài"
 # → máy trạm Mint 22.3 cài OneBee OS Desktop, sao lưu lên Box + khôi phục + thử xóa bản cũ (phải bị chặn)
 # → quản lý tập trung (báo tình trạng, cập nhật qua SSH) → email báo cáo → Box dọn bản cũ
+# → tường lửa: máy trong LAN vào được, máy ngoài mạng cho phép bị chặn
 # → diễn tập hỏng ổ Box: cài lại + khôi phục toàn bộ bằng khóa in ra giấy
 # → bản giả mạo ngày tương lai bị phát hiện → chưa gắn ổ ngoài thì từ chối → khởi động lại Box, dịch vụ tự lên.
 # Biến: ONEBEE_TEST_EXTRA_CA (CA proxy), ONEBEE_TEST_FULL_WEBUI=1 (dùng image Open WebUI đầy đủ thay bản slim),
@@ -12,6 +13,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 IMAGE=onebee-test-ubuntu-systemd
 ID="$$"; NET="onebee-test-net-${ID}"; BOX="onebee-box-test-${ID}"; CLIENT="onebee-may-tram-test-${ID}"
+# Dạng ${ca_opts[@]+"${ca_opts[@]}"} bên dưới: mảng rỗng vẫn chạy với set -u trên bash 3.2 (macOS)
 ca_opts=()
 [[ -z "${ONEBEE_TEST_EXTRA_CA:-}" ]] || ca_opts=(-v "${ONEBEE_TEST_EXTRA_CA}:/usr/local/share/ca-certificates/onebee-test-extra.crt:ro")
 
@@ -40,7 +42,7 @@ docker run -d --name "${BOX}" --hostname onebee-box --network "${NET}" --privile
   -v /sys/fs/cgroup:/sys/fs/cgroup:rw --tmpfs /run --tmpfs /run/lock \
   -v "${BOX}-docker:/var/lib/docker" -v "${BOX}-containerd:/var/lib/containerd" \
   -v "${BOX}-sao-luu:/mnt/onebee-sao-luu" \
-  -v "${REPO_ROOT}:/onebee:ro" "${ca_opts[@]}" "${IMAGE}" >/dev/null
+  -v "${REPO_ROOT}:/onebee:ro" ${ca_opts[@]+"${ca_opts[@]}"} "${IMAGE}" >/dev/null
 wait_systemd
 box 'update-ca-certificates >/dev/null 2>&1; rm -rf /root/onebee-test; cp -r /onebee /root/onebee-test'
 if [[ "${ONEBEE_TEST_FULL_WEBUI:-0}" != 1 ]]; then
@@ -86,7 +88,7 @@ box 'onebee-box them-may ketoan-01 | grep -E "^[A-Z_]+=" > /tmp/ketoan-01.env
        || { echo "FAIL  them-may thiếu dòng cấu hình"; cat /tmp/ketoan-01.env | sed "s/=.*/=***/"; exit 1; }
      echo "PASS  Cấp cho máy ketoan-01: sao lưu, khóa Trợ lý AI, báo tình trạng, khóa SSH quản trị (9 dòng cấu hình)"'
 # Máy trạm thật: Linux Mint 22.3 + bộ cài OneBee OS Desktop, có sẵn file cấu hình sao lưu lấy từ Box
-docker run -d --name "${CLIENT}" --network "${NET}" -v "${REPO_ROOT}:/onebee:ro" "${ca_opts[@]}" \
+docker run -d --name "${CLIENT}" --network "${NET}" -v "${REPO_ROOT}:/onebee:ro" ${ca_opts[@]+"${ca_opts[@]}"} \
   "${ONEBEE_TEST_MINT_IMAGE:-linuxmintd/mint22.3-amd64}" sleep infinity >/dev/null
 docker exec -i "${CLIENT}" bash -c 'mkdir -p /etc/onebee && cat > /etc/onebee/may-tram.env' \
   < <(docker exec "${BOX}" cat /tmp/ketoan-01.env)
@@ -141,6 +143,27 @@ box 'onebee-box sao-luu > /root/sl.log 2>&1 || { tail -20 /root/sl.log; exit 1; 
      n=$(restic snapshots --json | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
      [ "${n}" = 1 ] || { echo "FAIL  Box không dọn được kho máy trạm (còn ${n} bản)"; exit 1; }
      echo "PASS  Box dọn được bản cũ trong kho máy trạm (máy trạm thì không)"'
+
+echo "===== TƯỜNG LỬA: CHỈ MẠNG LAN CHO PHÉP VÀO BOX ====="
+# Máy trạm cùng mạng với Box → vào được. Đổi danh sách cho phép sang mạng khác (giả lập máy trạm ở Wi-Fi khách)
+# → bị chặn cả dịch vụ Docker (AI, trang giới thiệu, kho sao lưu) lẫn dịch vụ trên Box (thư mục chung).
+box_ip="$(docker exec "${BOX}" hostname -I | awk '{print $1}')"
+thu_cong() {  # in các cổng của Box mà máy trạm kết nối được
+  docker exec "${CLIENT}" bash -c "for p in 80 3000 8000 445; do timeout 3 bash -c \"exec 3<>/dev/tcp/${box_ip}/\$p\" 2>/dev/null && printf '%s ' \$p; done; true"
+}
+mo="$(thu_cong)"
+[[ "${mo}" == "80 3000 8000 445 " ]] || { echo "FAIL  Máy trạm trong LAN không vào được đủ cổng (mở: ${mo})"; exit 1; }
+echo "PASS  Máy trạm trong mạng LAN vào được: trang giới thiệu, Trợ lý AI, kho sao lưu, thư mục chung"
+box 'cp /etc/onebee-box/tuong-lua.conf /root/tuong-lua.conf.bak
+     echo "LAN_CHO_PHEP=\"10.255.255.0/24\"" > /etc/onebee-box/tuong-lua.conf
+     systemctl restart onebee-tuong-lua'
+mo="$(thu_cong)"
+box 'cp /root/tuong-lua.conf.bak /etc/onebee-box/tuong-lua.conf; systemctl restart onebee-tuong-lua'
+[[ -z "${mo}" ]] || { echo "FAIL  Máy ngoài mạng cho phép vẫn vào được cổng: ${mo}"; exit 1; }
+echo "PASS  Máy ngoài mạng cho phép (vd Wi-Fi khách) bị chặn hết: AI, trang giới thiệu, kho sao lưu, thư mục chung"
+box 'curl -s -m 10 http://127.0.0.1:3000/health | grep -q true || { echo "FAIL  Box tự gọi dịch vụ của mình bị chặn"; exit 1; }'
+[[ "$(thu_cong)" == "80 3000 8000 445 " ]] || { echo "FAIL  Mở lại tường lửa nhưng máy trạm chưa vào lại được"; exit 1; }
+echo "PASS  Box tự gọi dịch vụ của mình không bị chặn; trả lại danh sách cũ → máy trạm vào lại được"
 
 echo "===== TẮT TRỢ LÝ AI → LỆNH hoi BÁO LỖI DỄ HIỂU ====="
 box 'compose_dir=/opt/onebee-box; docker compose --project-directory $compose_dir stop open-webui >/dev/null 2>&1'

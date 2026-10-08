@@ -29,6 +29,12 @@ onebee_box_ports:
   uptime_kuma: 3001  # Giám sát
   rest_server: 8000  # Nhận sao lưu từ máy trạm
 
+# Tường lửa: chỉ các mạng này vào được dịch vụ của Box (các cổng trên + thư mục chung + SSH).
+# Để trống: tự lấy mạng của cổng mạng chính (vd 192.168.1.0/24). Nhiều mạng: ["192.168.1.0/24", "192.168.2.0/24"].
+# KHÔNG đưa mạng Wi-Fi khách vào. Tắt hẳn (chỉ khi cần dò lỗi): onebee_box_tuong_lua_bat: false
+onebee_box_tuong_lua_bat: true
+onebee_box_lan_cho_phep: []
+
 # Trợ lý AI — dòng Gemma của Google (anh chốt 29/9). Chọn theo ADR 0003: bản nhẹ nhất vượt ngưỡng chất lượng
 # (chấm trên máy thử 29/9). Tốc độ còn phải đo trên máy Box thật.
 onebee_box_ai_model: gemma4:e2b-it-qat

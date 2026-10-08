@@ -94,6 +94,11 @@
     chdir: "{{ onebee_box_dir }}"
   register: onebee_compose_up
   changed_when: onebee_compose_up.stderr is search('Creat|Recreat|Start|Pull')
+  # Lần đầu phải tải hơn 10 GB image; mạng chập chờn (gặp thật khi thử 8/10: EOF, DNS lỗi, TLS quá giờ) → thử lại,
+  # phần đã tải được giữ. Image đã có sẵn thì không cần mạng.
+  retries: 5
+  delay: 30
+  until: onebee_compose_up.rc == 0
 
 - name: Chờ các dịch vụ web sẵn sàng
   ansible.builtin.uri:

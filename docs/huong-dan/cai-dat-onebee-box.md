@@ -16,6 +16,11 @@ OneBee Box là 1 máy chủ đặt tại đơn vị, trong mạng LAN. Dịch v�
 - Ổ dữ liệu đủ lớn cho thư mục chung + sao lưu máy trạm. **1 ổ ngoài riêng** để Box tự sao lưu.
 - Cấu hình máy cho AI: chưa chốt — đo ở phần thử nghiệm (Phase 3). Chạy được không cần card đồ họa (chậm hơn).
 - **Không mở các cổng trên ra Internet ở router.** Hỗ trợ từ xa qua VPN (Tailscale/WireGuard).
+- **Tường lửa tự bật khi cài**: chỉ máy cùng mạng LAN với Box (vd `192.168.1.0/24`) vào được các dịch vụ trên, kể cả
+  thư mục chung và SSH. Máy ở mạng khác (Wi-Fi khách tách mạng, mạng ngoài) bị chặn. Đơn vị có nhiều mạng (vd phòng kế toán
+  `192.168.2.0/24`): khai báo trong `box/ansible/group_vars/all.yml` → `onebee_box_lan_cho_phep: ["192.168.1.0/24", "192.168.2.0/24"]`
+  rồi chạy lại bộ cài. Xem quy tắc: `sudo onebee-tuong-lua xem`. Lưu ý: Wi-Fi khách **cùng mạng** với máy văn phòng thì
+  tường lửa không phân biệt được — nên tách Wi-Fi khách ra mạng riêng trên router.
 
 ## 2. Cài đặt
 ```bash
