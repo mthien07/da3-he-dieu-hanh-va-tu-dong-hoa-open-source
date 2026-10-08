@@ -13,8 +13,10 @@ TT=/srv/onebee/tinh-trang-may
 tram 'mkdir -p /run/sshd && /usr/sbin/sshd
   grep -q "^from=\"$(grep -oP "^BOX_IP=\K.*" /etc/onebee/may-tram.env)\"," /var/lib/onebee-quantri/.ssh/authorized_keys
   [ "$(id -u onebee-quantri)" -lt 1000 ] && [ "$(stat -c %a /etc/sudoers.d/onebee-quantri)" = 440 ]
-  sshd -T | grep -qx "passwordauthentication no" && sshd -T | grep -qx "permitrootlogin no"
-  sshd -T | grep -qx "allowusers onebee-quantri" && sshd -T | grep -qx "maxauthtries 3"
+  # Lưu ra biến rồi mới grep: "sshd -T | grep -q" với pipefail có thể chết vì SIGPIPE (mã 141) khi grep thoát sớm
+  t="$(sshd -T)"
+  grep -qx "passwordauthentication no" <<<"${t}" && grep -qx "permitrootlogin no" <<<"${t}"
+  grep -qx "allowusers onebee-quantri" <<<"${t}" && grep -qx "maxauthtries 3" <<<"${t}"
   echo "PASS  Máy trạm: tài khoản quản trị của Box (ẩn, chỉ nhận khóa từ IP Box), SSH tắt đăng nhập mật khẩu và root, chỉ cho tài khoản quản trị"
   grep -q "^Exec=xdg-open http://$(grep -oP "^BOX_IP=\K.*" /etc/onebee/may-tram.env):5678/form/onebee-ho-tro$" \
     /usr/share/applications/onebee-bao-ho-tro.desktop || { echo "FAIL  Thiếu mục menu Báo cần hỗ trợ"; exit 1; }
