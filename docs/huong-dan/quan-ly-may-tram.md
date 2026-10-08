@@ -31,6 +31,9 @@ sudo onebee-box cap-nhat-may --tat-ca      # mọi máy đã cấp
 Box vào máy trạm qua SSH (tài khoản `onebee-quantri`), cập nhật toàn bộ gói + ứng dụng Flatpak, rồi gửi lại tình trạng.
 Máy tắt hoặc mất mạng → báo "không vào được", máy khác vẫn chạy tiếp. Nhật ký: `/var/log/onebee-box/cap-nhat-may-*.log`.
 Máy trạm vẫn tự cập nhật hằng ngày (mintupdate) — lệnh này để cập nhật ngay, ví dụ khi có bản vá khẩn.
+SSH vào máy trạm **chỉ** cho tài khoản `onebee-quantri`, bằng khóa của Box, từ IP của Box (tắt mật khẩu, tắt root,
+tài khoản khác bị từ chối). Kỹ thuật cần vào máy trạm bằng dòng lệnh: SSH vào Box trước, rồi từ Box
+`sudo ssh -i /etc/onebee-box/secrets/ssh/quan-tri onebee-quantri@<ip-máy-trạm>`.
 
 - Báo "chưa báo tình trạng (chưa biết địa chỉ)": máy chưa bật từ khi cài, hoặc chưa chạy lại bộ cài sau khi dán cấu hình.
 - Báo "REMOTE HOST IDENTIFICATION HAS CHANGED": máy trạm đã cài lại hệ điều hành → chạy lại `sudo onebee-box them-may <tên>`,

@@ -21,6 +21,9 @@ OneBee Box là 1 máy chủ đặt tại đơn vị, trong mạng LAN. Dịch v�
   `192.168.2.0/24`): khai báo trong `box/ansible/group_vars/all.yml` → `onebee_box_lan_cho_phep: ["192.168.1.0/24", "192.168.2.0/24"]`
   rồi chạy lại bộ cài. Xem quy tắc: `sudo onebee-tuong-lua xem`. Lưu ý: Wi-Fi khách **cùng mạng** với máy văn phòng thì
   tường lửa không phân biệt được — nên tách Wi-Fi khách ra mạng riêng trên router.
+  Tường lửa lọc **cổng mạng chính** (cổng có đường ra Internet); kết nối qua VPN (Tailscale/WireGuard) không bị chặn.
+  Box có 2 card mạng thì card phụ không được lọc — không nối card phụ vào mạng khách. Đổi dải IP của mạng LAN (thay router):
+  khởi động lại Box hoặc chạy `sudo systemctl restart onebee-tuong-lua` để tường lửa nhận dải mới.
 
 ## 2. Cài đặt
 ```bash
