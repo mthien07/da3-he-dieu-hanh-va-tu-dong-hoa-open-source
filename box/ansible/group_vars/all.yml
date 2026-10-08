@@ -35,6 +35,9 @@ onebee_box_ports:
 onebee_box_tuong_lua_bat: true
 onebee_box_lan_cho_phep: []
 
+# SSH vào Box chỉ bằng khóa, không cho root — tự bật khi đã có khóa SSH của tài khoản quản trị (~/.ssh/authorized_keys)
+onebee_box_ssh_chi_khoa: true
+
 # Trợ lý AI — dòng Gemma của Google (anh chốt 29/9). Chọn theo ADR 0003: bản nhẹ nhất vượt ngưỡng chất lượng
 # (chấm trên máy thử 29/9). Tốc độ còn phải đo trên máy Box thật.
 onebee_box_ai_model: gemma4:e2b-it-qat

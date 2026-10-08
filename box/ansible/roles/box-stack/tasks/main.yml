@@ -56,6 +56,17 @@
     mode: "0600"
   no_log: true
 
+- name: Kiểm tra giám sát đã có tài khoản quản trị chưa
+  ansible.builtin.stat:
+    path: "{{ onebee_box_secrets }}/uptime-kuma-da-co-quan-tri"
+  register: onebee_kuma_xong
+
+# Chưa có tài khoản quản trị: cổng Uptime Kuma chỉ mở trong Box (127.0.0.1) → không ai trong LAN giành được trang
+# "tạo tài khoản đầu tiên" lúc mới cài; tạo xong mới mở ra LAN (bước "Mở giám sát ra mạng LAN" bên dưới)
+- name: Chọn địa chỉ mở cổng giám sát
+  ansible.builtin.set_fact:
+    onebee_kuma_dia_chi: "{{ '0.0.0.0' if onebee_kuma_xong.stat.exists else '127.0.0.1' }}"
+
 - name: Sinh cấu hình dịch vụ
   ansible.builtin.template:
     src: "{{ item.src }}"
@@ -166,6 +177,37 @@
   until: onebee_kuma.rc != 1          # 1 = Uptime Kuma chưa sẵn sàng → thử lại
   failed_when: onebee_kuma.rc not in [0, 3]
   no_log: true
+
+- name: Ghi nhận giám sát đã có tài khoản quản trị
+  ansible.builtin.copy:
+    dest: "{{ onebee_box_secrets }}/uptime-kuma-da-co-quan-tri"
+    content: "1\n"
+    owner: root
+    group: root
+    mode: "0600"
+  when: onebee_kuma.rc == 0
+  register: onebee_kuma_ghi
+
+- name: Mở giám sát ra mạng LAN (sau khi đã có tài khoản quản trị)
+  when: onebee_kuma.rc == 0 and onebee_kuma_ghi is changed
+  block:
+    - name: Mở cổng giám sát cho mạng LAN
+      ansible.builtin.set_fact:
+        onebee_kuma_dia_chi: 0.0.0.0
+
+    - name: Sinh lại cấu hình dịch vụ với cổng giám sát mở ra LAN
+      ansible.builtin.template:
+        src: docker-compose.yml.j2
+        dest: "{{ onebee_box_dir }}/docker-compose.yml"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Khởi động lại giám sát với cổng mới
+      ansible.builtin.command: docker compose up -d uptime-kuma
+      args:
+        chdir: "{{ onebee_box_dir }}"
+      changed_when: true
 
 - name: Báo kết quả cấu hình giám sát
   ansible.builtin.debug:

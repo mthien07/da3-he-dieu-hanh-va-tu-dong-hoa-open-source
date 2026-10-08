@@ -23,6 +23,8 @@ s.on(\"connect\", () => s.emit(\"needSetup\", (need) => { if (need) process.exit
   s.once(\"monitorList\", (l) => process.exit(Object.keys(l).length >= 5 ? 0 : 2));
   s.emit(\"login\", {username: process.env.KUMA_USER, password: process.env.KUMA_PASS, token: \"\"}, (r) => { if (!r.ok) process.exit(3); }); }));
 setTimeout(() => process.exit(4), 20000);' && exit 0; done; exit 1"
+check "Giám sát mở ra LAN chỉ sau khi đã có tài khoản quản trị" bash -c \
+  "[ -s /etc/onebee-box/secrets/uptime-kuma-da-co-quan-tri ] && ss -Htln | awk '{print \$4}' | grep -qx '0.0.0.0:3001'"
 check "Kho sao lưu :8000 đòi mật khẩu (401)" code_in http://127.0.0.1:8000/ 401
 check "Trang giới thiệu gửi kèm tiêu đề bảo mật (chống nhúng khung, không lộ tên máy chủ web)" bash -c \
   "h=\$(curl -sI -m 10 http://127.0.0.1/); grep -qi '^x-frame-options: DENY' <<<\"\$h\" && ! grep -qi '^server:' <<<\"\$h\""
