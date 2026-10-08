@@ -5,7 +5,8 @@
 - Tường lửa Box (`roles/box-firewall`, lệnh `onebee-tuong-lua bat|tat|xem`): chỉ mạng LAN cho phép (mặc định: mạng của cổng mạng
   chính; khai báo thêm bằng `onebee_box_lan_cho_phep`) vào được dịch vụ Docker (trang giới thiệu, AI, n8n, giám sát, kho sao lưu)
   và Samba/SSH. Chặn ở `DOCKER-USER` + `INPUT` vì Docker đi vòng ufw. Cổng dịch vụ chỉ mở IPv4 (cổng IPv6 của Docker đi vòng
-  tường lửa). Test Box thêm bước: máy ngoài mạng cho phép bị chặn hết, Box tự gọi dịch vụ không bị chặn.
+  tường lửa); cổng UDP NetBIOS của Samba (137/138) cũng chỉ mở cho LAN; tường lửa bật TRƯỚC khi mở dịch vụ (lần cài đầu
+  không có lúc dịch vụ mở cho mọi mạng). Test Box thêm bước: máy ngoài mạng cho phép bị chặn hết, Box tự gọi dịch vụ không bị chặn.
 - Khóa chặt thêm (rà soát bảo mật 8/10): n8n ghi rõ không có nút chạy lệnh hệ thống/SSH/theo dõi file, nút Code không đọc
   biến môi trường, chỉ đọc/ghi trong `~/.n8n-files`; trang giới thiệu có tiêu đề bảo mật (chống nhúng khung, ẩn tên máy chủ web);
   máy trạm chỉ cho tài khoản quản trị của Box SSH vào (`AllowUsers`), tối đa 3 lần thử khóa.
