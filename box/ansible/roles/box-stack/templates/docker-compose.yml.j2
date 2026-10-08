@@ -14,7 +14,8 @@ services:
     container_name: onebee-portal
     restart: unless-stopped
     logging: *logging
-    ports: ["{{ onebee_box_ports.portal }}:80"]
+    # Chỉ mở cổng IPv4: cổng IPv6 của Docker đi vòng tường lửa (roles/box-firewall)
+    ports: ["0.0.0.0:{{ onebee_box_ports.portal }}:80"]
     volumes:
       - ./portal/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./portal/site:/srv:ro
@@ -34,7 +35,7 @@ services:
     restart: unless-stopped
     logging: *logging
     depends_on: [ollama]
-    ports: ["{{ onebee_box_ports.open_webui }}:8080"]
+    ports: ["0.0.0.0:{{ onebee_box_ports.open_webui }}:8080"]
     environment:
       OLLAMA_BASE_URL: http://ollama:11434
       TZ: {{ onebee_timezone }}   # "hôm nay" trong lời dặn Trợ lý theo giờ Việt Nam
@@ -64,7 +65,7 @@ services:
     container_name: onebee-n8n
     restart: unless-stopped
     logging: *logging
-    ports: ["{{ onebee_box_ports.n8n }}:5678"]
+    ports: ["0.0.0.0:{{ onebee_box_ports.n8n }}:5678"]
     environment:
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
       N8N_LISTEN_ADDRESS: 0.0.0.0  # mặc định n8n nghe "::" (IPv6) → lỗi trên máy tắt IPv6
@@ -95,7 +96,7 @@ services:
     container_name: onebee-uptime-kuma
     restart: unless-stopped
     logging: *logging
-    ports: ["{{ onebee_box_ports.uptime_kuma }}:3001"]
+    ports: ["0.0.0.0:{{ onebee_box_ports.uptime_kuma }}:3001"]
     environment:
       UPTIME_KUMA_DB_TYPE: sqlite   # bỏ trang chọn cơ sở dữ liệu lúc mở lần đầu (ai mở trước chọn được)
     volumes:
@@ -106,7 +107,7 @@ services:
     container_name: onebee-rest-server
     restart: unless-stopped
     logging: *logging
-    ports: ["{{ onebee_box_ports.rest_server }}:8000"]
+    ports: ["0.0.0.0:{{ onebee_box_ports.rest_server }}:8000"]
     environment:
       # Mỗi máy trạm chỉ thấy kho sao lưu của chính nó; chỉ thêm, không xóa được bản cũ (chống mã độc tống tiền)
       OPTIONS: "--private-repos --append-only"

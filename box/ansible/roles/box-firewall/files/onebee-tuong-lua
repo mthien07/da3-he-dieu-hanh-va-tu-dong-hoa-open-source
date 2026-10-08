@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# Tường lửa OneBee Box: chỉ máy trong mạng LAN cho phép mới vào được dịch vụ của Box
+# (trang giới thiệu, Trợ lý AI, n8n, giám sát, kho sao lưu — chạy trong Docker; thư mục chung, SSH — chạy thẳng trên Box).
+# Docker mở cổng bằng iptables riêng, đi vòng qua ufw → chặn ở chuỗi DOCKER-USER (gói đi tới container)
+# và INPUT (dịch vụ trên Box). Chỉ xét kết nối MỚI đi vào cổng mạng chính; Box gọi ra ngoài, trả lời, gọi nội bộ không bị ảnh hưởng.
+# Cách dùng: onebee-tuong-lua [bat|tat|xem]   (bat: dựng lại từ đầu, chạy nhiều lần không sao)
+set -euo pipefail
+
+CONF=/etc/onebee-box/tuong-lua.conf
+LAN_CHO_PHEP=""              # để trống: tự lấy mạng của cổng mạng chính
+CONG_TREN_BOX="22,139,445"   # SSH, Samba
+# shellcheck source=/dev/null
+[[ -f "${CONF}" ]] && . "${CONF}"
+
+C_DOCKER=ONEBEE-LAN-DOCKER
+C_BOX=ONEBEE-LAN-BOX
+
+cong_mang() { ip -4 route show default | awk '{print $5; exit}'; }
+
+# Gỡ hết quy tắc OneBee (an toàn khi chưa có)
+tat() {
+  local ipt
+  for ipt in iptables ip6tables; do
+    command -v "${ipt}" >/dev/null || continue
+    "${ipt}" -S 2>/dev/null >/dev/null || continue   # máy tắt IPv6
+    while "${ipt}" -S DOCKER-USER 2>/dev/null | grep -q -- "-j ${C_DOCKER}"; do
+      "${ipt}" -S DOCKER-USER | grep -- "-j ${C_DOCKER}" | head -1 | sed 's/^-A/-D/' | xargs "${ipt}"
+    done
+    while "${ipt}" -S INPUT | grep -q -- "-j ${C_BOX}"; do
+      "${ipt}" -S INPUT | grep -- "-j ${C_BOX}" | head -1 | sed 's/^-A/-D/' | xargs "${ipt}"
+    done
+    for c in "${C_DOCKER}" "${C_BOX}"; do
+      "${ipt}" -F "${c}" 2>/dev/null || true
+      "${ipt}" -X "${c}" 2>/dev/null || true
+    done
+  done
+}
+
+# $1 = iptables|ip6tables, $2 = cổng mạng, $3 = danh sách mạng cho phép (cách nhau dấu phẩy)
+dung() {
+  local ipt="$1" ifc="$2" mang="$3" c net
+  for c in "${C_DOCKER}" "${C_BOX}"; do
+    "${ipt}" -N "${c}"
+    for net in ${mang//,/ }; do "${ipt}" -A "${c}" -s "${net}" -j RETURN; done
+    "${ipt}" -A "${c}" -j DROP
+  done
+  # Docker tạo DOCKER-USER khi khởi động; tạo trước cũng được (Docker dùng lại)
+  "${ipt}" -N DOCKER-USER 2>/dev/null || true
+  "${ipt}" -I DOCKER-USER 1 -i "${ifc}" -m conntrack --ctstate NEW -j "${C_DOCKER}"
+  "${ipt}" -I INPUT 1 -i "${ifc}" -p tcp -m multiport --dports "${CONG_TREN_BOX}" -m conntrack --ctstate NEW -j "${C_BOX}"
+}
+
+bat() {
+  local ifc mang mang6
+  ifc="${ONEBEE_CONG_MANG:-$(cong_mang)}"
+  [[ -n "${ifc}" ]] || { echo "Không tìm thấy cổng mạng chính (chưa có đường ra mặc định)" >&2; exit 1; }
+  mang="${LAN_CHO_PHEP}"
+  if [[ -z "${mang}" ]]; then
+    mang="$(ip -4 route show dev "${ifc}" scope link | awk '{print $1}' | paste -sd, -)"
+  fi
+  [[ -n "${mang}" ]] || { echo "Không xác định được mạng LAN của ${ifc}" >&2; exit 1; }
+  tat
+  dung iptables "${ifc}" "${mang}"
+  # IPv6: các cổng Docker chỉ mở IPv4 (docker-compose.yml) → chỉ cần giữ SSH/Samba trong mạng nội bộ
+  if command -v ip6tables >/dev/null && ip6tables -S >/dev/null 2>&1; then
+    mang6="fe80::/10,fc00::/7"
+    dung ip6tables "${ifc}" "${mang6}"
+  fi
+  echo "Tường lửa OneBee: cổng ${ifc}, chỉ cho phép ${mang} (IPv6: ${mang6:-tắt})"
+}
+
+xem() {
+  iptables -S "${C_DOCKER}" 2>/dev/null && iptables -S "${C_BOX}" || echo "Tường lửa OneBee đang tắt"
+}
+
+case "${1:-bat}" in
+  bat) bat ;;
+  tat) tat; echo "Đã tắt tường lửa OneBee" ;;
+  xem) xem ;;
+  *) echo "Cách dùng: $0 [bat|tat|xem]" >&2; exit 2 ;;
+esac
