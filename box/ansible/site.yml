@@ -10,10 +10,10 @@
   roles:
     - box-base
     - docker
+    - box-firewall   # trước khi mở dịch vụ: từ lần chạy đầu chỉ mạng LAN vào được
     - samba
     - box-stack
     - box-ai
     - box-n8n
     - box-backup
     - box-fleet
-    - box-firewall

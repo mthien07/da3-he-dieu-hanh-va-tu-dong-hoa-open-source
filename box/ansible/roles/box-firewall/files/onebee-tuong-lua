@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tường lửa OneBee Box: chỉ máy trong mạng LAN cho phép mới vào được dịch vụ của Box
-# (trang giới thiệu, Trợ lý AI, n8n, giám sát, kho sao lưu — chạy trong Docker; thư mục chung, SSH — chạy thẳng trên Box).
+# (trang giới thiệu, Trợ lý AI, n8n, giám sát, kho sao lưu — chạy trong Docker; thư mục chung + NetBIOS, SSH — chạy thẳng trên Box).
 # Docker mở cổng bằng iptables riêng, đi vòng qua ufw → chặn ở chuỗi DOCKER-USER (gói đi tới container)
 # và INPUT (dịch vụ trên Box). Chỉ xét kết nối MỚI đi vào cổng mạng chính; Box gọi ra ngoài, trả lời, gọi nội bộ không bị ảnh hưởng.
 # Cách dùng: onebee-tuong-lua [bat|tat|xem]   (bat: dựng lại từ đầu, chạy nhiều lần không sao)
@@ -8,7 +8,8 @@ set -euo pipefail
 
 CONF=/etc/onebee-box/tuong-lua.conf
 LAN_CHO_PHEP=""              # để trống: tự lấy mạng của cổng mạng chính
-CONG_TREN_BOX="22,139,445"   # SSH, Samba
+CONG_TREN_BOX="22,139,445"   # TCP: SSH, Samba
+CONG_UDP_TREN_BOX="137,138"  # UDP: Samba tìm máy trong mạng (NetBIOS)
 # shellcheck source=/dev/null
 [[ -f "${CONF}" ]] && . "${CONF}"
 
@@ -48,6 +49,7 @@ dung() {
   "${ipt}" -N DOCKER-USER 2>/dev/null || true
   "${ipt}" -I DOCKER-USER 1 -i "${ifc}" -m conntrack --ctstate NEW -j "${C_DOCKER}"
   "${ipt}" -I INPUT 1 -i "${ifc}" -p tcp -m multiport --dports "${CONG_TREN_BOX}" -m conntrack --ctstate NEW -j "${C_BOX}"
+  "${ipt}" -I INPUT 1 -i "${ifc}" -p udp -m multiport --dports "${CONG_UDP_TREN_BOX}" -m conntrack --ctstate NEW -j "${C_BOX}"
 }
 
 bat() {
