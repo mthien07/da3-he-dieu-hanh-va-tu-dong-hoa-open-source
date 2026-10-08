@@ -54,3 +54,70 @@
     owner: root
     group: root
     mode: "0644"
+
+# SSH vào Box: Box giữ khóa vào được mọi máy trạm → chỉ cho đăng nhập bằng khóa, không cho root.
+# Chỉ bật khi đã có khóa SSH của tài khoản quản trị (trong /home) — chưa có thì giữ mật khẩu + cảnh báo, tránh tự khóa mình ở ngoài.
+- name: Kiểm tra máy có máy chủ SSH
+  ansible.builtin.stat:
+    path: /etc/ssh/sshd_config.d
+  register: onebee_sshd_dir
+
+- name: Tìm khóa SSH của tài khoản quản trị Box (không tính root)
+  ansible.builtin.find:
+    paths: /home
+    patterns: authorized_keys
+    recurse: true
+    depth: 3
+    hidden: true
+    size: "1"
+  register: onebee_ssh_khoa
+  when: onebee_sshd_dir.stat.exists
+
+- name: SSH chỉ bằng khóa, không cho root (khi đã có khóa quản trị)
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/10-onebee-box.conf
+    content: |
+      # Quản lý bởi OneBee OS (box/ansible/roles/box-base)
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin no
+      MaxAuthTries 3
+    owner: root
+    group: root
+    mode: "0644"
+  when: onebee_sshd_dir.stat.exists and onebee_box_ssh_chi_khoa and onebee_ssh_khoa.matched > 0
+  register: onebee_sshd_conf
+
+- name: Chưa có khóa quản trị → bỏ cấu hình chỉ-khóa (giữ đăng nhập mật khẩu)
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d/10-onebee-box.conf
+    state: absent
+  when: onebee_sshd_dir.stat.exists and not (onebee_box_ssh_chi_khoa and onebee_ssh_khoa.matched > 0)
+  register: onebee_sshd_conf_bo
+
+- name: Tạo thư mục chạy của sshd (máy cài SSH kiểu socket có thể chưa có — sshd -t cần)
+  ansible.builtin.file:
+    path: /run/sshd
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: onebee_sshd_dir.stat.exists
+
+- name: Kiểm tra cấu hình SSH hợp lệ
+  ansible.builtin.command: sshd -t
+  changed_when: false
+  when: onebee_sshd_dir.stat.exists
+
+- name: Nạp lại SSH (máy dùng SSH kiểu socket thì kết nối sau tự đọc cấu hình mới)
+  # noqa: command-instead-of-module — module systemd không có "try-reload" (chỉ nạp lại khi đang chạy)
+  ansible.builtin.command: systemctl try-reload-or-restart ssh.service
+  changed_when: true
+  when: onebee_sshd_dir.stat.exists and (onebee_sshd_conf is changed or onebee_sshd_conf_bo is changed)
+
+- name: Cảnh báo chưa có khóa SSH
+  ansible.builtin.debug:
+    msg: >-
+      Chưa có khóa SSH cho tài khoản quản trị Box → SSH vẫn nhận mật khẩu. Thêm khóa
+      (ssh-copy-id <tài-khoản>@<ip-box>) rồi chạy lại bộ cài để Box chỉ nhận khóa.
+  when: onebee_sshd_dir.stat.exists and onebee_box_ssh_chi_khoa and onebee_ssh_khoa.matched == 0

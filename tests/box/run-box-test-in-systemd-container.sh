@@ -60,6 +60,8 @@ box "sed -i -E 's#^  smtp_host: .*#  smtp_host: \"mailpit\"#; s#^  smtp_port: .*
 
 echo "===== LẦN 1: cài đặt ====="
 box '/root/onebee-test/box/onebee-box-install.sh > /tmp/run1.log 2>&1 || { tail -40 /tmp/run1.log; exit 1; }; tail -3 /tmp/run1.log'
+box 'grep -q "Khởi động lại giám sát với cổng mới" /tmp/run1.log || { echo "FAIL  Lần cài đầu không mở giám sát theo 2 bước"; exit 1; }
+     echo "PASS  Lần cài đầu: giám sát chỉ mở trong Box tới khi có tài khoản quản trị, rồi mới mở ra LAN"'
 echo "===== LẦN 2: kiểm tra idempotent ====="
 box '/root/onebee-test/box/onebee-box-install.sh > /tmp/run2.log 2>&1
      grep -Eq "changed=0 .*failed=0" /tmp/run2.log || { grep -B2 "changed:" /tmp/run2.log | head -30; echo "FAIL  Lần 2 còn thay đổi"; exit 1; }
@@ -67,6 +69,24 @@ box '/root/onebee-test/box/onebee-box-install.sh > /tmp/run2.log 2>&1
 
 echo "===== KIỂM TRA DỊCH VỤ ====="
 box 'apt-get install -y -q smbclient python3 >/dev/null 2>&1; /root/onebee-test/tests/box/verify-box-install.sh'
+echo "===== SSH VÀO BOX CHỈ BẰNG KHÓA ====="
+box 'for i in 1 2 3; do apt-get update -q >/dev/null 2>&1 && apt-get install -y -q openssh-server >/dev/null 2>&1 && break; sleep 15; done
+     systemctl enable --now ssh.socket >/dev/null 2>&1 || systemctl enable --now ssh >/dev/null 2>&1
+     useradd -m -s /bin/bash kythuat
+     /root/onebee-test/box/onebee-box-install.sh > /tmp/ssh1.log 2>&1 || { tail -30 /tmp/ssh1.log; exit 1; }
+     [ ! -e /etc/ssh/sshd_config.d/10-onebee-box.conf ] && sshd -T | grep -qx "passwordauthentication yes" \
+       || { echo "FAIL  Chưa có khóa quản trị mà đã tắt đăng nhập mật khẩu (tự khóa mình ở ngoài)"; exit 1; }
+     grep -q "Chưa có khóa SSH cho tài khoản quản trị Box" /tmp/ssh1.log || { echo "FAIL  Không cảnh báo chưa có khóa SSH"; exit 1; }
+     echo "PASS  Chưa có khóa SSH của quản trị → giữ đăng nhập mật khẩu + cảnh báo (không tự khóa mình ở ngoài)"
+     su - kythuat -c "mkdir -p ~/.ssh && ssh-keygen -q -t ed25519 -N \"\" -f ~/.ssh/id_ed25519 && cp ~/.ssh/id_ed25519.pub ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+     /root/onebee-test/box/onebee-box-install.sh > /tmp/ssh2.log 2>&1 || { tail -30 /tmp/ssh2.log; exit 1; }
+     sshd -T | grep -qx "passwordauthentication no" && sshd -T | grep -qx "permitrootlogin no" \
+       || { echo "FAIL  Có khóa quản trị rồi mà SSH vẫn nhận mật khẩu hoặc root"; exit 1; }
+     su - kythuat -c "ssh -o BatchMode=yes -o StrictHostKeyChecking=no kythuat@127.0.0.1 true" \
+       || { echo "FAIL  Quản trị không SSH vào Box được bằng khóa"; exit 1; }
+     out=$(ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o PreferredAuthentications=password kythuat@127.0.0.1 true 2>&1 || true)
+     grep -q "Permission denied (publickey)" <<<"${out}" || { echo "FAIL  SSH vào Box vẫn nhận mật khẩu: ${out}"; exit 1; }
+     echo "PASS  Có khóa quản trị → SSH vào Box chỉ bằng khóa, không cho root; quản trị vào được bằng khóa"'
 echo "===== AI HỎI ĐÁP THẬT ====="
 box "ONEBEE_TEST_MODEL=${TEST_MODEL} /root/onebee-test/tests/box/check-ai-chat-inside.sh"
 echo "===== QUY TRÌNH n8n QUA EMAIL ====="
@@ -149,11 +169,11 @@ echo "===== TƯỜNG LỬA: CHỈ MẠNG LAN CHO PHÉP VÀO BOX ====="
 # → bị chặn cả dịch vụ Docker (AI, trang giới thiệu, kho sao lưu) lẫn dịch vụ trên Box (thư mục chung).
 box_ip="$(docker exec "${BOX}" hostname -I | awk '{print $1}')"
 thu_cong() {  # in các cổng của Box mà máy trạm kết nối được
-  docker exec "${CLIENT}" bash -c "for p in 80 3000 8000 445; do timeout 3 bash -c \"exec 3<>/dev/tcp/${box_ip}/\$p\" 2>/dev/null && printf '%s ' \$p; done; true"
+  docker exec "${CLIENT}" bash -c "for p in 80 3000 3001 8000 445; do timeout 3 bash -c \"exec 3<>/dev/tcp/${box_ip}/\$p\" 2>/dev/null && printf '%s ' \$p; done; true"
 }
 mo="$(thu_cong)"
-[[ "${mo}" == "80 3000 8000 445 " ]] || { echo "FAIL  Máy trạm trong LAN không vào được đủ cổng (mở: ${mo})"; exit 1; }
-echo "PASS  Máy trạm trong mạng LAN vào được: trang giới thiệu, Trợ lý AI, kho sao lưu, thư mục chung"
+[[ "${mo}" == "80 3000 3001 8000 445 " ]] || { echo "FAIL  Máy trạm trong LAN không vào được đủ cổng (mở: ${mo})"; exit 1; }
+echo "PASS  Máy trạm trong mạng LAN vào được: trang giới thiệu, Trợ lý AI, giám sát, kho sao lưu, thư mục chung"
 box 'cp /etc/onebee-box/tuong-lua.conf /root/tuong-lua.conf.bak
      echo "LAN_CHO_PHEP=\"10.255.255.0/24\"" > /etc/onebee-box/tuong-lua.conf
      systemctl restart onebee-tuong-lua'
@@ -162,7 +182,7 @@ box 'cp /root/tuong-lua.conf.bak /etc/onebee-box/tuong-lua.conf; systemctl resta
 [[ -z "${mo}" ]] || { echo "FAIL  Máy ngoài mạng cho phép vẫn vào được cổng: ${mo}"; exit 1; }
 echo "PASS  Máy ngoài mạng cho phép (vd Wi-Fi khách) bị chặn hết: AI, trang giới thiệu, kho sao lưu, thư mục chung"
 box 'curl -s -m 10 http://127.0.0.1:3000/health | grep -q true || { echo "FAIL  Box tự gọi dịch vụ của mình bị chặn"; exit 1; }'
-[[ "$(thu_cong)" == "80 3000 8000 445 " ]] || { echo "FAIL  Mở lại tường lửa nhưng máy trạm chưa vào lại được"; exit 1; }
+[[ "$(thu_cong)" == "80 3000 3001 8000 445 " ]] || { echo "FAIL  Mở lại tường lửa nhưng máy trạm chưa vào lại được"; exit 1; }
 echo "PASS  Box tự gọi dịch vụ của mình không bị chặn; trả lại danh sách cũ → máy trạm vào lại được"
 
 echo "===== TẮT TRỢ LÝ AI → LỆNH hoi BÁO LỖI DỄ HIỂU ====="

@@ -2,6 +2,10 @@
 
 ## [Chưa phát hành]
 ### Thêm
+- SSH vào Box chỉ bằng khóa, không cho root, tối đa 3 lần thử (`onebee_box_ssh_chi_khoa`) — tự bật khi đã có khóa SSH của
+  tài khoản quản trị; chưa có khóa thì giữ mật khẩu + cảnh báo (không tự khóa mình ở ngoài). Test Box thêm bước kiểm cả 2 trường hợp.
+- Uptime Kuma lần cài đầu chỉ mở cổng trong Box (127.0.0.1) tới khi đã tạo tài khoản quản trị, rồi mới mở ra LAN — hết khoảng
+  vài giây người trong LAN có thể giành trang "tạo tài khoản đầu tiên".
 - Tường lửa Box (`roles/box-firewall`, lệnh `onebee-tuong-lua bat|tat|xem`): chỉ mạng LAN cho phép (mặc định: mạng của cổng mạng
   chính; khai báo thêm bằng `onebee_box_lan_cho_phep`) vào được dịch vụ Docker (trang giới thiệu, AI, n8n, giám sát, kho sao lưu)
   và Samba/SSH. Chặn ở `DOCKER-USER` + `INPUT` vì Docker đi vòng ufw. Cổng dịch vụ chỉ mở IPv4 (cổng IPv6 của Docker đi vòng

@@ -101,7 +101,8 @@ services:
     container_name: onebee-uptime-kuma
     restart: unless-stopped
     logging: *logging
-    ports: ["0.0.0.0:{{ onebee_box_ports.uptime_kuma }}:3001"]
+    # Chỉ mở ra LAN sau khi đã tạo tài khoản quản trị (trước đó Uptime Kuma mở trang "tạo tài khoản đầu tiên")
+    ports: ["{{ onebee_kuma_dia_chi | default('0.0.0.0') }}:{{ onebee_box_ports.uptime_kuma }}:3001"]
     environment:
       UPTIME_KUMA_DB_TYPE: sqlite   # bỏ trang chọn cơ sở dữ liệu lúc mở lần đầu (ai mở trước chọn được)
     volumes:
