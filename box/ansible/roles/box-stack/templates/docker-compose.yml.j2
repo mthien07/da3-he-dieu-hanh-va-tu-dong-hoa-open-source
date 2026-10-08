@@ -76,6 +76,11 @@ services:
       N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
       N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
       N8N_PERSONALIZATION_ENABLED: "false"
+      # Khóa chặt (ghi rõ, không dựa vào mặc định của từng phiên bản n8n): không chạy lệnh hệ thống, không đọc
+      # biến môi trường (có khóa mã hóa) trong nút Code, chỉ đọc/ghi file trong thư mục dành cho n8n
+      NODES_EXCLUDE: '["n8n-nodes-base.executeCommand", "n8n-nodes-base.localFileTrigger", "n8n-nodes-base.ssh"]'
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "true"
+      N8N_RESTRICT_FILE_ACCESS_TO: /home/node/.n8n-files
       # Địa chỉ n8n in vào đường dẫn biểu mẫu (người dùng trong LAN mở được)
       WEBHOOK_URL: http://{{ onebee_box_address or ansible_default_ipv4.address | default('127.0.0.1') }}:{{ onebee_box_ports.n8n }}/
       # Tạo sẵn tài khoản chủ n8n (mật khẩu: onebee-box in-khoa) — không còn "ai mở trước thành chủ"

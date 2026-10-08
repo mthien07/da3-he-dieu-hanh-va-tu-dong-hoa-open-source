@@ -2,5 +2,10 @@
 :80 {
 	root * /srv
 	file_server
-	header X-Content-Type-Options nosniff
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+		-Server
+	}
 }

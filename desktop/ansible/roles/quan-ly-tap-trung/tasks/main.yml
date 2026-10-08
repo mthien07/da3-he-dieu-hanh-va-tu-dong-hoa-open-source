@@ -82,6 +82,9 @@
           PasswordAuthentication no
           KbdInteractiveAuthentication no
           PermitRootLogin no
+          # Chỉ tài khoản quản trị của Box được SSH vào (nhân viên tự thêm khóa vào nhà mình cũng không dùng được)
+          AllowUsers onebee-quantri
+          MaxAuthTries 3
         owner: root
         group: root
         mode: "0644"

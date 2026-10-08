@@ -6,6 +6,9 @@
   chính; khai báo thêm bằng `onebee_box_lan_cho_phep`) vào được dịch vụ Docker (trang giới thiệu, AI, n8n, giám sát, kho sao lưu)
   và Samba/SSH. Chặn ở `DOCKER-USER` + `INPUT` vì Docker đi vòng ufw. Cổng dịch vụ chỉ mở IPv4 (cổng IPv6 của Docker đi vòng
   tường lửa). Test Box thêm bước: máy ngoài mạng cho phép bị chặn hết, Box tự gọi dịch vụ không bị chặn.
+- Khóa chặt thêm (rà soát bảo mật 8/10): n8n ghi rõ không có nút chạy lệnh hệ thống/SSH/theo dõi file, nút Code không đọc
+  biến môi trường, chỉ đọc/ghi trong `~/.n8n-files`; trang giới thiệu có tiêu đề bảo mật (chống nhúng khung, ẩn tên máy chủ web);
+  máy trạm chỉ cho tài khoản quản trị của Box SSH vào (`AllowUsers`), tối đa 3 lần thử khóa.
 - Ngưỡng đạt chạy thử v2 (`reports/pilot/nguong-dat.md`, chờ chốt): 9 tiêu chí, 3 bắt buộc, cách kết luận; nhật ký tuần tự tính
   yêu cầu gấp có phản hồi trong 4 giờ làm việc, số máy từng phải quay về Windows (tính dồn, kể cả đã sửa), số phiếu khảo sát ≤ 2 điểm,
   tuổi bản sao lưu của mọi máy; điểm khảo sát in 2 số lẻ.

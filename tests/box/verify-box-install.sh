@@ -24,6 +24,10 @@ s.on(\"connect\", () => s.emit(\"needSetup\", (need) => { if (need) process.exit
   s.emit(\"login\", {username: process.env.KUMA_USER, password: process.env.KUMA_PASS, token: \"\"}, (r) => { if (!r.ok) process.exit(3); }); }));
 setTimeout(() => process.exit(4), 20000);' && exit 0; done; exit 1"
 check "Kho sao lưu :8000 đòi mật khẩu (401)" code_in http://127.0.0.1:8000/ 401
+check "Trang giới thiệu gửi kèm tiêu đề bảo mật (chống nhúng khung, không lộ tên máy chủ web)" bash -c \
+  "h=\$(curl -sI -m 10 http://127.0.0.1/); grep -qi '^x-frame-options: DENY' <<<\"\$h\" && ! grep -qi '^server:' <<<\"\$h\""
+check "n8n khóa chặt: không có nút chạy lệnh hệ thống, nút Code không đọc biến môi trường" bash -c \
+  "docker exec onebee-n8n printenv NODES_EXCLUDE | grep -q executeCommand && docker exec onebee-n8n printenv N8N_BLOCK_ENV_ACCESS_IN_NODE | grep -qx true"
 check "Ollama KHÔNG mở cổng ra ngoài (11434)" bash -c "! curl -s -m 3 http://127.0.0.1:11434/ >/dev/null"
 check "Ollama chạy được bên trong (Open WebUI gọi tới)" bash -c "docker exec onebee-open-webui curl -s -m 10 http://ollama:11434/api/version | grep -q version"
 check "Open WebUI không gọi AI đám mây (ENABLE_OPENAI_API=false)" \
