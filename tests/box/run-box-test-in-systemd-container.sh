@@ -74,14 +74,16 @@ box 'for i in 1 2 3; do apt-get update -q >/dev/null 2>&1 && apt-get install -y 
      systemctl enable --now ssh.socket >/dev/null 2>&1 || systemctl enable --now ssh >/dev/null 2>&1
      useradd -m -s /bin/bash kythuat
      /root/onebee-test/box/onebee-box-install.sh > /tmp/ssh1.log 2>&1 || { tail -30 /tmp/ssh1.log; exit 1; }
-     [ ! -e /etc/ssh/sshd_config.d/10-onebee-box.conf ] && sshd -T | grep -qx "passwordauthentication yes" \
-       || { echo "FAIL  Chưa có khóa quản trị mà đã tắt đăng nhập mật khẩu (tự khóa mình ở ngoài)"; exit 1; }
+     mkdir -p /run/sshd; t="$(sshd -T 2>&1)"   # sshd -T cần /run/sshd (SSH kiểu socket có thể chưa tạo)
+     [ ! -e /etc/ssh/sshd_config.d/10-onebee-box.conf ] && grep -qx "passwordauthentication yes" <<<"${t}" \
+       || { echo "FAIL  Chưa có khóa quản trị mà đã tắt đăng nhập mật khẩu: $(ls /etc/ssh/sshd_config.d/) $(grep -iE "^passwordauth|missing|error" <<<"${t}")"; exit 1; }
      grep -q "Chưa có khóa SSH cho tài khoản quản trị Box" /tmp/ssh1.log || { echo "FAIL  Không cảnh báo chưa có khóa SSH"; exit 1; }
      echo "PASS  Chưa có khóa SSH của quản trị → giữ đăng nhập mật khẩu + cảnh báo (không tự khóa mình ở ngoài)"
      su - kythuat -c "mkdir -p ~/.ssh && ssh-keygen -q -t ed25519 -N \"\" -f ~/.ssh/id_ed25519 && cp ~/.ssh/id_ed25519.pub ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
      /root/onebee-test/box/onebee-box-install.sh > /tmp/ssh2.log 2>&1 || { tail -30 /tmp/ssh2.log; exit 1; }
-     sshd -T | grep -qx "passwordauthentication no" && sshd -T | grep -qx "permitrootlogin no" \
-       || { echo "FAIL  Có khóa quản trị rồi mà SSH vẫn nhận mật khẩu hoặc root"; exit 1; }
+     mkdir -p /run/sshd; t="$(sshd -T 2>&1)"
+     grep -qx "passwordauthentication no" <<<"${t}" && grep -qx "permitrootlogin no" <<<"${t}" \
+       || { echo "FAIL  Có khóa quản trị rồi mà SSH vẫn nhận mật khẩu hoặc root: $(grep -iE "^passwordauth|^permitroot|missing|error" <<<"${t}")"; exit 1; }
      su - kythuat -c "ssh -o BatchMode=yes -o StrictHostKeyChecking=no kythuat@127.0.0.1 true" \
        || { echo "FAIL  Quản trị không SSH vào Box được bằng khóa"; exit 1; }
      out=$(ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o PreferredAuthentications=password kythuat@127.0.0.1 true 2>&1 || true)
