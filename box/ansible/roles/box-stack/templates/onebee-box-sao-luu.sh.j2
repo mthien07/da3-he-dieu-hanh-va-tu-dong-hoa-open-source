@@ -81,14 +81,12 @@ cmd_khoi_phuc_thu() {
 
 # In "tên=số giờ từ lần sao lưu cuối" (hoặc "tên=null") cho mọi máy trạm đã cấp — Box tự đọc kho sao lưu
 gio_sao_luu_may() {
-  local f ten t
-  for f in "${SECRETS}"/may-*-repo; do
-    [[ -e "${f}" ]] || continue
-    ten="$(basename "${f}")"; ten="${ten#may-}"; ten="${ten%-repo}"
+  local ten t
+  while read -r ten; do
     t="null"
     if [[ -f "${DATA}/restic/${ten}/config" ]]; then
-      t="$(RESTIC_REPOSITORY="${DATA}/restic/${ten}" RESTIC_PASSWORD="$(cat "${f}")" \
-           restic snapshots --latest 1 --json 2>/dev/null | python3 -c '
+      t="$(RESTIC_REPOSITORY="${DATA}/restic/${ten}" RESTIC_PASSWORD="$(cat "${SECRETS}/may-${ten}-repo")" \
+           restic snapshots --latest 1 --json </dev/null 2>/dev/null | python3 -c '
 import json, sys, re, datetime
 s = json.load(sys.stdin)
 if not s: print("null"); sys.exit()
@@ -96,10 +94,11 @@ t = max(datetime.datetime.fromisoformat(re.sub(r"(\.\d{6})\d+", r"\1", x["time"]
 print(int((datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() // 3600))' || echo loi)"
     fi
     echo "${ten}=${t}"
-  done
+  done < <(may_da_cap)   # máy đã thu hồi không còn nằm trong báo cáo (kho của máy vẫn giữ, vẫn được dọn bản cũ ở prune_workstations)
 }
 
-may_tram_py() { python3 /usr/local/lib/onebee-box/onebee-may-tram.py "$1" "${DATA}/tinh-trang-may" "${@:2}"; }
+# ONEBEE_BI_MAT: onebee-may-tram.py kiểm chữ ký báo cáo bằng mật khẩu kho sao lưu của từng máy (n8n không giữ khóa)
+may_tram_py() { ONEBEE_BI_MAT="${SECRETS}" python3 /usr/local/lib/onebee-box/onebee-may-tram.py "$1" "${DATA}/tinh-trang-may" "${@:2}"; }
 
 # Gửi kết quả sao lưu + tình trạng từng máy trạm (sao lưu, cập nhật, ổ đĩa...) sang n8n → email cho quản trị
 bao_cao_n8n() {
@@ -128,6 +127,20 @@ cmd_sao_luu_co_bao_cao() {
   return "${st}"
 }
 
+# Bản sao lưu cũ có thể còn tài khoản Trợ lý AI của máy đã thu hồi sau lần sao lưu đó → xóa lại (chờ Open WebUI chạy, tối đa ~2 phút)
+xoa_tai_khoan_may_da_thu_hoi() {
+  local f ten lan
+  for f in "${SECRETS}"/may-*-thu-hoi; do
+    [[ -e "${f}" ]] || continue
+    ten="$(basename "${f}")"; ten="${ten#may-}"; ten="${ten%-thu-hoi}"
+    for lan in $(seq 24); do
+      webui xoa-tai-khoan "${ten}" >/dev/null 2>&1 && continue 2
+      sleep 5
+    done
+    warn "Chưa xóa được tài khoản Trợ lý AI của máy đã thu hồi ${ten} — chạy: sudo onebee-box thu-hoi-may ${ten} --dong-y"
+  done
+}
+
 # Khôi phục toàn bộ Box khi hỏng ổ: chạy trên Box ĐÃ CÀI LẠI (bộ cài OneBee Box), đã gắn ổ sao lưu cũ.
 # $1 = file khóa in từ 'onebee-box in-khoa' (dùng dòng restic-box=…); không đưa file thì hỏi khóa.
 cmd_khoi_phuc_toan_bo() {
@@ -154,12 +167,14 @@ cmd_khoi_phuc_toan_bo() {
   # Kho sao lưu máy trạm không nằm trong bản sao lưu Box → cấp lại tài khoản kho bằng mật khẩu cũ
   # (máy trạm dùng cấu hình cũ, tự tạo kho mới ở lần sao lưu sau)
   : >"${DATA}/restic/.htpasswd"
-  for f in "${SECRETS}"/may-*-http; do
-    [[ -e "${f}" ]] || continue
-    ten="$(basename "${f}")"; ten="${ten#may-}"; ten="${ten%-http}"
-    htpasswd -B -i "${DATA}/restic/.htpasswd" "${ten}" <"${f}" 2>/dev/null
-  done
+  # Chỉ máy còn được cấp: máy đã thu hồi (có file may-<tên>-thu-hoi) không được cấp lại quyền vào kho dù bản sao lưu còn mật khẩu cũ
+  while read -r ten; do
+    [[ -s "${SECRETS}/may-${ten}-http" ]] || continue
+    htpasswd -B -i "${DATA}/restic/.htpasswd" "${ten}" <"${SECRETS}/may-${ten}-http" 2>/dev/null
+  done < <(may_da_cap)
+  dong_bo_ten_may >/dev/null   # chỗ nhận báo cáo tình trạng của n8n dựng lại từ bí mật vừa khôi phục
   compose up -d >/dev/null
+  xoa_tai_khoan_may_da_thu_hoi
   echo "Đã khôi phục. Việc tiếp theo: chạy lại bộ cài (sudo ./box/onebee-box-install.sh) để đồng bộ cấu hình, rồi"
   echo "sudo onebee-box khoi-phuc-thu. Máy trạm không cần làm gì (dùng lại cấu hình cũ)."
 }

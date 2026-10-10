@@ -1,0 +1,42 @@
+---
+# Đẩy cấu hình từ Box xuống máy trạm (lệnh: sudo onebee-box dong-bo-may <tên>|--tat-ca). Cấu hình dựng sẵn trên Box, mỗi máy một file
+# ${onebee_cau_hinh_dir}/<tên>.env. Lệnh onebee-box chỉ gọi playbook này cho máy đã CHỨNG MINH là máy đã cấp (biết mật khẩu kho sao lưu)
+# và đã ghim khóa SSH — không bao giờ đẩy bí mật tới máy chưa qua bước đó. Mọi task đụng nội dung cấu hình đều no_log.
+- name: Đồng bộ cấu hình máy trạm OneBee từ Box
+  hosts: may_tram
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Đọc cấu hình đang có trên máy
+      ansible.builtin.slurp:
+        src: /etc/onebee/may-tram.env
+      register: onebee_cfg
+      no_log: true
+
+    # Lớp phụ (định danh chính là khóa SSH đã ghim + chứng minh mật khẩu kho): tên trong file phải là tên đang vào
+    - name: Kiểm tra đúng máy {{ inventory_hostname }}
+      ansible.builtin.assert:
+        that: ("MAY_TRAM=" ~ inventory_hostname) in (onebee_cfg.content | b64decode).splitlines() | map('trim') | list
+        fail_msg: "Máy ở địa chỉ này không phải {{ inventory_hostname }} — không đẩy cấu hình"
+        quiet: true
+
+    - name: Ghi cấu hình mới (giữ bản cũ cạnh file, quyền 600)
+      ansible.builtin.copy:
+        src: "{{ onebee_cau_hinh_dir }}/{{ inventory_hostname }}.env"
+        dest: /etc/onebee/may-tram.env
+        owner: root
+        group: root
+        mode: "0600"
+        backup: true
+      no_log: true
+      register: onebee_cfg_moi
+
+    # Báo cáo thành công = khóa tình trạng và địa chỉ mới dùng được. Lỗi thì dừng để quản trị biết (bản cũ còn trong /etc/onebee)
+    - name: Gửi tình trạng về Box bằng cấu hình mới
+      ansible.builtin.command: /usr/local/sbin/onebee-bao-tinh-trang
+      changed_when: false
+
+    - name: Kết quả
+      ansible.builtin.debug:
+        msg: >-
+          {{ ('Đã cập nhật cấu hình máy ' if onebee_cfg_moi is changed else 'Cấu hình đã đúng, không đổi: máy ') ~ inventory_hostname }}

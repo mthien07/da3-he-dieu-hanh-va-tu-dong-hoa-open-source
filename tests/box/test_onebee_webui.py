@@ -2,10 +2,13 @@
 """Kiểm thử đơn vị cho công cụ quản lý Open WebUI (box-ai/files/onebee-webui.py) bằng máy chủ Open WebUI giả.
 Kiểm: enforce_settings đặt đúng cài đặt bảo mật + quyền mặc định, chạy lần 2 không đổi gì. Chạy: python3 -m unittest"""
 import importlib.util
+import io
 import json
 import os
+import tempfile
 import threading
 import unittest
+from contextlib import redirect_stdout
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -32,12 +35,29 @@ class WebuiGia(BaseHTTPRequestHandler):
             return self._gui(200, self.state["config"])
         if self.path == "/api/v1/users/default/permissions":
             return self._gui(200, self.state["perms"])
+        if self.path.startswith("/api/v1/users/?query="):
+            q = self.path.split("=", 1)[1].replace("%40", "@")
+            return self._gui(200, {"users": [u for u in self.state.get("users", []) if q in u["email"]]})
+        if self.path == "/api/v1/auths/api_key":
+            khoa = self.state.get("khoa", {}).get(self.headers.get("Authorization", "").replace("Bearer ", ""))
+            return self._gui(200, {"api_key": khoa}) if khoa else self._gui(404, {"detail": "none"})
         self._gui(404, {"detail": "not found"})
+
+    def do_DELETE(self):
+        self.state.setdefault("posts", []).append("DELETE " + self.path)
+        uid = self.path.rsplit("/", 1)[1]
+        self.state["users"] = [u for u in self.state.get("users", []) if u["id"] != uid]
+        self._gui(200, True)
 
     def do_POST(self):
         n = int(self.headers.get("Content-Length", 0))
         body = json.loads(self.rfile.read(n) or b"{}")
         self.state.setdefault("posts", []).append(self.path)
+        if self.path == "/api/v1/auths/signin":
+            mk = self.state.get("mat_khau", {}).get(body.get("email"))
+            if mk and mk == body.get("password"):
+                return self._gui(200, {"token": "tok-" + body["email"]})
+            return self._gui(400, {"detail": "sai"})
         if self.path == "/api/v1/auths/admin/config":
             # Open WebUI từ chối giá trị null cho các trường bắt buộc
             if any(v is None for k, v in body.items() if k not in ("ADMIN_EMAIL", "I18N", "DEFAULT_INTERFACE_SETTINGS")):
@@ -116,6 +136,64 @@ class EnforceSettings(unittest.TestCase):
                 self.w.enforce_settings("tok")
         finally:
             WebuiGia.do_GET = orig
+
+
+class TaiKhoanMay(unittest.TestCase):
+    """lay-khoa (chỉ đọc) và xoa-tai-khoan (thu hồi máy) — rà soát bảo mật F2: thu hồi/in lại cấu hình không có tác dụng phụ."""
+
+    @classmethod
+    def setUpClass(cls):
+        EnforceSettings.setUpClass.__func__(cls)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        os.environ["ONEBEE_SECRETS"] = self.tmp.name
+        os.environ["WEBUI_ADMIN_EMAIL"], os.environ["WEBUI_ADMIN_PASSWORD"] = "quantri@onebee.lan", "admin-mk"
+        WebuiGia.state = {"mat_khau": {"quantri@onebee.lan": "admin-mk", "may-a@onebee.lan": "mk-may-a"},
+                          "khoa": {"tok-may-a@onebee.lan": "sk-khoa-a"},
+                          "users": [{"id": "u1", "email": "may-a@onebee.lan"}, {"id": "u2", "email": "nv@onebee.lan"}]}
+
+    def ghi_mk(self, ten, mk):
+        with open(os.path.join(self.tmp.name, f"may-{ten}-webui"), "w") as f:
+            f.write(mk + "\n")
+
+    def ghi_gi(self):
+        """Các lời gọi làm thay đổi dữ liệu (bỏ đăng nhập)."""
+        return [p for p in WebuiGia.state.get("posts", []) if p != "/api/v1/auths/signin"]
+
+    def chay(self, ham, *a):
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            ham(*a)
+        return buf.getvalue().strip()
+
+    def test_lay_khoa_in_khoa_da_co_va_khong_tao_gi(self):
+        self.ghi_mk("a", "mk-may-a")
+        self.assertEqual(self.chay(self.w.lay_khoa, "a"), "sk-khoa-a")
+        self.assertEqual(self.ghi_gi(), [])  # chỉ đăng nhập + đọc, không tạo/xóa gì
+
+    def test_lay_khoa_thieu_gi_thi_dung(self):
+        with self.assertRaises(SystemExit):
+            self.w.lay_khoa("a")  # chưa có file mật khẩu → không tự tạo tài khoản
+        self.ghi_mk("a", "sai-mat-khau")
+        with self.assertRaises(SystemExit):
+            self.w.lay_khoa("a")
+        self.assertEqual(self.ghi_gi(), [])
+        self.ghi_mk("a", "mk-may-a")
+        WebuiGia.state["khoa"] = {}
+        with self.assertRaises(SystemExit):
+            self.w.lay_khoa("a")  # có tài khoản nhưng chưa có khóa → không tạo khóa
+
+    def test_xoa_tai_khoan_chi_xoa_dung_tai_khoan_may(self):
+        self.assertIn("Đã xóa", self.chay(self.w.xoa_tai_khoan, "a"))
+        self.assertEqual([u["email"] for u in WebuiGia.state["users"]], ["nv@onebee.lan"])  # tài khoản nhân viên còn nguyên
+        self.assertIn("Không có", self.chay(self.w.xoa_tai_khoan, "a"))  # chạy lại không lỗi
 
 
 if __name__ == "__main__":

@@ -24,6 +24,54 @@ secret() {
   cat "${f}"
 }
 
+# Có $1 trong danh sách các tham số còn lại không (không dùng "... | grep -q": với pipefail, grep thoát sớm làm bên trước chết vì SIGPIPE → lúc đúng lúc sai)
+trong_mang() {
+  local x="$1" y
+  shift
+  for y in "$@"; do [[ "${y}" == "${x}" ]] && return 0; done
+  return 1
+}
+
+# Như secret() nhưng KHÔNG tự sinh khi thiếu: dùng ở mọi nơi trừ lệnh cấp máy (them-may), kẻo vô tình "hồi sinh" máy đã thu hồi
+secret_co_san() {
+  local f="${SECRETS}/$1"
+  [[ -s "${f}" ]] || die "Thiếu bí mật $1 (máy chưa cấp, hoặc đã thu hồi?)"
+  cat "${f}"
+}
+
+# Tên các máy trạm ĐÃ CẤP và CHƯA thu hồi — MỘT nơi liệt kê duy nhất (báo cáo, cập nhật, đồng bộ cấu hình, khôi phục đều dùng)
+# Máy đã thu hồi có file may-<tên>-thu-hoi; kho sao lưu và mật khẩu kho của máy vẫn giữ lại (để khôi phục/dọn bản cũ)
+may_da_cap() {
+  local f ten
+  for f in "${SECRETS}"/may-*-repo; do
+    [[ -e "${f}" ]] || continue
+    ten="$(basename "${f}")"; ten="${ten#may-}"; ten="${ten%-repo}"
+    [[ -e "${SECRETS}/may-${ten}-thu-hoi" ]] || printf '%s\n' "${ten}"
+  done
+}
+
+# Thư mục file đánh dấu máy đã cấp: n8n (gắn chỉ đọc) chỉ nhận báo cáo tình trạng của máy có file <tên> ở đây.
+# In "đã đổi" khi có thay đổi (để bộ cài Ansible báo changed đúng)
+MAY_DA_CAP_DIR="${DATA}/may-da-cap"
+dong_bo_ten_may() {
+  local ten f doi=0
+  local -a ds=()
+  mapfile -t ds < <(may_da_cap)
+  install -d -m 0750 -o root -g 1000 "${MAY_DA_CAP_DIR}"
+  for ten in "${ds[@]}"; do
+    f="${MAY_DA_CAP_DIR}/${ten}"
+    if [[ ! -f "${f}" ]]; then
+      echo 1 >"${f}"; chown root:1000 "${f}"; chmod 0640 "${f}"; doi=1
+    fi
+  done
+  for f in "${MAY_DA_CAP_DIR}"/*; do
+    [[ -e "${f}" ]] || continue
+    ten="$(basename "${f}")"
+    trong_mang "${ten}" "${ds[@]}" || { rm -f "${f}"; doi=1; }
+  done
+  [[ ${doi} -eq 0 ]] || echo "đã đổi"
+}
+
 # Địa chỉ IPv4 của Box trong LAN: lấy từ cấu hình, nếu trống thì lấy IP của cổng ra mạng chính (không lấy docker/VPN)
 box_ip() {
   if [[ -n "${BOX_ADDRESS}" ]]; then echo "${BOX_ADDRESS}"; return; fi

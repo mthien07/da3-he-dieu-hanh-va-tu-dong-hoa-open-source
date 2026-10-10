@@ -23,6 +23,15 @@
     - {path: "{{ onebee_box_dir }}/n8n-import", owner: "1000", mode: "0700"}
     - {path: "{{ onebee_box_dir }}/n8n-import/workflows", owner: "1000", mode: "0700"}
 
+# Danh sách máy đã cấp cho n8n đọc (chỉ đọc): root ghi, nhóm 1000 (n8n) đọc. Nội dung do onebee-box dong-bo-ten-may dựng từ bí mật
+- name: Tạo thư mục danh sách máy đã cấp (n8n chỉ đọc)
+  ansible.builtin.file:
+    path: "{{ onebee_box_data }}/may-da-cap"
+    state: directory
+    owner: root
+    group: "1000"
+    mode: "0750"
+
 - name: Tạo file tài khoản kho sao lưu (rest-server) nếu chưa có
   ansible.builtin.copy:
     dest: "{{ onebee_box_data }}/restic/.htpasswd"
@@ -203,6 +212,12 @@
     - {src: onebee-box-common.sh.j2, dest: /usr/local/lib/onebee-box/common.sh, mode: "0640"}
     - {src: onebee-box-sao-luu.sh.j2, dest: /usr/local/lib/onebee-box/sao-luu.sh, mode: "0640"}
     - {src: onebee-box.sh.j2, dest: /usr/local/sbin/onebee-box, mode: "0750"}
+
+# Máy đã cấp từ trước (Box nâng cấp) được ghi vào danh sách; Box mới chưa có máy nào thì không đổi gì
+- name: Đồng bộ danh sách máy đã cấp cho n8n
+  ansible.builtin.command: /usr/local/sbin/onebee-box dong-bo-ten-may
+  register: onebee_ten_may
+  changed_when: onebee_ten_may.stdout is search('đã đổi')
 
 - name: Khởi chạy / cập nhật các dịch vụ
   ansible.builtin.command: docker compose up -d --remove-orphans

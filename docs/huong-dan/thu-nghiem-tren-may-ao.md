@@ -45,7 +45,8 @@ sudo ./box/onebee-box-install.sh          # lần đầu tải vài GB, 15–40 
 
 ## 3. Quản lý từ Box
 - [ ] Đợi ~5 phút sau khi máy trạm khởi động → Box: `sudo onebee-box may-tram` thấy `ketoan-01` và tình trạng.
-- [ ] `sudo onebee-box cap-nhat-may ketoan-01` → cập nhật xong, không hỏi mật khẩu.
+- [ ] `sudo onebee-box cap-nhat-may ketoan-01` → lần đầu in "Đã ghim khóa SSH của ketoan-01", cập nhật xong, không hỏi mật khẩu; lần 2 không ghim lại.
+- [ ] `sudo onebee-box may-tram` không còn cảnh báo "chưa có chữ ký" sau khi máy chạy lại bộ cài; `sudo onebee-box thu-hoi-may` rồi `them-may` cấp lại được.
 - [ ] Hỗ trợ từ xa: máy trạm bấm "Cho phép hỗ trợ từ xa" → từ máy thật dùng TigerVNC Viewer / Remmina vào `<ip-máy-trạm>:5900`, nhập mã
       → máy trạm hỏi "Cho phép?" → bấm Cho phép → xem được màn hình. Thử cả mã sai và bấm Từ chối.
 - [ ] `sudo onebee-box bao-cao-tuan` → nhật ký tuần có yêu cầu hỗ trợ vừa gửi thử.
