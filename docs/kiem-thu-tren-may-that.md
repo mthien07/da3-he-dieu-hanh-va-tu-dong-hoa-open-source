@@ -12,12 +12,34 @@ git checkout claude/confident-gauss-ntiwuc
 ```
 Windows 10: chạy trong **WSL2** (Ubuntu), clone vào `~` (không vào `/mnt/c`), trước đó `git config --global core.autocrlf false` — CRLF làm hỏng script bash.
 
+## Kết quả lần chạy 10–11/10/2026 (nhóm A)
+Hai môi trường — ghi rõ để không lẫn:
+- **cloud**: máy làm việc của Claude, Docker 29.8.2 **cgroup v1**, 2 CPU, 7 GB RAM, proxy HTTPS tự ký (`ONEBEE_TEST_EXTRA_CA`).
+- **Mac**: MacBook Pro Intel của chủ dự án, **Docker Desktop 29.3.1, cgroup v2, 16 CPU, 15 GiB** cho Docker, mạng gia đình 0,2–2 MB/s. Không proxy.
+
+| Mục | Nơi | Commit | Kết quả |
+|---|---|---|---|
+| A1.1 | cloud | `3eb00c6` | Box `Ran 100 … OK (skipped=7)` (phiếu ghi 99), Desktop 39 OK, AI 17 OK, Jinja 23 mẫu 0 lỗi |
+| A1.2 | cloud | `3eb00c6` | Caddy v2.11.4 đúng digest: 7/7 OK |
+| A2.1 | cloud | `3eb00c6` | shellcheck 0.9.0, yamllint, ansible-lint 26.9.0 (core 2.19.13): đạt |
+| A2.2 | cloud (container `ubuntu:24.04`, apt) | `3eb00c6` | ansible-core **2.16.3**: syntax-check Box/Desktop/`dong-bo-may-tram.yml` đạt; ansible-lint 6.17.2 Box đạt |
+| A2.3 | cloud | `3eb00c6` | `Config validated successfully` |
+| A3.1 | cloud **và** Mac | `3eb00c6` | lần 1 `changed=36`, lần 2 `changed=0 failed=0`, verify "tất cả mục đạt", LibreOffice UNO đạt |
+| A3 mở rộng | cloud | `3eb00c6` | 5 kịch bản (guards, mint, unikey, systemd, ubuntu): **83 PASS / 0 FAIL** |
+| A4.1 | Mac | `3eb00c6` → `0536a61` | Chạy với model sản phẩm `gemma4:e2b-it-qat`. Lần 1 FAIL ở lỗi test T1 → sửa, **chạy tiếp từ "LẦN 2" trên container giữ lại**; FAIL ở N11 → sửa → FAIL ở N12 (do bản sửa N11) → sửa → `TẤT CẢ BƯỚC KIỂM THỬ BOX ĐẠT`. Lần chạy **runner gốc từ đầu** ở `0536a61`: xem dòng cuối mục này |
+
+Lỗi tìm được và đã sửa trong lần chạy này (chi tiết ở mục "Đã sửa sau khi lập phiếu này"): **N11, N12** (sản phẩm), **T1, T2** (script test). Lỗi mới còn mở: **N13**.
+Kiểm thêm tay trên Box test (Mac): `n8n --version` = `2.42.6`; log n8n không có `blocked by policy|content-import|X-Forwarded`;
+portal `[ALL] [CAP_NET_BIND_SERVICE] [no-new-privileges:true]`, rest-server `ro=true drop=[ALL]`, mọi dịch vụ `no-new-privileges`; máy thu hồi `kho-02` không còn trong `.htpasswd`.
+
+Lần chạy runner gốc từ đầu ở `0536a61` (Mac): **đang chạy — điền kết quả khi xong.**
+
 ---
 
 ## A. Bộ kiểm thử tự động có sẵn
 
 ### A1. Unit test (vài chục giây)
-- [ ] **A1.1 Unit Box + Desktop + mẫu Jinja**
+- [x] **A1.1 Unit Box + Desktop + mẫu Jinja**
   - (a) Linux/macOS/WSL2: `python3` ≥ 3.10, `pip install pyyaml jinja2`, `openssl`, `curl`, `node`, `htpasswd` (apt `apache2-utils`), `ssh-keygen` (`openssh-client`).
   - (b)
     ```bash
@@ -28,7 +50,7 @@ Windows 10: chạy trong **WSL2** (Ubuntu), clone vào `~` (không vào `/mnt/c`
   - (c) Box `Ran 99 tests … OK (skipped=7)` (7 bài Caddy bỏ qua khi chưa có caddy), Desktop `Ran 39 tests … OK`, `Đã kiểm 23 mẫu, 0 lỗi`.
     Các dòng `LỖI: ràng buộc tên …` in ra trong lúc chạy desktop là **đúng** (bài thử CA giả).
   - (d) Thiếu công cụ → bài bị skip chứ không lỗi; đếm lại số skip bằng `-v`.
-- [ ] **A1.2 Test Caddyfile với Caddy THẬT** (7 bài đang skip)
+- [x] **A1.2 Test Caddyfile với Caddy THẬT** (7 bài đang skip)
   - (a) Máy có Docker (lấy đúng binary từ image đã ghim digest, như CI).
   - (b)
     ```bash
@@ -40,7 +62,7 @@ Windows 10: chạy trong **WSL2** (Ubuntu), clone vào `~` (không vào `/mnt/c`
   - (d) `box/ansible/roles/box-stack/templates/Caddyfile.j2` (`default_sni` dòng 13, `http_redirect` dòng 29).
 
 ### A2. Lint (giống CI + bản ansible-core 2.16 của Ubuntu 24.04)
-- [ ] **A2.1 Như CI** — (a) Linux có `shellcheck`, Python 3.12. (b)
+- [x] **A2.1 Như CI** — (a) Linux có `shellcheck`, Python 3.12. (b)
   ```bash
   pip install -r requirements-dev.txt
   shellcheck -e SC2016 desktop/*.sh desktop/ansible/roles/backup-client/files/onebee-sao-luu \
@@ -49,7 +71,7 @@ Windows 10: chạy trong **WSL2** (Ubuntu), clone vào `~` (không vào `/mnt/c`
   yamllint . && (cd box/ansible && ansible-lint site.yml) && (cd desktop/ansible && ansible-lint site.yml)
   ```
   (c) không lỗi (đã đạt ở nơi viết với ansible-core 2.19.13). (d) —
-- [ ] **A2.2 ansible-core 2.16 (bản trên Box/Mint thật)** — **chưa ai chạy**. CI vẫn lint bằng 2.19 (Pha 1 chưa ghim về 2.16).
+- [x] **A2.2 ansible-core 2.16 (bản trên Box/Mint thật)** — **chưa ai chạy**. CI vẫn lint bằng 2.19 (Pha 1 chưa ghim về 2.16).
   - (a) VM Ubuntu 24.04 hoặc Mint 22.x: `sudo apt install -y ansible-core ansible-lint` (2.16.x).
   - (b)
     ```bash
@@ -61,11 +83,11 @@ Windows 10: chạy trong **WSL2** (Ubuntu), clone vào `~` (không vào `/mnt/c`
   - (c) `playbook: …` không lỗi (cảnh báo "Could not match … may_tram" là bình thường).
   - (d) Từ khóa mới hơn 2.16 (`meta: end_role` chỉ có từ 2.18); biểu thức có `\\` trong Jinja (2.16 và 2.19 xử lý khác: `dong-bo-may-tram.yml:26-31`,
     `ket-noi-box/tasks/main.yml:22`, `box-stack/tasks/main.yml` khối chép n8n).
-- [ ] **A2.3 Renovate đọc được `renovate.json`** (Pha 5 chưa kiểm) — (a) có `npx`. (b) `npx --yes --package renovate -- renovate-config-validator renovate.json`
+- [x] **A2.3 Renovate đọc được `renovate.json`** (Pha 5 chưa kiểm) — (a) có `npx`. (b) `npx --yes --package renovate -- renovate-config-validator renovate.json`
   (c) `Config validated successfully`. (d) `renovate.json` (regex manager cho `group_vars/all.yml`).
 
 ### A3. Desktop trong container Mint (Docker)
-- [ ] **A3.1** — (a) Docker, ~3 GB trống, mạng có proxy tự ký thì `export ONEBEE_TEST_EXTRA_CA=/đường/dẫn/ca.crt`.
+- [x] **A3.1** — (a) Docker, ~3 GB trống, mạng có proxy tự ký thì `export ONEBEE_TEST_EXTRA_CA=/đường/dẫn/ca.crt`.
   (b) `tests/desktop/run-desktop-test-in-mint-container.sh` (~2 phút) rồi `tests/desktop/run-desktop-extended-tests.sh` (~10 phút; chạy riêng: `… mint systemd`).
   (c) dòng `changed=0 … failed=0` ở lần 2, verify đạt, không `LỖI:`. **Đây là lần đầu role `ket-noi-box`, `hoi` mới, `onebee-sao-luu` (F7) chạy bằng ansible-core 2.16
   của Mint** (bộ cài cài `ansible-core` từ apt). Container không có `/etc/onebee/may-tram.env` nên nhánh CA/HTTPS chỉ được thử ở A4.
@@ -87,19 +109,21 @@ Windows 10: chạy trong **WSL2** (Ubuntu), clone vào `~` (không vào `/mnt/c`
   bước trước — chỉ chạy lại phần vừa hỏng). Dọn: `docker rm -f onebee-box-test-<PID> onebee-may-tram-test-<PID>; docker network rm onebee-test-net-<PID>;
   docker volume rm onebee-box-test-<PID>-docker onebee-box-test-<PID>-containerd onebee-box-test-<PID>-sao-luu`.
 
-- [ ] **A4.2 Những bước MỚI chưa từng chạy** (bản `1.0.0-rc.1` là lần chạy đạt cuối, trước toàn bộ Pha 1–5) — đánh dấu từng bước khi thấy `PASS`:
-  - [ ] Cài lần 1/lần 2 `changed=0` với mã đơn vị `kiem-thu`, CA, n8n 2.42.6, digest (lần đầu ansible 2.16 chạy toàn bộ role Box mới).
-  - [ ] `verify-box-install.sh`: env n8n (`N8N_DISABLED_MODULES`, `NODES_EXCLUDE` có git, MCP), image có `@sha256`, env Open WebUI = false, cài đặt trong CSDL
+- [x] **A4.2 Những bước MỚI chưa từng chạy** (bản `1.0.0-rc.1` là lần chạy đạt cuối, trước toàn bộ Pha 1–5) — đánh dấu từng bước khi thấy `PASS`:
+  - [x] Cài lần 1/lần 2 `changed=0` với mã đơn vị `kiem-thu`, CA, n8n 2.42.6, digest (lần đầu ansible 2.16 chạy toàn bộ role Box mới).
+  - [x] `verify-box-install.sh`: env n8n (`N8N_DISABLED_MODULES`, `NODES_EXCLUDE` có git, MCP), image có `@sha256`, env Open WebUI = false, cài đặt trong CSDL
     (`/api/v1/auths/admin/config`, `/api/v1/users/default/permissions`), `may-da-cap` gắn read-only, 3 mục CA, `in-ca`.
-  - [ ] `check-n8n-inside.sh`: `n8n export:workflow --id=onebeeTomTat0001` có `respondWith=text` + thoát `< >`; trang kết quả có CSP `sandbox`, không `allow-same-origin`.
-  - [ ] Runner: `them-may` in đủ 11 tên dòng (+ `BOX_HTTPS`); máy Mint có CA đúng vân tay + chính sách Firefox/Chromium.
-  - [ ] `check-quan-ly-tap-trung.sh`: báo cáo **có chữ ký**; máy chưa cấp `ke-gia` không ghi được file (quy trình 06 dùng `fileSelector`); báo cáo sai chữ ký bị nêu;
+  - [x] `check-n8n-inside.sh`: `n8n export:workflow --id=onebeeTomTat0001` có `respondWith=text` + thoát `< >`; trang kết quả có CSP `sandbox`, không `allow-same-origin`.
+  - [x] Runner: `them-may` in đủ 11 tên dòng (+ `BOX_HTTPS`); máy Mint có CA đúng vân tay + chính sách Firefox/Chromium.
+  - [x] `check-quan-ly-tap-trung.sh`: báo cáo **có chữ ký**; máy chưa cấp `ke-gia` không ghi được file (quy trình 06 dùng `fileSelector`); báo cáo sai chữ ký bị nêu;
     lần đầu ghim khóa SSH sau khi chứng minh, lần 2 không ghim lại; `dong-bo-may` không lộ mật khẩu vào log; thu hồi → cấp lại `kho-02`.
-  - [ ] `check-khoi-phuc-toan-bo.sh`: máy `tam-01` đã thu hồi không sống lại; CA giữ nguyên sau khôi phục; Box tin CA khôi phục.
-  - [ ] `check-https.sh` (toàn bộ): chốt chặn `kho-03`, bật, chỉ Caddy công bố cổng, TLS không SNI ở 5 cổng, 308, `/onebee-ca.crt`, cookie Secure, CORS, CSP biểu mẫu qua Caddy,
+  - [x] `check-khoi-phuc-toan-bo.sh`: máy `tam-01` đã thu hồi không sống lại; CA giữ nguyên sau khôi phục; Box tin CA khôi phục.
+  - [x] `check-https.sh` (toàn bộ): chốt chặn `kho-03`, bật, chỉ Caddy công bố cổng, TLS không SNI ở 5 cổng, 308, `/onebee-ca.crt`, cookie Secure, CORS, CSP biểu mẫu qua Caddy,
     `dong-bo-tro-ly` qua HTTPS, máy trạm sao lưu/hoi/báo cáo qua HTTPS, Firefox dấu trang https, chạy lại `changed=0` ở HTTPS, tắt → máy trạm về HTTP.
-  - [ ] `check-xoay-khoa.sh` (toàn bộ): mật khẩu kho cũ 401, khóa hoi cũ hết hạn, máy nhận khóa mới; `--box`: quản trị Open WebUI/n8n mới đăng nhập được, cũ bị từ chối, biểu mẫu, `email-thu`.
+  - [x] `check-xoay-khoa.sh` (toàn bộ): mật khẩu kho cũ 401, khóa hoi cũ hết hạn, máy nhận khóa mới; `--box`: quản trị Open WebUI/n8n mới đăng nhập được, cũ bị từ chối, biểu mẫu, `email-thu`.
 - [ ] **A4.3 Rủi ro trong chính script test** (FAIL ở đây có thể là lỗi của test, không phải sản phẩm):
+  - *10–11/10 (Mac):* `check-https.sh:55` (CSP trang GET biểu mẫu) **đạt** — n8n có gửi CSP `sandbox` ở trang GET. Gặp thêm 2 lỗi test ngoài danh sách dưới: **T1, T2** (đã sửa).
+    `check-https.sh:53` (CORS) vẫn có thể đạt giả nếu curl lỗi — chưa sửa; xem N13.
   - `check-https.sh:55` đòi CSP `sandbox` ở trang **GET biểu mẫu** `onebee-ho-tro`; Pha 1 mới đối chiếu mã nguồn cho trang **kết quả** (completion). FAIL → kiểm bằng tay
     `curl -si -u nhanvien:<mk> https://<IP>:5678/form/onebee-ho-tro | grep -i content-security` trên Box: nếu n8n vốn không gửi CSP ở trang GET thì sửa test, không phải Caddy.
   - `check-https.sh:53` dạng `! curl | grep -q` dưới `pipefail`: curl chết SIGPIPE → `!` thành đúng → bài **đạt giả** (chỉ che lỗi, không báo sai).
@@ -372,7 +396,22 @@ Ký hiệu: **XÁC NHẬN** = thấy rõ trong code (đã chạy thử nếu ghi
   - `cai-dat-onebee-box.md:61` + ADR 0005 dòng 16: "gia hạn tự động mỗi đêm" (xem N4). `security-audit.md` 5.8 nêu `doi-khoa-quan-tri`, `doi-ca` — chưa có lệnh này; dòng 42 còn ghi "Pha 2–5 vẫn là kế hoạch".
   - `group_vars/all.yml:119` "hoặc nghi lộ khóa CA" (xem N1).
 
+- **N13 — XÁC NHẬN (Mac, chế độ HTTP): Open WebUI phản chiếu mọi `Origin` kèm `access-control-allow-credentials: true`.**
+  `curl -si http://127.0.0.1:3000/api/config -H 'Origin: https://ke-la.example'` → `access-control-allow-origin: https://ke-la.example` + `allow-credentials: true`.
+  `CORS_ALLOW_ORIGIN` chỉ đặt khi bật HTTPS (`docker-compose.yml.j2:94-97`); ở HTTP Open WebUI dùng mặc định. [Inference] tác động bị giới hạn bởi SameSite của cookie
+  (chưa kiểm), nhưng một trang web lạ mở trên máy trạm có thể đọc API bằng phiên đăng nhập nếu cookie được gửi. Đề xuất: đặt `CORS_ALLOW_ORIGIN=http://<IP>:3000` cả ở chế độ HTTP.
+  Kèm: `check-https.sh:53` (`! curl … | grep -qi`) đạt giả nếu curl lỗi — nên kiểm mã HTTP trước.
+
 ## Đã sửa sau khi lập phiếu này
+- **N11 (sản phẩm, bắt được ở A4 trên Mac) — mật khẩu kho HTTP cũ / máy đã thu hồi vẫn vào được kho sao lưu thêm ≥ 30 giây.** rest-server 0.14 chỉ tự kiểm
+  `.htpasswd` tối đa 30 giây/lần và nhớ mật khẩu đã đúng (`htpasswd.go`: `CheckInterval`, `PasswordCacheDuration`). Đo trên Box test: sau khi đổi mật khẩu, mật khẩu cũ vẫn `405`
+  (vào được) quá 30 giây. Sửa (`3124de7`): `nap_lai_kho_http` (SIGHUP) sau `them-may`, `thu-hoi-may`, `xoay-khoa --may`, `khoi-phuc-toan-bo`; có test hồi quy trong `test_onebee_box_shell.py`.
+- **N12 (sản phẩm, do bản sửa N11 đầu tiên) — `docker kill -s HUP` làm kho sao lưu không tự chạy lại sau khi khởi động lại Box.** Docker 29.1.3 ghi
+  `HasBeenManuallyStopped=true` cho mọi `docker kill` → `restart: unless-stopped` không áp dụng; verify sau khởi động lại FAIL "Container onebee-rest-server đang chạy".
+  Sửa (`6b8866b`): `docker exec onebee-rest-server kill -HUP 1` (đo: mật khẩu cũ `401` sau 1 giây, cờ vẫn `false`); test hồi quy cấm `docker kill`.
+- **T1 (test) — runner grep tên task cũ** "Khởi động lại giám sát với cổng mới"; task đã đổi tên ở Pha 5 → FAIL giả ở lần cài 1 dù Kuma đã mở `0.0.0.0:3001`. Sửa `c7db83d`.
+- **T2 (test) — `check-xoay-khoa.sh` đạt giả.** Khối máy trạm chạy bằng `docker exec -i … bash -s` + heredoc; `su - nhanvien -c hoi …` đọc stdin nên nuốt các dòng sau
+  (dòng PASS "Máy trạm nhận mật khẩu + khóa mới…" chưa từng in) mà khối vẫn thoát 0. Sửa `0536a61` (`bash -c "$(cat)"`); chạy lại trên Mac: dòng PASS đã in.
 - **N1:** `onebee-ca.sh --xoay` nay luôn xoay (kể cả khi mã/IP không đổi) — có test `test_xoay_khi_ma_va_ip_khong_doi_van_xoay_de_ung_pho_lo_khoa`.
 - **N3:** role `ket-noi-box` cài `libnss3-tools` (có `certutil`).
 - **N10 (một phần):** hướng dẫn nói 12 dòng cấu hình và nhắc khai `onebee_box_ma_don_vi`/`onebee_box_dia_chi` trước khi cài. Phần còn lại (N2, N4–N9, lệnh `doi-ca`/`doi-khoa-quan-tri` chưa có) vẫn mở.
