@@ -1,6 +1,7 @@
 // Cấu hình Uptime Kuma của OneBee Box: tạo tài khoản quản trị (lần đầu), email báo khi dịch vụ ngừng, danh sách theo dõi.
 // Chạy bên trong container Uptime Kuma: docker exec -i -w /app -e ... onebee-uptime-kuma node - < onebee-kuma.js
-// Biến: KUMA_USER, KUMA_PASS, KUMA_MONITORS (JSON), KUMA_SMTP (JSON, rỗng = không gửi email)
+// Biến: KUMA_USER, KUMA_PASS, KUMA_MONITORS (JSON), KUMA_SMTP (JSON, rỗng = không gửi email),
+//       KUMA_TRUST_PROXY ("1" = tin tiêu đề X-Forwarded-* của Caddy đứng trước; "0" = không; trống = không đụng)
 // Mã thoát: 0 xong · 1 lỗi (thử lại được) · 3 sai mật khẩu quản trị
 const { io } = require("socket.io-client");
 const user = process.env.KUMA_USER, pass = process.env.KUMA_PASS;
@@ -29,6 +30,16 @@ socket.on("connect", async () => {
     const login = await call("login", { username: user, password: pass, token: "" });
     if (!login.ok) out(3, "LỖI: sai mật khẩu quản trị Uptime Kuma (đã đổi trên web? ghi mật khẩu mới vào /etc/onebee-box/secrets/uptime-kuma-password)");
     const coSan = Object.values(await danhSach).map((m) => m.name);
+    if (process.env.KUMA_TRUST_PROXY) {
+      const muon = process.env.KUMA_TRUST_PROXY === "1";
+      const g = await call("getSettings");   // gửi lại NGUYÊN cài đặt hiện có như giao diện web (setSettings ghi đè entryPage, múi giờ…)
+      if (!g.ok) out(1, `LỖI: không đọc được cài đặt Uptime Kuma: ${g.msg}`);
+      if (Boolean(g.data.trustProxy) !== muon) {
+        const r = await call("setSettings", { ...g.data, trustProxy: muon }, pass);
+        if (!r.ok) out(1, `LỖI: không lưu được cài đặt Trust Proxy: ${r.msg}`);
+        doi++;
+      }
+    }
     const tb = await thongBao;
     let tbId = null;
     if (smtp) {

@@ -95,11 +95,30 @@ ca_van_tay() { openssl x509 -in "${CA_DIR}/root.crt" -outform DER | sha256sum | 
 # Gia hạn CA trung gian khi còn < 60 ngày (Caddy không tự gia hạn chứng chỉ trung gian được cấp sẵn). In "đã đổi" khi có đổi.
 gia_han_ca() { /usr/local/lib/onebee-box/onebee-ca.sh "${CA_DIR}" "${BOX_MA_DON_VI}" "$(box_ip)"; }
 
+# ---- HTTPS (Pha 4) ----
+# Dấu ${SECRETS}/https-da-bat do bộ cài Ansible ghi/xóa (tasks/https.yml) sau khi quyết định bật HTTPS; nằm trong thư mục bí mật nên có trong bản sao lưu.
+HTTPS_DAU="${SECRETS}/https-da-bat"
+https_bat() { [[ -e "${HTTPS_DAU}" ]]; }
+# Gốc địa chỉ để script TRÊN BOX gọi dịch vụ: HTTPS thì qua đúng đường người dùng đi (https://<IP>:<cổng>, Box tin CA của chính nó) — cổng backend không còn mở;
+# HTTP thì gọi thẳng vào cổng backend trên 127.0.0.1
+dia_chi_noi_bo() { if https_bat; then echo "https://${BOX_ADDRESS}"; else echo "http://127.0.0.1"; fi; }
+# Địa chỉ người dùng/máy trạm dùng (nằm trong cấu hình đẩy xuống máy trạm)
+giao_thuc_may() { if https_bat; then echo https; else echo http; fi; }
+# Máy đã cấp mà chưa được đẩy CA hiện tại (dấu ${SECRETS}/ca-da-dong-bo/<tên> do 'dong-bo-may' ghi sau khi máy cài CA xong) — chặn bật HTTPS
+may_chua_nhan_ca() {
+  local vt ten
+  vt="$(ca_van_tay)"
+  while read -r ten; do
+    [[ "$(cat "${SECRETS}/ca-da-dong-bo/${ten}" 2>/dev/null)" == "${vt}" ]] || printf '%s\n' "${ten}"
+  done < <(may_da_cap)
+}
+
 compose() { docker compose --project-directory "${BOX_DIR}" "$@"; }
 
 # Gọi công cụ quản lý Open WebUI (tạo Trợ lý OneBee, cấp khóa API cho máy trạm)
 webui() {
-  WEBUI_URL="http://127.0.0.1:{{ onebee_box_ports.open_webui }}" WEBUI_ADMIN_EMAIL={{ onebee_box_admin_email | quote }} \
+  WEBUI_URL="$(dia_chi_noi_bo):{{ onebee_box_ports.open_webui }}" ONEBEE_WEBUI_PUBLIC_URL="$(https_bat && echo "https://${BOX_ADDRESS}:{{ onebee_box_ports.open_webui }}" || true)" \
+  WEBUI_ADMIN_EMAIL={{ onebee_box_admin_email | quote }} \
   WEBUI_ADMIN_PASSWORD="$(cat "${SECRETS}/webui-admin-password")" ONEBEE_AI_MODEL="{{ onebee_box_ai_model }}" \
   ONEBEE_LOI_DAN=/usr/local/lib/onebee-box/tro-ly-onebee-loi-dan.md ONEBEE_SECRETS="${SECRETS}" \
     python3 /usr/local/lib/onebee-box/onebee-webui.py "$@"

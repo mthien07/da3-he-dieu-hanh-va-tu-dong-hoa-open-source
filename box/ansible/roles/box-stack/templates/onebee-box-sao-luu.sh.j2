@@ -115,7 +115,7 @@ bao_cao_n8n() {
   trap 'rm -f "${payload}" "${hdr}"; trap - RETURN' RETURN
   may_tram_py payload "${trang_thai}" "${noi_dung}" "${may[@]}" >"${payload}"
   (umask 077; printf 'X-OneBee-Key: %s\n' "$(cat "${SECRETS}/n8n-webhook-key")" >"${hdr}")
-  curl -fsS -m 30 -X POST "http://127.0.0.1:${N8N_PORT}/webhook/onebee-bao-cao-sao-luu" -H @"${hdr}" \
+  curl -fsS -m 30 -X POST "$(dia_chi_noi_bo):${N8N_PORT}/webhook/onebee-bao-cao-sao-luu" -H @"${hdr}" \
     -H 'Content-Type: application/json' --data-binary @"${payload}" >/dev/null
 }
 
@@ -169,7 +169,7 @@ cmd_khoi_phuc_toan_bo() {
   # lẫn với CSDL cũ có thể làm hỏng dữ liệu)
   rm -rf "${DATA}/open-webui" "${DATA}/n8n" "${DATA}/uptime-kuma" "${DATA}/ho-tro"
   # CA riêng do lần cài lại vừa sinh phải nhường chỗ cho CA cũ (máy trạm đã tin CA cũ): xóa CA mới rồi khôi phục CA cũ từ bản sao lưu
-  rm -rf "${CA_DIR}"
+  rm -rf "${CA_DIR}" "${HTTPS_DAU}"   # dấu HTTPS do bản cài lại ghi cũng nhường chỗ cho dấu trong bản sao lưu (nếu có)
   restic restore latest --tag onebee-box,csdl --target / || die "Khôi phục dữ liệu Box lỗi — chưa chạy lại dịch vụ"
   restic restore latest --tag onebee-box,chung --target / || warn "Khôi phục thư mục chung lỗi — thử lại lệnh này"
   [[ -s "${CA_DIR}/root.crt" ]] || die "Bản sao lưu không có CA riêng của Box (${CA_DIR}) — không khôi phục tiếp, vì mọi máy trạm đang tin CA cũ"

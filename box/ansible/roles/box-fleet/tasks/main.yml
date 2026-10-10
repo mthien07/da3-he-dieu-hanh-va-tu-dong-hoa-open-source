@@ -45,3 +45,22 @@
     - {src: onebee-bao-cao-tuan.py, mode: "0750"}
     - {src: cap-nhat-may-tram.yml, mode: "0640"}
     - {src: dong-bo-may-tram.yml, mode: "0640"}
+
+# CA mới / HTTPS bật hoặc tắt → đẩy cấu hình mới (CA, địa chỉ https, cờ BOX_HTTPS) xuống mọi máy đã cấp
+# NGAY CUỐI bộ cài, khi các công cụ mới đã chép xong.
+# Máy tắt/không với tới được chỉ bị bỏ qua + cảnh báo (không làm hỏng bộ cài): bật máy lên rồi chạy: sudo onebee-box dong-bo-may <tên>
+- name: Đẩy cấu hình (CA, HTTPS) xuống các máy trạm đã cấp
+  ansible.builtin.command: /usr/local/sbin/onebee-box dong-bo-may --tat-ca
+  register: onebee_dong_bo_may
+  when: (onebee_ca is changed) or (onebee_https_doi | default(false) | bool)
+  changed_when: true
+  failed_when: false
+
+- name: Báo kết quả đồng bộ máy trạm
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'Đã đẩy cấu hình xuống các máy trạm.' if onebee_dong_bo_may.rc == 0 else
+         'CHƯA đẩy xong cho mọi máy (máy tắt hoặc chưa báo tình trạng?) — bật máy rồi chạy:
+         sudo onebee-box dong-bo-may --tat-ca. Chi tiết:' }}
+      {{ (onebee_dong_bo_may.stdout_lines | default([]))[-8:] | join(' | ') }}
+  when: onebee_dong_bo_may is not skipped

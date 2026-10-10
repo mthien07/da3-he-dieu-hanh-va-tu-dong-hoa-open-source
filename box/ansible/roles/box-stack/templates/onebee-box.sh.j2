@@ -13,6 +13,7 @@
 #   onebee-box sao-luu             Sao lưu Box ra ổ ngoài + dọn bản cũ (tự chạy 23:00 hằng ngày)
 #   onebee-box khoi-phuc-thu       Thử khôi phục 1 file từ bản sao lưu Box (kiểm tra sao lưu dùng được)
 #   onebee-box khoi-phuc-toan-bo [file-khóa]   Hỏng ổ Box: trên Box cài lại, lấy lại toàn bộ dữ liệu từ ổ sao lưu
+#   onebee-box may-chua-nhan-ca    Máy đã cấp mà chưa nhận CA hiện tại (chặn bật HTTPS)
 #   onebee-box in-ca               In vân tay + thông tin CA riêng của Box (đối chiếu khi cài CA lên thiết bị khác)
 #   onebee-box in-khoa             In các khóa bí mật để cất ngoài Box (thiếu khóa thì bản sao lưu vô dụng)
 #   onebee-box dat-mat-khau-email  Nhập mật khẩu hộp thư gửi (SMTP) cho n8n
@@ -56,7 +57,7 @@ cmd_in_ca() {
 # In cấu hình dán vào máy trạm — CHỈ ĐỌC bí mật đã có (không tạo tài khoản/khóa, không ghi htpasswd). Thiếu bí mật nào thì dừng (die),
 # không in cấu hình thiếu. them-may tạo bí mật trước rồi gọi hàm này; dong-bo-may gọi lại để đẩy cấu hình xuống máy.
 in_cau_hinh_may() {
-  local ten="$1" ip http_pw repo_pw tram_key hoi_key="" f
+  local ten="$1" ip http_pw repo_pw tram_key hoi_key="" f esq
   # Kiểm đủ bí mật TRƯỚC khi in gì (die gọi thẳng ở đây; die trong $(…) chỉ thoát subshell của nó, hàm vẫn in tiếp file thiếu mật khẩu)
   for f in "${SECRETS}/may-${ten}-http" "${SECRETS}/may-${ten}-repo" "${SECRETS}/tinh-trang-key" "${SSH_DIR}/quan-tri.pub" "${CA_DIR}/root.crt"; do
     [[ -s "${f}" ]] || die "Thiếu ${f} — máy ${ten} chưa cấp đủ hoặc đã thu hồi (cấp lại: sudo onebee-box them-may ${ten})"
@@ -75,19 +76,22 @@ in_cau_hinh_may() {
   fi
   echo "MAY_TRAM=${ten}"
   echo "BOX_IP=${ip}"
-  echo "RESTIC_REPOSITORY=rest:http://${ten}:${http_pw}@${ip}:${REST_PORT}/${ten}/"
+  esq="$(giao_thuc_may)"
+  echo "RESTIC_REPOSITORY=rest:${esq}://${ten}:${http_pw}@${ip}:${REST_PORT}/${ten}/"
   echo "RESTIC_PASSWORD=${repo_pw}"
   if [[ -n "${hoi_key}" ]]; then
-    echo "HOI_URL=http://${ip}:${AI_PORT}"
+    echo "HOI_URL=${esq}://${ip}:${AI_PORT}"
     echo "HOI_API_KEY=${hoi_key}"
   fi
-  echo "TINH_TRANG_URL=http://${ip}:${N8N_PORT}/webhook/onebee-tinh-trang"
+  echo "TINH_TRANG_URL=${esq}://${ip}:${N8N_PORT}/webhook/onebee-tinh-trang"
   echo "TINH_TRANG_KEY=${tram_key}"
   echo "QUAN_TRI_SSH_KEY=\"$(cat "${SSH_DIR}/quan-tri.pub")\""
   # CA riêng của Box: chứng chỉ gốc (DER, base64 một dòng) + vân tay tính lại từ chứng chỉ. Máy trạm (role ket-noi-box) kiểm vân tay
   # VÀ kiểm chứng chỉ đúng là CA có ràng buộc tên (chỉ IP Box + *.onebee.internal) rồi mới cài
   echo "BOX_CA=$(openssl x509 -in "${CA_DIR}/root.crt" -outform DER | base64 -w0)"
   echo "BOX_CA_VAN_TAY=$(ca_van_tay)"
+  # Cờ HTTPS: 1 = máy ghi dấu bền và từ chối http://; 0 = Box hoàn tác HTTPS (chỉ cờ này mới xóa dấu trên máy)
+  if https_bat; then echo "BOX_HTTPS=1"; else echo "BOX_HTTPS=0"; fi
 }
 
 cmd_them_may() {
@@ -274,6 +278,7 @@ cmd_cap_nhat_may() {
 cmd_dong_bo_may() {
   local thu_muc t
   local -a co=()
+  if [[ "${1:-}" == --tat-ca && -z "$(may_da_cap)" ]]; then echo "Chưa cấp máy trạm nào — không có gì để đồng bộ."; return 0; fi
   chon_may "${1:-}" || die "Cách dùng: sudo onebee-box dong-bo-may <tên-máy-đã-cấp> | --tat-ca"
   thu_muc="$(mktemp -d)"   # 0700; nội dung cấu hình chứa mật khẩu → xóa khi thoát (kể cả thoát lỗi)
   TAM_DON+=("${thu_muc}")
@@ -284,7 +289,9 @@ cmd_dong_bo_may() {
   done
   [[ -n "${co[*]:-}" ]] || die "Không dựng được cấu hình cho máy nào"
   CHON_MAY=("${co[@]}")
-  chay_playbook_chon dong-bo-may-tram.yml dong-bo-may -e "onebee_cau_hinh_dir=${thu_muc}"
+  # Dấu "máy đã nhận CA" do playbook ghi (task cuối, chỉ khi CA đã cài đúng vân tay) — cổng chặn bật HTTPS dựa vào dấu này
+  (umask 077; mkdir -p "${SECRETS}/ca-da-dong-bo")
+  chay_playbook_chon dong-bo-may-tram.yml dong-bo-may -e "onebee_cau_hinh_dir=${thu_muc}" -e "onebee_dau_ca_dir=${SECRETS}/ca-da-dong-bo"
 }
 
 cmd_in_khoa() {
@@ -324,8 +331,9 @@ case "${1:-}" in
   khoi-phuc-toan-bo) shift; with_lock cmd_khoi_phuc_toan_bo "$@" ;;
   in-khoa) cmd_in_khoa ;;
   in-ca) cmd_in_ca ;;
+  may-chua-nhan-ca) may_chua_nhan_ca ;;
   dat-mat-khau-email) cmd_dat_mat_khau_email ;;
   email-thu) bao_cao_n8n THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
                && echo "Đã chuyển cho n8n gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
-  *) sed -n '2,19p' "$0" | sed 's/^# //'; exit 1 ;;
+  *) sed -n '2,20p' "$0" | sed 's/^# //'; exit 1 ;;
 esac

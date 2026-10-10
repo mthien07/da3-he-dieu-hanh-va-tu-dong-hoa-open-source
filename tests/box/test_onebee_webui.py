@@ -108,6 +108,18 @@ class EnforceSettings(unittest.TestCase):
         self.assertTrue(perms["features"]["web_search"])     # không đụng quyền khác
         self.assertTrue(perms["chat"]["export"])
 
+    def test_dat_va_go_dia_chi_cong_khai_khi_bat_tat_https(self):
+        try:
+            os.environ["ONEBEE_WEBUI_PUBLIC_URL"] = "https://192.168.1.10:3000"
+            self.assertTrue(self.w.enforce_settings("tok"))
+            self.assertEqual(WebuiGia.state["config"]["WEBUI_URL"], "https://192.168.1.10:3000")
+            self.assertFalse(self.w.enforce_settings("tok"))      # chạy lại không đổi
+            os.environ["ONEBEE_WEBUI_PUBLIC_URL"] = ""            # hoàn tác HTTPS
+            self.assertTrue(self.w.enforce_settings("tok"))
+            self.assertEqual(WebuiGia.state["config"]["WEBUI_URL"], "")
+        finally:
+            os.environ.pop("ONEBEE_WEBUI_PUBLIC_URL", None)
+
     def test_chay_lan_2_khong_doi_gi(self):
         self.assertTrue(self.w.enforce_settings("tok"))
         WebuiGia.state["posts"] = []

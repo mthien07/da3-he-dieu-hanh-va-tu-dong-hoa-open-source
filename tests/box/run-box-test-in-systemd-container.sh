@@ -221,6 +221,9 @@ box 'n0=$(RESTIC_REPOSITORY=/srv/onebee/restic/ketoan-01 RESTIC_PASSWORD="$(cat 
 echo "===== HỎNG Ổ BOX → CÀI LẠI + KHÔI PHỤC TOÀN BỘ ====="
 "${REPO_ROOT}/tests/box/check-khoi-phuc-toan-bo.sh" "${BOX}" "${CLIENT}"
 
+echo "===== BẬT / TẮT HTTPS (CA riêng + Caddy) ====="
+"${REPO_ROOT}/tests/box/check-https.sh" "${BOX}" "${CLIENT}"
+
 echo "===== CHƯA GẮN Ổ SAO LƯU ====="
 box 'umount /mnt/onebee-sao-luu
      if onebee-box sao-luu > /root/sl3.log 2>&1; then echo "FAIL  Vẫn sao lưu khi chưa gắn ổ"; exit 1; fi
