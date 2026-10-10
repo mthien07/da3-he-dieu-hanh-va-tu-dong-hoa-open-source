@@ -129,7 +129,9 @@ class OnebeeBoxShell(unittest.TestCase):
         lib = f"{t}/lib"
 
         def sua(txt):  # đường dẫn cố định của máy thật → thư mục tạm; bỏ kiểm quyền root
-            return txt.replace("/usr/local/lib/onebee-box", lib).replace("[[ ${EUID} -eq 0 ]] ||", "[[ 1 -eq 1 ]] ||")
+            # /var/log/onebee-box: nhật ký dong-bo-may/cap-nhat-may — không có quyền ghi khi CI chạy không phải root (và không nên ghi bừa vào máy chạy test)
+            return (txt.replace("/usr/local/lib/onebee-box", lib).replace("/var/log/onebee-box", f"{t}/log")
+                    .replace("[[ ${EUID} -eq 0 ]] ||", "[[ 1 -eq 1 ]] ||"))
         files = {"common.sh": "onebee-box-common.sh.j2", "sao-luu.sh": "onebee-box-sao-luu.sh.j2"}
         for dst, src in files.items():
             open(f"{lib}/{dst}", "w", encoding="utf-8").write(sua(render(env, src, **v)))
