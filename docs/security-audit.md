@@ -460,6 +460,19 @@ Ansible thật, `thu-hoi-may` kèm Open WebUI thật.
 - `check-khoi-phuc-toan-bo.sh`: root giống hệt sau khôi phục; xóa thêm `/var/lib/onebee-box`; thêm ca khôi phục từ bản chụp trước HTTPS.
 - Desktop: sai vân tay / CA không ràng buộc → không cài, có cảnh báo; bỏ `BOX_CA` → gỡ sạch (kể cả Firefox); `changed=0`.
 
+#### Trạng thái triển khai Pha 3 (10/10/2026)
+Đã làm: biến `onebee_box_ma_don_vi` / `onebee_box_dia_chi` (+ `onebee_box_ip` chốt một lần), CA gốc + trung gian ràng buộc tên (openssl), Box tin CA,
+`in-ca`, `trang-thai`, `/onebee-ca.crt`, `them-may`/`dong-bo-may` in `BOX_CA`+`BOX_CA_VAN_TAY`, role `ket-noi-box` (kiểm vân tay + ràng buộc; hệ thống,
+Firefox, Chromium/Chrome; gỡ sạch), `dong-bo-may` chạy lại task desktop, khôi phục giữ CA cũ, Caddy gắn thư mục + `/data` `/config`.
+Khác thiết kế: (1) **chưa** làm site `box.<mã>.onebee.internal` cho Tailscale và hồ sơ Firefox riêng từng khách — thuộc Pha 4 (cần Caddy TLS);
+(2) cờ `BOX_HTTPS` / dấu `https-da-bat` / từ chối `http://` — Pha 4; (3) policy `SecurityDevices`/p11-kit cho Firefox **không** dùng, chỉ
+`Certificates.Install` + `certutil -D` (chưa kiểm trên Mint thật); (4) `doi-ca` (xoay CA) mới có cơ chế `onebee-ca.sh --xoay`, lệnh `onebee-box doi-ca` ở Pha 5.
+Đã kiểm trong container làm việc: Caddy 2.11.4 (bản thật tải về) **nhận chứng chỉ gốc không kèm khóa gốc + trung gian có khóa**, cấp được chứng chỉ cho
+IP và tên, client curl/openssl nối đúng; chuỗi gốc→trung gian→lá cho `www.google.com`, IP khác, tên khách khác bị **openssl, Python ssl và curl từ chối**
+(lỗi 47 permitted subtree violation); đúng IP/tên thì qua. Role `ket-noi-box` và cả `dong-bo-may-tram.yml` chạy thật bằng ansible-core 2.19 (cài, chạy lại
+`changed=0`, sai vân tay → không cài, bỏ `BOX_CA` → gỡ). **Chưa kiểm**: ansible-core 2.16 (Ubuntu 24.04); Go (restic) và gnutls chặn tên ngoài ràng buộc;
+Firefox/Chromium thật có đọc chính sách và áp ràng buộc không; `certutil -D` đúng tên chứng chỉ trong cert9.db; chạy bộ cài Box đầy đủ.
+
 ### 5.5 Pha 4 — Bật HTTPS
 **Kiến trúc:**
 - Caddy (container portal) là dịch vụ duy nhất mở cổng: 80 (CA + hướng dẫn), 443 (trang giới thiệu), 3000/5678/3001/8000 (TLS, giữ số cổng → URL chỉ đổi http thành https).

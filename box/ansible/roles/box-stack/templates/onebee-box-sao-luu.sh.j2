@@ -49,6 +49,12 @@ cmd_sao_luu() {
   restic cat config >/dev/null 2>&1 || die "Chưa tạo kho sao lưu Box. Chạy: sudo onebee-box khoi-tao"
   [[ "$(stat -c %d "${BACKUP_MOUNT}")" != "$(stat -c %d "${DATA}")" ]] || warn "Ổ sao lưu cùng ổ với dữ liệu — hỏng ổ là mất cả hai"
 
+  # CA trung gian hết hạn thì HTTPS (khi bật) ngừng: gia hạn khi còn < 60 ngày, báo nếu không gia hạn được
+  if [[ -s "${CA_DIR}/root.crt" ]]; then
+    gia_han_ca >/dev/null || warn "Không gia hạn được CA riêng của Box — xem: sudo onebee-box in-ca"
+    [[ "$(ca_con_ngay inter)" -ge 30 ]] || warn "CA trung gian của Box còn dưới 30 ngày hoặc đã hết hạn — chạy bộ cài OneBee Box"
+    [[ "$(ca_con_ngay root)" -ge 365 ]] || warn "CA gốc của Box còn dưới 1 năm — lên kế hoạch xoay CA: sudo onebee-box doi-ca"
+  fi
   # Bước 1: tạm dừng dịch vụ có cơ sở dữ liệu, chụp nhanh phần dữ liệu của chúng (nhất quán), chạy lại ngay
   local svcs=(open-webui n8n uptime-kuma)
   trap 'compose unpause "${svcs[@]}" >/dev/null 2>&1 || true' EXIT
@@ -162,8 +168,13 @@ cmd_khoi_phuc_toan_bo() {
   # Xóa dữ liệu của bản cài mới trước khi chép bản cũ vào (restic không xóa file thừa; file tạm của CSDL mới
   # lẫn với CSDL cũ có thể làm hỏng dữ liệu)
   rm -rf "${DATA}/open-webui" "${DATA}/n8n" "${DATA}/uptime-kuma" "${DATA}/ho-tro"
+  # CA riêng do lần cài lại vừa sinh phải nhường chỗ cho CA cũ (máy trạm đã tin CA cũ): xóa CA mới rồi khôi phục CA cũ từ bản sao lưu
+  rm -rf "${CA_DIR}"
   restic restore latest --tag onebee-box,csdl --target / || die "Khôi phục dữ liệu Box lỗi — chưa chạy lại dịch vụ"
   restic restore latest --tag onebee-box,chung --target / || warn "Khôi phục thư mục chung lỗi — thử lại lệnh này"
+  [[ -s "${CA_DIR}/root.crt" ]] || die "Bản sao lưu không có CA riêng của Box (${CA_DIR}) — không khôi phục tiếp, vì mọi máy trạm đang tin CA cũ"
+  install -m 0644 "${CA_DIR}/root.crt" /usr/local/share/ca-certificates/onebee-box-ca.crt
+  update-ca-certificates --fresh >/dev/null   # Box tin lại CA cũ (bỏ CA mới sinh lúc cài lại)
   # Kho sao lưu máy trạm không nằm trong bản sao lưu Box → cấp lại tài khoản kho bằng mật khẩu cũ
   # (máy trạm dùng cấu hình cũ, tự tạo kho mới ở lần sao lưu sau)
   : >"${DATA}/restic/.htpasswd"

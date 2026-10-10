@@ -17,8 +17,11 @@ services:
     # Chỉ mở cổng IPv4: cổng IPv6 của Docker đi vòng tường lửa (roles/box-firewall)
     ports: ["0.0.0.0:{{ onebee_box_ports.portal }}:80"]
     volumes:
-      - ./portal/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Gắn cả thư mục (không gắn riêng file): bộ cài ghi file mới = inode mới, bind-mount từng file sẽ giữ bản cũ trong container
+      - ./portal/caddy:/etc/caddy:ro
       - ./portal/site:/srv:ro
+      - {{ onebee_box_data }}/caddy/data:/data
+      - {{ onebee_box_data }}/caddy/config:/config
 
   ollama:
     image: {{ onebee_box_images.ollama }}
@@ -97,7 +100,7 @@ services:
       N8N_MCP_MANAGED_BY_ENV: "true"
       N8N_MCP_ACCESS_ENABLED: "false"
       # Địa chỉ n8n in vào đường dẫn biểu mẫu (người dùng trong LAN mở được). N8N_WEBHOOK_URL thay WEBHOOK_URL (lỗi thời từ 2.35)
-      N8N_WEBHOOK_URL: http://{{ onebee_box_address or ansible_default_ipv4.address | default('127.0.0.1') }}:{{ onebee_box_ports.n8n }}/
+      N8N_WEBHOOK_URL: http://{{ onebee_box_ip }}:{{ onebee_box_ports.n8n }}/
       # Tạo sẵn tài khoản chủ n8n (mật khẩu: onebee-box in-khoa) — không còn "ai mở trước thành chủ"
       N8N_INSTANCE_OWNER_MANAGED_BY_ENV: "true"
       N8N_INSTANCE_OWNER_EMAIL: {{ onebee_box_admin_email }}

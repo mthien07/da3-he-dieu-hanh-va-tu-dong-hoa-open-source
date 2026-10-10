@@ -6,6 +6,8 @@ Dùng ssh-keygen và htpasswd thật (apt: openssh-client, apache2-utils) — th
 Kiểm các tính chất của rà soát bảo mật F2: máy chỉ được ghim khóa SSH / nhận cấu hình sau khi CHỨNG MINH biết mật khẩu kho sao lưu,
 báo cáo chưa ký không đủ để Box đem khóa quản trị tới một địa chỉ lạ, máy đã thu hồi không được "hồi sinh", dong-bo-may không đẩy file thiếu.
 """
+import base64
+import hashlib
 import json
 import os
 import shlex
@@ -115,7 +117,7 @@ class OnebeeBoxShell(unittest.TestCase):
             os.makedirs(os.path.join(t, d))
         v = yaml.safe_load(open(os.path.join(ROOT, "box/ansible/group_vars/all.yml"), encoding="utf-8"))
         v.update(onebee_box_secrets=f"{t}/secrets", onebee_box_ssh_dir=f"{t}/ssh", onebee_box_data=f"{t}/data",
-                 onebee_box_dir=f"{t}/box", onebee_box_address="192.168.1.10", ansible_default_ipv4={"address": "192.168.1.10"})
+                 onebee_box_dir=f"{t}/box", onebee_box_ip="192.168.1.10", onebee_box_ma_don_vi="kiem-thu")
         env = jinja2.Environment(keep_trailing_newline=True)
         env.filters["to_json"] = lambda x: json.dumps(x, ensure_ascii=False)
         env.filters["quote"] = shlex.quote
@@ -130,6 +132,9 @@ class OnebeeBoxShell(unittest.TestCase):
         open(self.cmd, "w", encoding="utf-8").write(sua(render(env, "onebee-box.sh.j2", **v)))
         shutil.copy(os.path.join(ROLES, "box-fleet/files/onebee-may-tram.py"), f"{lib}/onebee-may-tram.py")
         shutil.copy(os.path.join(ROLES, "box-fleet/files/onebee-bao-cao-tuan.py"), f"{lib}/onebee-bao-cao-tuan.py")
+        shutil.copy(os.path.join(ROLES, "box-stack/files/onebee-ca.sh"), f"{lib}/onebee-ca.sh")
+        # CA riêng của Box (bộ cài sinh bước này trước khi sinh các lệnh)
+        subprocess.run([f"{lib}/onebee-ca.sh", f"{t}/secrets/ca", "kiem-thu", "192.168.1.10"], check=True, capture_output=True)
         for ten, nd in (("onebee-webui.py", WEBUI_GIA),):
             open(f"{lib}/{ten}", "w").write(nd)
         for ten, nd in (("ssh", SSH_GIA), ("ansible-playbook", ANSIBLE_GIA), ("install", INSTALL_GIA), ("chown", "#!/bin/sh\nexit 0\n")):
@@ -208,8 +213,11 @@ class OnebeeBoxShell(unittest.TestCase):
         r = self.chay("them-may", "ketoan-01")
         kv = dict(l.split("=", 1) for l in r.stdout.splitlines() if "=" in l and not l.startswith("#"))
         for k in ("MAY_TRAM", "BOX_IP", "RESTIC_REPOSITORY", "RESTIC_PASSWORD", "HOI_URL", "HOI_API_KEY", "TINH_TRANG_URL",
-                  "TINH_TRANG_KEY", "QUAN_TRI_SSH_KEY"):
+                  "TINH_TRANG_KEY", "QUAN_TRI_SSH_KEY", "BOX_CA", "BOX_CA_VAN_TAY"):
             self.assertTrue(kv.get(k), k)
+        # BOX_CA = chứng chỉ gốc (DER base64 một dòng) và vân tay khớp chính chứng chỉ đó
+        der = base64.b64decode(kv["BOX_CA"])
+        self.assertEqual(hashlib.sha256(der).hexdigest(), kv["BOX_CA_VAN_TAY"])
         self.assertEqual(kv["HOI_API_KEY"], "sk-khoa-ketoan-01")
         self.assertTrue(os.path.exists(f"{self.t}/data/may-da-cap/ketoan-01"))      # n8n sẽ nhận báo cáo của máy này
         self.assertIn("ketoan-01:", open(f"{self.t}/data/restic/.htpasswd").read())
@@ -217,6 +225,26 @@ class OnebeeBoxShell(unittest.TestCase):
         # in lại cấu hình (dong-bo-may) không gọi cap-khoa nữa, không tạo gì mới
         webui_truoc = open(f"{self.t}/out/webui.log").read()
         self.assertEqual(webui_truoc.strip().splitlines(), ["cap-khoa ketoan-01"])
+
+    def test_in_ca_in_van_tay_va_rang_buoc(self):
+        r = self.chay("in-ca").stdout
+        vt = open(f"{self.t}/secrets/ca/root.sha256").read().strip().upper()
+        self.assertIn(":".join(vt[i:i + 2] for i in range(0, 64, 2)), r)
+        self.assertIn("IP:192.168.1.10/255.255.255.255", r)
+        self.assertIn("DNS:kiem-thu.onebee.internal", r)
+        self.assertNotIn("PRIVATE KEY", r)
+
+    def test_in_khoa_khong_in_khoa_rieng_cua_ca_nhung_co_van_tay(self):
+        r = self.chay("in-khoa").stdout
+        self.assertNotIn("PRIVATE KEY", r)
+        self.assertIn("van-tay-ca-onebee-box=" + open(f"{self.t}/secrets/ca/root.sha256").read().strip(), r)
+
+    def test_khong_in_cau_hinh_khi_thieu_ca(self):
+        self.chay("them-may", "ketoan-01")
+        shutil.rmtree(f"{self.t}/secrets/ca")
+        r = self.chay("dong-bo-may", "ketoan-01", kiem=False)
+        self.assertNotEqual(r.returncode, 0)   # thiếu CA → không dựng được cấu hình → không đẩy gì
+        self.assertNotIn("BOX_CA", r.stdout)
 
     def test_chua_cap_thi_khong_vao_danh_sach(self):
         self.assertEqual(self.chay("cap-nhat-may", "la-hoac", kiem=False).returncode, 1)

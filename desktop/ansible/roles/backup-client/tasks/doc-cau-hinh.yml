@@ -1,0 +1,30 @@
+---
+# Đọc /etc/onebee/may-tram.env → onebee_backup_conf (có file hay không) + onebee_may_tram (dòng KHÓA=giá trị).
+# Dùng chung: bộ cài desktop (role backup-client) và playbook dong-bo-may-tram.yml của Box (include_role … tasks_from: doc-cau-hinh).
+
+- name: Kiểm tra đã có cấu hình sao lưu chưa
+  ansible.builtin.stat:
+    path: /etc/onebee/may-tram.env
+  register: onebee_backup_conf
+
+# Đọc 1 lần cho các role sau (ai-cli, quan-ly-tap-trung): dòng KHÓA=giá trị → onebee_may_tram
+- name: Đọc cấu hình máy trạm lấy từ Box
+  ansible.builtin.slurp:
+    src: /etc/onebee/may-tram.env
+  register: onebee_may_tram_raw
+  when: onebee_backup_conf.stat.exists
+  no_log: true
+
+- name: Tách các dòng cấu hình máy trạm
+  ansible.builtin.set_fact:
+    onebee_may_tram: "{{ dict(onebee_may_tram_raw.content | b64decode | regex_findall('(?m)^([A-Z_]+)=\"?(.*?)\"?\\s*$'))
+                         if onebee_backup_conf.stat.exists else {} }}"
+  no_log: true
+
+- name: Giữ file cấu hình sao lưu kín (chứa mật khẩu)
+  ansible.builtin.file:
+    path: /etc/onebee/may-tram.env
+    owner: root
+    group: root
+    mode: "0600"
+  when: onebee_backup_conf.stat.exists

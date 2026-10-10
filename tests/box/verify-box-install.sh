@@ -65,6 +65,16 @@ check "Ollama KHÔNG mở cổng ra ngoài (11434)" bash -c "! curl -s -m 3 http
 check "Ollama chạy được bên trong (Open WebUI gọi tới)" bash -c "docker exec onebee-open-webui curl -s -m 10 http://ollama:11434/api/version | grep -q version"
 check "Open WebUI không gọi AI đám mây (ENABLE_OPENAI_API=false)" \
   bash -c "docker exec onebee-open-webui printenv ENABLE_OPENAI_API | grep -qx false"
+check "CA riêng: thư mục 700, khóa 600, gốc + trung gian có ràng buộc tên critical (chỉ IP Box /32 + <mã>.onebee.internal)" bash -c \
+  "cd /etc/onebee-box/secrets/ca && [ \$(stat -c %a .) = 700 ] && [ \$(stat -c %a root.key) = 600 ] && [ \$(stat -c %a inter.key) = 600 ] \
+   && for c in root inter; do openssl x509 -in \$c.crt -noout -text | grep -A3 'Name Constraints: critical' | grep -q 'IP:.*/255.255.255.255'; done \
+   && openssl x509 -in root.crt -noout -text | grep -q 'DNS:kiem-thu.onebee.internal'"
+check "CA riêng: Box tin CA của chính nó; chứng chỉ gốc công khai tại /onebee-ca.crt; khóa CA không gắn vào container nào" bash -c \
+  "openssl verify -CApath /etc/ssl/certs /etc/onebee-box/secrets/ca/inter.crt >/dev/null \
+   && curl -sf http://127.0.0.1/onebee-ca.crt | cmp - /etc/onebee-box/secrets/ca/root.crt \
+   && ! docker inspect \$(docker ps -q) --format '{{range .Mounts}}{{.Source}} {{end}}' | grep -q 'secrets/ca'"
+check "onebee-box in-ca in vân tay đúng chứng chỉ gốc" bash -c \
+  "onebee-box in-ca | grep -q \"\$(sha256sum < <(openssl x509 -in /etc/onebee-box/secrets/ca/root.crt -outform DER) | cut -d' ' -f1 | tr a-f A-F | sed 's/../&:/g; s/:\$//')\""
 check "File .env chỉ root đọc (600)" bash -c "[ \"\$(stat -c %a /opt/onebee-box/.env)\" = 600 ]"
 check "Thư mục bí mật chỉ root vào (700)" bash -c "[ \"\$(stat -c %a /etc/onebee-box/secrets)\" = 700 ]"
 check "Khóa bí mật đã sinh, không để trống" bash -c "grep -Eq '^WEBUI_SECRET_KEY=[A-Za-z0-9]{48}$' /opt/onebee-box/.env && grep -Eq '^N8N_ENCRYPTION_KEY=[A-Za-z0-9]{48}$' /opt/onebee-box/.env"

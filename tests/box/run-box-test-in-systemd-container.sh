@@ -55,6 +55,8 @@ fi
 TEST_MODEL="${ONEBEE_TEST_MODEL:-gemma4:e2b-it-qat}"
 box "sed -i -E 's#^onebee_box_ai_model: .*#onebee_box_ai_model: ${TEST_MODEL}#; s#^onebee_box_ai_models: .*#onebee_box_ai_models: []#' \
      /root/onebee-test/box/ansible/group_vars/all.yml"
+# Mã đơn vị bắt buộc (CA riêng của Box); IP lấy tự động từ cổng mạng của container Box
+box "sed -i -E 's#^onebee_box_ma_don_vi: .*#onebee_box_ma_don_vi: kiem-thu#' /root/onebee-test/box/ansible/group_vars/all.yml"
 # Email: gửi vào hộp thư giả lập Mailpit (khởi chạy trong check-n8n-inside.sh)
 box "sed -i -E 's#^  smtp_host: .*#  smtp_host: \"mailpit\"#; s#^  smtp_port: .*#  smtp_port: 1025#; s#^  smtp_starttls: .*#  smtp_starttls: false#' \
      /root/onebee-test/box/ansible/group_vars/all.yml"
@@ -107,9 +109,9 @@ box 'if onebee-box sao-luu > /root/sl0.log 2>&1; then echo "FAIL  sao-luu chạy
 
 echo "===== MÁY TRẠM SAO LƯU LÊN BOX ====="
 box 'onebee-box them-may ketoan-01 | grep -E "^[A-Z_]+=" > /tmp/ketoan-01.env
-     [ "$(grep -c -E "^(MAY_TRAM|BOX_IP|RESTIC_REPOSITORY|RESTIC_PASSWORD|HOI_URL|HOI_API_KEY|TINH_TRANG_URL|TINH_TRANG_KEY|QUAN_TRI_SSH_KEY)=." /tmp/ketoan-01.env)" = 9 ] \
+     [ "$(grep -c -E "^(MAY_TRAM|BOX_IP|RESTIC_REPOSITORY|RESTIC_PASSWORD|HOI_URL|HOI_API_KEY|TINH_TRANG_URL|TINH_TRANG_KEY|QUAN_TRI_SSH_KEY|BOX_CA|BOX_CA_VAN_TAY)=." /tmp/ketoan-01.env)" = 11 ] \
        || { echo "FAIL  them-may thiếu dòng cấu hình"; cat /tmp/ketoan-01.env | sed "s/=.*/=***/"; exit 1; }
-     echo "PASS  Cấp cho máy ketoan-01: sao lưu, khóa Trợ lý AI, báo tình trạng, khóa SSH quản trị (9 dòng cấu hình)"'
+     echo "PASS  Cấp cho máy ketoan-01: sao lưu, khóa Trợ lý AI, báo tình trạng, khóa SSH quản trị (11 dòng cấu hình, gồm CA riêng của Box)"'
 # Máy trạm thật: Linux Mint 22.3 + bộ cài OneBee OS Desktop, có sẵn file cấu hình sao lưu lấy từ Box
 docker run -d --name "${CLIENT}" --network "${NET}" -v "${REPO_ROOT}:/onebee:ro" ${ca_opts[@]+"${ca_opts[@]}"} \
   "${ONEBEE_TEST_MINT_IMAGE:-linuxmintd/mint22.3-amd64}" sleep infinity >/dev/null
@@ -123,6 +125,13 @@ docker exec "${CLIENT}" bash -euo pipefail -c '
   [ "$(stat -c %a /etc/onebee/may-tram.env)" = 600 ] || { echo "FAIL  Bộ cài không khóa quyền file cấu hình sao lưu"; exit 1; }
   [ -e /etc/systemd/system/timers.target.wants/onebee-sao-luu.timer ] || { echo "FAIL  Chưa bật lịch sao lưu"; exit 1; }
   echo "PASS  Cài OneBee OS Desktop trên máy trạm: tự bật lịch sao lưu, khóa quyền file cấu hình (600)"
+  # CA riêng của Box được kiểm rồi cài: kho hệ thống, Firefox (chính sách), Chromium/Chrome; vân tay khớp bản Box in
+  vt="$(grep -oP "^BOX_CA_VAN_TAY=\K.*" /etc/onebee/may-tram.env)"
+  [ "$(openssl x509 -in /usr/local/share/ca-certificates/onebee-box-ca.crt -outform DER | sha256sum | cut -d" " -f1)" = "${vt}" ] \
+    || { echo "FAIL  CA trên máy trạm không khớp vân tay Box"; exit 1; }
+  grep -q onebee-box-ca.crt /etc/firefox/policies/policies.json && [ -s /etc/chromium/policies/managed/onebee-box.json ] \
+    || { echo "FAIL  Thiếu chính sách CA cho Firefox/Chromium"; exit 1; }
+  echo "PASS  Máy trạm tin CA riêng của Box: vân tay khớp, đã vào kho hệ thống + chính sách Firefox + Chromium"
   mkdir -p /home/nv && echo "Báo cáo quý III — Hợp tác xã OneBee" > /home/nv/bao-cao.txt
   sum=$(sha256sum < /home/nv/bao-cao.txt)
   onebee-sao-luu | tail -1

@@ -20,8 +20,17 @@ onebee_box_images:
   uptime_kuma: docker.io/louislam/uptime-kuma:2.5.5@sha256:c74379ac4509ce2d2c2633f509e67003ee2e45b6e995c5e43fc101f45a0e1fbe
   rest_server: docker.io/restic/rest-server:0.14.0@sha256:d2aff06f47eb38637dff580c3e6bce4af98f386c396a25d32eb6727ec96214a5
 
-# Địa chỉ IPv4 của Box trong LAN để in vào cấu hình máy trạm (để trống: tự lấy IP cổng ra mạng chính)
-onebee_box_address: ""
+# Mã đơn vị — BẮT BUỘC, viết tắt tên khách hàng (vd "hoptacxa-an-phu" → "anphu"): chữ thường không dấu, số, gạch giữa, tối đa 32 ký tự.
+# Nằm trong chứng chỉ CA riêng của Box (chỉ được cấp tên <mã>.onebee.internal) nên mỗi khách một mã khác nhau; đổi mã = xoay CA.
+onebee_box_ma_don_vi: ""
+
+# Địa chỉ IPv4 TĨNH của Box trong LAN — nên khai (hoặc đặt "giữ IP cố định" cho Box trên router). Trống: lấy IP cổng ra mạng chính
+# và cảnh báo. Nằm trong chứng chỉ CA; đổi IP = xoay CA (onebee-box doi-ca) và đồng bộ lại mọi máy trạm.
+onebee_box_dia_chi: ""
+
+# Kỹ thuật vào Box qua Tailscale bằng tên box.<mã đơn vị>.onebee.internal (máy kỹ thuật thêm dòng /etc/hosts trỏ tới IP Tailscale của Box).
+# HTTPS (Pha 4): false = dịch vụ vẫn chạy HTTP như cũ (CA đã tạo, máy trạm nhận CA). Chỉ bật sau khi mọi máy trạm đã đồng bộ CA.
+onebee_box_https: false
 
 # Cổng trong mạng LAN (KHÔNG mở các cổng này ra Internet trên router)
 onebee_box_ports:

@@ -12,7 +12,7 @@ const line = dongCsv([ma, $now.toFormat('yyyy-MM-dd HH:mm'), j.may, j.loai, gap 
 const subject = `[OneBee] ${gap ? 'GẤP — ' : ''}Yêu cầu hỗ trợ ${ma}: ${safe(j.loai)}`;
 const text = [`Mã: ${ma}`, `Máy: ${safe(j.may) || '(không ghi)'}`, `Người báo: ${safe(j.nguoi_bao) || '(không ghi)'}`,
   `Loại: ${safe(j.loai)} · Mức độ: ${safe(j.muc_do)}`, '', safe(j.mo_ta), '',
-  'Xử lý xong: mở biểu mẫu "Xử lý yêu cầu hỗ trợ" trên Box (http://{{ onebee_box_address or ansible_default_ipv4.address | default('<ip-box>') }}:{{ onebee_box_ports.n8n }}/form/onebee-xu-ly), nhập mã trên.'].join('\n');
+  'Xử lý xong: mở biểu mẫu "Xử lý yêu cầu hỗ trợ" trên Box (http://{{ onebee_box_ip }}:{{ onebee_box_ports.n8n }}/form/onebee-xu-ly), nhập mã trên.'].join('\n');
 return [{ json: { ma, subject, text }, binary: tep(line, 'yeu-cau.csv') }];
 {% endset %}
 {

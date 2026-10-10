@@ -28,6 +28,8 @@
           - cau_hinh is search('(?m)^RESTIC_PASSWORD=[^\\s]+')
           - cau_hinh is search('(?m)^TINH_TRANG_KEY=[^\\s]+')
           - cau_hinh is search('(?m)^QUAN_TRI_SSH_KEY="ssh-ed25519 ')
+          - cau_hinh is search('(?m)^BOX_CA=[A-Za-z0-9+/=]{100,}$')
+          - cau_hinh is search('(?m)^BOX_CA_VAN_TAY=[0-9a-f]{64}$')
         fail_msg: "Cấu hình dựng cho {{ inventory_hostname }} thiếu dòng bắt buộc — không đẩy"
         quiet: true
       vars:
@@ -46,6 +48,28 @@
         backup: true
       no_log: true
       register: onebee_cfg_moi
+
+    # Các tệp sinh từ cấu hình (CA tin cậy + trình duyệt, cấu hình lệnh hoi, mục menu) dựng lại bằng CHÍNH các task của bộ cài desktop
+    # (role chép từ repo vào Box ở box-fleet) — một nguồn duy nhất, không có bản sao thứ hai để lệch nhau.
+    # CA trước, để báo cáo bên dưới đã dùng được địa chỉ https
+    - name: Cài / gỡ CA của Box (kiểm vân tay + ràng buộc tên rồi mới cài)
+      ansible.builtin.include_role:
+        name: ket-noi-box
+
+    - name: Đọc lại cấu hình máy trạm vừa ghi
+      ansible.builtin.include_role:
+        name: backup-client
+        tasks_from: doc-cau-hinh
+
+    - name: Cập nhật cấu hình lệnh hoi
+      ansible.builtin.include_role:
+        name: ai-cli
+        tasks_from: cau-hinh-hoi
+
+    - name: Cập nhật mục menu Báo cần hỗ trợ
+      ansible.builtin.include_role:
+        name: quan-ly-tap-trung
+        tasks_from: muc-menu
 
     # Báo cáo thành công = khóa tình trạng và địa chỉ mới dùng được. Lỗi thì dừng để quản trị biết (bản cũ còn trong /etc/onebee)
     - name: Gửi tình trạng về Box bằng cấu hình mới

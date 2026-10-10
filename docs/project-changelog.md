@@ -15,6 +15,19 @@
 - Máy trạm: báo thêm **số** tài khoản có quyền sudo (không gửi tên); Box cảnh báo (email hằng ngày, `onebee-box may-tram`) khi hơn 1 tài khoản.
   Bộ cài Desktop cảnh báo tài khoản sudo ngoài danh sách `onebee_tai_khoan_quan_tri`. Tài liệu cài hàng loạt: nhân viên dùng tài khoản thường.
 - Sửa tài liệu `quan-ly-may-tram.md`: `them-may` không đụng khóa SSH đã ghim; cách xóa khóa cũ khi máy cài lại.
+### Bảo mật — Pha 3 (xem `docs/security-audit.md`, F3: CA riêng, dịch vụ vẫn HTTP)
+- **Biến bắt buộc mới** trong `box/ansible/group_vars/all.yml`: `onebee_box_ma_don_vi` (viết tắt tên khách; bộ cài dừng nếu thiếu/không hợp lệ) và
+  `onebee_box_dia_chi` (IP tĩnh; thay `onebee_box_address`). IP chốt MỘT lần trong Ansible (`onebee_box_ip`) cho cả shell lẫn compose (sửa N3).
+- **CA riêng mỗi Box**: gốc (10 năm, pathlen:1) + trung gian (1 năm, pathlen:0), sinh bằng openssl (`box-stack/files/onebee-ca.sh`), **cả hai có
+  nameConstraints critical**: chỉ IP Box (/32) và `<mã>.onebee.internal`. Khóa gốc ở `secrets/ca` (0700), không gắn vào container; trung gian tự gia hạn khi
+  còn < 60 ngày (lúc sao lưu đêm), cảnh báo nếu còn < 30 ngày. Đổi mã/IP bị chặn (xoay CA có chủ ý). Box tin CA của chính nó; `onebee-box in-ca`,
+  `trang-thai` hiện hạn CA; `/onebee-ca.crt` phục vụ chứng chỉ gốc (công khai). Khôi phục toàn bộ giữ nguyên CA cũ (máy trạm không phải nhận lại).
+- **Máy trạm — role mới `ket-noi-box`**: `them-may`/`dong-bo-may` in thêm `BOX_CA` + `BOX_CA_VAN_TAY`. Máy chỉ cài CA khi vân tay khớp **và** chứng chỉ đúng
+  là CA OneBee có ràng buộc (CA:TRUE, nameConstraints critical, IP duy nhất = IP Box /32, DNS chỉ `<nhãn>.onebee.internal`, không loại tên khác); CA
+  "mọi tên" bị từ chối. Cài vào kho hệ thống, Firefox (chính sách `Certificates.Install`, trộn với file của gói) và Chromium/Chrome
+  (`CACertificatesWithConstraints`); thiếu `BOX_CA` thì gỡ sạch (kể cả hồ sơ Firefox, bằng certutil).
+- `dong-bo-may` giờ chạy lại đúng các task của bộ cài desktop (CA, cấu hình `hoi`, mục menu) trên máy trạm — không còn giới hạn "chỉ ghi file cấu hình".
+- Caddy của Box: gắn cả thư mục Caddyfile + `/data` `/config` (sửa N5).
 ### Bảo mật — Pha 2 (xem `docs/security-audit.md`, F2)
 - **Báo cáo tình trạng máy trạm có chữ ký** (HMAC-SHA256, khóa suy từ mật khẩu kho sao lưu của máy — chưa từng đi qua mạng). n8n không giữ khóa;
   Box tự kiểm chữ ký + độ lệch giờ (chống phát lại) khi in bảng/báo cáo. Báo cáo sai chữ ký được nêu rõ; báo cáo cũ không ký vẫn nhận (chuyển

@@ -9,7 +9,9 @@ BACKUP_REPO="{{ onebee_box_backup_repo }}"
 BACKUP_MOUNT="$(dirname "${BACKUP_REPO}")"
 SHARE="${DATA}/{{ onebee_box_samba_share }}"
 REST_PORT="{{ onebee_box_ports.rest_server }}"
-BOX_ADDRESS="{{ onebee_box_address }}"
+BOX_ADDRESS="{{ onebee_box_ip }}"   # tính MỘT lần trong Ansible (tasks/ca.yml) — shell và compose dùng cùng giá trị
+BOX_MA_DON_VI="{{ onebee_box_ma_don_vi }}"
+CA_DIR="${SECRETS}/ca"
 KEEP_BOX=({{ onebee_box_backup_keep }})
 # Kho máy trạm: luôn giữ mọi bản trong 30 ngày gần nhất (chặn trường hợp bản giả mạo ngày tương lai đẩy bản thật ra)
 KEEP_MAY=(--keep-within 30d {{ onebee_box_backup_keep }})
@@ -73,11 +75,25 @@ dong_bo_ten_may() {
   [[ ${doi} -eq 0 ]] || echo "đã đổi"
 }
 
-# Địa chỉ IPv4 của Box trong LAN: lấy từ cấu hình, nếu trống thì lấy IP của cổng ra mạng chính (không lấy docker/VPN)
+# Địa chỉ IPv4 của Box trong LAN: Ansible đã chốt (onebee_box_dia_chi hoặc IP cổng ra mạng chính); dự phòng khi trống thì tự dò
 box_ip() {
   if [[ -n "${BOX_ADDRESS}" ]]; then echo "${BOX_ADDRESS}"; return; fi
   ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}'
 }
+
+# ---- CA riêng của Box (tạo bởi tasks/ca.yml → onebee-ca.sh) ----
+# Số ngày còn lại của chứng chỉ $1 (root | inter) trong ${CA_DIR}; in -1 nếu thiếu/đã hết hạn
+ca_con_ngay() {
+  local f="${CA_DIR}/$1.crt" het giay
+  [[ -s "${f}" ]] || { echo -1; return; }
+  het="$(openssl x509 -in "${f}" -noout -enddate | cut -d= -f2)"
+  giay=$(( $(date -d "${het}" +%s) - $(date +%s) ))
+  echo $(( giay > 0 ? giay / 86400 : -1 ))
+}
+# Vân tay SHA-256 CA gốc (hex thường, 64 ký tự), tính lại từ chứng chỉ (không tin file root.sha256)
+ca_van_tay() { openssl x509 -in "${CA_DIR}/root.crt" -outform DER | sha256sum | cut -d' ' -f1; }
+# Gia hạn CA trung gian khi còn < 60 ngày (Caddy không tự gia hạn chứng chỉ trung gian được cấp sẵn). In "đã đổi" khi có đổi.
+gia_han_ca() { /usr/local/lib/onebee-box/onebee-ca.sh "${CA_DIR}" "${BOX_MA_DON_VI}" "$(box_ip)"; }
 
 compose() { docker compose --project-directory "${BOX_DIR}" "$@"; }
 
