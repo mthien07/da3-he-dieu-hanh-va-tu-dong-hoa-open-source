@@ -21,9 +21,10 @@ OneBee Box là 1 máy chủ đặt tại đơn vị, trong mạng LAN. Dịch v�
   `192.168.2.0/24`): khai báo trong `box/ansible/group_vars/all.yml` → `onebee_box_lan_cho_phep: ["192.168.1.0/24", "192.168.2.0/24"]`
   rồi chạy lại bộ cài. Xem quy tắc: `sudo onebee-tuong-lua xem`. Lưu ý: Wi-Fi khách **cùng mạng** với máy văn phòng thì
   tường lửa không phân biệt được — nên tách Wi-Fi khách ra mạng riêng trên router.
-  Tường lửa lọc **cổng mạng chính** (cổng có đường ra Internet); kết nối qua VPN (Tailscale/WireGuard) không bị chặn.
-  Box có 2 card mạng thì card phụ không được lọc — không nối card phụ vào mạng khách. Đổi dải IP của mạng LAN (thay router):
-  khởi động lại Box hoặc chạy `sudo systemctl restart onebee-tuong-lua` để tường lửa nhận dải mới.
+  Tường lửa lọc **mọi cổng mạng** trừ `lo` và mạng Docker: qua cổng mạng chính chỉ mạng LAN cho phép; card mạng phụ, `wg0`, `tun0` bị chặn hết;
+  qua **Tailscale** chỉ máy kỹ thuật khai trong `onebee_box_tailscale_cho_phep` (vd `["100.64.1.2"]`) vào được web/SSH/thư mục chung — để trống là chặn hết kết nối Tailscale
+  (bộ cài cảnh báo nếu Box đang nối Tailscale mà chưa khai). Nên đặt thêm ACL phía Tailscale: `tag:kythuat` → Box tcp 22, 80, 443, 3000, 5678, 3001; thiết bị khác trong tailnet không vào được Box.
+  Đổi dải IP của mạng LAN (thay router): khởi động lại Box hoặc chạy `sudo systemctl restart onebee-tuong-lua` để tường lửa nhận dải mới.
 
 ## 2. Cài đặt
 **Trước khi chạy bộ cài**, mở `box/ansible/group_vars/all.yml` và khai 2 giá trị (bộ cài dừng và báo rõ nếu thiếu):
@@ -58,6 +59,11 @@ Mật khẩu và khóa đang đi qua LAN dạng rõ ở chế độ HTTP. Bật 
    Mỗi khách dùng **một hồ sơ Firefox riêng** (CA của khách A chỉ cấp cho tên của khách A, nhưng các khách hay trùng dải `192.168.1.x`).
 7. Hoàn tác: `onebee_box_https: false` → chạy lại bộ cài (máy trạm tự nhận cờ `BOX_HTTPS=0`, về HTTP).
 Hết hạn CA trung gian (1 năm) được gia hạn tự động mỗi đêm sao lưu; `sudo onebee-box trang-thai` hiện số ngày còn lại.
+
+### Thư mục chung (Samba): chỉ SMB 3.1.1 + mã hóa
+Từ bản này thư mục chung bắt buộc **SMB 3.1.1 và mã hóa** (`server min protocol = SMB3_11`, `server smb encrypt = required`): giữ nguyên nội dung khi đi qua LAN, chống hạ cấp.
+Chỉ **Windows 10 trở lên và Linux** nối được. Máy Windows 7/8, máy photocopy/quét cũ **không** nối được — nếu cần, đặt `onebee_box_samba_smb3: false` (chấp nhận bỏ bảo vệ này).
+Thử trước trên 1 máy Windows 10 và 1 máy Linux Mint rồi mới áp cho cả đơn vị; kiểm trên Box: `sudo smbstatus` (cột Encryption/Protocol).
 
 ## 3. Việc làm ngay sau khi cài
 0. **SSH vào Box chỉ bằng khóa** (Box giữ khóa vào được mọi máy trạm): từ máy kỹ thuật `ssh-copy-id <tài-khoản>@<ip-box>`,

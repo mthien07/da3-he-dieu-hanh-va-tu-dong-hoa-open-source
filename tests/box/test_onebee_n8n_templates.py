@@ -3,6 +3,8 @@
 Chạy: python3 -m unittest"""
 import json
 import os
+import shutil
+import subprocess
 import unittest
 
 import jinja2
@@ -53,6 +55,42 @@ class MauN8n(unittest.TestCase):
                         ve(f"workflows/{f}", che_do)
                     except Exception as e:   # noqa: BLE001 — báo rõ file nào hỏng
                         self.fail(f"{f} (khóa chung={che_do}): {e}")
+
+
+@unittest.skipUnless(shutil.which("node"), "cần node")
+class CsvAnToan(unittest.TestCase):
+    """_csv-js.j2 (dùng chung cho quy trình 04, 07, 08, 09) chạy bằng node thật: công thức bị vô hiệu, \r/\n không chèn được dòng/tiêu đề."""
+
+    def chay(self, bieu_thuc):
+        env = jinja2.Environment(loader=jinja2.FileSystemLoader(TPL))
+        code = env.get_template("workflows/_csv-js.j2").render() + "\nconsole.log(JSON.stringify(" + bieu_thuc + "));"
+        r = subprocess.run(["node", "-e", code], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads(r.stdout)
+
+    def test_cong_thuc_bi_vo_hieu_ke_ca_khi_bat_dau_bang_xuong_dong_hoac_khoang_trang(self):
+        for vao in ("=1+1", "+cmd", "-2", "@SUM(A1)", "\r=1+1", "\n=1+1", "  =1+1", "\t@x", "\u0000=1"):
+            ra = self.chay(f"safe({json.dumps(vao)})")
+            self.assertTrue(ra.startswith("'") or not ra[:1] in "=+-@", (vao, ra))
+            self.assertNotRegex(ra, r"^[=+\-@]", vao)
+
+    def test_xuong_dong_khong_chen_duoc_dong_csv_hay_tieu_de(self):
+        self.assertEqual(self.chay('safe("a\\rb\\nc\\r\\nd")'), "a b c d")
+        dong = self.chay('dongCsv(["x", "y\\r\\n1,2,3", "z"])')
+        self.assertEqual(dong.count("\n"), 1)                   # đúng một dòng CSV
+        self.assertNotIn("\r", dong)
+
+    def test_noi_dung_binh_thuong_giu_nguyen(self):
+        self.assertEqual(self.chay('safe("Hợp tác xã An Phú, 12/10")'), "Hợp tác xã An Phú, 12/10")
+        self.assertEqual(self.chay('esc("có \\"nháy\\"")'), '"có ""nháy"""')
+
+    def test_quy_trinh_04_dung_chung_ma_csv_khong_con_ban_sao(self):
+        env = jinja2.Environment(loader=jinja2.FileSystemLoader(TPL), trim_blocks=True)
+        env.filters["to_json"] = lambda x: json.dumps(x)
+        env.filters["bool"] = bool
+        v = yaml.safe_load(open(os.path.join(ROOT, "box/ansible/roles/box-n8n/vars/main.yml"), encoding="utf-8")) or {}
+        txt = env.get_template("workflows/04-nhap-don-hang.json.j2").render(**v)
+        self.assertEqual(txt.count("const safe ="), 1)           # chỉ bản trong _csv-js.j2 (được nhúng vào)
 
 
 if __name__ == "__main__":

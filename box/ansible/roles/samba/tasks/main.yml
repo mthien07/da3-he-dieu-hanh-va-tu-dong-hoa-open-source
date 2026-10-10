@@ -48,6 +48,22 @@
     group: onebee
     mode: "0644"
 
+# F8 (rà soát bảo mật): chỉ SMB 3.1.1 (có kiểm toàn vẹn thương lượng chống hạ cấp) + bắt buộc mã hóa —
+# thư mục chung đi qua LAN không bị đọc/sửa giữa đường.
+# QĐ15: chỉ Windows 10 trở lên và Linux. Máy Windows 7/8 hoặc thiết bị cũ (máy photocopy quét vào thư mục)
+# KHÔNG nối được: đặt onebee_box_samba_smb3: false.
+- name: Samba chỉ nhận SMB 3.1.1 và bắt buộc mã hóa (phần [global])
+  ansible.builtin.blockinfile:
+    path: /etc/samba/smb.conf
+    marker: "# {mark} ONEBEE BOX — giao thức SMB (global)"
+    insertafter: '^\[global\]'
+    block: |
+         server min protocol = SMB3_11
+         server smb encrypt = required
+    state: "{{ 'present' if (onebee_box_samba_smb3 | bool) else 'absent' }}"
+    validate: testparm -s %s
+  notify: Khởi động lại Samba
+
 - name: Khai báo thư mục chung trong cấu hình Samba
   ansible.builtin.blockinfile:
     path: /etc/samba/smb.conf
