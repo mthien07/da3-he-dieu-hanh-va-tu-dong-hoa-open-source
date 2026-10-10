@@ -47,7 +47,8 @@ wait_systemd
 box 'update-ca-certificates >/dev/null 2>&1; rm -rf /root/onebee-test; cp -r /onebee /root/onebee-test'
 if [[ "${ONEBEE_TEST_FULL_WEBUI:-0}" != 1 ]]; then
   # Bản slim (không kèm model nhúng) để test nhanh, đỡ tốn ổ; chức năng hỏi đáp như bản đầy đủ
-  box "sed -i -E 's#(open_webui: .*open-webui:v[0-9.]+)\$#\\1-slim#' /root/onebee-test/box/ansible/group_vars/all.yml"
+  # Image ghim kèm digest (@sha256:…) là của bản đầy đủ → bản slim dùng tag, bỏ digest
+  box "sed -i -E 's#(open_webui: .*open-webui:v[0-9.]+)(@sha256:[0-9a-f]+)?\$#\\1-slim#' /root/onebee-test/box/ansible/group_vars/all.yml"
 fi
 # Model AI: mặc định đúng model sản phẩm (ADR 0003); ONEBEE_TEST_MODEL=gemma3:1b để test nhanh phần kết nối.
 # Tải sau khi cài (container Ollama cần tin CA proxy của môi trường test)

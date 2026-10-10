@@ -2,7 +2,8 @@
 """onebee-bao-tinh-trang — máy trạm gửi tình trạng về OneBee Box (lịch: mỗi giờ + sau khi bật máy).
 
 Gửi: tên máy, địa chỉ IP trong LAN, phiên bản, số gói chờ cập nhật (bản vá bảo mật riêng), cần khởi động lại không,
-dung lượng ổ còn trống, thời gian đã bật, lần sao lưu cuối. KHÔNG gửi tên file, nội dung hay lịch sử dùng máy.
+dung lượng ổ còn trống, thời gian đã bật, lần sao lưu cuối, SỐ tài khoản có quyền sudo (không gửi tên tài khoản).
+KHÔNG gửi tên file, nội dung hay lịch sử dùng máy.
 Cấu hình: /etc/onebee/may-tram.env (MAY_TRAM, BOX_IP, TINH_TRANG_URL, TINH_TRANG_KEY — lấy từ 'onebee-box them-may').
 """
 import json
@@ -51,6 +52,20 @@ def goi_cho_cap_nhat():
     return len(inst), sum(1 for d in inst if "-security" in d)
 
 
+def so_tai_khoan_sudo(duong_dan="/etc/group"):
+    """Số tài khoản người dùng (không tính root) nằm trong nhóm sudo hoặc admin — nhân viên không nên có quyền này."""
+    thanh_vien = set()
+    try:
+        with open(duong_dan, encoding="utf-8") as f:
+            for dong in f:
+                phan = dong.rstrip("\n").split(":")
+                if len(phan) >= 4 and phan[0] in ("sudo", "admin"):
+                    thanh_vien.update(t for t in phan[3].split(",") if t and t != "root")
+    except OSError:
+        return None
+    return len(thanh_vien)
+
+
 def main():
     if os.geteuid() != 0:
         sys.exit("Hãy chạy bằng quyền quản trị: sudo onebee-bao-tinh-trang")
@@ -77,7 +92,7 @@ def main():
         "cap_nhat_cho": cho, "bao_mat_cho": bao_mat,
         "can_khoi_dong_lai": os.path.exists("/var/run/reboot-required"),
         "o_trong_phan_tram": round(o.free * 100 / o.total, 1), "o_trong_gb": round(o.free / 1e9, 1),
-        "khoi_dong_gio": bat_gio, "sao_luu_cuoi": sao_luu,
+        "khoi_dong_gio": bat_gio, "sao_luu_cuoi": sao_luu, "sudo_so": so_tai_khoan_sudo(),
     }
     req = urllib.request.Request(conf["TINH_TRANG_URL"], data=json.dumps(tt).encode("utf-8"), method="POST",
                                  headers={"Content-Type": "application/json", "X-OneBee-Key": conf["TINH_TRANG_KEY"]})

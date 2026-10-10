@@ -6,6 +6,10 @@ onebee_version: "1.0.0-rc.1"
 onebee_locale: vi_VN.UTF-8
 onebee_timezone: Asia/Ho_Chi_Minh
 
+# Tài khoản được phép có quyền sudo trên máy (quản trị/quản lý máy). Nhân viên dùng tài khoản thường, không có sudo.
+# Để trống: bộ cài chỉ cảnh báo khi có hơn 1 tài khoản sudo. Khai báo: cảnh báo mọi tài khoản sudo ngoài danh sách.
+onebee_tai_khoan_quan_tri: []
+
 # Gói nền tảng hữu ích cho máy văn phòng
 onebee_base_packages:
   - curl

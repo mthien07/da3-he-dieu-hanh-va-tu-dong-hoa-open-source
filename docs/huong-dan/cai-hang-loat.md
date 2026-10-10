@@ -5,6 +5,7 @@ Hai cách:
 - **Cách B — nhân bản ảnh đĩa bằng Clonezilla**: làm 1 máy mẫu rồi chép sang các máy **cùng dòng máy** (cùng ổ, cùng chipset).
 
 Dù cách nào: **sao lưu nguyên ổ Windows trước khi xóa** (mục 1) — đó là đường lui nếu đơn vị muốn quay lại.
+Và: **nhân viên dùng tài khoản thường, không có quyền sudo** (xem bước "Tài khoản người dùng" ở mục 3).
 
 > Chưa làm thử trên máy thật. Thời gian từng bước ghi vào bảng ở mục 5 khi làm thật lần đầu (tiêu chí Phase 4: cài liền 3 máy).
 
@@ -48,7 +49,11 @@ Quay lại Windows: khởi động Clonezilla → `device-image` → **`restored
    sudo ssh-keygen -A                                   # sinh khóa SSH riêng cho máy này
    ```
    Rồi làm tiếp cách A bước 3–5 (cấp tên trên Box, dán cấu hình, chạy lại bộ cài).
-5. Tài khoản người dùng: máy mẫu có sẵn tài khoản → đổi mật khẩu từng máy (`passwd`) hoặc tạo tài khoản riêng cho người dùng.
+5. Tài khoản người dùng: **nhân viên không có quyền sudo**. Giữ 1 tài khoản quản trị máy (có sudo, do quản lý/kỹ thuật dùng) và
+   tạo cho từng nhân viên 1 tài khoản **thường** (Cài đặt → Người dùng và nhóm, loại "Tiêu chuẩn"; hoặc `sudo adduser <tên>`).
+   Tài khoản mẫu tạo lúc cài Mint mặc định có sudo → **không giao cho nhân viên**; nếu lỡ giao: `sudo deluser <tên> sudo` (làm trên tài khoản quản trị).
+   Bộ cài và báo cáo hằng ngày cảnh báo máy có hơn 1 tài khoản sudo (khai báo tài khoản quản trị trong `onebee_tai_khoan_quan_tri`
+   ở `desktop/ansible/group_vars/all.yml` để cảnh báo chính xác hơn).
 
 ## 4. Phần cứng
 Ghi vào bảng dưới mỗi dòng máy đã cài: wifi, âm thanh, máy in, máy quét có chạy không. Mint dùng được phần lớn máy văn phòng,

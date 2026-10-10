@@ -23,7 +23,12 @@ PUBLIC_READ = [{"principal_type": "user", "principal_id": "*", "permission": "re
 PARAMS = {"temperature": 0.3}  # ổn định câu trả lời; công cụ chấm tests/ai dùng cùng giá trị
 # Cài đặt bắt buộc — đặt lại qua API mỗi lần chạy (Open WebUI ưu tiên giá trị đã lưu trong CSDL hơn biến môi trường)
 ADMIN_CONFIG = {"ENABLE_SIGNUP": False, "ENABLE_API_KEYS": True, "ENABLE_API_KEYS_ENDPOINT_RESTRICTIONS": True,
-                "API_KEYS_ALLOWED_ENDPOINTS": "/api/chat/completions,/api/models"}
+                "API_KEYS_ALLOWED_ENDPOINTS": "/api/chat/completions,/api/models",
+                "ENABLE_COMMUNITY_SHARING": False,  # Box chạy offline, không chia sẻ lên cộng đồng (GHSA-vpq8-f445-hcq7)
+                "JWT_EXPIRES_IN": "30d"}            # phiên đăng nhập 1 tháng (mặc định của Open WebUI: 4w)
+# Quyền mặc định của người dùng thường: (nhóm, quyền) → giá trị. Nhân viên tạo được khóa API (cho lệnh hoi) nhưng không
+# chia sẻ đoạn chat cho nhau.
+DEFAULT_PERMISSIONS = {("features", "api_keys"): True, ("chat", "share"): False}
 
 
 def call(method, path, token=None, body=None):
@@ -60,7 +65,7 @@ def admin_token():
 
 
 def enforce_settings(token):
-    """Tắt đăng ký tự do, bật + giới hạn khóa API, cho người dùng tạo khóa API (cho lệnh hoi)."""
+    """Tắt đăng ký tự do, bật + giới hạn khóa API, tắt chia sẻ cộng đồng, đặt thời hạn phiên, chỉnh quyền mặc định của người dùng."""
     changed = False
     status, cfg = call("GET", "/api/v1/auths/admin/config", token)
     if status != 200:
@@ -73,11 +78,14 @@ def enforce_settings(token):
             sys.exit(f"LỖI: không lưu được cài đặt quản trị ({status}): {data}")
         changed = True
     status, perms = call("GET", "/api/v1/users/default/permissions", token)
-    if status == 200 and not perms.get("features", {}).get("api_keys"):
-        perms.setdefault("features", {})["api_keys"] = True
+    if status != 200:
+        sys.exit(f"LỖI: không đọc được quyền mặc định của người dùng ({status}): {perms}")
+    if any(perms.get(g, {}).get(k) != v for (g, k), v in DEFAULT_PERMISSIONS.items()):
+        for (g, k), v in DEFAULT_PERMISSIONS.items():
+            perms.setdefault(g, {})[k] = v
         status, data = call("POST", "/api/v1/users/default/permissions", token, perms)
         if status != 200:
-            sys.exit(f"LỖI: không bật được quyền tạo khóa API ({status}): {data}")
+            sys.exit(f"LỖI: không lưu được quyền mặc định của người dùng ({status}): {data}")
         changed = True
     return changed
 

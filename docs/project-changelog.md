@@ -1,6 +1,25 @@
 # Nhật ký thay đổi
 
 ## [Chưa phát hành]
+### Bảo mật (rà soát 10/10/2026 — Pha 1, xem `docs/security-audit.md`)
+- **n8n 2.40.7 → 2.42.6** (dòng 2.40 đã ngừng nhận bản vá; bản mới vá cả 14 advisory ngày 30/9). Mọi image dịch vụ ghim **tag + digest**
+  (`@sha256`, bản đa kiến trúc). Mỗi lần đổi image n8n, bộ cài tự dừng n8n và chép dữ liệu sang `/srv/onebee/n8n.truoc-<phiên bản cũ>`
+  (migration CSDL không quay lui được). Chờ dịch vụ sẵn sàng lâu hơn (migration). Nhập quy trình/thông tin đăng nhập báo lỗi nếu n8n
+  in "blocked by policy".
+- n8n: tắt mô-đun Agents (bật sẵn từ 2.41.1) và MCP, chặn nút Git; `WEBHOOK_URL` → `N8N_WEBHOOK_URL`.
+- Quy trình "Tóm tắt PDF": trang kết quả dùng chế độ chữ (n8n lọc HTML) và thoát `& < >` — câu trả lời của AI, vốn đọc từ PDF do người dùng
+  tải lên, không còn hiển thị thành HTML thô. Đồng thời sửa lỗi các dòng "-" bị dồn thành một đoạn.
+- Open WebUI: tắt Functions/Tools (`ENABLE_PLUGINS=false`); quản trị không xem/xuất được chat của nhân viên; nhân viên không chia sẻ chat;
+  tắt chia sẻ cộng đồng; phiên đăng nhập 30 ngày. Các cài đặt lưu trong CSDL được áp qua API mỗi lần chạy bộ cài (kể cả Box đã cài).
+  `onebee-webui.py` dừng và báo lỗi (thay vì bỏ qua) khi không đọc được quyền mặc định của người dùng.
+- Máy trạm: báo thêm **số** tài khoản có quyền sudo (không gửi tên); Box cảnh báo (email hằng ngày, `onebee-box may-tram`) khi hơn 1 tài khoản.
+  Bộ cài Desktop cảnh báo tài khoản sudo ngoài danh sách `onebee_tai_khoan_quan_tri`. Tài liệu cài hàng loạt: nhân viên dùng tài khoản thường.
+- Sửa tài liệu `quan-ly-may-tram.md`: `them-may` không đụng khóa SSH đã ghim; cách xóa khóa cũ khi máy cài lại.
+### Kiểm thử (Pha 1)
+- Mới: `tests/box/test_onebee_webui.py` (Open WebUI giả), `tests/desktop/test_onebee_bao_tinh_trang.py`, ca cảnh báo sudo trong
+  `test_onebee_may_tram.py`; `verify-box-install.sh` và `check-n8n-inside.sh` thêm kiểm n8n/Open WebUI/CSP sandbox. CI chạy thêm test Desktop.
+- Chưa chạy được trong môi trường phát triển (cần Docker lồng/systemd): `run-box-test-in-systemd-container.sh` — chạy trên máy có Docker
+  hoặc CI (`workflow_dispatch` với `box`) trước khi phát hành.
 ### Thêm
 - SSH vào Box chỉ bằng khóa, không cho root, tối đa 3 lần thử (`onebee_box_ssh_chi_khoa`) — tự bật khi đã có khóa SSH của
   tài khoản quản trị; chưa có khóa thì giữ mật khẩu + cảnh báo (không tự khóa mình ở ngoài). Test Box thêm bước kiểm cả 2 trường hợp.
