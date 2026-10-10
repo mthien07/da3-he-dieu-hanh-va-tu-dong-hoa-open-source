@@ -21,6 +21,38 @@
   args:
     creates: "{{ onebee_box_ssh_dir }}/quan-tri"
 
+# Nhật ký cap-nhat-may / dong-bo-may (chỉ root đọc; chứa tên máy, địa chỉ): giữ 90 ngày rồi xóa (truy vết khi nghi Box bị chiếm — F4)
+- name: Xoay vòng nhật ký quản lý máy trạm (90 ngày)
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/onebee-box
+    content: |
+      # Quản lý bởi OneBee OS
+      /var/log/onebee-box/*.log {
+          daily
+          rotate 90
+          maxage 90
+          missingok
+          notifempty
+          compress
+          delaycompress
+          create 0600 root root
+      }
+    owner: root
+    group: root
+    mode: "0644"
+
+# dong-bo-may chạy lại đúng các task của bộ cài desktop (CA, hoi, menu) trên máy trạm:
+# chép các role đó từ repo (desktop/ansible/roles) vào Box
+- name: Chép các role desktop dùng khi đồng bộ cấu hình máy trạm
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../desktop/ansible/roles/{{ item }}/"
+    dest: "/usr/local/lib/onebee-box/roles/{{ item }}/"
+    owner: root
+    group: root
+    mode: preserve
+    directory_mode: "0755"
+  loop: [ket-noi-box, backup-client, ai-cli, quan-ly-tap-trung]
+
 - name: Cài công cụ báo cáo và cập nhật máy trạm
   ansible.builtin.copy:
     src: "{{ item.src }}"
@@ -32,3 +64,23 @@
     - {src: onebee-may-tram.py, mode: "0750"}
     - {src: onebee-bao-cao-tuan.py, mode: "0750"}
     - {src: cap-nhat-may-tram.yml, mode: "0640"}
+    - {src: dong-bo-may-tram.yml, mode: "0640"}
+
+# CA mới / HTTPS bật hoặc tắt → đẩy cấu hình mới (CA, địa chỉ https, cờ BOX_HTTPS) xuống mọi máy đã cấp
+# NGAY CUỐI bộ cài, khi các công cụ mới đã chép xong.
+# Máy tắt/không với tới được chỉ bị bỏ qua + cảnh báo (không làm hỏng bộ cài): bật máy lên rồi chạy: sudo onebee-box dong-bo-may <tên>
+- name: Đẩy cấu hình (CA, HTTPS) xuống các máy trạm đã cấp
+  ansible.builtin.command: /usr/local/sbin/onebee-box dong-bo-may --tat-ca
+  register: onebee_dong_bo_may
+  when: (onebee_ca is changed) or (onebee_https_doi | default(false) | bool)
+  changed_when: true
+  failed_when: false
+
+- name: Báo kết quả đồng bộ máy trạm
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'Đã đẩy cấu hình xuống các máy trạm.' if onebee_dong_bo_may.rc == 0 else
+         'CHƯA đẩy xong cho mọi máy (máy tắt hoặc chưa báo tình trạng?) — bật máy rồi chạy:
+         sudo onebee-box dong-bo-may --tat-ca. Chi tiết:' }}
+      {{ (onebee_dong_bo_may.stdout_lines | default([]))[-8:] | join(' | ') }}
+  when: onebee_dong_bo_may is not skipped

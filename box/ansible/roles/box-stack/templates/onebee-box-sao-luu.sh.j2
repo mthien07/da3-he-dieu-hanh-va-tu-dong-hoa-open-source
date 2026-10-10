@@ -49,6 +49,12 @@ cmd_sao_luu() {
   restic cat config >/dev/null 2>&1 || die "Chưa tạo kho sao lưu Box. Chạy: sudo onebee-box khoi-tao"
   [[ "$(stat -c %d "${BACKUP_MOUNT}")" != "$(stat -c %d "${DATA}")" ]] || warn "Ổ sao lưu cùng ổ với dữ liệu — hỏng ổ là mất cả hai"
 
+  # CA trung gian hết hạn thì HTTPS (khi bật) ngừng: gia hạn khi còn < 60 ngày, báo nếu không gia hạn được
+  if [[ -s "${CA_DIR}/root.crt" ]]; then
+    gia_han_ca >/dev/null || warn "Không gia hạn được CA riêng của Box — xem: sudo onebee-box in-ca"
+    [[ "$(ca_con_ngay inter)" -ge 30 ]] || warn "CA trung gian của Box còn dưới 30 ngày hoặc đã hết hạn — chạy bộ cài OneBee Box"
+    [[ "$(ca_con_ngay root)" -ge 365 ]] || warn "CA gốc của Box còn dưới 1 năm — lên kế hoạch xoay CA (onebee_box_xoay_ca trong group_vars/all.yml)"
+  fi
   # Bước 1: tạm dừng dịch vụ có cơ sở dữ liệu, chụp nhanh phần dữ liệu của chúng (nhất quán), chạy lại ngay
   local svcs=(open-webui n8n uptime-kuma)
   trap 'compose unpause "${svcs[@]}" >/dev/null 2>&1 || true' EXIT
@@ -81,14 +87,12 @@ cmd_khoi_phuc_thu() {
 
 # In "tên=số giờ từ lần sao lưu cuối" (hoặc "tên=null") cho mọi máy trạm đã cấp — Box tự đọc kho sao lưu
 gio_sao_luu_may() {
-  local f ten t
-  for f in "${SECRETS}"/may-*-repo; do
-    [[ -e "${f}" ]] || continue
-    ten="$(basename "${f}")"; ten="${ten#may-}"; ten="${ten%-repo}"
+  local ten t
+  while read -r ten; do
     t="null"
     if [[ -f "${DATA}/restic/${ten}/config" ]]; then
-      t="$(RESTIC_REPOSITORY="${DATA}/restic/${ten}" RESTIC_PASSWORD="$(cat "${f}")" \
-           restic snapshots --latest 1 --json 2>/dev/null | python3 -c '
+      t="$(RESTIC_REPOSITORY="${DATA}/restic/${ten}" RESTIC_PASSWORD="$(cat "${SECRETS}/may-${ten}-repo")" \
+           restic snapshots --latest 1 --json </dev/null 2>/dev/null | python3 -c '
 import json, sys, re, datetime
 s = json.load(sys.stdin)
 if not s: print("null"); sys.exit()
@@ -96,10 +100,11 @@ t = max(datetime.datetime.fromisoformat(re.sub(r"(\.\d{6})\d+", r"\1", x["time"]
 print(int((datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() // 3600))' || echo loi)"
     fi
     echo "${ten}=${t}"
-  done
+  done < <(may_da_cap)   # máy đã thu hồi không còn nằm trong báo cáo (kho của máy vẫn giữ, vẫn được dọn bản cũ ở prune_workstations)
 }
 
-may_tram_py() { python3 /usr/local/lib/onebee-box/onebee-may-tram.py "$1" "${DATA}/tinh-trang-may" "${@:2}"; }
+# ONEBEE_BI_MAT: onebee-may-tram.py kiểm chữ ký báo cáo bằng mật khẩu kho sao lưu của từng máy (n8n không giữ khóa)
+may_tram_py() { ONEBEE_BI_MAT="${SECRETS}" python3 /usr/local/lib/onebee-box/onebee-may-tram.py "$1" "${DATA}/tinh-trang-may" "${@:2}"; }
 
 # Gửi kết quả sao lưu + tình trạng từng máy trạm (sao lưu, cập nhật, ổ đĩa...) sang n8n → email cho quản trị
 bao_cao_n8n() {
@@ -110,7 +115,7 @@ bao_cao_n8n() {
   trap 'rm -f "${payload}" "${hdr}"; trap - RETURN' RETURN
   may_tram_py payload "${trang_thai}" "${noi_dung}" "${may[@]}" >"${payload}"
   (umask 077; printf 'X-OneBee-Key: %s\n' "$(cat "${SECRETS}/n8n-webhook-key")" >"${hdr}")
-  curl -fsS -m 30 -X POST "http://127.0.0.1:${N8N_PORT}/webhook/onebee-bao-cao-sao-luu" -H @"${hdr}" \
+  curl -fsS -m 30 -X POST "$(dia_chi_noi_bo):${N8N_PORT}/webhook/onebee-bao-cao-sao-luu" -H @"${hdr}" \
     -H 'Content-Type: application/json' --data-binary @"${payload}" >/dev/null
 }
 
@@ -126,6 +131,20 @@ cmd_sao_luu_co_bao_cao() {
     || warn "Không gửi được báo cáo sao lưu qua n8n/email"
   rm -f "${log}"
   return "${st}"
+}
+
+# Bản sao lưu cũ có thể còn tài khoản Trợ lý AI của máy đã thu hồi sau lần sao lưu đó → xóa lại (chờ Open WebUI chạy, tối đa ~2 phút)
+xoa_tai_khoan_may_da_thu_hoi() {
+  local f ten lan
+  for f in "${SECRETS}"/thu-hoi/*; do
+    [[ -e "${f}" ]] || continue
+    ten="$(basename "${f}")"
+    for lan in $(seq 24); do
+      webui xoa-tai-khoan "${ten}" >/dev/null 2>&1 && continue 2
+      sleep 5
+    done
+    warn "Chưa xóa được tài khoản Trợ lý AI của máy đã thu hồi ${ten} — chạy: sudo onebee-box thu-hoi-may ${ten} --dong-y"
+  done
 }
 
 # Khôi phục toàn bộ Box khi hỏng ổ: chạy trên Box ĐÃ CÀI LẠI (bộ cài OneBee Box), đã gắn ổ sao lưu cũ.
@@ -149,17 +168,25 @@ cmd_khoi_phuc_toan_bo() {
   # Xóa dữ liệu của bản cài mới trước khi chép bản cũ vào (restic không xóa file thừa; file tạm của CSDL mới
   # lẫn với CSDL cũ có thể làm hỏng dữ liệu)
   rm -rf "${DATA}/open-webui" "${DATA}/n8n" "${DATA}/uptime-kuma" "${DATA}/ho-tro"
+  # CA riêng do lần cài lại vừa sinh phải nhường chỗ cho CA cũ (máy trạm đã tin CA cũ): xóa CA mới rồi khôi phục CA cũ từ bản sao lưu
+  rm -rf "${CA_DIR}" "${HTTPS_DAU}" "${DATA}/caddy/data/caddy/certificates"   # chứng chỉ lá Caddy đã cấp bằng CA của bản cài lại cũng bỏ   # dấu HTTPS do bản cài lại ghi cũng nhường chỗ cho dấu trong bản sao lưu (nếu có)
   restic restore latest --tag onebee-box,csdl --target / || die "Khôi phục dữ liệu Box lỗi — chưa chạy lại dịch vụ"
   restic restore latest --tag onebee-box,chung --target / || warn "Khôi phục thư mục chung lỗi — thử lại lệnh này"
+  [[ -s "${CA_DIR}/root.crt" ]] || die "Bản sao lưu không có CA riêng của Box (${CA_DIR}) — không khôi phục tiếp, vì mọi máy trạm đang tin CA cũ"
+  install -m 0644 "${CA_DIR}/root.crt" /usr/local/share/ca-certificates/onebee-box-ca.crt
+  update-ca-certificates --fresh >/dev/null   # Box tin lại CA cũ (bỏ CA mới sinh lúc cài lại)
   # Kho sao lưu máy trạm không nằm trong bản sao lưu Box → cấp lại tài khoản kho bằng mật khẩu cũ
   # (máy trạm dùng cấu hình cũ, tự tạo kho mới ở lần sao lưu sau)
   : >"${DATA}/restic/.htpasswd"
-  for f in "${SECRETS}"/may-*-http; do
-    [[ -e "${f}" ]] || continue
-    ten="$(basename "${f}")"; ten="${ten#may-}"; ten="${ten%-http}"
-    htpasswd -B -i "${DATA}/restic/.htpasswd" "${ten}" <"${f}" 2>/dev/null
-  done
+  # Chỉ máy còn được cấp: máy đã thu hồi (có file thu-hoi/<tên>) không được cấp lại quyền vào kho dù bản sao lưu còn mật khẩu cũ
+  while read -r ten; do
+    [[ -s "${SECRETS}/may-${ten}-http" ]] || continue
+    htpasswd -B -i "${DATA}/restic/.htpasswd" "${ten}" <"${SECRETS}/may-${ten}-http" 2>/dev/null
+  done < <(may_da_cap)
+  nap_lai_kho_http   # rest-server của bản cài lại có thể đang chạy với file cũ
+  dong_bo_ten_may >/dev/null   # chỗ nhận báo cáo tình trạng của n8n dựng lại từ bí mật vừa khôi phục
   compose up -d >/dev/null
+  xoa_tai_khoan_may_da_thu_hoi
   echo "Đã khôi phục. Việc tiếp theo: chạy lại bộ cài (sudo ./box/onebee-box-install.sh) để đồng bộ cấu hình, rồi"
   echo "sudo onebee-box khoi-phuc-thu. Máy trạm không cần làm gì (dùng lại cấu hình cũ)."
 }

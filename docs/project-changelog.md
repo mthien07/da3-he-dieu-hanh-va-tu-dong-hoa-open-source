@@ -1,6 +1,86 @@
 # Nhật ký thay đổi
 
 ## [Chưa phát hành]
+### Bảo mật (rà soát 10/10/2026 — Pha 1, xem `docs/security-audit.md`)
+- **n8n 2.40.7 → 2.42.6** (dòng 2.40 đã ngừng nhận bản vá; bản mới vá cả 14 advisory ngày 30/9). Mọi image dịch vụ ghim **tag + digest**
+  (`@sha256`, bản đa kiến trúc). Mỗi lần đổi image n8n, bộ cài tự dừng n8n và chép dữ liệu sang `/srv/onebee/n8n.truoc-<phiên bản cũ>`
+  (migration CSDL không quay lui được): kiểm chỗ trống trước, chép vào thư mục tạm rồi đổi tên, lỗi giữa chừng thì bật lại n8n và dừng bộ cài.
+  Chờ dịch vụ sẵn sàng lâu hơn (migration). Nhập quy trình/thông tin đăng nhập báo lỗi nếu n8n bỏ qua mục vì chính sách.
+- n8n: tắt mô-đun Agents (bật sẵn từ 2.41.1) và MCP, chặn nút Git; `WEBHOOK_URL` → `N8N_WEBHOOK_URL`.
+- Quy trình "Tóm tắt PDF": trang kết quả dùng chế độ chữ (n8n lọc HTML) và thoát `& < >` — câu trả lời của AI, vốn đọc từ PDF do người dùng
+  tải lên, không còn hiển thị thành HTML thô. Đồng thời sửa lỗi các dòng "-" bị dồn thành một đoạn.
+- Open WebUI: tắt Functions/Tools (`ENABLE_PLUGINS=false`); quản trị không xem/xuất được chat của nhân viên; nhân viên không chia sẻ chat;
+  tắt chia sẻ cộng đồng; phiên đăng nhập 30 ngày. Các cài đặt lưu trong CSDL được áp qua API mỗi lần chạy bộ cài (kể cả Box đã cài).
+  `onebee-webui.py` dừng và báo lỗi (thay vì bỏ qua) khi không đọc được quyền mặc định của người dùng.
+- Máy trạm: báo thêm **số** tài khoản có quyền sudo (không gửi tên); Box cảnh báo (email hằng ngày, `onebee-box may-tram`) khi hơn 1 tài khoản.
+  Bộ cài Desktop cảnh báo tài khoản sudo ngoài danh sách `onebee_tai_khoan_quan_tri`. Tài liệu cài hàng loạt: nhân viên dùng tài khoản thường.
+- Sửa tài liệu `quan-ly-may-tram.md`: `them-may` không đụng khóa SSH đã ghim; cách xóa khóa cũ khi máy cài lại.
+### Bảo mật — Pha 3 (xem `docs/security-audit.md`, F3: CA riêng, dịch vụ vẫn HTTP)
+- **Biến bắt buộc mới** trong `box/ansible/group_vars/all.yml`: `onebee_box_ma_don_vi` (viết tắt tên khách; bộ cài dừng nếu thiếu/không hợp lệ) và
+  `onebee_box_dia_chi` (IP tĩnh; thay `onebee_box_address`). IP chốt MỘT lần trong Ansible (`onebee_box_ip`) cho cả shell lẫn compose (sửa N3).
+- **CA riêng mỗi Box**: gốc (10 năm, pathlen:1) + trung gian (1 năm, pathlen:0), sinh bằng openssl (`box-stack/files/onebee-ca.sh`), **cả hai có
+  nameConstraints critical**: chỉ IP Box (/32) và `<mã>.onebee.internal`. Khóa gốc ở `secrets/ca` (0700), không gắn vào container; trung gian tự gia hạn khi
+  còn < 60 ngày (lúc sao lưu đêm), cảnh báo nếu còn < 30 ngày. Đổi mã/IP bị chặn (xoay CA có chủ ý). Box tin CA của chính nó; `onebee-box in-ca`,
+  `trang-thai` hiện hạn CA; `/onebee-ca.crt` phục vụ chứng chỉ gốc (công khai). Khôi phục toàn bộ giữ nguyên CA cũ (máy trạm không phải nhận lại).
+- **Máy trạm — role mới `ket-noi-box`**: `them-may`/`dong-bo-may` in thêm `BOX_CA` + `BOX_CA_VAN_TAY`. Máy chỉ cài CA khi vân tay khớp **và** chứng chỉ đúng
+  là CA OneBee có ràng buộc (CA:TRUE, nameConstraints critical, IP duy nhất = IP Box /32, DNS chỉ `<nhãn>.onebee.internal`, không loại tên khác); CA
+  "mọi tên" bị từ chối. Cài vào kho hệ thống, Firefox (chính sách `Certificates.Install`, trộn với file của gói) và Chromium/Chrome
+  (`CACertificatesWithConstraints`); thiếu `BOX_CA` thì gỡ sạch (kể cả hồ sơ Firefox, bằng certutil).
+- `dong-bo-may` giờ chạy lại đúng các task của bộ cài desktop (CA, cấu hình `hoi`, mục menu) trên máy trạm — không còn giới hạn "chỉ ghi file cấu hình".
+- Caddy của Box: gắn cả thư mục Caddyfile + `/data` `/config` (sửa N5).
+### Bảo mật — Pha 5 (xem `docs/security-audit.md`)
+- **Tường lửa Box lọc mọi cổng mạng** trừ `lo` và mạng Docker (trước đây chỉ cổng mạng chính): card phụ, `wg0`, `tun0` bị chặn; qua Tailscale chỉ máy kỹ thuật khai trong `onebee_box_tailscale_cho_phep`.
+  **Box đang nối Tailscale phải khai biến này, nếu không kỹ thuật mất đường vào Box** (bộ cài cảnh báo). Thay đổi hành vi so với bản cũ ("VPN không bị chặn").
+- **Thư mục chung Samba: chỉ SMB 3.1.1 + bắt buộc mã hóa** (Windows 10+, Linux; máy cũ/máy quét cũ không nối được — `onebee_box_samba_smb3: false` để tắt).
+- Container: `no-new-privileges` cho mọi dịch vụ; rest-server `cap_drop ALL` + `read_only`. CSV/email: mọi ký tự điều khiển bị thay (kể cả `\r`), quy trình 04 dùng chung mã CSV.
+- Chuỗi cung ứng: GitHub Actions ghim SHA; `renovate.json`. Nhật ký quản lý máy trạm giữ 90 ngày (logrotate). `onebee-box gia-han-ca`; xoay CA qua `onebee_box_xoay_ca`.
+- Sửa sau rà soát Pha 3–4: `onebee-kiem-ca.py` đọc ràng buộc tên NGHIÊM (chứng chỉ giả dòng `Excluded:` trong tên DNS để giấu `DNS:com` bị từ chối; chính sách Chrome dùng cùng bộ đọc);
+  gia hạn CA trung gian chép tới Caddy + khởi động lại; dấu `https-da-bat` ghi SAU khi dịch vụ chuyển xong; khôi phục xóa chứng chỉ lá Caddy; `onebee_box_address` cũ báo lỗi rõ;
+  `dong-bo-may` trả lại cấu hình cũ khi CA mới không đạt; `hoi`/báo tình trạng theo 308 một lần tới https cùng máy chủ; `onebee-sao-luu` không bỏ dòng cuối/dấu `=` cuối.
+### Bảo mật — Pha 4b/4c (xem `docs/security-audit.md`, F2/F10)
+- **`onebee-box xoay-khoa [--may <tên>|--tat-ca] [--box]`**: đổi mật khẩu kho HTTP + khóa `hoi` theo máy rồi `dong-bo-may`; `--box` đổi mật khẩu quản trị Trợ lý AI/giám sát (trong dịch vụ),
+  chủ n8n, biểu mẫu, khóa webhook, `WEBUI_SECRET_KEY` rồi chạy lại bộ cài. Không xoay `RESTIC_PASSWORD`/`N8N_ENCRYPTION_KEY`. `onebee-webui.py`: `xoay-khoa`, `doi-mat-khau-quan-tri`; `onebee-kuma.js`: `KUMA_PASS_MOI`.
+- **`hoi` theo từng nhân viên**: `hoi --dang-nhap` (email + mật khẩu → chỉ lưu khóa `~/.config/onebee/hoi-khoa` 0600, từ chối khi URL còn http://), `hoi --dan-khoa` (kiểm khóa trước khi lưu),
+  `hoi --dang-xuat`. Khóa máy chỉ còn là chuyển tiếp (nhắc dùng khóa riêng); `onebee_box_hoi_khoa_may: false` + `onebee-box go-khoa-hoi-may` bỏ hẳn khóa máy và đóng F10.
+- `onebee_box_khoa_tinh_trang_chung: false`: bỏ khóa gửi tình trạng dùng chung (n8n không đòi, Box không đẩy `TINH_TRANG_KEY`; client coi khóa là tùy chọn). Mặc định `true` (chuyển tiếp).
+- Sửa: `secret()` có thể trả mã 141 (SIGPIPE) khi sinh mật khẩu lần đầu dưới `pipefail` → nguồn ngẫu nhiên hữu hạn.
+### Bảo mật — Pha 4 (xem `docs/security-audit.md`, F3: HTTPS nội bộ, `docs/adr/0005-…`)
+- **`onebee_box_https: true`** bật HTTPS: Caddy là dịch vụ DUY NHẤT công bố cổng (80 chứng chỉ gốc + hướng dẫn, 443 trang giới thiệu, 3000/5678/3001/8000 TLS); 4 dịch vụ
+  backend mất `ports:`. Chứng chỉ do CA riêng cấp (`default_sni` cho kết nối bằng IP; `box.<mã>.onebee.internal` cho kỹ thuật qua Tailscale); `http://` tới cổng TLS → 308.
+  Chốt chặn: lần bật đầu, mọi máy đã cấp phải đã nhận CA (không thì giữ HTTP và nêu tên máy). Dấu `secrets/https-da-bat`; chuyển HTTP↔HTTPS dừng các dịch vụ giữ cổng rồi
+  khởi động backend trước, Caddy sau. Cuối bộ cài tự `dong-bo-may --tat-ca` khi CA/HTTPS đổi. Mặc định `false` (một bản phát hành giữ nhánh HTTP).
+- Ứng dụng: n8n sau proxy (`N8N_PROTOCOL/HOST/EDITOR_BASE_URL/PROXY_HOPS`, bỏ `N8N_SECURE_COOKIE=false`); Open WebUI cookie Secure + `CORS_ALLOW_ORIGIN` + `WEBUI_URL` qua API;
+  Uptime Kuma Trust Proxy + theo dõi cổng Caddy; Caddy `no-new-privileges`, `cap_drop ALL` + `NET_BIND_SERVICE`; kiểm sức khỏe kiểm cả nội dung.
+- Máy trạm: `hoi`, `onebee-bao-tinh-trang`, `onebee-sao-luu` chỉ tin CA OneBee (ghim), **từ chối `http://` khi có dấu bền `/var/lib/onebee/https-bat`** (cờ `BOX_HTTPS=1`; chỉ Box đẩy `BOX_HTTPS=0` mới xóa);
+  báo lỗi dễ hiểu (chứng chỉ lạ = có thể bị tấn công; 502/503/504; 301/308). `onebee-sao-luu` đọc cấu hình từng dòng, không chạy như mã shell (F7). Firefox/Chromium: trang chủ + dấu trang https.
+- Kiểm thử: Caddy 2.11.4 thật (đã chạy), compose hai chế độ, ca, client TLS thật, `tests/box/check-https.sh`.
+### Bảo mật — Pha 2 (xem `docs/security-audit.md`, F2)
+- **Báo cáo tình trạng máy trạm có chữ ký** (HMAC-SHA256, khóa suy từ mật khẩu kho sao lưu của máy — chưa từng đi qua mạng). n8n không giữ khóa;
+  Box tự kiểm chữ ký + độ lệch giờ (chống phát lại) khi in bảng/báo cáo. Báo cáo sai chữ ký được nêu rõ; báo cáo cũ không ký vẫn nhận (chuyển
+  tiếp) nhưng gắn nhãn "chưa ký" và không được dùng để chọn địa chỉ SSH máy chưa ghim. Chữ ký đúng mà giờ ký lệch >10 phút → nhãn "lệch giờ".
+- **n8n chỉ nhận báo cáo của máy đã cấp**: quy trình "Nhận tình trạng máy trạm" đọc file đánh dấu theo tên trong `/srv/onebee/may-da-cap/`
+  (Box ghi, gắn chỉ đọc vào n8n); tên chưa cấp/đã thu hồi → dừng, không ghi file. Hết đường tạo file tên tùy ý.
+- **SSH máy trạm: chứng minh rồi mới ghim.** Bỏ `StrictHostKeyChecking=accept-new`. Lần đầu vào máy: dùng IP trong báo cáo CÓ CHỮ KÝ (≤ 2 giờ),
+  SSH đọc mật khẩu kho sao lưu trên máy và so với bản Box giữ; trùng mới ghim khóa SSH. Các lần sau `StrictHostKeyChecking=yes` + chứng minh
+  lại (kể cả khóa ghim do bản cũ tạo). Máy giả ở IP đã báo không được ghim và không nhận gì.
+- Lệnh mới: `thu-hoi-may` (gỡ kho HTTP, khóa Trợ lý AI, ghim SSH, chỗ báo tình trạng; bền qua `khoi-phuc-toan-bo`), `ghim-lai-may`,
+  `dong-bo-may` (đẩy lại `may-tram.env` từ Box, chỉ tới máy đã chứng minh; thiếu bí mật thì bỏ qua máy, không đẩy file thiếu — kiểm cả ở playbook).
+  Cấp lại máy đã thu hồi **đổi cả mật khẩu kho sao lưu** (kho + mật khẩu cũ cất riêng). Dấu thu hồi ở `secrets/thu-hoi/<tên>`.
+  Sau rà soát Opus: sửa `ssh` nuốt danh sách khiến `--tat-ca` chỉ làm máy đầu (thêm `-n`), file tạm chứa mật khẩu dọn bằng trap EXIT,
+  `kho` mặc định đóng, nhãn "lệch giờ".
+  `in_cau_hinh_may` tách khỏi `them-may`: chỉ đọc bí mật có sẵn, không tạo tài khoản/khóa. Một hàm `may_da_cap` liệt kê máy cho mọi nơi;
+  `secret_co_san` không tự sinh khóa. Nhật ký `/var/log/onebee-box/` chỉ root đọc.
+- `onebee-webui.py`: thêm `lay-khoa` (chỉ đọc khóa đã cấp) và `xoa-tai-khoan`.
+### Kiểm thử (Pha 1, 2)
+- Pha 2: `tests/box/test_onebee_box_shell.py` (12 test chạy các lệnh shell của `onebee-box` với `ssh`/`ansible-playbook`/Open WebUI giả:
+  chứng minh trước khi ghim, báo cáo chưa ký, máy giả, khóa SSH đổi, thu hồi–cấp lại, dong-bo-may, danh sách n8n); chữ ký và quy tắc `kho` trong
+  `test_onebee_may_tram.py`; khớp chữ ký máy trạm ↔ Box trong `tests/desktop/test_onebee_bao_tinh_trang.py`; `check-quan-ly-tap-trung.sh`
+  và `check-khoi-phuc-toan-bo.sh` (Docker lồng, CHƯA chạy) thêm ca ghim, thu hồi, dong-bo-may, báo cáo giả, thu hồi bền qua khôi phục.
+  Mã JS của nút Code quy trình 06 đã chạy thử bằng Node với dữ liệu giả và nối đầu-cuối với bộ kiểm chữ ký của Box.
+- Pha 1: mới: `tests/box/test_onebee_webui.py` (Open WebUI giả), `tests/desktop/test_onebee_bao_tinh_trang.py`, ca cảnh báo sudo trong
+  `test_onebee_may_tram.py`; `verify-box-install.sh` và `check-n8n-inside.sh` thêm kiểm n8n/Open WebUI/CSP sandbox. CI chạy thêm test Desktop.
+- Chưa chạy được trong môi trường phát triển (cần Docker lồng/systemd): `run-box-test-in-systemd-container.sh` — chạy trên máy có Docker
+  hoặc CI (`workflow_dispatch` với `box`) trước khi phát hành.
 ### Thêm
 - SSH vào Box chỉ bằng khóa, không cho root, tối đa 3 lần thử (`onebee_box_ssh_chi_khoa`) — tự bật khi đã có khóa SSH của
   tài khoản quản trị; chưa có khóa thì giữ mật khẩu + cảnh báo (không tự khóa mình ở ngoài). Test Box thêm bước kiểm cả 2 trường hợp.

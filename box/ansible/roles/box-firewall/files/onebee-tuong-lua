@@ -2,12 +2,15 @@
 # Tường lửa OneBee Box: chỉ máy trong mạng LAN cho phép mới vào được dịch vụ của Box
 # (trang giới thiệu, Trợ lý AI, n8n, giám sát, kho sao lưu — chạy trong Docker; thư mục chung + NetBIOS, SSH — chạy thẳng trên Box).
 # Docker mở cổng bằng iptables riêng, đi vòng qua ufw → chặn ở chuỗi DOCKER-USER (gói đi tới container)
-# và INPUT (dịch vụ trên Box). Chỉ xét kết nối MỚI đi vào cổng mạng chính; Box gọi ra ngoài, trả lời, gọi nội bộ không bị ảnh hưởng.
+# và INPUT (dịch vụ trên Box). Chỉ xét kết nối MỚI từ bên ngoài; Box gọi ra ngoài, trả lời, gọi nội bộ không bị ảnh hưởng.
+# Phạm vi (rà soát bảo mật F5): MỌI cổng mạng trừ lo, docker*, br-* (mạng Docker). Qua cổng mạng chính chỉ mạng LAN cho phép;
+# qua tailscale0 chỉ các địa chỉ trong TAILSCALE_CHO_PHEP (máy kỹ thuật); cổng mạng khác (card phụ, wg0, tun0…) bị chặn hết.
 # Cách dùng: onebee-tuong-lua [bat|tat|xem]   (bat: dựng lại từ đầu, chạy nhiều lần không sao)
 set -euo pipefail
 
-CONF=/etc/onebee-box/tuong-lua.conf
+CONF="${ONEBEE_TUONG_LUA_CONF:-/etc/onebee-box/tuong-lua.conf}"
 LAN_CHO_PHEP=""              # để trống: tự lấy mạng của cổng mạng chính
+TAILSCALE_CHO_PHEP=""        # địa chỉ/dải được vào qua tailscale0 (cách nhau dấu phẩy); để trống: chặn hết kết nối qua Tailscale
 CONG_TREN_BOX="22,139,445"   # TCP: SSH, Samba
 CONG_UDP_TREN_BOX="137,138"  # UDP: Samba tìm máy trong mạng (NetBIOS)
 # shellcheck source=/dev/null
@@ -37,19 +40,32 @@ tat() {
   done
 }
 
-# $1 = iptables|ip6tables, $2 = cổng mạng, $3 = danh sách mạng cho phép (cách nhau dấu phẩy)
+# $1 = iptables|ip6tables, $2 = cổng mạng chính, $3 = mạng LAN cho phép (cách nhau dấu phẩy), $4 = địa chỉ cho phép qua Tailscale (cùng họ địa chỉ)
 dung() {
-  local ipt="$1" ifc="$2" mang="$3" c net
+  local ipt="$1" ifc="$2" mang="$3" ts="$4" c net
   for c in "${C_DOCKER}" "${C_BOX}"; do
     "${ipt}" -N "${c}"
-    for net in ${mang//,/ }; do "${ipt}" -A "${c}" -s "${net}" -j RETURN; done
+    # Giao diện nội bộ: loopback và mạng Docker (container gọi ra ngoài/gọi nhau) không bị lọc
+    "${ipt}" -A "${c}" -i lo -j RETURN
+    "${ipt}" -A "${c}" -i 'docker+' -j RETURN
+    "${ipt}" -A "${c}" -i 'br-+' -j RETURN
+    for net in ${mang//,/ }; do "${ipt}" -A "${c}" -i "${ifc}" -s "${net}" -j RETURN; done
+    for net in ${ts//,/ }; do "${ipt}" -A "${c}" -i tailscale0 -s "${net}" -j RETURN; done
     "${ipt}" -A "${c}" -j DROP
   done
   # Docker tạo DOCKER-USER khi khởi động; tạo trước cũng được (Docker dùng lại)
   "${ipt}" -N DOCKER-USER 2>/dev/null || true
-  "${ipt}" -I DOCKER-USER 1 -i "${ifc}" -m conntrack --ctstate NEW -j "${C_DOCKER}"
-  "${ipt}" -I INPUT 1 -i "${ifc}" -p tcp -m multiport --dports "${CONG_TREN_BOX}" -m conntrack --ctstate NEW -j "${C_BOX}"
-  "${ipt}" -I INPUT 1 -i "${ifc}" -p udp -m multiport --dports "${CONG_UDP_TREN_BOX}" -m conntrack --ctstate NEW -j "${C_BOX}"
+  "${ipt}" -I DOCKER-USER 1 -m conntrack --ctstate NEW -j "${C_DOCKER}"
+  "${ipt}" -I INPUT 1 -p tcp -m multiport --dports "${CONG_TREN_BOX}" -m conntrack --ctstate NEW -j "${C_BOX}"
+  "${ipt}" -I INPUT 1 -p udp -m multiport --dports "${CONG_UDP_TREN_BOX}" -m conntrack --ctstate NEW -j "${C_BOX}"
+}
+
+# Tách danh sách địa chỉ theo họ: $1 = 4|6, $2 = danh sách (cách nhau dấu phẩy) → in lại, cách nhau dấu phẩy (v6 = có dấu ':')
+loc_ho() {
+  local ho="$1" x
+  for x in ${2//,/ }; do
+    if [[ "${x}" == *:* ]]; then [[ "${ho}" == 6 ]] && printf '%s\n' "${x}"; else [[ "${ho}" == 4 ]] && printf '%s\n' "${x}"; fi
+  done | paste -sd, -
 }
 
 bat() {
@@ -62,13 +78,13 @@ bat() {
   fi
   [[ -n "${mang}" ]] || { echo "Không xác định được mạng LAN của ${ifc}" >&2; exit 1; }
   tat
-  dung iptables "${ifc}" "${mang}"
+  dung iptables "${ifc}" "${mang}" "$(loc_ho 4 "${TAILSCALE_CHO_PHEP}")"
   # IPv6: các cổng Docker chỉ mở IPv4 (docker-compose.yml) → chỉ cần giữ SSH/Samba trong mạng nội bộ
   if command -v ip6tables >/dev/null && ip6tables -S >/dev/null 2>&1; then
     mang6="fe80::/10,fc00::/7"
-    dung ip6tables "${ifc}" "${mang6}"
+    dung ip6tables "${ifc}" "${mang6}" "$(loc_ho 6 "${TAILSCALE_CHO_PHEP}")"
   fi
-  echo "Tường lửa OneBee: cổng ${ifc}, chỉ cho phép ${mang} (IPv6: ${mang6:-tắt})"
+  echo "Tường lửa OneBee: mọi cổng mạng trừ lo/docker/br; ${ifc}: chỉ ${mang} (IPv6: ${mang6:-tắt}); tailscale0: ${TAILSCALE_CHO_PHEP:-chặn hết}"
 }
 
 xem() {

@@ -1,0 +1,21 @@
+---
+# Mục menu mở biểu mẫu trên Box — sinh từ cấu hình máy trạm (onebee_may_tram). Dùng chung với playbook dong-bo-may-tram.yml của Box.
+
+- name: Thêm mục "Báo cần hỗ trợ" vào menu (mở biểu mẫu trên Box)
+  ansible.builtin.copy:
+    dest: /usr/share/applications/onebee-bao-ho-tro.desktop
+    content: |
+      [Desktop Entry]
+      Type=Application
+      Name=Báo cần hỗ trợ (OneBee)
+      Comment=Gửi yêu cầu hỗ trợ cho kỹ thuật OneBee
+      Exec=xdg-open {{ onebee_giao_thuc }}://{{ onebee_may_tram.BOX_IP }}:5678/form/onebee-ho-tro
+      Icon=help-browser
+      Terminal=false
+      Categories=System;
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    onebee_giao_thuc: "{{ 'https' if onebee_may_tram.BOX_HTTPS | default('') == '1' else 'http' }}"
+  when: onebee_may_tram.BOX_IP | default('') is match('^[0-9]{1,3}(\.[0-9]{1,3}){3}$')

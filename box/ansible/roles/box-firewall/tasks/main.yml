@@ -28,6 +28,19 @@
     - {src: onebee-tuong-lua.service, dest: /etc/systemd/system/onebee-tuong-lua.service, mode: "0644"}
   register: onebee_tuong_lua_files
 
+- name: Kiểm tra Box có nối Tailscale không
+  ansible.builtin.stat:
+    path: /sys/class/net/tailscale0
+  register: onebee_tailscale_if
+
+- name: Cảnh báo Tailscale chưa khai máy kỹ thuật được vào
+  ansible.builtin.debug:
+    msg: >-
+      CẢNH BÁO: Box đang nối Tailscale (tailscale0) nhưng onebee_box_tailscale_cho_phep còn trống —
+      mọi kết nối qua Tailscale tới Box bị tường lửa chặn.
+      Khai địa chỉ Tailscale của máy kỹ thuật (vd ["100.64.1.2"]) trong group_vars/all.yml rồi chạy lại bộ cài.
+  when: onebee_tailscale_if.stat.exists and onebee_box_tuong_lua_bat and (onebee_box_tailscale_cho_phep | length == 0)
+
 - name: Bật tường lửa cùng máy (áp dụng lại khi cấu hình đổi)
   ansible.builtin.systemd_service:
     name: onebee-tuong-lua.service

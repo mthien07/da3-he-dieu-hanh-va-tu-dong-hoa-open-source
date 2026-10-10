@@ -4,21 +4,73 @@
 Cách dùng:
   hoi cách xuất file PDF
   hoi "tóm tắt đoạn này" < van-ban.txt      (nội dung đưa vào qua dấu < được gửi kèm câu hỏi)
-Cấu hình: /etc/onebee-hoi.conf (do bộ cài OneBee OS tạo). Câu hỏi không gửi ra Internet.
+Mỗi nhân viên dùng khóa riêng của MÌNH (hỏi bằng tài khoản của mình, thu hồi được từng người) — làm một lần, chọn một cách:
+  hoi --dang-nhap     Nhập email + mật khẩu Trợ lý AI của bạn; hoi lấy khóa rồi chỉ lưu khóa (không lưu mật khẩu)
+  hoi --dan-khoa      Tự tạo khóa trên web (Cài đặt → Tài khoản → Khóa API) rồi dán vào đây
+  hoi --dang-xuat     Xóa khóa của bạn khỏi máy này
+Khóa lưu ở ~/.config/onebee/hoi-khoa (chỉ bạn đọc). Cấu hình địa chỉ: /etc/onebee-hoi.conf (do bộ cài OneBee OS tạo).
+Câu hỏi không gửi ra Internet.
 """
+import getpass
 import json
 import os
 import select
+import ssl
 import stat
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
+
+CA_ONEBEE = "/usr/local/share/ca-certificates/onebee-box-ca.crt"
+HTTPS_BAT = "/var/lib/onebee/https-bat"   # dấu bền: Box đã báo bật HTTPS cho máy này (chỉ cờ BOX_HTTPS=0 do Box đẩy mới xóa)
+
+
+def mo(req, timeout):
+    """urlopen có ghim CA: https:// chỉ tin CA riêng của OneBee Box (không tin CA công cộng); http:// bị từ chối khi máy đã bật HTTPS
+    (kẻ chen giữa mạng LAN không hạ cấp được kết nối về HTTP để đọc mật khẩu/khóa)."""
+    ngu_canh = None
+    if req.full_url.startswith("https://"):
+        try:
+            ngu_canh = ssl.create_default_context(cafile=CA_ONEBEE)
+        except (OSError, ssl.SSLError):
+            sys.exit("Máy chưa có chứng chỉ CA của OneBee Box. Báo người quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>")
+    elif os.path.exists(HTTPS_BAT):
+        sys.exit("Máy này đã bật HTTPS nhưng cấu hình còn địa chỉ http:// — KHÔNG gửi. Báo người quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>")
+    try:
+        return urllib.request.urlopen(req, timeout=timeout, context=ngu_canh)
+    except urllib.error.HTTPError as e:
+        # Box đã chuyển sang HTTPS (308) mà cấu hình máy còn http:// (máy tắt lúc chuyển): theo ĐÚNG MỘT lần, chỉ tới https:// CÙNG máy chủ,
+        # vẫn chỉ tin CA OneBee — nhờ vậy máy không mất liên lạc tới khi quản trị chạy dong-bo-may. Địa chỉ khác máy chủ thì không theo.
+        dich = e.headers.get("Location", "") if e.code in (301, 308) else ""
+        goc, moi = urllib.parse.urlsplit(req.full_url), urllib.parse.urlsplit(dich)
+        if req.full_url.startswith("http://") and moi.scheme == "https" and moi.hostname and moi.hostname == goc.hostname:
+            return mo(urllib.request.Request(dich, data=req.data, headers=dict(req.header_items()), method=req.get_method()), timeout)
+        raise
+
+
+def loi_mang(e):
+    """Thông báo cho lỗi kết nối/HTTP chung. None nếu không phải loại này. Lỗi chứng chỉ được nêu riêng: đó có thể là dấu hiệu bị tấn công."""
+    if isinstance(e, urllib.error.HTTPError):
+        if e.code in (502, 503, 504):
+            return "Dịch vụ trên OneBee Box chưa chạy hoặc đang khởi động. Thử lại sau vài phút; vẫn lỗi thì báo người quản trị."
+        if e.code in (301, 308):
+            return "Cấu hình địa chỉ OneBee Box đã cũ (Box chuyển sang HTTPS). Báo người quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>"
+        return None
+    if isinstance(e, urllib.error.URLError) and isinstance(getattr(e, "reason", None), ssl.SSLError):
+        return ("CHỨNG CHỈ CỦA ONEBEE BOX KHÔNG HỢP LỆ — dừng lại, đừng nhập mật khẩu ở bất cứ đâu. "
+                "Có thể có thiết bị lạ giả danh Box: báo người quản trị ngay.")
+    return None
 
 CONF = "/etc/onebee-hoi.conf"
 NOTE = "(Trợ lý AI có thể sai — kiểm tra lại số liệu, thông tin quan trọng.)"
 
 
+KHOA_NV = os.path.join(os.environ.get("HOME") or os.path.expanduser("~"), ".config", "onebee", "hoi-khoa")
+
+
 def read_conf():
+    """Cấu hình chung của máy: địa chỉ (bắt buộc) và khóa của MÁY (chỉ có ở giai đoạn chuyển tiếp)."""
     conf = {}
     try:
         with open(CONF, encoding="utf-8") as f:
@@ -28,10 +80,119 @@ def read_conf():
                     conf[k] = v
     except OSError:
         sys.exit(f"Chưa cấu hình Trợ lý AI ({CONF}). Báo người quản trị OneBee.")
-    for k in ("HOI_URL", "HOI_API_KEY"):
-        if not conf.get(k):
-            sys.exit(f"Thiếu {k} trong {CONF}. Báo người quản trị OneBee.")
+    if not conf.get("HOI_URL"):
+        sys.exit(f"Thiếu HOI_URL trong {CONF}. Báo người quản trị OneBee.")
     return conf
+
+
+def doc_khoa_nguoi_dung():
+    try:
+        with open(KHOA_NV, encoding="utf-8") as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def luu_khoa(khoa):
+    os.makedirs(os.path.dirname(KHOA_NV), mode=0o700, exist_ok=True)
+    fd = os.open(KHOA_NV, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(khoa + "\n")
+    os.chmod(KHOA_NV, 0o600)   # file có sẵn từ trước với quyền rộng hơn cũng được siết lại
+
+
+def goi_api(conf, phuong_thuc, duong_dan, khoa=None, noi_dung=None):
+    """Gọi API Open WebUI qua mo() (ghim CA). Trả về (mã, dữ liệu JSON hoặc None); lỗi mạng/chứng chỉ thì thoát với thông báo rõ."""
+    tieu_de = {"Content-Type": "application/json"}
+    if khoa:
+        tieu_de["Authorization"] = f"Bearer {khoa}"
+    req = urllib.request.Request(conf["HOI_URL"].rstrip("/") + duong_dan, method=phuong_thuc, headers=tieu_de,
+                                 data=json.dumps(noi_dung).encode("utf-8") if noi_dung is not None else None)
+    try:
+        with mo(req, 60) as r:
+            raw = r.read()
+            return r.status, (json.loads(raw) if raw else None)
+    except urllib.error.HTTPError as e:
+        if loi_mang(e):
+            sys.exit(loi_mang(e))
+        return e.code, None
+    except urllib.error.URLError as e:
+        sys.exit(loi_mang(e) or "Không kết nối được OneBee Box. Kiểm tra mạng nội bộ hoặc báo người quản trị.")
+    except (TimeoutError, OSError, ValueError):
+        sys.exit("Không kết nối được OneBee Box hoặc Box trả dữ liệu không đọc được. Báo người quản trị.")
+
+
+def yeu_cau_https(conf, viec):
+    if not conf["HOI_URL"].startswith("https://"):
+        sys.exit(f"Từ chối {viec}: địa chỉ Trợ lý AI còn là http:// — mật khẩu/khóa sẽ đi qua mạng dạng rõ. "
+                 "Báo người quản trị bật HTTPS cho OneBee Box, hoặc dùng 'hoi --dan-khoa' sau khi tự tạo khóa trên web qua kết nối an toàn.")
+
+
+def dang_nhap(conf):
+    """Đăng nhập bằng tài khoản Trợ lý AI của chính nhân viên, lấy (hoặc tạo, nếu chưa có) khóa API của tài khoản đó, CHỈ lưu khóa."""
+    yeu_cau_https(conf, "đăng nhập")
+    try:
+        email = input("Email Trợ lý AI của bạn: ").strip()
+        mat_khau = getpass.getpass("Mật khẩu (không hiện khi gõ): ")
+    except (EOFError, KeyboardInterrupt):
+        sys.exit("\nĐã hủy.")
+    ma, du_lieu = goi_api(conf, "POST", "/api/v1/auths/signin", noi_dung={"email": email, "password": mat_khau})
+    del mat_khau   # không giữ mật khẩu lâu hơn cần thiết
+    if ma in (400, 401, 403) or not (du_lieu or {}).get("token"):
+        sys.exit("Sai email hoặc mật khẩu. Nếu quên mật khẩu, nhờ người quản trị đặt lại.")
+    phien = du_lieu["token"]
+    ma, du_lieu = goi_api(conf, "GET", "/api/v1/auths/api_key", khoa=phien)
+    khoa = (du_lieu or {}).get("api_key") if ma == 200 else None
+    if not khoa:   # chưa có thì tạo; có rồi thì dùng lại (POST sẽ làm khóa cũ mất hiệu lực)
+        ma, du_lieu = goi_api(conf, "POST", "/api/v1/auths/api_key", khoa=phien)
+        khoa = (du_lieu or {}).get("api_key") if ma == 200 else None
+    if not khoa:
+        sys.exit("Không lấy được khóa API cho tài khoản của bạn (tài khoản chưa được phép tạo khóa?). Báo người quản trị.")
+    luu_khoa(khoa)
+    print(f"Xong. Khóa của bạn đã lưu ở {KHOA_NV}. Từ giờ chỉ cần: hoi <câu hỏi>")
+    return 0
+
+
+def dan_khoa(conf):
+    """Dán khóa API tự tạo trên web; kiểm khóa chạy được rồi mới lưu."""
+    try:
+        khoa = getpass.getpass("Dán khóa API (bắt đầu bằng sk-, không hiện khi dán): ").strip()
+    except (EOFError, KeyboardInterrupt):
+        sys.exit("\nĐã hủy.")
+    if not khoa:
+        sys.exit("Chưa nhập khóa.")
+    ma, _ = goi_api(conf, "GET", "/api/models", khoa=khoa)
+    if ma != 200:
+        sys.exit("Khóa không dùng được (sai khóa, hoặc tài khoản đã bị khóa/xóa) — chưa lưu gì.")
+    luu_khoa(khoa)
+    print(f"Khóa hợp lệ, đã lưu ở {KHOA_NV}. Từ giờ chỉ cần: hoi <câu hỏi>")
+    return 0
+
+
+def dang_xuat():
+    try:
+        os.unlink(KHOA_NV)
+        print("Đã xóa khóa của bạn khỏi máy này.")
+    except FileNotFoundError:
+        print("Máy này chưa lưu khóa của bạn.")
+    return 0
+
+
+HUONG_DAN_KHOA = ("Bạn chưa thiết lập khóa Trợ lý AI của riêng mình. Làm một lần, chọn một cách:\n"
+                  "  hoi --dang-nhap   (nhập email + mật khẩu Trợ lý AI của bạn)\n"
+                  "  hoi --dan-khoa    (tự tạo khóa trên web: Cài đặt → Tài khoản → Khóa API, rồi dán vào)\n"
+                  "Chưa có tài khoản Trợ lý AI: nhờ người quản trị OneBee tạo.")
+
+
+def chon_khoa(conf):
+    """Khóa của nhân viên trước; chưa có thì dùng khóa của MÁY (giai đoạn chuyển tiếp) kèm nhắc; không có gì thì hướng dẫn."""
+    khoa = doc_khoa_nguoi_dung()
+    if khoa:
+        return khoa
+    if conf.get("HOI_API_KEY"):
+        print("(Đang dùng khóa chung của máy. Hãy chạy 'hoi --dang-nhap' để dùng khóa riêng của bạn.)", file=sys.stderr)
+        return conf["HOI_API_KEY"]
+    sys.exit(HUONG_DAN_KHOA)
 
 
 def read_piped_input():
@@ -47,6 +208,11 @@ def read_piped_input():
 
 
 def main():
+    if len(sys.argv) == 2 and sys.argv[1] in ("--dang-nhap", "--dan-khoa", "--dang-xuat"):
+        if sys.argv[1] == "--dang-xuat":
+            return dang_xuat()
+        conf = read_conf()
+        return dang_nhap(conf) if sys.argv[1] == "--dang-nhap" else dan_khoa(conf)
     question = " ".join(sys.argv[1:]).strip()
     extra = read_piped_input()
     if extra:
@@ -55,21 +221,26 @@ def main():
         print(__doc__)
         return 0 if question else 1
     conf = read_conf()
+    khoa = chon_khoa(conf)
     body = {"model": conf.get("HOI_MODEL", "onebee-tro-ly"), "stream": False,
             "messages": [{"role": "user", "content": question}]}
     req = urllib.request.Request(conf["HOI_URL"].rstrip("/") + "/api/chat/completions",
                                  data=json.dumps(body).encode("utf-8"),
                                  headers={"Content-Type": "application/json",
-                                          "Authorization": f"Bearer {conf['HOI_API_KEY']}"})
+                                          "Authorization": f"Bearer {khoa}"})
     print("Đang hỏi Trợ lý OneBee...", file=sys.stderr, flush=True)
     try:
-        with urllib.request.urlopen(req, timeout=300) as r:
+        with mo(req, 300) as r:
             answer = json.load(r)["choices"][0]["message"]["content"].strip()
-    except urllib.error.HTTPError as e:
+    except (urllib.error.HTTPError, urllib.error.URLError) as e:
+        if loi_mang(e):
+            sys.exit(loi_mang(e))
+        if not isinstance(e, urllib.error.HTTPError):
+            sys.exit("Không kết nối được OneBee Box. Kiểm tra mạng nội bộ hoặc báo người quản trị.")
         if e.code in (401, 403):
-            sys.exit("Khóa Trợ lý AI của máy này không hợp lệ hoặc đã bị thu hồi. Báo người quản trị OneBee.")
+            sys.exit("Khóa Trợ lý AI không hợp lệ hoặc đã bị thu hồi (tài khoản bị xóa/khóa?). Thử 'hoi --dang-nhap' lại, hoặc báo người quản trị OneBee.")
         sys.exit(f"OneBee Box báo lỗi {e.code}. Thử lại sau hoặc báo người quản trị.")
-    except (urllib.error.URLError, TimeoutError, OSError):
+    except (TimeoutError, OSError):
         sys.exit("Không kết nối được OneBee Box. Kiểm tra mạng nội bộ hoặc báo người quản trị.")
     except (KeyError, IndexError, ValueError):
         sys.exit("OneBee Box trả về dữ liệu không đọc được. Báo người quản trị.")

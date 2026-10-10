@@ -1,4 +1,99 @@
-# Quản lý bởi OneBee OS — trang giới thiệu dịch vụ OneBee Box
+# Quản lý bởi OneBee OS — cổng vào của OneBee Box
+{% if onebee_https_hieu_luc | bool %}
+{% set cong = onebee_box_ports %}
+{% set kuma_san_sang = onebee_kuma_dia_chi | default('0.0.0.0') == '0.0.0.0' %}
+{% set cong_tls = [443, cong.open_webui, cong.n8n, cong.rest_server] + ([cong.uptime_kuma] if kuma_san_sang else []) %}
+{# Mỗi cổng TLS có 2 địa chỉ: IP của Box (LAN) và box.<mã>.onebee.internal (kỹ thuật vào qua Tailscale, thêm dòng /etc/hosts trỏ tới IP Tailscale của Box) #}
+{% macro dia_chi(c) %}https://{{ onebee_box_ip }}:{{ c }}, https://box.{{ onebee_box_ma_don_vi }}.onebee.internal:{{ c }}{% endmacro %}
+{# HTTPS (Pha 4): CA riêng đặt sẵn (gốc + trung gian, ràng buộc tên); Caddy chỉ cấp chứng chỉ lá cho IP của Box và box.<mã>.onebee.internal #}
+{
+	skip_install_trust
+	auto_https disable_redirects
+	# Máy nối bằng IP không gửi SNI; Caddy trong mạng Docker chỉ thấy IP container → luôn dùng chứng chỉ của IP Box
+	default_sni {{ onebee_box_ip }}
+	pki {
+		ca local {
+			root {
+				cert /pki/root.crt
+			}
+			intermediate {
+				cert /pki/inter.crt
+				key /pki/inter.key
+			}
+		}
+	}
+{% for c in cong_tls %}
+	# Kết nối http:// thường tới cổng TLS → chuyển hướng sang https:// (308); chỉ HTTP/1.1 và HTTP/2 (HTTP/3 không dùng được CA tự thêm trong Chrome)
+	servers :{{ c }} {
+		listener_wrappers {
+			http_redirect
+			tls
+		}
+		protocols h1 h2
+	}
+{% endfor %}
+}
+
+# Cổng 80: chỉ phục vụ chứng chỉ gốc CA + trang hướng dẫn (không chuyển hướng sang trang báo lỗi chứng chỉ). Trang này KHÔNG hiện vân tay.
+:80 {
+	root * /srv-http
+	file_server
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+		-Server
+	}
+}
+
+(onebee_tls) {
+	tls internal
+	header -Server
+}
+
+{{ dia_chi(443) }} {
+	import onebee_tls
+	root * /srv
+	file_server
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+	}
+}
+
+{{ dia_chi(cong.open_webui) }} {
+	import onebee_tls
+	reverse_proxy open-webui:8080 {
+		stream_close_delay 5m
+	}
+}
+
+{# Không thêm tiêu đề CSP ở đây: n8n tự đặt CSP sandbox cho biểu mẫu #}
+{{ dia_chi(cong.n8n) }} {
+	import onebee_tls
+	reverse_proxy n8n:5678 {
+		stream_close_delay 5m
+	}
+}
+
+{{ dia_chi(cong.rest_server) }} {
+	import onebee_tls
+	request_body {
+		max_size 256MB
+	}
+	reverse_proxy rest-server:8000
+}
+{% if kuma_san_sang %}
+
+{{ dia_chi(cong.uptime_kuma) }} {
+	import onebee_tls
+	reverse_proxy uptime-kuma:3001 {
+		stream_close_delay 5m
+	}
+}
+{% endif %}
+{% else %}
 :80 {
 	root * /srv
 	file_server
@@ -9,3 +104,4 @@
 		-Server
 	}
 }
+{% endif %}

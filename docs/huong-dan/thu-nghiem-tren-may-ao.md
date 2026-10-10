@@ -35,7 +35,8 @@ sudo ./box/onebee-box-install.sh          # lần đầu tải vài GB, 15–40 
 - [ ] `sudo onebee-box email-thu` → email tới (xem cả mục Spam).
 
 ## 2. Cài máy trạm (máy ảo `ketoan-01`)
-- [ ] Trên Box: `sudo onebee-box them-may ketoan-01` → chép 9 dòng vào máy trạm `/etc/onebee/may-tram.env` (`sudo nano`).
+- [ ] Trước khi cài Box: khai `onebee_box_ma_don_vi` (viết tắt tên khách) và `onebee_box_dia_chi` trong `box/ansible/group_vars/all.yml` — thiếu mã thì bộ cài dừng
+- [ ] Trên Box: `sudo onebee-box them-may ketoan-01` → chép 12 dòng (gồm `BOX_CA`, `BOX_CA_VAN_TAY`, `BOX_HTTPS`) vào máy trạm `/etc/onebee/may-tram.env` (`sudo nano`).
 - [ ] Máy trạm: `git clone …` như trên → `sudo ./desktop/onebee-install.sh` → khởi động lại.
 - [ ] Sau khi khởi động: giao diện tiếng Việt, hình nền OneBee; **Super + Space** đổi gõ tiếng Việt; gõ Telex "Hợp tác xã" đúng dấu.
 - [ ] LibreOffice Writer: gõ vài dòng, Ctrl+S → mặc định lưu .docx, không hỏi định dạng. Mở 1 file Word thật của anh → bố cục có lệch không?
@@ -45,7 +46,8 @@ sudo ./box/onebee-box-install.sh          # lần đầu tải vài GB, 15–40 
 
 ## 3. Quản lý từ Box
 - [ ] Đợi ~5 phút sau khi máy trạm khởi động → Box: `sudo onebee-box may-tram` thấy `ketoan-01` và tình trạng.
-- [ ] `sudo onebee-box cap-nhat-may ketoan-01` → cập nhật xong, không hỏi mật khẩu.
+- [ ] `sudo onebee-box cap-nhat-may ketoan-01` → lần đầu in "Đã ghim khóa SSH của ketoan-01", cập nhật xong, không hỏi mật khẩu; lần 2 không ghim lại.
+- [ ] `sudo onebee-box may-tram` không còn cảnh báo "chưa có chữ ký" sau khi máy chạy lại bộ cài; `sudo onebee-box thu-hoi-may` rồi `them-may` cấp lại được.
 - [ ] Hỗ trợ từ xa: máy trạm bấm "Cho phép hỗ trợ từ xa" → từ máy thật dùng TigerVNC Viewer / Remmina vào `<ip-máy-trạm>:5900`, nhập mã
       → máy trạm hỏi "Cho phép?" → bấm Cho phép → xem được màn hình. Thử cả mã sai và bấm Từ chối.
 - [ ] `sudo onebee-box bao-cao-tuan` → nhật ký tuần có yêu cầu hỗ trợ vừa gửi thử.

@@ -24,16 +24,26 @@ tram 'mkdir -p /run/sshd && /usr/sbin/sshd
 
 tram 'onebee-bao-tinh-trang'
 box "f=${TT}/ketoan-01.json; [ -s \$f ] || { echo 'FAIL  Box chưa nhận tình trạng máy trạm'; exit 1; }
-  python3 -c 'import json,sys; t=json.load(open(sys.argv[1])); assert t[\"ten\"]==\"ketoan-01\" and t[\"ip\"] and t[\"o_trong_phan_tram\"]>0 and t[\"phien_ban\"], t' \$f
-  echo 'PASS  Máy trạm gửi tình trạng → Box lưu (tên, IP, phiên bản, ổ trống, gói chờ cập nhật)'"
+  python3 -c 'import json,sys; e=json.load(open(sys.argv[1])); assert e[\"ten\"]==\"ketoan-01\" and len(e.get(\"ky\",\"\"))==64, e; t=json.loads(e[\"du_lieu\"]); assert t[\"ip\"] and t[\"o_trong_phan_tram\"]>0 and t[\"phien_ban\"] and t[\"gui_luc\"], t' \$f
+  echo 'PASS  Máy trạm gửi tình trạng CÓ CHỮ KÝ → Box lưu (tên, IP, phiên bản, ổ trống, gói chờ cập nhật)'"
 
 box "key=\$(cat /etc/onebee-box/secrets/tinh-trang-key)
   code=\$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:5678/webhook/onebee-tinh-trang -H 'X-OneBee-Key: sai' -d '{\"ten\":\"ke-gia\"}')
   [ \"\${code}\" = 403 ] || { echo \"FAIL  Khóa sai vẫn gửi được (\${code})\"; exit 1; }
   curl -s -o /dev/null -X POST http://127.0.0.1:5678/webhook/onebee-tinh-trang -H \"X-OneBee-Key: \${key}\" \
     -H 'Content-Type: application/json' -d '{\"ten\":\"../../etc/x\"}' || true
-  [ \"\$(ls ${TT})\" = ketoan-01.json ] && [ ! -e /srv/onebee/etc ] || { echo 'FAIL  Tên máy bậy/khóa sai vẫn ghi được file'; ls -R ${TT}; exit 1; }
-  echo 'PASS  Khóa sai bị chặn (403), tên máy bậy (../) không ghi được file'"
+  # Tên hợp lệ về dạng nhưng CHƯA CẤP (kẻ có khóa chung cũng không tạo được file): n8n chỉ nhận máy có file đánh dấu trong may-da-cap
+  curl -s -o /dev/null -X POST http://127.0.0.1:5678/webhook/onebee-tinh-trang -H \"X-OneBee-Key: \${key}\" \
+    -H 'Content-Type: application/json' -d \"{\\\"ten\\\":\\\"ke-gia\\\",\\\"du_lieu\\\":\\\"{}\\\",\\\"ky\\\":\\\"\$(printf '0%.0s' \$(seq 64))\\\"}\" || true
+  [ \"\$(ls ${TT})\" = ketoan-01.json ] && [ ! -e /srv/onebee/etc ] || { echo 'FAIL  Tên máy bậy/khóa sai/máy chưa cấp vẫn ghi được file'; ls -R ${TT}; exit 1; }
+  echo 'PASS  Khóa sai bị chặn (403); tên máy bậy (../) và máy CHƯA CẤP (kể cả có khóa chung) không ghi được file'
+  # n8n lưu nguyên báo cáo của máy đã cấp nhưng Box tự kiểm chữ ký: bao bì sai chữ ký bị nêu thẳng trong bảng tình trạng
+  cp ${TT}/ketoan-01.json /tmp/ketoan-01.json.tot
+  curl -s -o /dev/null -X POST http://127.0.0.1:5678/webhook/onebee-tinh-trang -H \"X-OneBee-Key: \${key}\" \
+    -H 'Content-Type: application/json' -d \"{\\\"ten\\\":\\\"ketoan-01\\\",\\\"du_lieu\\\":\\\"{}\\\",\\\"ky\\\":\\\"\$(printf 'a%.0s' \$(seq 64))\\\"}\" || true
+  onebee-box may-tram | grep -A3 '^ketoan-01 ' | grep -q 'sai chữ ký' || { echo 'FAIL  Báo cáo sai chữ ký không bị nêu'; onebee-box may-tram; exit 1; }
+  echo 'PASS  Báo cáo giả (sai chữ ký) của máy đã cấp bị Box phát hiện và nêu trong bảng tình trạng'"
+tram 'onebee-bao-tinh-trang >/dev/null'   # máy báo lại bản thật
 
 # Máy kho-02: đã cấp nhưng chưa từng sao lưu, chưa báo tình trạng → phải bị nêu tên
 box 'onebee-box them-may kho-02 >/dev/null
@@ -50,7 +60,16 @@ tram 'rm -f /var/run/reboot-required'
 box 'start=$(date +%s)
   onebee-box cap-nhat-may ketoan-01 > /tmp/cap-nhat.log 2>&1 || { tail -30 /tmp/cap-nhat.log; exit 1; }
   grep -Eq "ketoan-01 +: ok=[0-9]+ .*unreachable=0 +failed=0" /tmp/cap-nhat.log || { tail -30 /tmp/cap-nhat.log; exit 1; }
-  echo "PASS  Box cập nhật máy trạm qua SSH bằng 1 lệnh ($(( $(date +%s) - start ))s)"
+  grep -q "Đã ghim khóa SSH của ketoan-01" /tmp/cap-nhat.log || { echo "FAIL  Lần đầu vào máy không ghim khóa SSH sau khi chứng minh"; cat /tmp/cap-nhat.log; exit 1; }
+  ssh-keygen -F ketoan-01 -f /etc/onebee-box/secrets/ssh/known_hosts >/dev/null || { echo "FAIL  Khóa SSH của máy chưa được ghim"; exit 1; }
+  echo "PASS  Box cập nhật máy trạm qua SSH bằng 1 lệnh ($(( $(date +%s) - start ))s); lần đầu máy chứng minh biết mật khẩu kho sao lưu rồi mới ghim khóa SSH"
+  onebee-box cap-nhat-may ketoan-01 > /tmp/cap-nhat-lan2.log 2>&1 || { tail -20 /tmp/cap-nhat-lan2.log; exit 1; }
+  ! grep -q "Đã ghim khóa SSH" /tmp/cap-nhat-lan2.log || { echo "FAIL  Lần 2 lại ghim khóa"; exit 1; }
+  echo "PASS  Lần 2: vào máy bằng khóa đã ghim (StrictHostKeyChecking=yes), không ghim lại"
+  onebee-box dong-bo-may ketoan-01 > /tmp/dong-bo.log 2>&1 || { tail -20 /tmp/dong-bo.log; exit 1; }
+  grep -Eq "ketoan-01 +: ok=[0-9]+ .*unreachable=0 +failed=0" /tmp/dong-bo.log || { tail -20 /tmp/dong-bo.log; exit 1; }
+  ! grep -q "RESTIC_PASSWORD" /tmp/dong-bo.log /var/log/onebee-box/dong-bo-may-*.log || { echo "FAIL  Mật khẩu lọt vào nhật ký dong-bo-may"; exit 1; }
+  echo "PASS  dong-bo-may: đẩy lại cấu hình xuống máy đã chứng minh, máy báo tình trạng thành công, nhật ký không chứa mật khẩu"
   if onebee-box cap-nhat-may kho-02 > /tmp/cap-nhat2.log 2>&1; then echo "FAIL  Máy chưa báo địa chỉ mà vẫn chạy"; exit 1; fi
   grep -q "chưa báo tình trạng" /tmp/cap-nhat2.log || { cat /tmp/cap-nhat2.log; exit 1; }
   echo "PASS  Máy chưa báo tình trạng (chưa biết địa chỉ) → báo rõ, không treo"'
@@ -64,3 +83,13 @@ tram 'if ssh -i /tmp/khoa-box -o BatchMode=yes -o StrictHostKeyChecking=no -o Co
         -o ConnectTimeout=5 nhanvien@127.0.0.1 true 2>&1 || true)
   grep -q "Permission denied (publickey)" <<<"${out}" || { echo "FAIL  SSH vẫn hỏi mật khẩu: ${out}"; exit 1; }
   echo "PASS  Lấy được khóa của Box cũng không vào được từ máy khác; SSH không nhận mật khẩu"'
+
+# Thu hồi máy: hết quyền vào kho HTTP, n8n ngừng nhận báo cáo, ghim SSH bị gỡ, máy biến khỏi bảng tình trạng; cấp lại được
+box 'onebee-box thu-hoi-may kho-02 --dong-y >/dev/null
+  ! grep -q "^kho-02:" /srv/onebee/restic/.htpasswd || { echo "FAIL  Máy thu hồi vẫn còn tài khoản kho HTTP"; exit 1; }
+  [ ! -e /srv/onebee/may-da-cap/kho-02 ] || { echo "FAIL  Máy thu hồi vẫn còn trong danh sách n8n nhận báo cáo"; exit 1; }
+  if onebee-box cap-nhat-may kho-02 >/dev/null 2>&1; then echo "FAIL  Vẫn cập nhật được máy đã thu hồi"; exit 1; fi
+  ! onebee-box may-tram | grep -q "^kho-02 " || { echo "FAIL  Máy thu hồi vẫn nằm trong bảng tình trạng"; exit 1; }
+  onebee-box them-may kho-02 >/dev/null
+  [ -e /srv/onebee/may-da-cap/kho-02 ] || { echo "FAIL  Cấp lại máy không khôi phục chỗ nhận báo cáo"; exit 1; }
+  echo "PASS  thu-hoi-may: máy hết quyền vào kho HTTP, hết chỗ báo tình trạng, không còn trong danh sách cập nhật; cấp lại được"'

@@ -10,28 +10,5 @@
     group: root
     mode: "0755"
 
-- name: Lấy địa chỉ + khóa Trợ lý AI (từ cấu hình máy trạm, role backup-client đã đọc)
-  ansible.builtin.set_fact:
-    onebee_hoi_url: "{{ onebee_may_tram.HOI_URL | default('') }}"
-    onebee_hoi_key: "{{ onebee_may_tram.HOI_API_KEY | default('') }}"
-  no_log: true
-
-- name: Tạo cấu hình lệnh hoi (người dùng trên máy đọc được — khóa chỉ gọi được hỏi đáp)
-  ansible.builtin.copy:
-    dest: /etc/onebee-hoi.conf
-    content: |
-      # Quản lý bởi OneBee OS
-      HOI_URL={{ onebee_hoi_url }}
-      HOI_API_KEY={{ onebee_hoi_key }}
-      HOI_MODEL=onebee-tro-ly
-    owner: root
-    group: root
-    mode: "0644"
-  when: (onebee_hoi_url | length > 0) and (onebee_hoi_key | length > 0)
-  no_log: true
-
-- name: Gỡ cấu hình hoi cũ khi máy không còn khóa Trợ lý AI
-  ansible.builtin.file:
-    path: /etc/onebee-hoi.conf
-    state: absent
-  when: not ((onebee_hoi_url | length > 0) and (onebee_hoi_key | length > 0))
+- name: Tạo / cập nhật cấu hình lệnh hoi từ cấu hình máy trạm
+  ansible.builtin.include_tasks: cau-hinh-hoi.yml

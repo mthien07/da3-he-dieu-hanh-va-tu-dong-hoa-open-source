@@ -3,9 +3,12 @@
 
   onebee-webui.py dong-bo-tro-ly   Tạo/cập nhật model "Trợ lý OneBee" (model nền + lời dặn tiếng Việt), mở cho mọi người
   onebee-webui.py cap-khoa <ten>   Tạo tài khoản máy trạm may-<ten> (nếu chưa có) và in khóa API để máy trạm dùng lệnh hoi
+  onebee-webui.py lay-khoa <ten>   CHỈ ĐỌC: in khóa API đã có của tài khoản may-<ten> (không tạo tài khoản/khóa; chưa có thì thoát lỗi, mã 1)
+  onebee-webui.py xoa-tai-khoan <ten>   Xóa tài khoản may-<ten> (thu hồi khóa hoi của máy; idempotent)
 
 Đọc cấu hình từ biến môi trường: WEBUI_URL, WEBUI_ADMIN_EMAIL, WEBUI_ADMIN_PASSWORD, ONEBEE_AI_MODEL,
-ONEBEE_LOI_DAN (đường dẫn file lời dặn), ONEBEE_SECRETS (thư mục bí mật).
+ONEBEE_LOI_DAN (đường dẫn file lời dặn), ONEBEE_SECRETS (thư mục bí mật),
+ONEBEE_WEBUI_PUBLIC_URL (địa chỉ công khai của Open WebUI, rỗng = chưa bật HTTPS).
 Mã thoát: 0 xong · 1 Open WebUI chưa sẵn sàng/lỗi khác (thử lại được) · 3 sai mật khẩu quản trị (không thử lại).
 """
 import json
@@ -23,7 +26,12 @@ PUBLIC_READ = [{"principal_type": "user", "principal_id": "*", "permission": "re
 PARAMS = {"temperature": 0.3}  # ổn định câu trả lời; công cụ chấm tests/ai dùng cùng giá trị
 # Cài đặt bắt buộc — đặt lại qua API mỗi lần chạy (Open WebUI ưu tiên giá trị đã lưu trong CSDL hơn biến môi trường)
 ADMIN_CONFIG = {"ENABLE_SIGNUP": False, "ENABLE_API_KEYS": True, "ENABLE_API_KEYS_ENDPOINT_RESTRICTIONS": True,
-                "API_KEYS_ALLOWED_ENDPOINTS": "/api/chat/completions,/api/models"}
+                "API_KEYS_ALLOWED_ENDPOINTS": "/api/chat/completions,/api/models",
+                "ENABLE_COMMUNITY_SHARING": False,  # Box chạy offline, không chia sẻ lên cộng đồng (GHSA-vpq8-f445-hcq7)
+                "JWT_EXPIRES_IN": "30d"}            # phiên đăng nhập 1 tháng (mặc định của Open WebUI: 4w)
+# Quyền mặc định của người dùng thường: (nhóm, quyền) → giá trị. Nhân viên tạo được khóa API (cho lệnh hoi) nhưng không
+# chia sẻ đoạn chat cho nhau.
+DEFAULT_PERMISSIONS = {("features", "api_keys"): True, ("chat", "share"): False}
 
 
 def call(method, path, token=None, body=None):
@@ -60,24 +68,29 @@ def admin_token():
 
 
 def enforce_settings(token):
-    """Tắt đăng ký tự do, bật + giới hạn khóa API, cho người dùng tạo khóa API (cho lệnh hoi)."""
+    """Tắt đăng ký tự do, bật + giới hạn khóa API, tắt chia sẻ cộng đồng, đặt thời hạn phiên, chỉnh quyền mặc định của người dùng."""
     changed = False
     status, cfg = call("GET", "/api/v1/auths/admin/config", token)
     if status != 200:
         sys.exit(f"LỖI: không đọc được cài đặt quản trị ({status}): {cfg}")
-    if any(cfg.get(k) != v for k, v in ADMIN_CONFIG.items()):
+    # WEBUI_URL (địa chỉ công khai: https://<IP>:3000 khi Box bật HTTPS, rỗng khi còn HTTP) lưu trong CSDL → đặt qua API như các cài đặt khác
+    muon = {**ADMIN_CONFIG, "WEBUI_URL": os.environ.get("ONEBEE_WEBUI_PUBLIC_URL", "")}
+    if any(cfg.get(k) != v for k, v in muon.items()):
         # bỏ trường rỗng (vd I18N=null) — gửi lại null bị Open WebUI từ chối
-        payload = {k: v for k, v in {**cfg, **ADMIN_CONFIG}.items() if v is not None}
+        payload = {k: v for k, v in {**cfg, **muon}.items() if v is not None}
         status, data = call("POST", "/api/v1/auths/admin/config", token, payload)
         if status != 200:
             sys.exit(f"LỖI: không lưu được cài đặt quản trị ({status}): {data}")
         changed = True
     status, perms = call("GET", "/api/v1/users/default/permissions", token)
-    if status == 200 and not perms.get("features", {}).get("api_keys"):
-        perms.setdefault("features", {})["api_keys"] = True
+    if status != 200:
+        sys.exit(f"LỖI: không đọc được quyền mặc định của người dùng ({status}): {perms}")
+    if any(perms.get(g, {}).get(k) != v for (g, k), v in DEFAULT_PERMISSIONS.items()):
+        for (g, k), v in DEFAULT_PERMISSIONS.items():
+            perms.setdefault(g, {})[k] = v
         status, data = call("POST", "/api/v1/users/default/permissions", token, perms)
         if status != 200:
-            sys.exit(f"LỖI: không bật được quyền tạo khóa API ({status}): {data}")
+            sys.exit(f"LỖI: không lưu được quyền mặc định của người dùng ({status}): {data}")
         changed = True
     return changed
 
@@ -158,10 +171,81 @@ def cap_khoa(ten):
     print(data["api_key"])
 
 
+def lay_khoa(ten):
+    """Chỉ đọc khóa API đã cấp cho máy. Không tạo gì: dùng khi chỉ cần in lại cấu hình (dong-bo-may), tránh tác dụng phụ."""
+    pw_file = os.path.join(os.environ["ONEBEE_SECRETS"], f"may-{ten}-webui")
+    try:
+        with open(pw_file, encoding="utf-8") as f:
+            pw = f.read().strip()
+    except OSError:
+        sys.exit(f"Máy {ten} chưa có tài khoản Trợ lý AI (chạy: onebee-box them-may {ten})")
+    token = signin(f"may-{ten}@onebee.lan", pw)
+    if not token:
+        sys.exit(f"Tài khoản may-{ten}@onebee.lan không đăng nhập được (đã bị xóa?) — chạy lại: onebee-box them-may {ten}")
+    status, data = call("GET", "/api/v1/auths/api_key", token)
+    if status != 200 or not (data or {}).get("api_key"):
+        sys.exit(f"Tài khoản may-{ten}@onebee.lan chưa có khóa API — chạy lại: onebee-box them-may {ten}")
+    print(data["api_key"])
+
+
+def xoay_khoa(ten):
+    """Đổi khóa API của tài khoản máy trạm may-<ten> (khóa cũ mất hiệu lực), in khóa mới. Không tạo tài khoản."""
+    pw_file = os.path.join(os.environ["ONEBEE_SECRETS"], f"may-{ten}-webui")
+    try:
+        with open(pw_file, encoding="utf-8") as f:
+            pw = f.read().strip()
+    except OSError:
+        sys.exit(f"Máy {ten} chưa có tài khoản Trợ lý AI")
+    token = signin(f"may-{ten}@onebee.lan", pw)
+    if not token:
+        sys.exit(f"Tài khoản may-{ten}@onebee.lan không đăng nhập được (đã bị xóa?)")
+    status, data = call("POST", "/api/v1/auths/api_key", token)   # POST tạo lại khóa: khóa cũ không còn dùng được
+    if status != 200 or not (data or {}).get("api_key"):
+        sys.exit(f"LỖI: không đổi được khóa API của may-{ten}@onebee.lan ({status}): {data}")
+    print(data["api_key"])
+
+
+def doi_mat_khau_quan_tri():
+    """Đổi mật khẩu tài khoản quản trị Open WebUI trong CSDL (mật khẩu mới: ONEBEE_MAT_KHAU_MOI). Phiên cũ của quản trị mất hiệu lực."""
+    moi = os.environ.get("ONEBEE_MAT_KHAU_MOI", "")
+    if len(moi) < 12:
+        sys.exit("LỖI: thiếu mật khẩu mới (ONEBEE_MAT_KHAU_MOI)")
+    token = admin_token()
+    status, data = call("POST", "/api/v1/auths/update/password", token, {"password": os.environ["WEBUI_ADMIN_PASSWORD"], "new_password": moi})
+    if status != 200 or data is not True:
+        sys.exit(f"LỖI: không đổi được mật khẩu quản trị Open WebUI ({status}): {data}")
+    print("Đã đổi mật khẩu quản trị Open WebUI")
+
+
+def xoa_tai_khoan(ten):
+    """Xóa tài khoản máy trạm may-<ten> (khóa API đi theo tài khoản). Không có tài khoản thì coi như xong."""
+    email = f"may-{ten}@onebee.lan"
+    admin = admin_token()
+    status, users = call("GET", f"/api/v1/users/?query={urllib.parse.quote(email)}", admin)
+    if status != 200 or not isinstance(users, dict):
+        sys.exit(f"LỖI: không tìm được tài khoản {email} ({status}): {users}")
+    xoa = 0
+    for u in users.get("users", []):
+        if u.get("email") == email:
+            status, data = call("DELETE", f"/api/v1/users/{u['id']}", admin)
+            if status != 200:
+                sys.exit(f"LỖI: không xóa được tài khoản {email} ({status}): {data}")
+            xoa += 1
+    print(f"Đã xóa tài khoản {email}" if xoa else f"Không có tài khoản {email}")
+
+
 if __name__ == "__main__":
     if len(sys.argv) >= 2 and sys.argv[1] == "dong-bo-tro-ly":
         dong_bo_tro_ly()
     elif len(sys.argv) == 3 and sys.argv[1] == "cap-khoa":
         cap_khoa(sys.argv[2])
+    elif len(sys.argv) == 3 and sys.argv[1] == "lay-khoa":
+        lay_khoa(sys.argv[2])
+    elif len(sys.argv) == 3 and sys.argv[1] == "xoay-khoa":
+        xoay_khoa(sys.argv[2])
+    elif len(sys.argv) == 2 and sys.argv[1] == "doi-mat-khau-quan-tri":
+        doi_mat_khau_quan_tri()
+    elif len(sys.argv) == 3 and sys.argv[1] == "xoa-tai-khoan":
+        xoa_tai_khoan(sys.argv[2])
     else:
         sys.exit(__doc__)
