@@ -129,6 +129,11 @@ may_chua_nhan_ca() {
 
 compose() { docker compose --project-directory "${BOX_DIR}" "$@"; }
 
+# Bắt rest-server đọc lại .htpasswd NGAY sau mỗi lần sửa (cấp/thu hồi/xoay mật khẩu kho HTTP).
+# Tự nó chỉ kiểm file tối đa 30 giây/lần và nhớ mật khẩu đã đúng → trong khoảng đó mật khẩu cũ/máy đã thu hồi vẫn vào được kho.
+# SIGHUP = rest-server tự nạp lại file + xóa bộ nhớ đệm (rest-server 0.14, htpasswd.go). Dịch vụ chưa chạy thì bỏ qua (lúc khởi động sẽ đọc file mới).
+nap_lai_kho_http() { docker kill -s HUP onebee-rest-server >/dev/null 2>&1 || true; }
+
 # Gọi công cụ quản lý Open WebUI (tạo Trợ lý OneBee, cấp khóa API cho máy trạm)
 webui() {
   WEBUI_URL="$(dia_chi_noi_bo):{{ onebee_box_ports.open_webui }}" ONEBEE_WEBUI_PUBLIC_URL="$(https_bat && echo "https://${BOX_ADDRESS}:{{ onebee_box_ports.open_webui }}" || true)" \

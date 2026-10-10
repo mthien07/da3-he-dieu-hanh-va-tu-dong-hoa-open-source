@@ -119,6 +119,7 @@ cmd_them_may() {
   [[ "${TINH_TRANG_KHOA_CHUNG}" != true ]] || secret tinh-trang-key >/dev/null
   # -i: đọc mật khẩu từ stdin (không lộ trong danh sách tiến trình)
   htpasswd -B -i "${DATA}/restic/.htpasswd" "${ten}" <<<"${http_pw}" 2>/dev/null
+  nap_lai_kho_http
   hoi_key=""
   if [[ "${HOI_KHOA_MAY}" == true ]]; then
     hoi_key="$(webui cap-khoa "${ten}")" || {
@@ -144,6 +145,7 @@ cmd_thu_hoi_may() {
   fi
   (umask 077; mkdir -p "${SECRETS}/thu-hoi"; : >"${SECRETS}/thu-hoi/${ten}")   # đánh dấu TRƯỚC: lỡ dừng giữa chừng thì máy đã bị coi là thu hồi
   htpasswd -D "${DATA}/restic/.htpasswd" "${ten}" 2>/dev/null || true
+  nap_lai_kho_http   # máy thu hồi mất quyền vào kho ngay, không chờ rest-server tự đọc lại
   webui xoa-tai-khoan "${ten}" || warn "Chưa xóa được tài khoản Trợ lý AI may-${ten}@onebee.lan (Open WebUI chưa chạy?) — chạy lại lệnh này sau"
   rm -f "${SECRETS}/may-${ten}-http" "${SECRETS}/may-${ten}-webui" "${SECRETS}/may-${ten}-hoi" "${DATA}/tinh-trang-may/${ten}.json"
   ssh-keygen -R "${ten}" -f "${SSH_DIR}/known_hosts" >/dev/null 2>&1 || true
@@ -331,6 +333,7 @@ xoay_khoa_may() {
   local ten="$1" khoa_moi
   rm -f "${SECRETS}/may-${ten}-http"
   htpasswd -B -i "${DATA}/restic/.htpasswd" "${ten}" <<<"$(secret "may-${ten}-http")" 2>/dev/null
+  nap_lai_kho_http   # mật khẩu cũ hết hiệu lực ngay (không còn khoảng ≤30 giây)
   if [[ "${HOI_KHOA_MAY}" == true && -e "${SECRETS}/may-${ten}-webui" ]]; then
     khoa_moi="$(webui xoay-khoa "${ten}")" || { warn "Chưa đổi được khóa Trợ lý AI của máy ${ten} (Open WebUI chưa chạy?) — giữ khóa cũ"; return 0; }
     (umask 077; printf '%s' "${khoa_moi}" >"${SECRETS}/may-${ten}-hoi")
