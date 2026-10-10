@@ -1,6 +1,10 @@
 ---
 # Bộ dịch vụ OneBee Box chạy bằng Docker Compose
 
+# Mã đơn vị, IP, CA riêng — trước mọi thứ khác (chốt onebee_box_ip cho cấu hình sinh bên dưới)
+- name: Mã đơn vị, địa chỉ IP và CA riêng của Box
+  ansible.builtin.include_tasks: ca.yml
+
 - name: Tạo thư mục cài đặt và dữ liệu
   ansible.builtin.file:
     path: "{{ item.path }}"
@@ -11,7 +15,11 @@
   loop:
     - {path: "{{ onebee_box_dir }}", mode: "0750"}
     - {path: "{{ onebee_box_dir }}/portal"}
+    - {path: "{{ onebee_box_dir }}/portal/caddy"}
     - {path: "{{ onebee_box_dir }}/portal/site"}
+    - {path: "{{ onebee_box_data }}/caddy", mode: "0700"}
+    - {path: "{{ onebee_box_data }}/caddy/data", mode: "0700"}
+    - {path: "{{ onebee_box_data }}/caddy/config", mode: "0700"}
     - {path: "{{ onebee_box_data }}"}
     - {path: "{{ onebee_box_data }}/ollama", mode: "0700"}
     - {path: "{{ onebee_box_data }}/open-webui", mode: "0700"}
@@ -190,16 +198,19 @@
     mode: "0644"
   loop:
     - {src: docker-compose.yml.j2, dest: docker-compose.yml}
-    - {src: Caddyfile.j2, dest: portal/Caddyfile}
+    - {src: Caddyfile.j2, dest: portal/caddy/Caddyfile}
     - {src: index.html.j2, dest: portal/site/index.html}
 
-- name: Tạo thư mục thư viện lệnh onebee-box
-  ansible.builtin.file:
-    path: /usr/local/lib/onebee-box
-    state: directory
+# Chứng chỉ gốc CA là công khai (khóa gốc thì không): máy trạm/thiết bị khác tải về từ http://<IP>/onebee-ca.crt rồi ĐỐI CHIẾU VÂN TAY
+# qua kênh ngoài (bản in khóa, màn hình Box: sudo onebee-box in-ca) — vân tay không hiện trên trang HTTP nào
+- name: Phục vụ chứng chỉ gốc CA trên trang giới thiệu
+  ansible.builtin.copy:
+    src: "{{ onebee_box_secrets }}/ca/root.crt"
+    remote_src: true
+    dest: "{{ onebee_box_dir }}/portal/site/onebee-ca.crt"
     owner: root
     group: root
-    mode: "0750"
+    mode: "0644"
 
 - name: Cài lệnh quản trị onebee-box
   ansible.builtin.template:

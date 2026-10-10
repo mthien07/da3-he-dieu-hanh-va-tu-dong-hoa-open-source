@@ -1,0 +1,82 @@
+---
+# Mã đơn vị, địa chỉ IP của Box và CA riêng (rà soát bảo mật F3, Pha 3). Chạy ĐẦU role box-stack:
+# mọi nơi khác (compose, lệnh onebee-box, quy trình n8n) dùng onebee_box_ip do bước này chốt.
+
+- name: Kiểm tra mã đơn vị đã khai và hợp lệ
+  ansible.builtin.assert:
+    that:
+      - onebee_box_ma_don_vi is string
+      - onebee_box_ma_don_vi is match('^[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?$')
+      - onebee_box_ma_don_vi not in ['onebee-box', 'onebee', 'box', 'changeme', 'mau']
+    fail_msg: >-
+      Chưa khai "onebee_box_ma_don_vi" trong box/ansible/group_vars/all.yml (hoặc giá trị không hợp lệ / là giá trị mẫu).
+      Đặt viết tắt tên khách hàng: chữ thường không dấu, số, gạch giữa, tối đa 32 ký tự (vd: anphu). Mã nằm trong chứng chỉ CA
+      của Box và mỗi khách phải khác nhau.
+    quiet: true
+
+- name: Chốt địa chỉ IP của Box (một lần cho cả shell lẫn compose)
+  ansible.builtin.set_fact:
+    onebee_box_ip: "{{ onebee_box_dia_chi | default('', true) or ansible_default_ipv4.address | default('') }}"
+
+- name: Kiểm tra địa chỉ IP của Box
+  ansible.builtin.assert:
+    that:
+      - onebee_box_ip is match('^([0-9]{1,3}[.]){3}[0-9]{1,3}$')
+      - onebee_box_ip in ansible_facts.all_ipv4_addresses
+    fail_msg: >-
+      Địa chỉ IP của Box "{{ onebee_box_ip }}" không hợp lệ hoặc không có trên máy này (các địa chỉ đang có:
+      {{ ansible_facts.all_ipv4_addresses | join(', ') }}). Khai đúng onebee_box_dia_chi trong group_vars/all.yml.
+    quiet: true
+
+- name: Cảnh báo khi Box chưa khai địa chỉ tĩnh
+  ansible.builtin.debug:
+    msg: >-
+      CẢNH BÁO: chưa khai onebee_box_dia_chi — đang dùng IP {{ onebee_box_ip }} của cổng mạng chính. IP này nằm trong chứng chỉ CA
+      và cấu hình máy trạm; nếu router cấp địa chỉ khác (DHCP) thì mọi máy mất kết nối. Đặt "giữ IP cố định" cho Box trên router
+      hoặc IP tĩnh bằng netplan, rồi khai onebee_box_dia_chi.
+  when: onebee_box_dia_chi | default('', true) == ''
+
+- name: Tạo thư mục thư viện lệnh onebee-box
+  ansible.builtin.file:
+    path: /usr/local/lib/onebee-box
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Cài công cụ sinh CA
+  ansible.builtin.copy:
+    src: onebee-ca.sh
+    dest: /usr/local/lib/onebee-box/onebee-ca.sh
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Sinh / gia hạn CA riêng của Box (khóa gốc ở thư mục bí mật, không gắn vào container)
+  ansible.builtin.command: >-
+    /usr/local/lib/onebee-box/onebee-ca.sh {{ onebee_box_secrets }}/ca {{ onebee_box_ma_don_vi }} {{ onebee_box_ip }}
+  register: onebee_ca
+  changed_when: onebee_ca.stdout is search('đã đổi')
+  failed_when: onebee_ca.rc != 0
+
+- name: Đọc vân tay CA gốc
+  ansible.builtin.slurp:
+    src: "{{ onebee_box_secrets }}/ca/root.sha256"
+  register: onebee_ca_van_tay
+
+- name: Box tin CA của chính nó (script và kiểm tra sức khỏe gọi https://<IP>:<cổng>)
+  ansible.builtin.copy:
+    src: "{{ onebee_box_secrets }}/ca/root.crt"
+    remote_src: true
+    dest: /usr/local/share/ca-certificates/onebee-box-ca.crt
+    owner: root
+    group: root
+    mode: "0644"
+  register: onebee_ca_tin
+
+# --fresh: dựng lại kho từ đầu, nên CA cũ (sau khi xoay CA) bị gỡ khỏi kho tin của Box
+- name: Cập nhật kho CA tin cậy của Box
+  # noqa: no-handler — cần chạy ngay (bước sau gọi https://<IP>), không đợi cuối play
+  ansible.builtin.command: update-ca-certificates --fresh
+  when: onebee_ca_tin is changed
+  changed_when: true

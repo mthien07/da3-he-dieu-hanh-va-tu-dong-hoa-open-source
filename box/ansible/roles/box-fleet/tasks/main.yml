@@ -21,6 +21,18 @@
   args:
     creates: "{{ onebee_box_ssh_dir }}/quan-tri"
 
+# dong-bo-may chạy lại đúng các task của bộ cài desktop (CA, hoi, menu) trên máy trạm:
+# chép các role đó từ repo (desktop/ansible/roles) vào Box
+- name: Chép các role desktop dùng khi đồng bộ cấu hình máy trạm
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../desktop/ansible/roles/{{ item }}/"
+    dest: "/usr/local/lib/onebee-box/roles/{{ item }}/"
+    owner: root
+    group: root
+    mode: preserve
+    directory_mode: "0755"
+  loop: [ket-noi-box, backup-client, ai-cli, quan-ly-tap-trung]
+
 - name: Cài công cụ báo cáo và cập nhật máy trạm
   ansible.builtin.copy:
     src: "{{ item.src }}"

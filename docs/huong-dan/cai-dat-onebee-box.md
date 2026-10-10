@@ -26,6 +26,15 @@ OneBee Box là 1 máy chủ đặt tại đơn vị, trong mạng LAN. Dịch v�
   khởi động lại Box hoặc chạy `sudo systemctl restart onebee-tuong-lua` để tường lửa nhận dải mới.
 
 ## 2. Cài đặt
+**Trước khi chạy bộ cài**, mở `box/ansible/group_vars/all.yml` và khai 2 giá trị (bộ cài dừng và báo rõ nếu thiếu):
+- `onebee_box_ma_don_vi`: **viết tắt tên khách hàng** (chữ thường không dấu, số, gạch giữa; ví dụ `anphu`). Mã nằm trong chứng chỉ CA riêng của Box
+  (chỉ cho phép tên `<mã>.onebee.internal`), nên mỗi khách một mã khác nhau.
+- `onebee_box_dia_chi`: **IP tĩnh của Box** (cùng giá trị bạn đặt "giữ IP cố định" trên router hoặc netplan). Để trống thì bộ cài lấy IP hiện có
+  và cảnh báo. IP và mã nằm trong CA: **đổi một trong hai = xoay CA** (mọi máy trạm phải nhận CA mới) — hãy chốt trước khi cấp máy.
+
+Bộ cài sinh **CA riêng của Box** (khóa gốc ở `/etc/onebee-box/secrets/ca/`, có trong bản sao lưu Box, không gắn vào container nào). CA bị ràng buộc
+tên: chỉ cấp được chứng chỉ cho IP của Box và `<mã>.onebee.internal`. Dịch vụ vẫn chạy HTTP ở giai đoạn này; máy trạm nhận CA qua `them-may`/`dong-bo-may`.
+Xem vân tay CA để đối chiếu khi cài CA lên máy quản lý/laptop kỹ thuật: `sudo onebee-box in-ca` (cũng nằm ở dòng cuối `in-khoa`).
 ```bash
 sudo apt install -y git
 git clone https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source.git onebee

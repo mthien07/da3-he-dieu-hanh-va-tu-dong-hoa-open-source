@@ -13,6 +13,7 @@
 #   onebee-box sao-luu             Sao lưu Box ra ổ ngoài + dọn bản cũ (tự chạy 23:00 hằng ngày)
 #   onebee-box khoi-phuc-thu       Thử khôi phục 1 file từ bản sao lưu Box (kiểm tra sao lưu dùng được)
 #   onebee-box khoi-phuc-toan-bo [file-khóa]   Hỏng ổ Box: trên Box cài lại, lấy lại toàn bộ dữ liệu từ ổ sao lưu
+#   onebee-box in-ca               In vân tay + thông tin CA riêng của Box (đối chiếu khi cài CA lên thiết bị khác)
 #   onebee-box in-khoa             In các khóa bí mật để cất ngoài Box (thiếu khóa thì bản sao lưu vô dụng)
 #   onebee-box dat-mat-khau-email  Nhập mật khẩu hộp thư gửi (SMTP) cho n8n
 #   onebee-box email-thu           Gửi 1 email thử qua n8n (kiểm tra cấu hình email)
@@ -35,6 +36,21 @@ cmd_trang_thai() {
   echo; df -h "${DATA}" | tail -1 | awk '{print "Ổ dữ liệu: đã dùng " $3 "/" $2 " (" $5 ")"}'
   if mountpoint -q "${BACKUP_MOUNT}"; then df -h "${BACKUP_MOUNT}" | tail -1 | awk '{print "Ổ sao lưu: đã dùng " $3 "/" $2 " (" $5 ")"}'
   else echo "Ổ sao lưu: CHƯA GẮN (${BACKUP_MOUNT})"; fi
+  echo "CA riêng của Box (mã ${BOX_MA_DON_VI}): gốc còn $(ca_con_ngay root) ngày, trung gian còn $(ca_con_ngay inter) ngày (tự gia hạn khi còn < 60 ngày, lúc sao lưu đêm)"
+}
+
+# Vân tay + nội dung ràng buộc của CA gốc — quản trị đối chiếu với màn hình/giấy in khi cài CA lên máy quản lý, laptop kỹ thuật, điện thoại
+cmd_in_ca() {
+  local vt
+  [[ -s "${CA_DIR}/root.crt" ]] || die "Chưa có CA — chạy bộ cài OneBee Box (cần khai onebee_box_ma_don_vi trong group_vars)"
+  vt="$(ca_van_tay)"
+  echo "CA riêng OneBee Box — mã đơn vị ${BOX_MA_DON_VI}, địa chỉ ${BOX_ADDRESS}"
+  echo "Vân tay SHA-256 (đối chiếu từng cặp ký tự với bản in; KHÔNG đối chiếu với thứ hiện trên trang web):"
+  echo "  $(echo "${vt}" | tr 'a-f' 'A-F' | sed 's/../&:/g; s/:$//')"
+  echo "Hiệu lực: gốc còn $(ca_con_ngay root) ngày, trung gian còn $(ca_con_ngay inter) ngày"
+  echo "Chỉ được cấp chứng chỉ cho:"
+  openssl x509 -in "${CA_DIR}/root.crt" -noout -ext nameConstraints | sed -n '3,$p'
+  echo "Tải chứng chỉ gốc: http://${BOX_ADDRESS}/onebee-ca.crt  (hoặc chép bằng USB từ ${CA_DIR}/root.crt)"
 }
 
 # In cấu hình dán vào máy trạm — CHỈ ĐỌC bí mật đã có (không tạo tài khoản/khóa, không ghi htpasswd). Thiếu bí mật nào thì dừng (die),
@@ -42,10 +58,10 @@ cmd_trang_thai() {
 in_cau_hinh_may() {
   local ten="$1" ip http_pw repo_pw tram_key hoi_key="" f
   # Kiểm đủ bí mật TRƯỚC khi in gì (die gọi thẳng ở đây; die trong $(…) chỉ thoát subshell của nó, hàm vẫn in tiếp file thiếu mật khẩu)
-  for f in "${SECRETS}/may-${ten}-http" "${SECRETS}/may-${ten}-repo" "${SECRETS}/tinh-trang-key" "${SSH_DIR}/quan-tri.pub"; do
+  for f in "${SECRETS}/may-${ten}-http" "${SECRETS}/may-${ten}-repo" "${SECRETS}/tinh-trang-key" "${SSH_DIR}/quan-tri.pub" "${CA_DIR}/root.crt"; do
     [[ -s "${f}" ]] || die "Thiếu ${f} — máy ${ten} chưa cấp đủ hoặc đã thu hồi (cấp lại: sudo onebee-box them-may ${ten})"
   done
-  ip="$(box_ip)"; [[ -n "${ip}" ]] || die "Không xác định được IP của Box — đặt onebee_box_address trong group_vars"
+  ip="$(box_ip)"; [[ -n "${ip}" ]] || die "Không xác định được IP của Box — đặt onebee_box_dia_chi trong group_vars"
   http_pw="$(cat "${SECRETS}/may-${ten}-http")"
   repo_pw="$(cat "${SECRETS}/may-${ten}-repo")"
   tram_key="$(cat "${SECRETS}/tinh-trang-key")"
@@ -68,12 +84,16 @@ in_cau_hinh_may() {
   echo "TINH_TRANG_URL=http://${ip}:${N8N_PORT}/webhook/onebee-tinh-trang"
   echo "TINH_TRANG_KEY=${tram_key}"
   echo "QUAN_TRI_SSH_KEY=\"$(cat "${SSH_DIR}/quan-tri.pub")\""
+  # CA riêng của Box: chứng chỉ gốc (DER, base64 một dòng) + vân tay tính lại từ chứng chỉ. Máy trạm (role ket-noi-box) kiểm vân tay
+  # VÀ kiểm chứng chỉ đúng là CA có ràng buộc tên (chỉ IP Box + *.onebee.internal) rồi mới cài
+  echo "BOX_CA=$(openssl x509 -in "${CA_DIR}/root.crt" -outform DER | base64 -w0)"
+  echo "BOX_CA_VAN_TAY=$(ca_van_tay)"
 }
 
 cmd_them_may() {
   local ten="${1:-}" ip http_pw repo_pw hoi_key thoi_diem
   [[ "${ten}" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]] || die "Tên máy chỉ gồm chữ thường không dấu, số, dấu gạch (vd: ketoan-01)"
-  ip="$(box_ip)"; [[ -n "${ip}" ]] || die "Không xác định được IP của Box — đặt onebee_box_address trong group_vars"
+  ip="$(box_ip)"; [[ -n "${ip}" ]] || die "Không xác định được IP của Box — đặt onebee_box_dia_chi trong group_vars"
   if [[ -e "${SECRETS}/thu-hoi/${ten}" ]]; then
     # Cấp lại cho máy từng thu hồi: máy cũ (mất cắp, nghi chiếm) vẫn biết MẬT KHẨU KHO cũ — mà mật khẩu kho là khóa ký báo cáo và là bằng chứng
     # danh tính máy → phải đổi. Cất kho + mật khẩu cũ sang tên khác (mở lại dữ liệu cũ bằng restic khi cần; in-khoa vẫn in mật khẩu cũ),
@@ -234,7 +254,7 @@ chay_playbook_chon() {
   (umask 077; : >"${log}")
   set +e
   ANSIBLE_SSH_ARGS="-o UserKnownHostsFile=${SSH_DIR}/known_hosts -o StrictHostKeyChecking=yes -o UpdateHostKeys=no -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -o ControlMaster=auto -o ControlPersist=60s" \
-  ANSIBLE_PYTHON_INTERPRETER=/usr/bin/python3 ANSIBLE_RETRY_FILES_ENABLED=False ANSIBLE_NOCOLOR=1 ANSIBLE_LOCAL_TEMP=/root/.ansible/tmp \
+  ANSIBLE_ROLES_PATH="${LIB}/roles" ANSIBLE_PYTHON_INTERPRETER=/usr/bin/python3 ANSIBLE_RETRY_FILES_ENABLED=False ANSIBLE_NOCOLOR=1 ANSIBLE_LOCAL_TEMP=/root/.ansible/tmp \
     ansible-playbook -i "${inv}" -u onebee-quantri --private-key "${SSH_DIR}/quan-tri" "$@" "${LIB}/${playbook}" 2>&1 | tee -a "${log}"
   st=${PIPESTATUS[0]}
   set -e
@@ -272,6 +292,8 @@ cmd_in_khoa() {
   echo "# Hỏng ổ Box thì cần các khóa này để mở bản sao lưu trên ổ ngoài."
   local f
   for f in "${SECRETS}"/*; do [[ -f "${f}" ]] && printf '%s=%s\n' "$(basename "${f}")" "$(cat "${f}")"; done
+  # Khóa CA riêng nằm trong thư mục ${SECRETS}/ca (có trong bản sao lưu Box). Vân tay để đối chiếu khi cài CA lên thiết bị khác
+  [[ ! -s "${CA_DIR}/root.crt" ]] || echo "van-tay-ca-onebee-box=$(ca_van_tay)"
 }
 
 cmd_dat_mat_khau_email() {
@@ -301,8 +323,9 @@ case "${1:-}" in
   khoi-phuc-thu) with_lock cmd_khoi_phuc_thu ;;
   khoi-phuc-toan-bo) shift; with_lock cmd_khoi_phuc_toan_bo "$@" ;;
   in-khoa) cmd_in_khoa ;;
+  in-ca) cmd_in_ca ;;
   dat-mat-khau-email) cmd_dat_mat_khau_email ;;
   email-thu) bao_cao_n8n THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
                && echo "Đã chuyển cho n8n gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
-  *) sed -n '2,18p' "$0" | sed 's/^# //'; exit 1 ;;
+  *) sed -n '2,19p' "$0" | sed 's/^# //'; exit 1 ;;
 esac
