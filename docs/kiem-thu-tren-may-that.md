@@ -19,20 +19,20 @@ Hai môi trường — ghi rõ để không lẫn:
 
 | Mục | Nơi | Commit | Kết quả |
 |---|---|---|---|
-| A1.1 | cloud | `3eb00c6` | Box `Ran 100 … OK (skipped=7)` (phiếu ghi 99), Desktop 39 OK, AI 17 OK, Jinja 23 mẫu 0 lỗi |
-| A1.2 | cloud | `3eb00c6` | Caddy v2.11.4 đúng digest: 7/7 OK |
-| A2.1 | cloud | `3eb00c6` | shellcheck 0.9.0, yamllint, ansible-lint 26.9.0 (core 2.19.13): đạt |
-| A2.2 | cloud (container `ubuntu:24.04`, apt) | `3eb00c6` | ansible-core **2.16.3**: syntax-check Box/Desktop/`dong-bo-may-tram.yml` đạt; ansible-lint 6.17.2 Box đạt |
-| A2.3 | cloud | `3eb00c6` | `Config validated successfully` |
-| A3.1 | cloud **và** Mac | `3eb00c6` | lần 1 `changed=36`, lần 2 `changed=0 failed=0`, verify "tất cả mục đạt", LibreOffice UNO đạt |
-| A3 mở rộng | cloud | `3eb00c6` | 5 kịch bản (guards, mint, unikey, systemd, ubuntu): **83 PASS / 0 FAIL** |
-| A4.1 | Mac | `3eb00c6` → `b8f67fc` | Chạy với model sản phẩm `gemma4:e2b-it-qat`. Lần 1 FAIL ở lỗi test T1 → sửa, **chạy tiếp từ "LẦN 2" trên container giữ lại**; FAIL ở N11 → sửa → FAIL ở N12 (do bản sửa N11) → sửa → `TẤT CẢ BƯỚC KIỂM THỬ BOX ĐẠT`. Lần chạy **runner gốc từ đầu** ở `b8f67fc`: xem dòng cuối mục này |
+| A1.1 | cloud | `810e847` | Box `Ran 100 … OK (skipped=7)` (phiếu ghi 99), Desktop 39 OK, AI 17 OK, Jinja 23 mẫu 0 lỗi |
+| A1.2 | cloud | `810e847` | Caddy v2.11.4 đúng digest: 7/7 OK |
+| A2.1 | cloud | `810e847` | shellcheck 0.9.0, yamllint, ansible-lint 26.9.0 (core 2.19.13): đạt |
+| A2.2 | cloud (container `ubuntu:24.04`, apt) | `810e847` | ansible-core **2.16.3**: syntax-check Box/Desktop/`dong-bo-may-tram.yml` đạt; ansible-lint 6.17.2 Box đạt |
+| A2.3 | cloud | `810e847` | `Config validated successfully` |
+| A3.1 | cloud **và** Mac | `810e847` | lần 1 `changed=36`, lần 2 `changed=0 failed=0`, verify "tất cả mục đạt", LibreOffice UNO đạt |
+| A3 mở rộng | cloud | `810e847` | 5 kịch bản (guards, mint, unikey, systemd, ubuntu): **83 PASS / 0 FAIL** |
+| A4.1 | Mac | `810e847` → `9a8b950` | Chạy với model sản phẩm `gemma4:e2b-it-qat`. Lần 1 FAIL ở lỗi test T1 → sửa, **chạy tiếp từ "LẦN 2" trên container giữ lại**; FAIL ở N11 → sửa → FAIL ở N12 (do bản sửa N11) → sửa → `TẤT CẢ BƯỚC KIỂM THỬ BOX ĐẠT`. Lần chạy **runner gốc từ đầu** ở `9a8b950`: xem dòng cuối mục này |
 
 Lỗi tìm được và đã sửa trong lần chạy này (chi tiết ở mục "Đã sửa sau khi lập phiếu này"): **N11, N12** (sản phẩm), **T1, T2** (script test). Lỗi mới còn mở: **N13**.
 Kiểm thêm tay trên Box test (Mac): `n8n --version` = `2.42.6`; log n8n không có `blocked by policy|content-import|X-Forwarded`;
 portal `[ALL] [CAP_NET_BIND_SERVICE] [no-new-privileges:true]`, rest-server `ro=true drop=[ALL]`, mọi dịch vụ `no-new-privileges`; máy thu hồi `kho-02` không còn trong `.htpasswd`.
 
-Lần chạy runner gốc từ đầu ở `b8f67fc` (Mac): **đang chạy — điền kết quả khi xong.**
+Lần chạy runner gốc từ đầu ở `9a8b950` (Mac): **đang chạy — điền kết quả khi xong.**
 
 ---
 
@@ -147,7 +147,7 @@ Lần chạy runner gốc từ đầu ở `b8f67fc` (Mac): **đang chạy — đ
   hay gặp: mode thư mục `portal` (`ca.yml:69` vs `main.yml`), `Ghi đường dẫn bộ cài` (`main.yml:207`), ghi `ten-da-cap`.
 - [ ] **B3. Nâng cấp từ bản cũ** (Pha 1, 5.0 "test nâng cấp" — chưa làm):
   - (b) VM sạch: `git checkout 3061a08` (n8n 2.40.7, chưa vá) → cài Box, `them-may ketoan-01`, cài máy trạm, tạo dữ liệu (chat, 1 yêu cầu hỗ trợ, 1 đơn hàng, sao lưu).
-    Rồi `git checkout -- box/ansible/group_vars/all.yml && git checkout claude/confident-gauss-ntiwuc`, khai mã đơn vị, chạy bộ cài. Lặp lại từ `a122aa7` (Box Pha 2, chưa có CA).
+    Rồi `git checkout -- box/ansible/group_vars/all.yml && git checkout claude/confident-gauss-ntiwuc`, khai mã đơn vị, chạy bộ cài. Lặp lại từ `9ac8eee` (Box Pha 2, chưa có CA).
   - (c) có `/srv/onebee/n8n.truoc-*` (bản chép trước khi đổi image), n8n migration xong, 9 quy trình còn và chạy, dữ liệu Open WebUI còn; CA sinh mới và **tự đẩy** xuống
     `ketoan-01` (`/var/lib/onebee/ket-noi-box` = vân tay); lần chạy kế `changed=0`; máy trạm bản desktop cũ vẫn sao lưu/báo tình trạng (ma trận lệch phiên bản).
   - (d) `box-stack/tasks/main.yml` khối chép n8n (`regex_findall` — [Inference] chưa thử trên 2.16), `box-fleet/tasks/main.yml:72-77`.
@@ -358,7 +358,7 @@ thiết bị chưa kiểm C3/D2 có thể không áp ràng buộc tên; Caddy k�
 
 ---
 
-## Nghi ngờ lỗi cần xác nhận (đọc `git diff cb7d115..HEAD`, Pha 4b/4c/5)
+## Nghi ngờ lỗi cần xác nhận (đọc `git diff 1e0e7f4..HEAD`, Pha 4b/4c/5)
 Ký hiệu: **XÁC NHẬN** = thấy rõ trong code (đã chạy thử nếu ghi), **NGHI NGỜ** = cần máy thật để biết.
 
 - **N1 — XÁC NHẬN (đã chạy `onebee-ca.sh` thử): `onebee_box_xoay_ca: true` không xoay CA khi mã/IP giữ nguyên.** `group_vars/all.yml:119-122` nói dùng cả khi "nghi lộ khóa CA",
@@ -405,13 +405,13 @@ Ký hiệu: **XÁC NHẬN** = thấy rõ trong code (đã chạy thử nếu ghi
 ## Đã sửa sau khi lập phiếu này
 - **N11 (sản phẩm, bắt được ở A4 trên Mac) — mật khẩu kho HTTP cũ / máy đã thu hồi vẫn vào được kho sao lưu thêm ≥ 30 giây.** rest-server 0.14 chỉ tự kiểm
   `.htpasswd` tối đa 30 giây/lần và nhớ mật khẩu đã đúng (`htpasswd.go`: `CheckInterval`, `PasswordCacheDuration`). Đo trên Box test: sau khi đổi mật khẩu, mật khẩu cũ vẫn `405`
-  (vào được) quá 30 giây. Sửa (`17f96dd`): `nap_lai_kho_http` (SIGHUP) sau `them-may`, `thu-hoi-may`, `xoay-khoa --may`, `khoi-phuc-toan-bo`; có test hồi quy trong `test_onebee_box_shell.py`.
+  (vào được) quá 30 giây. Sửa (`6167d74`): `nap_lai_kho_http` (SIGHUP) sau `them-may`, `thu-hoi-may`, `xoay-khoa --may`, `khoi-phuc-toan-bo`; có test hồi quy trong `test_onebee_box_shell.py`.
 - **N12 (sản phẩm, do bản sửa N11 đầu tiên) — `docker kill -s HUP` làm kho sao lưu không tự chạy lại sau khi khởi động lại Box.** Docker 29.1.3 ghi
   `HasBeenManuallyStopped=true` cho mọi `docker kill` → `restart: unless-stopped` không áp dụng; verify sau khởi động lại FAIL "Container onebee-rest-server đang chạy".
-  Sửa (`2e2d146`): `docker exec onebee-rest-server kill -HUP 1` (đo: mật khẩu cũ `401` sau 1 giây, cờ vẫn `false`); test hồi quy cấm `docker kill`.
-- **T1 (test) — runner grep tên task cũ** "Khởi động lại giám sát với cổng mới"; task đã đổi tên ở Pha 5 → FAIL giả ở lần cài 1 dù Kuma đã mở `0.0.0.0:3001`. Sửa `e9a8fdc`.
+  Sửa (`29cabd8`): `docker exec onebee-rest-server kill -HUP 1` (đo: mật khẩu cũ `401` sau 1 giây, cờ vẫn `false`); test hồi quy cấm `docker kill`.
+- **T1 (test) — runner grep tên task cũ** "Khởi động lại giám sát với cổng mới"; task đã đổi tên ở Pha 5 → FAIL giả ở lần cài 1 dù Kuma đã mở `0.0.0.0:3001`. Sửa `6cf688a`.
 - **T2 (test) — `check-xoay-khoa.sh` đạt giả.** Khối máy trạm chạy bằng `docker exec -i … bash -s` + heredoc; `su - nhanvien -c hoi …` đọc stdin nên nuốt các dòng sau
-  (dòng PASS "Máy trạm nhận mật khẩu + khóa mới…" chưa từng in) mà khối vẫn thoát 0. Sửa `b8f67fc` (`bash -c "$(cat)"`); chạy lại trên Mac: dòng PASS đã in.
+  (dòng PASS "Máy trạm nhận mật khẩu + khóa mới…" chưa từng in) mà khối vẫn thoát 0. Sửa `9a8b950` (`bash -c "$(cat)"`); chạy lại trên Mac: dòng PASS đã in.
 - **N1:** `onebee-ca.sh --xoay` nay luôn xoay (kể cả khi mã/IP không đổi) — có test `test_xoay_khi_ma_va_ip_khong_doi_van_xoay_de_ung_pho_lo_khoa`.
 - **N3:** role `ket-noi-box` cài `libnss3-tools` (có `certutil`).
 - **N10 (một phần):** hướng dẫn nói 12 dòng cấu hình và nhắc khai `onebee_box_ma_don_vi`/`onebee_box_dia_chi` trước khi cài. Phần còn lại (N2, N4–N9, lệnh `doi-ca`/`doi-khoa-quan-tri` chưa có) vẫn mở.
