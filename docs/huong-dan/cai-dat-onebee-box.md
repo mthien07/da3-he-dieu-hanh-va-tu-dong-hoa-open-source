@@ -88,7 +88,7 @@ Trên Box:
 ```bash
 sudo onebee-box them-may ketoan-01
 ```
-Dán các dòng in ra (9 dòng: `MAY_TRAM`, `BOX_IP`, `RESTIC_…`, `HOI_…`, `TINH_TRANG_…`, `QUAN_TRI_SSH_KEY`) vào máy trạm tại
+Dán các dòng in ra (12 dòng (gồm `BOX_CA`, `BOX_CA_VAN_TAY`, `BOX_HTTPS`): `MAY_TRAM`, `BOX_IP`, `RESTIC_…`, `HOI_…`, `TINH_TRANG_…`, `QUAN_TRI_SSH_KEY`) vào máy trạm tại
 `/etc/onebee/may-tram.env`, rồi chạy lại `sudo ./desktop/onebee-install.sh` trên máy trạm. Máy trạm sẽ:
 - tự sao lưu `/home` lúc 12:00 hằng ngày (máy tắt thì chạy bù khi bật); sao lưu ngay: `sudo onebee-sao-luu`;
 - dùng được lệnh `hoi` (Trợ lý AI chưa chạy lúc cấp thì thiếu 2 dòng `HOI_…` — chạy lại lệnh sau);

@@ -23,7 +23,8 @@ doi=0
 if [[ -s ca.conf ]]; then
   # shellcheck disable=SC1091
   . ./ca.conf
-  if [[ "${CA_MA:-}" != "${MA}" || "${CA_IP:-}" != "${IP}" ]]; then
+  # --xoay luôn xoay (kể cả khi mã/IP không đổi — nghi lộ khóa CA); không có --xoay mà mã/IP lệch thì dừng
+  if [[ "${XOAY}" == --xoay || "${CA_MA:-}" != "${MA}" || "${CA_IP:-}" != "${IP}" ]]; then
     if [[ "${XOAY}" != --xoay ]]; then
       die "CA đã tạo cho mã '${CA_MA:-?}' / IP '${CA_IP:-?}', nay khai '${MA}' / '${IP}'. Đổi mã hoặc IP = xoay CA (mọi máy phải nhận CA mới): đặt onebee_box_xoay_ca: true trong group_vars/all.yml, chạy bộ cài, rồi đặt lại false" 4
     fi
