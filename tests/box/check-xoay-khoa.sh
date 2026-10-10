@@ -5,8 +5,10 @@
 # Cách dùng: check-xoay-khoa.sh <container-Box> <container-máy-trạm>   (chưa chạy trên máy tác giả — cần Docker lồng)
 set -euo pipefail
 BOX="$1"; CLIENT="$2"
-box() { docker exec -i "${BOX}" bash -euo pipefail -s; }      # đọc lệnh từ stdin (heredoc 'nháy đơn' → không phải thoát ký tự)
-tram() { docker exec -i "${CLIENT}" bash -euo pipefail -s; }
+# Đọc lệnh từ heredoc ('nháy đơn' → không phải thoát ký tự) rồi chạy bằng -c, KHÔNG dùng 'bash -s': với -s, lệnh nào trong khối đọc stdin
+# (vd 'su - nhanvien -c hoi …') sẽ nuốt nốt các dòng còn lại của khối → các dòng kiểm sau đó không chạy mà khối vẫn thoát 0 (đạt giả).
+box() { docker exec "${BOX}" bash -euo pipefail -c "$(cat)"; }
+tram() { docker exec "${CLIENT}" bash -euo pipefail -c "$(cat)"; }
 
 echo "===== XOAY KHÓA: MÁY TRẠM ====="
 box <<'EOF'
