@@ -15,7 +15,65 @@ trong khung xám**, mỗi lần một khung, và đọc dòng kết quả cuối
 | **OneBee Box** | Máy chủ nhỏ đặt tại đơn vị, bật suốt ngày đêm. Chứa Trợ lý AI tiếng Việt (chạy tại chỗ, không gửi dữ liệu ra ngoài), thư mục chung, kho sao lưu, tự động gửi email | **1 máy** |
 | **Máy trạm OneBee OS** | Máy văn phòng của nhân viên (Linux Mint + bộ cài OneBee): gõ tiếng Việt, mở file Word/Excel, tự sao lưu lên Box, hỏi Trợ lý AI | Mỗi nhân viên 1 máy |
 
+### Hình 1. Sau khi cài xong, văn phòng của bạn trông như thế này
+```mermaid
+flowchart LR
+    NET(["🌐 Internet"])
+    ROUTER["📶 Router / modem<br/>mạng LAN của đơn vị<br/>vd 192.168.1.x"]
+
+    subgraph VP["🏢 Văn phòng — chỉ máy trong mạng LAN mới vào được Box"]
+        direction LR
+        subgraph TRAM["💻 Máy trạm OneBee OS — mỗi nhân viên 1 máy"]
+            direction TB
+            T1["ketoan-01"]
+            T2["kho-01"]
+            T3["banhang-01"]
+        end
+        subgraph BOX["🗄️ OneBee Box — 1 máy, bật suốt ngày đêm, IP cố định"]
+            direction TB
+            AI["🤖 Trợ lý AI tiếng Việt<br/>chạy tại chỗ :3000"]
+            N8N["⚙️ Tự động hóa, email :5678"]
+            KUMA["📈 Giám sát :3001"]
+            SMB["📁 Thư mục chung"]
+            KHO["🔒 Kho sao lưu máy trạm :8000"]
+        end
+        USB[("💽 Ổ sao lưu ngoài<br/>luôn cắm vào Box")]
+    end
+
+    NET --- ROUTER
+    ROUTER --- TRAM
+    ROUTER --- BOX
+    TRAM -- "hỏi AI, mở thư mục chung" --> BOX
+    TRAM -- "sao lưu /home lúc 12:00" --> KHO
+    BOX -- "sao lưu toàn bộ Box lúc 23:00" --> USB
+    BOX -. "cập nhật phần mềm máy trạm qua SSH" .-> TRAM
+```
+Điểm cần nhớ: dữ liệu và câu hỏi gửi Trợ lý AI **chỉ đi trong mạng LAN của văn phòng**. Internet chỉ dùng để tải phần mềm, cập nhật và gửi email báo cáo.
+
 **Thứ tự làm:** Phần 1 (chuẩn bị) → Phần 2–3 (cài Box) → Phần 4 (ổ sao lưu) → Phần 5–6 (cài từng máy trạm) → Phần 7 (kiểm tra) → Phần 8–9 (tùy chọn).
+
+### Hình 2. Các bước cài, theo thứ tự
+```mermaid
+flowchart TD
+    P1["<b>Phần 1</b> · Chuẩn bị<br/>phần cứng, 2 USB cài đặt, mã đơn vị,<br/>tên máy, sao lưu Windows cũ"]
+    subgraph B["🗄️ Làm trên máy Box — 1 lần"]
+        P2["<b>Phần 2</b> · Cài Ubuntu Server<br/>+ giữ IP cố định trên router"]
+        P3["<b>Phần 3</b> · Cài OneBee Box<br/>khai mã đơn vị + IP → chạy bộ cài"]
+        P4["<b>Phần 4</b> · Gắn ổ sao lưu<br/>in khóa ra giấy, cất két"]
+    end
+    subgraph T["💻 Làm trên TỪNG máy trạm"]
+        P5["<b>Phần 5</b> · Cài Linux Mint"]
+        P6a["<b>6.1</b> · Trên Box: <code>them-may tên-máy</code>"]
+        P6b["<b>6.2</b> · Trên máy trạm: lấy file cấu hình từ Box"]
+        P6c["<b>6.3–6.5</b> · Chạy bộ cài OneBee OS,<br/>tạo tài khoản nhân viên, kiểm tra"]
+    end
+    P7["<b>Phần 7</b> · Kiểm tra từ Box<br/><code>onebee-box may-tram</code>"]
+    P8["<b>Phần 8</b> · Nên làm thêm<br/>email, SSH bằng khóa, HTTPS"]
+
+    P1 --> P2 --> P3 --> P4 --> P5 --> P6a --> P6b --> P6c
+    P6c -- "còn máy trạm khác" --> P5
+    P6c -- "đã cài hết" --> P7 --> P8
+```
 
 ### Vài điều cần biết trước khi gõ lệnh
 - **Mở cửa sổ lệnh (Terminal)**: trên máy trạm Linux Mint bấm **Ctrl + Alt + T**. Trên Box (Ubuntu Server) thì màn hình đen chính là cửa sổ lệnh.
@@ -137,6 +195,26 @@ Từ một máy khác cùng mạng, mở trình duyệt vào `http://<ip-box>/`.
 
 ## Phần 4. Gắn ổ sao lưu cho Box (bắt buộc — đừng bỏ qua)
 
+### Hình 3. Dữ liệu được sao lưu thế nào
+```mermaid
+flowchart LR
+    subgraph M["💻 Máy trạm"]
+        H["Thư mục /home<br/>tài liệu của nhân viên"]
+    end
+    subgraph BX["🗄️ OneBee Box"]
+        K["Kho sao lưu máy trạm<br/>🔒 chỉ-thêm: máy trạm KHÔNG xóa được bản cũ<br/>→ chống mã độc tống tiền"]
+        D["Dữ liệu của Box<br/>Trợ lý AI, n8n, thư mục chung,<br/>sổ hỗ trợ, khóa bí mật"]
+    end
+    O[("💽 Ổ sao lưu ngoài<br/>🔒 mã hóa")]
+    G["📄 Tờ in-khoa<br/>cất két"]
+
+    H -- "12:00 hằng ngày" --> K
+    D -- "23:00 hằng ngày" --> O
+    G -. "cần tờ này để mở ổ<br/>khi hỏng ổ Box" .-> O
+```
+Bản sao lưu của máy trạm nằm trên **ổ trong của Box**. Bản sao lưu của Box nằm trên **ổ ngoài**. Tờ `in-khoa` là chìa khóa để mở ổ ngoài,
+nên **mất tờ này thì bản sao lưu vô dụng**.
+
 Box tự sao lưu toàn bộ dữ liệu của nó **mỗi đêm 23:00** ra một ổ riêng. Không có ổ này thì hỏng ổ Box là **mất hết**.
 
 1. Cắm ổ ngoài vào Box. Xem tên ổ:
@@ -188,6 +266,25 @@ Box tự sao lưu toàn bộ dữ liệu của nó **mỗi đêm 23:00** ra mộ
 ---
 
 ## Phần 6. Nối máy trạm với Box và cài OneBee OS
+
+
+**Hình 4** cho thấy việc "nối" một máy trạm với Box thực chất là chép **một file cấu hình riêng** từ Box sang máy trạm:
+```mermaid
+sequenceDiagram
+    autonumber
+    actor KT as 🧑‍🔧 Kỹ thuật
+    participant OB as 🗄️ OneBee Box
+    participant MT as 💻 Máy trạm ketoan-01
+    KT->>OB: sudo onebee-box them-may ketoan-01
+    OB-->>OB: tạo mật khẩu kho sao lưu, khóa Trợ lý AI,<br/>chứng chỉ bảo mật riêng cho máy này
+    OB-->>KT: file ketoan-01.env (10–12 dòng TÊN=giá trị)
+    KT->>MT: scp → /etc/onebee/may-tram.env
+    KT->>MT: sudo ./desktop/onebee-install.sh
+    MT-->>MT: cài tiếng Việt, LibreOffice, lệnh hoi,<br/>lịch sao lưu, tin chứng chỉ của Box
+    MT->>OB: báo tình trạng mỗi giờ (có chữ ký)
+    MT->>OB: sao lưu /home lúc 12:00
+    KT->>OB: sudo onebee-box may-tram → thấy ketoan-01 ỔN
+```
 
 ### 6.1. Trên Box: cấp cho máy trạm
 Thay `ketoan-01` bằng tên máy:
