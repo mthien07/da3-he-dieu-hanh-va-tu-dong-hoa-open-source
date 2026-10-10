@@ -26,7 +26,6 @@
         that:
           - cau_hinh is search('(?m)^RESTIC_REPOSITORY=rest:https?://[^:@/]+:[^@/]+@')
           - cau_hinh is search('(?m)^RESTIC_PASSWORD=[^\\s]+')
-          - cau_hinh is search('(?m)^TINH_TRANG_KEY=[^\\s]+')
           - cau_hinh is search('(?m)^QUAN_TRI_SSH_KEY="ssh-ed25519 ')
           - cau_hinh is search('(?m)^BOX_CA=[A-Za-z0-9+/=]{100,}$')
           - cau_hinh is search('(?m)^BOX_CA_VAN_TAY=[0-9a-f]{64}$')

@@ -82,6 +82,10 @@ WEBUI_GIA = r'''#!/usr/bin/env python3
 import os, sys
 open(os.environ["ONEBEE_OUT"] + "/webui.log", "a").write(" ".join(sys.argv[1:]) + "\n")
 cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+if cmd == "xoay-khoa":
+    print("sk-moi-" + sys.argv[2])
+if cmd == "doi-mat-khau-quan-tri":
+    open(os.environ["ONEBEE_OUT"] + "/mk-quan-tri-moi", "w").write(os.environ["ONEBEE_MAT_KHAU_MOI"])
 if cmd in ("cap-khoa", "lay-khoa"):
     if cmd == "lay-khoa" and os.environ.get("ONEBEE_WEBUI_LAY_KHOA_LOI"):
         sys.exit("Open WebUI chưa chạy")
@@ -121,6 +125,7 @@ class OnebeeBoxShell(unittest.TestCase):
         env = jinja2.Environment(keep_trailing_newline=True)
         env.filters["to_json"] = lambda x: json.dumps(x, ensure_ascii=False)
         env.filters["quote"] = shlex.quote
+        env.filters["bool"] = bool
         lib = f"{t}/lib"
 
         def sua(txt):  # đường dẫn cố định của máy thật → thư mục tạm; bỏ kiểm quyền root
@@ -261,6 +266,91 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertTrue(kv["RESTIC_REPOSITORY"].startswith("rest:https://ketoan-01:"))
         self.assertEqual(kv["HOI_URL"], "https://192.168.1.10:3000")
         self.assertEqual(kv["TINH_TRANG_URL"], "https://192.168.1.10:5678/webhook/onebee-tinh-trang")
+
+    def thay_khoa_may(self, gia_tri):
+        """Dựng lại lệnh với onebee_box_hoi_khoa_may khác (giá trị lưu trong common.sh)."""
+        p = f"{self.t}/lib/common.sh"
+        s = open(p, encoding="utf-8").read()
+        s2 = s.replace('HOI_KHOA_MAY="true"', f'HOI_KHOA_MAY="{gia_tri}"')
+        self.assertNotEqual(s, s2)
+        open(p, "w", encoding="utf-8").write(s2)
+
+    def test_tat_khoa_tinh_trang_chung_thi_khong_in_khoa_nay(self):
+        kv = self.kv("ketoan-01")
+        self.assertTrue(kv["TINH_TRANG_KEY"])                                                 # chuyển tiếp: còn khóa
+        p = f"{self.t}/lib/common.sh"
+        s = open(p, encoding="utf-8").read()
+        open(p, "w", encoding="utf-8").write(s.replace('TINH_TRANG_KHOA_CHUNG="true"', 'TINH_TRANG_KHOA_CHUNG="false"'))
+        os.unlink(f"{self.t}/secrets/tinh-trang-key")                                         # thiếu file khóa cũng không còn là lỗi
+        kv = self.kv("kho-02")
+        self.assertNotIn("TINH_TRANG_KEY", kv)
+        self.assertTrue(kv["RESTIC_PASSWORD"] and kv["BOX_CA"])
+        self.assertFalse(os.path.exists(f"{self.t}/secrets/tinh-trang-key"))                  # them-may không tạo lại
+
+    def test_tat_khoa_hoi_theo_may_thi_khong_cap_khoa_nhung_van_in_dia_chi(self):
+        self.thay_khoa_may("false")
+        kv = self.kv("ketoan-01")
+        self.assertNotIn("HOI_API_KEY", kv)
+        self.assertEqual(kv["HOI_URL"], "http://192.168.1.10:3000")                       # hoi --dang-nhap cần địa chỉ
+        log = f"{self.t}/out/webui.log"
+        self.assertNotIn("cap-khoa", open(log).read() if os.path.exists(log) else "")      # không tạo tài khoản may-<tên>
+        self.assertFalse(os.path.exists(f"{self.t}/secrets/may-ketoan-01-hoi"))
+
+    def test_go_khoa_hoi_may_chi_khi_da_tat_va_xoa_dung(self):
+        self.kv("ketoan-01")
+        r = self.chay("go-khoa-hoi-may", kiem=False)
+        self.assertNotEqual(r.returncode, 0)                                                # còn bật khóa theo máy → từ chối
+        self.thay_khoa_may("false")
+        r = self.chay("go-khoa-hoi-may")
+        self.assertIn("ketoan-01", r.stdout)
+        self.assertIn("xoa-tai-khoan ketoan-01", open(f"{self.t}/out/webui.log").read())
+        self.assertFalse(os.path.exists(f"{self.t}/secrets/may-ketoan-01-hoi"))
+        self.assertTrue(os.path.exists(f"{self.t}/secrets/may-ketoan-01-repo"))            # chỉ bỏ khóa hoi, máy vẫn được cấp
+
+    def test_xoay_khoa_may_doi_mat_khau_kho_va_khoa_hoi_roi_day_xuong_may(self):
+        self.cap_may("ketoan-01", "10.1.1.5")
+        http_cu = open(f"{self.t}/secrets/may-ketoan-01-http").read()
+        htp_cu = open(f"{self.t}/data/restic/.htpasswd").read()
+        repo_cu = open(f"{self.t}/secrets/may-ketoan-01-repo").read()
+        r = self.chay("xoay-khoa", "--may", "ketoan-01", "--dong-y")
+        self.assertNotEqual(open(f"{self.t}/secrets/may-ketoan-01-http").read(), http_cu)
+        self.assertNotEqual(open(f"{self.t}/data/restic/.htpasswd").read(), htp_cu)           # htpasswd cập nhật theo mật khẩu mới
+        self.assertEqual(open(f"{self.t}/secrets/may-ketoan-01-hoi").read(), "sk-moi-ketoan-01")
+        self.assertEqual(open(f"{self.t}/secrets/may-ketoan-01-repo").read(), repo_cu)       # RESTIC_PASSWORD KHÔNG xoay
+        self.assertIn("xoay-khoa ketoan-01", open(f"{self.t}/out/webui.log").read())
+        goi = self.ansible_goi()
+        self.assertEqual(len(goi), 1)
+        self.assertIn("dong-bo-may-tram.yml", open(f"{self.t}/out/{goi[0]}/args").read())     # đã đẩy xuống máy
+        self.assertIn("RESTIC_REPOSITORY", "".join(open(f"{self.t}/out/{goi[0]}/cau-hinh/{f}").read() for f in os.listdir(f"{self.t}/out/{goi[0]}/cau-hinh")))
+        self.assertNotIn(open(f"{self.t}/secrets/may-ketoan-01-http").read(), r.stdout + r.stderr)   # không in mật khẩu ra màn hình
+
+    def test_xoay_khoa_can_xac_nhan_va_dung_may(self):
+        self.cap_may("ketoan-01", "10.1.1.5")
+        self.assertNotEqual(self.chay("xoay-khoa", "--may", "khong-co", "--dong-y", kiem=False).returncode, 0)
+        self.assertNotEqual(self.chay("xoay-khoa", kiem=False).returncode, 0)
+        r = subprocess.run([self.cmd, "xoay-khoa", "--may", "ketoan-01"], capture_output=True, text=True, env=self.env, input="khong\n")
+        self.assertNotEqual(r.returncode, 0)                                                   # không gõ đúng câu xác nhận → hủy
+        self.assertFalse(os.path.exists(f"{self.t}/out/webui.log") and "xoay-khoa" in open(f"{self.t}/out/webui.log").read())
+
+    def test_xoay_khoa_box_doi_bi_mat_va_chay_bo_cai(self):
+        for f, nd in (("webui-admin-password", "admin-cu"), ("n8n-owner-password", "n8n-cu"), ("n8n-owner-hash", "h-cu"), ("webui-secret-key", "sk-cu"),
+                      ("bieu-mau-nhanvien", "nv-cu"), ("bieu-mau-kythuat", "kt-cu"), ("n8n-webhook-key", "wh-cu")):
+            open(f"{self.t}/secrets/{f}", "w").write(nd)
+        bo_cai = f"{self.t}/bo-cai.sh"
+        open(bo_cai, "w").write(f"#!/bin/sh\necho chay > {self.t}/out/bo-cai.log\n")
+        os.chmod(bo_cai, 0o755)
+        open(f"{self.t}/lib/duong-dan-bo-cai", "w").write(bo_cai + "\n")
+        self.chay("xoay-khoa", "--box", "--dong-y")
+        moi = open(f"{self.t}/out/mk-quan-tri-moi").read()
+        self.assertEqual(open(f"{self.t}/secrets/webui-admin-password").read(), moi)           # đổi trong dịch vụ rồi mới ghi file
+        self.assertRegex(moi, r"^[A-Za-z0-9]{24}$")
+        n8n = open(f"{self.t}/secrets/n8n-owner-password").read()
+        self.assertNotEqual(n8n, "n8n-cu")
+        self.assertTrue(open(f"{self.t}/secrets/n8n-owner-hash").read().startswith("$2"))      # bcrypt
+        for f in ("webui-secret-key", "bieu-mau-nhanvien", "bieu-mau-kythuat"):
+            self.assertFalse(os.path.exists(f"{self.t}/secrets/{f}"), f)                      # để bộ cài (Ansible) sinh lại
+        self.assertNotEqual(open(f"{self.t}/secrets/n8n-webhook-key").read(), "wh-cu")
+        self.assertTrue(os.path.exists(f"{self.t}/out/bo-cai.log"))                            # đã chạy bộ cài để áp dụng
 
     def test_may_chua_nhan_ca_cho_den_khi_dong_bo_ghi_dau(self):
         self.kv("ketoan-01")

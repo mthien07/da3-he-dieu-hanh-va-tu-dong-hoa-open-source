@@ -14,7 +14,7 @@
     onebee_webhook_key: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/n8n-webhook-key',
                             chars=['ascii_letters', 'digits'], length=32) }}"
     onebee_tram_key: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/tinh-trang-key',
-                         chars=['ascii_letters', 'digits'], length=32) }}"
+                         chars=['ascii_letters', 'digits'], length=32) if (onebee_box_khoa_tinh_trang_chung | bool) else '' }}"
     onebee_kythuat_password: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/bieu-mau-kythuat',
                                  chars=['ascii_letters', 'digits'], length=16) }}"
     onebee_form_password: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/bieu-mau-nhanvien',

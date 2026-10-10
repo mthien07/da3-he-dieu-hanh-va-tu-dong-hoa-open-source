@@ -188,6 +188,35 @@ def lay_khoa(ten):
     print(data["api_key"])
 
 
+def xoay_khoa(ten):
+    """Đổi khóa API của tài khoản máy trạm may-<ten> (khóa cũ mất hiệu lực), in khóa mới. Không tạo tài khoản."""
+    pw_file = os.path.join(os.environ["ONEBEE_SECRETS"], f"may-{ten}-webui")
+    try:
+        with open(pw_file, encoding="utf-8") as f:
+            pw = f.read().strip()
+    except OSError:
+        sys.exit(f"Máy {ten} chưa có tài khoản Trợ lý AI")
+    token = signin(f"may-{ten}@onebee.lan", pw)
+    if not token:
+        sys.exit(f"Tài khoản may-{ten}@onebee.lan không đăng nhập được (đã bị xóa?)")
+    status, data = call("POST", "/api/v1/auths/api_key", token)   # POST tạo lại khóa: khóa cũ không còn dùng được
+    if status != 200 or not (data or {}).get("api_key"):
+        sys.exit(f"LỖI: không đổi được khóa API của may-{ten}@onebee.lan ({status}): {data}")
+    print(data["api_key"])
+
+
+def doi_mat_khau_quan_tri():
+    """Đổi mật khẩu tài khoản quản trị Open WebUI trong CSDL (mật khẩu mới: ONEBEE_MAT_KHAU_MOI). Phiên cũ của quản trị mất hiệu lực."""
+    moi = os.environ.get("ONEBEE_MAT_KHAU_MOI", "")
+    if len(moi) < 12:
+        sys.exit("LỖI: thiếu mật khẩu mới (ONEBEE_MAT_KHAU_MOI)")
+    token = admin_token()
+    status, data = call("POST", "/api/v1/auths/update/password", token, {"password": os.environ["WEBUI_ADMIN_PASSWORD"], "new_password": moi})
+    if status != 200 or data is not True:
+        sys.exit(f"LỖI: không đổi được mật khẩu quản trị Open WebUI ({status}): {data}")
+    print("Đã đổi mật khẩu quản trị Open WebUI")
+
+
 def xoa_tai_khoan(ten):
     """Xóa tài khoản máy trạm may-<ten> (khóa API đi theo tài khoản). Không có tài khoản thì coi như xong."""
     email = f"may-{ten}@onebee.lan"
@@ -212,6 +241,10 @@ if __name__ == "__main__":
         cap_khoa(sys.argv[2])
     elif len(sys.argv) == 3 and sys.argv[1] == "lay-khoa":
         lay_khoa(sys.argv[2])
+    elif len(sys.argv) == 3 and sys.argv[1] == "xoay-khoa":
+        xoay_khoa(sys.argv[2])
+    elif len(sys.argv) == 2 and sys.argv[1] == "doi-mat-khau-quan-tri":
+        doi_mat_khau_quan_tri()
     elif len(sys.argv) == 3 and sys.argv[1] == "xoa-tai-khoan":
         xoa_tai_khoan(sys.argv[2])
     else:

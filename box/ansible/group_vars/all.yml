@@ -93,3 +93,18 @@ onebee_box_lich_han:
   - {ten: "Nộp hồ sơ quyết toán thuế năm trước", loai: nam, thang: 3, ngay: cuoi_thang}
   - {ten: "Gửi báo cáo tình hình hoạt động quý cho xã viên (việc nội bộ — ví dụ)", loai: quy, ngay: 15}
 onebee_box_nhac_truoc_ngay: [7, 3, 1, 0]
+
+# Trợ lý AI theo từng nhân viên (Pha 4c): mỗi nhân viên dùng khóa riêng của mình (lệnh `hoi --dang-nhap` / `hoi --dan-khoa`).
+# true (chuyển tiếp): Box vẫn cấp tài khoản + khóa theo từng MÁY (may-<tên>@onebee.lan)
+#   để `hoi` chạy ngay ở nhân viên chưa thiết lập khóa riêng.
+#   Khóa máy nằm trong /etc/onebee-hoi.conf, mọi tài khoản trên máy đọc được (rà soát bảo mật F10).
+# false: thôi cấp tài khoản/khóa theo máy, thôi đẩy HOI_API_KEY xuống máy. Sau đó chạy: sudo onebee-box go-khoa-hoi-may
+#   (xóa các tài khoản may-<tên> cũ trên Open WebUI) — nhân viên nào chưa chạy `hoi --dang-nhap` sẽ không hỏi được nữa.
+onebee_box_hoi_khoa_may: true
+
+# Khóa gửi tình trạng dùng chung (header X-OneBee-Key ở cửa n8n) — chỉ còn là bộ lọc rác, không phải danh tính máy
+# (danh tính = chữ ký HMAC, Pha 2).
+# true (chuyển tiếp): vẫn đòi khóa này và đẩy dòng TINH_TRANG_KEY xuống máy — cần khi còn máy chạy bản desktop cũ
+#   (bản cũ không báo tình trạng nếu thiếu khóa).
+# false: n8n không đòi khóa, Box thôi tạo/đẩy khóa. Chỉ đặt false khi MỌI máy đã chạy lại bộ cài desktop bản mới.
+onebee_box_khoa_tinh_trang_chung: true

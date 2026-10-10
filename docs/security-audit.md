@@ -591,6 +591,16 @@ Làm sau Pha 4, vì `hoi --dang-nhap` gửi mật khẩu → cần HTTPS. Có th
   - URL `http://` → từ chối đăng nhập;
   - 2 tài khoản Linux trên 1 máy dùng 2 khóa khác nhau.
 
+#### Trạng thái triển khai Pha 4b/4c (10/10/2026)
+Đã làm: `xoay-khoa` (máy + `--box`), `doi-mat-khau-quan-tri`/`xoay-khoa` trong `onebee-webui.py`, `KUMA_PASS_MOI`, `hoi --dang-nhap/--dan-khoa/--dang-xuat` (khóa riêng 0600, từ chối http cho đăng nhập),
+`go-khoa-hoi-may`, `onebee_box_hoi_khoa_may`, `onebee_box_khoa_tinh_trang_chung`. Khác thiết kế: (1) khóa máy `hoi` và khóa tình trạng chung **chưa bị bỏ mặc định** (hai biến chuyển tiếp, mặc định `true`) vì máy chạy bản
+desktop cũ sẽ ngừng báo tình trạng/hỏi AI nếu bỏ ngay; (2) credential `onebeeTram000001` không xóa khỏi CSDL n8n (n8n không có lệnh xóa credential trong CLI mà tôi kiểm được; chỉ ngừng dùng và ngừng nhập khi `false`);
+(3) `--box` không xoay Samba/restic-box/khóa SSH quản trị (`doi-khoa-quan-tri`, `doi-ca` thuộc Pha 5); (4) cửa sổ không nhất quán ngắn giữa lúc đổi bí mật và lúc bộ cài chạy xong — lệnh tự chạy bộ cài ngay.
+Đã kiểm trong container làm việc: test shell (htpasswd thật, Open WebUI giả) cho `xoay-khoa`/`go-khoa-hoi-may`/tắt khóa chung/tắt khóa hoi; test API mock Open WebUI cho `xoay_khoa`, `doi_mat_khau_quan_tri`; 10 test `hoi` qua TLS thật (đăng nhập, không lưu mật khẩu, 2 tài khoản Linux 2 khóa, thu hồi, chuyển tiếp);
+mẫu n8n hai chế độ; playbook `dong-bo-may-tram.yml` bằng ansible-core 2.19 (có/không `HOI_API_KEY`). **Chưa kiểm** (cần Docker/Box thật): `tests/box/check-xoay-khoa.sh`; Open WebUI v0.11.4 thật nhận `update/password` và `api_key` (đã đối chiếu mã nguồn
+`routers/auths.py`, chưa chạy); Uptime Kuma 2.5.5 `changePassword` (đã đối chiếu `server.js`); n8n 2.42.6 áp mật khẩu chủ mới khi khởi động lại (`N8N_INSTANCE_OWNER_MANAGED_BY_ENV`); hệ quả của đổi `WEBUI_SECRET_KEY`
+(còn mã hóa gì khác — dữ liệu OAuth/khóa API?).
+
 ### 5.7 Pha 5 — P2
 | Mục | Việc |
 |---|---|
