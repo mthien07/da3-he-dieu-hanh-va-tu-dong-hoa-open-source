@@ -21,6 +21,26 @@
   args:
     creates: "{{ onebee_box_ssh_dir }}/quan-tri"
 
+# Nhật ký cap-nhat-may / dong-bo-may (chỉ root đọc; chứa tên máy, địa chỉ): giữ 90 ngày rồi xóa (truy vết khi nghi Box bị chiếm — F4)
+- name: Xoay vòng nhật ký quản lý máy trạm (90 ngày)
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/onebee-box
+    content: |
+      # Quản lý bởi OneBee OS
+      /var/log/onebee-box/*.log {
+          daily
+          rotate 90
+          maxage 90
+          missingok
+          notifempty
+          compress
+          delaycompress
+          create 0600 root root
+      }
+    owner: root
+    group: root
+    mode: "0644"
+
 # dong-bo-may chạy lại đúng các task của bộ cài desktop (CA, hoi, menu) trên máy trạm:
 # chép các role đó từ repo (desktop/ansible/roles) vào Box
 - name: Chép các role desktop dùng khi đồng bộ cấu hình máy trạm

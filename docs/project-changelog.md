@@ -28,6 +28,15 @@
   (`CACertificatesWithConstraints`); thiếu `BOX_CA` thì gỡ sạch (kể cả hồ sơ Firefox, bằng certutil).
 - `dong-bo-may` giờ chạy lại đúng các task của bộ cài desktop (CA, cấu hình `hoi`, mục menu) trên máy trạm — không còn giới hạn "chỉ ghi file cấu hình".
 - Caddy của Box: gắn cả thư mục Caddyfile + `/data` `/config` (sửa N5).
+### Bảo mật — Pha 5 (xem `docs/security-audit.md`)
+- **Tường lửa Box lọc mọi cổng mạng** trừ `lo` và mạng Docker (trước đây chỉ cổng mạng chính): card phụ, `wg0`, `tun0` bị chặn; qua Tailscale chỉ máy kỹ thuật khai trong `onebee_box_tailscale_cho_phep`.
+  **Box đang nối Tailscale phải khai biến này, nếu không kỹ thuật mất đường vào Box** (bộ cài cảnh báo). Thay đổi hành vi so với bản cũ ("VPN không bị chặn").
+- **Thư mục chung Samba: chỉ SMB 3.1.1 + bắt buộc mã hóa** (Windows 10+, Linux; máy cũ/máy quét cũ không nối được — `onebee_box_samba_smb3: false` để tắt).
+- Container: `no-new-privileges` cho mọi dịch vụ; rest-server `cap_drop ALL` + `read_only`. CSV/email: mọi ký tự điều khiển bị thay (kể cả `\r`), quy trình 04 dùng chung mã CSV.
+- Chuỗi cung ứng: GitHub Actions ghim SHA; `renovate.json`. Nhật ký quản lý máy trạm giữ 90 ngày (logrotate). `onebee-box gia-han-ca`; xoay CA qua `onebee_box_xoay_ca`.
+- Sửa sau rà soát Pha 3–4: `onebee-kiem-ca.py` đọc ràng buộc tên NGHIÊM (chứng chỉ giả dòng `Excluded:` trong tên DNS để giấu `DNS:com` bị từ chối; chính sách Chrome dùng cùng bộ đọc);
+  gia hạn CA trung gian chép tới Caddy + khởi động lại; dấu `https-da-bat` ghi SAU khi dịch vụ chuyển xong; khôi phục xóa chứng chỉ lá Caddy; `onebee_box_address` cũ báo lỗi rõ;
+  `dong-bo-may` trả lại cấu hình cũ khi CA mới không đạt; `hoi`/báo tình trạng theo 308 một lần tới https cùng máy chủ; `onebee-sao-luu` không bỏ dòng cuối/dấu `=` cuối.
 ### Bảo mật — Pha 4b/4c (xem `docs/security-audit.md`, F2/F10)
 - **`onebee-box xoay-khoa [--may <tên>|--tat-ca] [--box]`**: đổi mật khẩu kho HTTP + khóa `hoi` theo máy rồi `dong-bo-may`; `--box` đổi mật khẩu quản trị Trợ lý AI/giám sát (trong dịch vụ),
   chủ n8n, biểu mẫu, khóa webhook, `WEBUI_SECRET_KEY` rồi chạy lại bộ cài. Không xoay `RESTIC_PASSWORD`/`N8N_ENCRYPTION_KEY`. `onebee-webui.py`: `xoay-khoa`, `doi-mat-khau-quan-tri`; `onebee-kuma.js`: `KUMA_PASS_MOI`.
