@@ -3,6 +3,8 @@
 
   onebee-webui.py dong-bo-tro-ly   Tạo/cập nhật model "Trợ lý OneBee" (model nền + lời dặn tiếng Việt), mở cho mọi người
   onebee-webui.py cap-khoa <ten>   Tạo tài khoản máy trạm may-<ten> (nếu chưa có) và in khóa API để máy trạm dùng lệnh hoi
+  onebee-webui.py lay-khoa <ten>   CHỈ ĐỌC: in khóa API đã có của tài khoản may-<ten> (không tạo tài khoản/khóa; mã thoát 2 nếu chưa có)
+  onebee-webui.py xoa-tai-khoan <ten>   Xóa tài khoản may-<ten> (thu hồi khóa hoi của máy; idempotent)
 
 Đọc cấu hình từ biến môi trường: WEBUI_URL, WEBUI_ADMIN_EMAIL, WEBUI_ADMIN_PASSWORD, ONEBEE_AI_MODEL,
 ONEBEE_LOI_DAN (đường dẫn file lời dặn), ONEBEE_SECRETS (thư mục bí mật).
@@ -166,10 +168,48 @@ def cap_khoa(ten):
     print(data["api_key"])
 
 
+def lay_khoa(ten):
+    """Chỉ đọc khóa API đã cấp cho máy. Không tạo gì: dùng khi chỉ cần in lại cấu hình (dong-bo-may), tránh tác dụng phụ."""
+    pw_file = os.path.join(os.environ["ONEBEE_SECRETS"], f"may-{ten}-webui")
+    try:
+        with open(pw_file, encoding="utf-8") as f:
+            pw = f.read().strip()
+    except OSError:
+        sys.exit(f"Máy {ten} chưa có tài khoản Trợ lý AI (chạy: onebee-box them-may {ten})")
+    token = signin(f"may-{ten}@onebee.lan", pw)
+    if not token:
+        sys.exit(f"Tài khoản may-{ten}@onebee.lan không đăng nhập được (đã bị xóa?) — chạy lại: onebee-box them-may {ten}")
+    status, data = call("GET", "/api/v1/auths/api_key", token)
+    if status != 200 or not (data or {}).get("api_key"):
+        sys.exit(f"Tài khoản may-{ten}@onebee.lan chưa có khóa API — chạy lại: onebee-box them-may {ten}")
+    print(data["api_key"])
+
+
+def xoa_tai_khoan(ten):
+    """Xóa tài khoản máy trạm may-<ten> (khóa API đi theo tài khoản). Không có tài khoản thì coi như xong."""
+    email = f"may-{ten}@onebee.lan"
+    admin = admin_token()
+    status, users = call("GET", f"/api/v1/users/?query={urllib.parse.quote(email)}", admin)
+    if status != 200 or not isinstance(users, dict):
+        sys.exit(f"LỖI: không tìm được tài khoản {email} ({status}): {users}")
+    xoa = 0
+    for u in users.get("users", []):
+        if u.get("email") == email:
+            status, data = call("DELETE", f"/api/v1/users/{u['id']}", admin)
+            if status != 200:
+                sys.exit(f"LỖI: không xóa được tài khoản {email} ({status}): {data}")
+            xoa += 1
+    print(f"Đã xóa tài khoản {email}" if xoa else f"Không có tài khoản {email}")
+
+
 if __name__ == "__main__":
     if len(sys.argv) >= 2 and sys.argv[1] == "dong-bo-tro-ly":
         dong_bo_tro_ly()
     elif len(sys.argv) == 3 and sys.argv[1] == "cap-khoa":
         cap_khoa(sys.argv[2])
+    elif len(sys.argv) == 3 and sys.argv[1] == "lay-khoa":
+        lay_khoa(sys.argv[2])
+    elif len(sys.argv) == 3 and sys.argv[1] == "xoa-tai-khoan":
+        xoa_tai_khoan(sys.argv[2])
     else:
         sys.exit(__doc__)

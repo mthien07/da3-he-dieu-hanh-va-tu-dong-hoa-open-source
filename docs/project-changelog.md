@@ -15,8 +15,27 @@
 - Máy trạm: báo thêm **số** tài khoản có quyền sudo (không gửi tên); Box cảnh báo (email hằng ngày, `onebee-box may-tram`) khi hơn 1 tài khoản.
   Bộ cài Desktop cảnh báo tài khoản sudo ngoài danh sách `onebee_tai_khoan_quan_tri`. Tài liệu cài hàng loạt: nhân viên dùng tài khoản thường.
 - Sửa tài liệu `quan-ly-may-tram.md`: `them-may` không đụng khóa SSH đã ghim; cách xóa khóa cũ khi máy cài lại.
-### Kiểm thử (Pha 1)
-- Mới: `tests/box/test_onebee_webui.py` (Open WebUI giả), `tests/desktop/test_onebee_bao_tinh_trang.py`, ca cảnh báo sudo trong
+### Bảo mật — Pha 2 (xem `docs/security-audit.md`, F2)
+- **Báo cáo tình trạng máy trạm có chữ ký** (HMAC-SHA256, khóa suy từ mật khẩu kho sao lưu của máy — chưa từng đi qua mạng). n8n không giữ khóa;
+  Box tự kiểm chữ ký + độ lệch giờ (chống phát lại) khi in bảng/báo cáo. Báo cáo sai chữ ký được nêu rõ; báo cáo cũ không ký vẫn nhận (chuyển
+  tiếp) nhưng gắn nhãn "chưa ký" và không được dùng để chọn địa chỉ SSH.
+- **n8n chỉ nhận báo cáo của máy đã cấp**: quy trình "Nhận tình trạng máy trạm" đọc file đánh dấu theo tên trong `/srv/onebee/may-da-cap/`
+  (Box ghi, gắn chỉ đọc vào n8n); tên chưa cấp/đã thu hồi → dừng, không ghi file. Hết đường tạo file tên tùy ý.
+- **SSH máy trạm: chứng minh rồi mới ghim.** Bỏ `StrictHostKeyChecking=accept-new`. Lần đầu vào máy: dùng IP trong báo cáo CÓ CHỮ KÝ (≤ 2 giờ),
+  SSH đọc mật khẩu kho sao lưu trên máy và so với bản Box giữ; trùng mới ghim khóa SSH. Các lần sau `StrictHostKeyChecking=yes` + chứng minh
+  lại (kể cả khóa ghim do bản cũ tạo). Máy giả ở IP đã báo không được ghim và không nhận gì.
+- Lệnh mới: `thu-hoi-may` (gỡ kho HTTP, khóa Trợ lý AI, ghim SSH, chỗ báo tình trạng; bền qua `khoi-phuc-toan-bo`), `ghim-lai-may`,
+  `dong-bo-may` (đẩy lại `may-tram.env` từ Box, chỉ tới máy đã chứng minh; thiếu bí mật thì bỏ qua máy, không đẩy file thiếu).
+  `in_cau_hinh_may` tách khỏi `them-may`: chỉ đọc bí mật có sẵn, không tạo tài khoản/khóa. Một hàm `may_da_cap` liệt kê máy cho mọi nơi;
+  `secret_co_san` không tự sinh khóa. Nhật ký `/var/log/onebee-box/` chỉ root đọc.
+- `onebee-webui.py`: thêm `lay-khoa` (chỉ đọc khóa đã cấp) và `xoa-tai-khoan`.
+### Kiểm thử (Pha 1, 2)
+- Pha 2: `tests/box/test_onebee_box_shell.py` (12 test chạy các lệnh shell của `onebee-box` với `ssh`/`ansible-playbook`/Open WebUI giả:
+  chứng minh trước khi ghim, báo cáo chưa ký, máy giả, khóa SSH đổi, thu hồi–cấp lại, dong-bo-may, danh sách n8n); chữ ký và quy tắc `kho` trong
+  `test_onebee_may_tram.py`; khớp chữ ký máy trạm ↔ Box trong `tests/desktop/test_onebee_bao_tinh_trang.py`; `check-quan-ly-tap-trung.sh`
+  và `check-khoi-phuc-toan-bo.sh` (Docker lồng, CHƯA chạy) thêm ca ghim, thu hồi, dong-bo-may, báo cáo giả, thu hồi bền qua khôi phục.
+  Mã JS của nút Code quy trình 06 đã chạy thử bằng Node với dữ liệu giả và nối đầu-cuối với bộ kiểm chữ ký của Box.
+- Pha 1: mới: `tests/box/test_onebee_webui.py` (Open WebUI giả), `tests/desktop/test_onebee_bao_tinh_trang.py`, ca cảnh báo sudo trong
   `test_onebee_may_tram.py`; `verify-box-install.sh` và `check-n8n-inside.sh` thêm kiểm n8n/Open WebUI/CSP sandbox. CI chạy thêm test Desktop.
 - Chưa chạy được trong môi trường phát triển (cần Docker lồng/systemd): `run-box-test-in-systemd-container.sh` — chạy trên máy có Docker
   hoặc CI (`workflow_dispatch` với `box`) trước khi phát hành.

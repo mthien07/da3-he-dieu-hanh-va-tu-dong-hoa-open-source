@@ -1,20 +1,38 @@
-{% set js %}
-// Máy trạm gửi tình trạng mỗi giờ (onebee-bao-tinh-trang). Chỉ giữ các trường đã biết, kiểm tra kiểu + giới hạn,
-// ghi đè file <tên>.json. Giờ nhận lấy theo đồng hồ Box (không tin đồng hồ máy trạm).
+{# Rà soát bảo mật F2: n8n KHÔNG giữ khóa ký. Quy trình chỉ (1) nhận khi có khóa lọc chung ở cửa (header), (2) chỉ nhận máy ĐÃ CẤP
+   — Box giữ mỗi máy một file đánh dấu trong may-da-cap/ (gắn chỉ đọc; nút đọc file lỗi "No file(s) found" thì dừng, không ghi gì),
+   (3) lưu nguyên văn bao bì có chữ ký. Box tự kiểm chữ ký bằng mật khẩu kho sao lưu của máy (onebee-may-tram.py). #}
+{% set js_ten %}
+// Bước 1: chỉ lấy tên máy, đúng dạng (không ký tự đường dẫn / dấu * ? [ ] vì tên dùng làm đường dẫn file đánh dấu)
 const b = $input.first().json.body || {};
 const ten = String(b.ten || '');
 if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(ten)) throw new Error('Tên máy trạm không hợp lệ');
-const num = (v, max) => { const n = Number(v); return v !== null && v !== '' && Number.isFinite(n) && n >= 0 && n <= max ? Math.round(n * 10) / 10 : null; };
-const str = (v, n) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, n) : null);
-const ip = typeof b.ip === 'string' && /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(b.ip) ? b.ip : null;
-const tt = {
-  ten, ip, hostname: str(b.hostname, 64), phien_ban: str(b.phien_ban, 32), he_dieu_hanh: str(b.he_dieu_hanh, 64),
-  cap_nhat_cho: num(b.cap_nhat_cho, 100000), bao_mat_cho: num(b.bao_mat_cho, 100000),
-  can_khoi_dong_lai: b.can_khoi_dong_lai === true,
-  o_trong_phan_tram: num(b.o_trong_phan_tram, 100), o_trong_gb: num(b.o_trong_gb, 1e6),
-  khoi_dong_gio: num(b.khoi_dong_gio, 1e6), sao_luu_cuoi: num(b.sao_luu_cuoi, 1e11), sudo_so: num(b.sudo_so, 1000),
-  nhan_luc: Math.floor(Date.now() / 1000),
-};
+return [{ json: { ten } }];
+{% endset %}
+{% set js %}
+// Bước 3 (máy đã cấp): ghi file <tên>.json. Giờ nhận lấy theo đồng hồ Box (không tin đồng hồ máy trạm).
+const b = $('Máy trạm gửi tình trạng').first().json.body || {};
+const ten = String(b.ten || '');
+if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(ten)) throw new Error('Tên máy trạm không hợp lệ');
+const nhanLuc = Math.floor(Date.now() / 1000);
+let tt;
+if (typeof b.du_lieu === 'string') {
+  // Định dạng mới: có chữ ký. Lưu nguyên văn, Box kiểm chữ ký (n8n không giữ khóa nên không kiểm được và không giả được)
+  if (b.du_lieu.length > 4096 || !/^[0-9a-f]{64}$/.test(String(b.ky || ''))) throw new Error('Báo cáo không đúng dạng');
+  tt = { ten, dinh_dang: 2, du_lieu: b.du_lieu, ky: b.ky, nhan_luc: nhanLuc };
+} else {
+  // Định dạng cũ (máy chạy mã desktop cũ, chưa ký): chỉ giữ các trường đã biết, kiểm kiểu + giới hạn. Box gắn nhãn "chưa ký"
+  const num = (v, max) => { const n = Number(v); return v !== null && v !== '' && Number.isFinite(n) && n >= 0 && n <= max ? Math.round(n * 10) / 10 : null; };
+  const str = (v, n) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, n) : null);
+  const ip = typeof b.ip === 'string' && /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(b.ip) ? b.ip : null;
+  tt = {
+    ten, ip, hostname: str(b.hostname, 64), phien_ban: str(b.phien_ban, 32), he_dieu_hanh: str(b.he_dieu_hanh, 64),
+    cap_nhat_cho: num(b.cap_nhat_cho, 100000), bao_mat_cho: num(b.bao_mat_cho, 100000),
+    can_khoi_dong_lai: b.can_khoi_dong_lai === true,
+    o_trong_phan_tram: num(b.o_trong_phan_tram, 100), o_trong_gb: num(b.o_trong_gb, 1e6),
+    khoi_dong_gio: num(b.khoi_dong_gio, 1e6), sao_luu_cuoi: num(b.sao_luu_cuoi, 1e11), sudo_so: num(b.sudo_so, 1000),
+    nhan_luc: nhanLuc,
+  };
+}
 return [{ json: { ten, ok: true },
           binary: { data: { data: Buffer.from(JSON.stringify(tt), 'utf8').toString('base64'),
                             mimeType: 'application/json', fileName: `${ten}.json` } } }];
@@ -28,16 +46,24 @@ return [{ json: { ten, ok: true },
      "parameters": {"httpMethod": "POST", "path": "onebee-tinh-trang", "authentication": "headerAuth",
        "responseMode": "lastNode", "options": {}},
      "credentials": {"httpHeaderAuth": {"id": "onebeeTram000001", "name": "OneBee — khóa máy trạm gửi tình trạng"}}},
-    {"id": "tt-2", "name": "Kiểm tra dữ liệu", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [220, 0],
+    {"id": "tt-2", "name": "Lấy tên máy", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [220, 0],
+     "parameters": {"jsCode": {{ js_ten | to_json }}}},
+    {"id": "tt-3", "name": "Máy đã được cấp?", "type": "n8n-nodes-base.readWriteFile", "typeVersion": 1.1, "position": [440, 0],
+     "parameters": {"operation": "read",
+       "fileSelector": "=/home/node/.n8n-files/may-da-cap/{{ '{{' }} $json.ten {{ '}}' }}", "options": {}}},
+    {"id": "tt-4", "name": "Kiểm tra dữ liệu", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [660, 0],
      "parameters": {"jsCode": {{ js | to_json }}}},
-    {"id": "tt-3", "name": "Ghi tình trạng", "type": "n8n-nodes-base.readWriteFile", "typeVersion": 1.1, "position": [440, 0],
+    {"id": "tt-5", "name": "Ghi tình trạng", "type": "n8n-nodes-base.readWriteFile", "typeVersion": 1.1, "position": [880, 0],
      "parameters": {"operation": "write",
        "fileName": "=/home/node/.n8n-files/tinh-trang-may/{{ '{{' }} $json.ten {{ '}}' }}.json",
        "dataPropertyName": "data", "options": {}}}
   ],
   "connections": {
-    "Máy trạm gửi tình trạng": {"main": [[{"node": "Kiểm tra dữ liệu", "type": "main", "index": 0}]]},
+    "Máy trạm gửi tình trạng": {"main": [[{"node": "Lấy tên máy", "type": "main", "index": 0}]]},
+    "Lấy tên máy": {"main": [[{"node": "Máy đã được cấp?", "type": "main", "index": 0}]]},
+    "Máy đã được cấp?": {"main": [[{"node": "Kiểm tra dữ liệu", "type": "main", "index": 0}]]},
     "Kiểm tra dữ liệu": {"main": [[{"node": "Ghi tình trạng", "type": "main", "index": 0}]]}
   },
-  "settings": {"executionOrder": "v1", "timezone": "{{ onebee_timezone }}", "saveDataSuccessExecution": "none"}
+  "settings": {"executionOrder": "v1", "timezone": "{{ onebee_timezone }}", "saveDataSuccessExecution": "none",
+               "saveDataErrorExecution": "none"}
 }

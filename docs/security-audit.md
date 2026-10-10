@@ -383,6 +383,25 @@ Bản thiết kế đầu bị phản biện chỉ ra 1 điểm chặn: dùng kh
   - thu hồi → khôi phục toàn bộ → mật khẩu cũ bị 401, `dong-bo-may --tat-ca` bỏ qua máy đó.
 - Lần chạy thứ 2: `changed=0` (task ghi `ten-da-cap.json` chỉ báo đổi khi nội dung đổi).
 
+#### Trạng thái triển khai Pha 2 (10/10/2026)
+Đã làm, đúng thiết kế (a)–(d) ở trên, với các khác biệt:
+- **Danh sách máy cho n8n = file đánh dấu theo tên** (`/srv/onebee/may-da-cap/<tên>`, Box ghi, n8n chỉ đọc), không phải bảng băm khóa `khoa.json`:
+  quy trình 06 dùng nút đọc file với đường dẫn theo tên — thiếu file thì nút báo "No file(s) found" (đã đối chiếu mã n8n@2.42.6 `read.operation.ts`)
+  và quy trình dừng, không ghi gì. Ít nút hơn bản kế hoạch (không cần Extract From File/IF/Respond), và n8n không giữ bí mật nào.
+- **Khóa chung vẫn còn ở cửa n8n** như bộ lọc rác (header `X-OneBee-Key`); không có cờ `onebee_box_nhan_khoa_chung`. Báo cáo cũ không ký vẫn được
+  nhận nhưng gắn nhãn "chưa ký" (cảnh báo trong bảng/email) và bị loại khỏi việc chọn địa chỉ SSH máy chưa ghim. Bỏ hẳn khóa chung: Pha 4b.
+- **Không gửi `hostkey` trong báo cáo**; bước chứng minh (đọc mật khẩu kho qua SSH rồi so) thay thế, và thực hiện bằng shell (`chung_minh_may`) chứ
+  không bằng playbook riêng (`--ghim-lan-dau` không còn). Bước chứng minh chạy lại mỗi lần vào máy, nên cũng xác minh các khóa ghim cũ do bản trước tạo.
+- Quy tắc IP của `kho`: máy chưa ghim = báo cáo ký hợp lệ ≤ 2 giờ; máy đã ghim = tới 30 ngày, loại báo cáo sai chữ ký.
+- Chưa làm: cờ phiên bản desktop tối thiểu (`ONEBEE_TOI_THIEU`); xoay vòng nhật ký 90 ngày (nhật ký đã chỉ root đọc); hạ sudo `NOPASSWD: ALL`
+  (đã chấp nhận, F4).
+- `dong-bo-may` chỉ cập nhật `/etc/onebee/may-tram.env` + kiểm báo cáo; file sinh từ cấu hình (`/etc/onebee-hoi.conf`, menu) cần chạy lại bộ cài
+  desktop (Pha 3 sẽ đưa vào vai trò `ket-noi-box`). Giới hạn này đã ghi trong hướng dẫn.
+Đã kiểm: 12 test shell mới (ssh/ansible/Open WebUI giả, ssh-keygen và htpasswd thật), unit test chữ ký/quy tắc `kho`/khớp chữ ký máy trạm ↔ Box,
+chạy thử mã JS của các nút Code bằng Node và nối đầu-cuối với bộ kiểm của Box. **Chưa kiểm** (cần Docker lồng/Box thật): n8n 2.42.6 nhận quy trình 06
+mới (tham số `fileSelector` của nút đọc file chưa chạy thật), `check-quan-ly-tap-trung.sh`/`check-khoi-phuc-toan-bo.sh` bản mới, `dong-bo-may` qua
+Ansible thật, `thu-hoi-may` kèm Open WebUI thật.
+
 ### 5.4 Pha 3 — CA riêng mỗi Box (dịch vụ vẫn HTTP)
 **Thiết kế đã sửa theo phản biện:**
 - **Biến bắt buộc:**

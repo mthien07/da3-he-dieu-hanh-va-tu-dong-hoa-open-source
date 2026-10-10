@@ -5,17 +5,39 @@ Gửi: tên máy, địa chỉ IP trong LAN, phiên bản, số gói chờ cập
 dung lượng ổ còn trống, thời gian đã bật, lần sao lưu cuối, SỐ tài khoản có quyền sudo (không gửi tên tài khoản).
 KHÔNG gửi tên file, nội dung hay lịch sử dùng máy.
 Cấu hình: /etc/onebee/may-tram.env (MAY_TRAM, BOX_IP, TINH_TRANG_URL, TINH_TRANG_KEY — lấy từ 'onebee-box them-may').
+
+Báo cáo được KÝ (HMAC-SHA256) bằng khóa suy từ RESTIC_PASSWORD trong cùng file cấu hình — mật khẩu kho sao lưu, restic mã hóa phía máy
+trạm nên mật khẩu này chưa từng đi qua mạng. Box kiểm chữ ký bằng bản mật khẩu của nó; n8n (nơi nhận) không giữ khóa nên không giả được báo cáo.
+Thiếu RESTIC_PASSWORD thì gửi dạng cũ (không ký) — Box nhận nhưng gắn nhãn "chưa ký".
 """
+import hashlib
+import hmac
 import json
 import os
 import shutil
 import socket
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 
 CONF = "/etc/onebee/may-tram.env"
+MUC_DICH_KY = b"onebee-tinh-trang-v1"   # phải trùng với box-fleet/files/onebee-may-tram.py
+
+
+def ky_bao_cao(mat_khau, du_lieu):
+    """Chữ ký HMAC-SHA256 (hex) của chuỗi du_lieu; khóa ký = HMAC(mật khẩu kho sao lưu, mục đích)."""
+    khoa = hmac.new(mat_khau.encode("utf-8"), MUC_DICH_KY, hashlib.sha256).digest()
+    return hmac.new(khoa, du_lieu.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def dong_goi(tt, mat_khau):
+    """Bao bì gửi n8n: có mật khẩu → {ten, du_lieu (JSON dạng chuỗi), ky}; không có → JSON phẳng như bản cũ."""
+    if not mat_khau:
+        return tt
+    du_lieu = json.dumps(dict(tt, gui_luc=time.time()), ensure_ascii=False, sort_keys=True)
+    return {"ten": tt["ten"], "du_lieu": du_lieu, "ky": ky_bao_cao(mat_khau, du_lieu)}
 
 
 def doc_khoa_gia_tri(duong_dan):
@@ -94,7 +116,8 @@ def main():
         "o_trong_phan_tram": round(o.free * 100 / o.total, 1), "o_trong_gb": round(o.free / 1e9, 1),
         "khoi_dong_gio": bat_gio, "sao_luu_cuoi": sao_luu, "sudo_so": so_tai_khoan_sudo(),
     }
-    req = urllib.request.Request(conf["TINH_TRANG_URL"], data=json.dumps(tt).encode("utf-8"), method="POST",
+    req = urllib.request.Request(conf["TINH_TRANG_URL"], data=json.dumps(dong_goi(tt, conf.get("RESTIC_PASSWORD"))).encode("utf-8"),
+                                 method="POST",
                                  headers={"Content-Type": "application/json", "X-OneBee-Key": conf["TINH_TRANG_KEY"]})
     try:
         with urllib.request.urlopen(req, timeout=30) as r:

@@ -9,6 +9,10 @@ box() { docker exec "${BOX}" bash -euo pipefail -c "$1"; }
 tram() { docker exec "${CLIENT}" bash -euo pipefail -c "$1"; }
 S=/etc/onebee-box/secrets
 
+# Máy đã THU HỒI trước khi hỏng ổ: sau khôi phục không được "sống lại" dù bản sao lưu còn mật khẩu cũ của máy
+box "onebee-box them-may tam-01 >/dev/null && onebee-box thu-hoi-may tam-01 --dong-y >/dev/null
+  ! grep -q '^tam-01:' /srv/onebee/restic/.htpasswd"
+
 box "onebee-box in-khoa > /root/khoa-in-ra-giay.txt
   cp ${S}/webui-admin-password /root/cu-webui; cp ${S}/n8n-owner-password /root/cu-n8n
   wc -l < /srv/onebee/ho-tro/yeu-cau.csv > /root/cu-so-yeu-cau
@@ -35,6 +39,9 @@ box "/root/onebee-test/box/onebee-box-install.sh > /root/cai-lai.log 2>&1 || { t
   [ \"\${code}\" = 200 ] || { echo \"FAIL  Mật khẩu chủ n8n cũ không dùng được (\${code})\"; exit 1; }
   [ \"\$(wc -l < /srv/onebee/ho-tro/yeu-cau.csv)\" = \"\$(cat /root/cu-so-yeu-cau)\" ] || { echo 'FAIL  Mất sổ yêu cầu hỗ trợ'; exit 1; }
   onebee-box khoi-phuc-thu | tail -1
+  ! grep -q '^tam-01:' /srv/onebee/restic/.htpasswd || { echo 'FAIL  Máy đã thu hồi lại có quyền vào kho HTTP sau khôi phục'; exit 1; }
+  [ ! -e /srv/onebee/may-da-cap/tam-01 ] && [ -e ${S}/may-tam-01-thu-hoi ] || { echo 'FAIL  Máy đã thu hồi lại được nhận báo cáo sau khôi phục'; exit 1; }
+  [ -e /srv/onebee/may-da-cap/ketoan-01 ] || { echo 'FAIL  Sau khôi phục, máy ketoan-01 mất chỗ nhận báo cáo tình trạng'; exit 1; }
   echo 'PASS  khoi-phuc-toan-bo bằng khóa in ra giấy: mật khẩu, tài khoản Trợ lý AI + n8n, sổ hỗ trợ trở lại như cũ'"
 
 # Máy trạm không cấu hình gì thêm: vẫn sao lưu (kho mới), hỏi AI (khóa cũ), báo tình trạng, nhận cập nhật (khóa SSH cũ)

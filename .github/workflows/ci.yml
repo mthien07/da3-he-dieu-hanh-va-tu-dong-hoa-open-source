@@ -32,6 +32,7 @@ jobs:
           box/*.sh tests/desktop/*.sh tests/desktop/extended/*.sh tests/box/*.sh
       - name: Kiểm thử đơn vị (Python) + mẫu Jinja đọc được
         run: |
+          sudo apt-get install -y -q apache2-utils openssh-client   # test lệnh shell của onebee-box dùng htpasswd, ssh-keygen thật
           python3 -m unittest discover -s tests/box -p 'test_*.py'
           python3 -m unittest discover -s tests/desktop -p 'test_*.py'
           python3 -m unittest tests/ai/test_scoring_and_report.py

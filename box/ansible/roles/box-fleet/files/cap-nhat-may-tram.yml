@@ -1,12 +1,13 @@
 ---
 # Cập nhật máy trạm OneBee từ Box qua SSH (lệnh: sudo onebee-box cap-nhat-may <tên>|--tat-ca).
 # Máy trạm cho Box vào bằng tài khoản onebee-quantri (khóa SSH riêng của đơn vị, chỉ nhận kết nối từ IP của Box).
+# Lệnh onebee-box chỉ gọi playbook này cho máy đã ghim khóa SSH và chứng minh được là máy đã cấp (biết mật khẩu kho sao lưu).
 - name: Cập nhật máy trạm OneBee
   hosts: may_tram
   become: true
   gather_facts: false
   tasks:
-    # IP lấy từ báo cáo của máy trạm (IP động) → kiểm tra đúng máy trước khi làm gì
+    # Lớp phụ: định danh chính là khóa SSH đã ghim + bước chứng minh trong onebee-box (IP lấy từ báo cáo của máy trạm, IP động)
     - name: Đọc cấu hình máy trạm
       ansible.builtin.slurp:
         src: /etc/onebee/may-tram.env
