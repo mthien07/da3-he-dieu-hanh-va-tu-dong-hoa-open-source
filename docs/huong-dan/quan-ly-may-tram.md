@@ -36,8 +36,10 @@ tài khoản khác bị từ chối). Kỹ thuật cần vào máy trạm bằng
 `sudo ssh -i /etc/onebee-box/secrets/ssh/quan-tri onebee-quantri@<ip-máy-trạm>`.
 
 - Báo "chưa báo tình trạng (chưa biết địa chỉ)": máy chưa bật từ khi cài, hoặc chưa chạy lại bộ cài sau khi dán cấu hình.
-- Báo "REMOTE HOST IDENTIFICATION HAS CHANGED": máy trạm đã cài lại hệ điều hành → chạy lại `sudo onebee-box them-may <tên>`,
-  dán cấu hình mới vào máy trạm, chạy lại bộ cài.
+- Báo "REMOTE HOST IDENTIFICATION HAS CHANGED": máy trạm đã cài lại hệ điều hành (khóa SSH của máy đổi) → **chỉ khi chắc đó là
+  máy của mình**, xóa khóa cũ trên Box: `sudo ssh-keygen -R <tên-máy> -f /etc/onebee-box/secrets/ssh/known_hosts`, rồi chạy lại
+  `sudo onebee-box cap-nhat-may <tên-máy>`. Nếu máy không hề cài lại mà vẫn báo: có thể máy khác đang giả danh — kiểm tra trước.
+  (Lệnh `them-may` không đụng tới khóa SSH đã ghim; máy cài lại cần dán lại cấu hình mới + chạy lại bộ cài như máy mới.)
 
 ## 3. Hỗ trợ từ xa (người dùng phải đồng ý)
 1. Người dùng mở menu → **"Cho phép hỗ trợ từ xa (OneBee)"** → hộp thoại hiện **địa chỉ** và **mã 8 số** → đọc cho kỹ thuật.

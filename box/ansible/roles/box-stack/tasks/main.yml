@@ -67,6 +67,61 @@
   ansible.builtin.set_fact:
     onebee_kuma_dia_chi: "{{ '0.0.0.0' if onebee_kuma_xong.stat.exists else '127.0.0.1' }}"
 
+# Nâng cấp n8n chạy migration CSDL SQLite lúc khởi động, không quay lui được → chép nguyên thư mục dữ liệu n8n trước khi
+# đổi image (lúc n8n đã dừng). Hoàn tác: dừng n8n, trả thư mục chép về chỗ cũ, ghim lại image cũ, chạy lại bộ cài.
+# Không xóa tự động — xóa tay sau khi đã dùng ổn: sudo rm -rf /srv/onebee/n8n.truoc-*
+- name: Kiểm tra đã có docker-compose.yml của lần cài trước chưa
+  ansible.builtin.stat:
+    path: "{{ onebee_box_dir }}/docker-compose.yml"
+  register: onebee_compose_cu
+
+- name: Đọc docker-compose.yml của lần cài trước
+  ansible.builtin.slurp:
+    src: "{{ onebee_box_dir }}/docker-compose.yml"
+  register: onebee_compose_cu_nd
+  when: onebee_compose_cu.stat.exists
+
+# regex_findall (không phải regex_search): trả danh sách rỗng khi không khớp, chạy giống nhau trên ansible-core 2.16 (Ubuntu 24.04) và 2.19.
+# Mẫu không dùng dấu gạch chéo ngược (2.16 và 2.19 xử lý chuỗi thoát trong Jinja khác nhau)
+- name: Xác định image n8n đang dùng và image sắp đổi sang
+  ansible.builtin.set_fact:
+    onebee_n8n_anh_cu: >-
+      {{ ((onebee_compose_cu_nd.content | b64decode) | regex_findall('image: ([A-Za-z0-9._/:@-]*n8nio/n8n[A-Za-z0-9._:@-]*)')
+         | first | default('')) if onebee_compose_cu.stat.exists else '' }}
+    onebee_n8n_ban_sao: >-
+      {{ onebee_box_data }}/n8n.truoc-{{ ((onebee_compose_cu_nd.content | b64decode) | regex_findall('n8nio/n8n:([A-Za-z0-9._-]+)')
+         | first | default('khong-ro')) if onebee_compose_cu.stat.exists else 'khong-ro' }}
+
+- name: Kiểm tra đã chép dữ liệu n8n cho lần đổi image này chưa
+  ansible.builtin.stat:
+    path: "{{ onebee_n8n_ban_sao }}"
+  register: onebee_n8n_ban_sao_stat
+
+- name: Chép dữ liệu n8n trước khi đổi image
+  when:
+    - onebee_n8n_anh_cu | length > 0
+    - onebee_n8n_anh_cu != onebee_box_images.n8n
+    - not onebee_n8n_ban_sao_stat.stat.exists
+  block:
+    - name: Dừng n8n để chép nhất quán
+      ansible.builtin.command: docker compose stop n8n
+      args:
+        chdir: "{{ onebee_box_dir }}"
+      changed_when: true
+      failed_when: false
+
+    - name: Chép thư mục dữ liệu n8n (giữ nguyên chủ sở hữu và quyền)
+      ansible.builtin.command: "cp -a {{ onebee_box_data }}/n8n {{ onebee_n8n_ban_sao }}"
+      args:
+        creates: "{{ onebee_n8n_ban_sao }}"
+      changed_when: true
+
+    - name: Báo đã chép
+      ansible.builtin.debug:
+        msg: >-
+          Đã chép dữ liệu n8n sang {{ onebee_n8n_ban_sao }} trước khi đổi {{ onebee_n8n_anh_cu }} → {{ onebee_box_images.n8n }}.
+          Xóa tay khi đã dùng ổn: sudo rm -rf {{ onebee_box_data }}/n8n.truoc-*
+
 - name: Sinh cấu hình dịch vụ
   ansible.builtin.template:
     src: "{{ item.src }}"
@@ -117,7 +172,7 @@
     status_code: [200, 302, 401]
   register: onebee_http
   until: onebee_http.status in [200, 302, 401]
-  retries: 60
+  retries: 120   # n8n lần đầu sau khi nâng cấp chạy migration CSDL — có thể lâu hơn 5 phút
   delay: 5
   loop:
     - "{{ onebee_box_ports.portal }}"

@@ -41,6 +41,18 @@ class DanhGia(unittest.TestCase):
                   "4 bản vá bảo mật", "cần khởi động lại"):
             self.assertIn(y, chu)
 
+    def test_canh_bao_nhieu_tai_khoan_sudo(self):
+        # Chủ trương: nhân viên không có sudo → chỉ 1 tài khoản (quản trị máy) là bình thường
+        cb, _ = mt.danh_gia("a", 5, dict(self.tot, sudo_so=1), self.now)
+        self.assertEqual(cb, [])
+        cb, _ = mt.danh_gia("a", 5, dict(self.tot, sudo_so=3), self.now)
+        self.assertEqual(len(cb), 1)
+        self.assertIn("3 tài khoản có quyền sudo", cb[0])
+        # máy chạy mã cũ (không có trường) hoặc dữ liệu sai kiểu: không báo nhầm
+        for v in ({}, {"sudo_so": "abc"}, {"sudo_so": True}, {"sudo_so": None}):
+            cb, _ = mt.danh_gia("a", 5, dict(self.tot, **v), self.now)
+            self.assertEqual(cb, [], v)
+
     def test_du_lieu_la_khong_lam_hong(self):
         tt = dict(self.tot, o_trong_phan_tram="abc", cap_nhat_cho=True, can_khoi_dong_lai="true")
         cb, _ = mt.danh_gia("a", 1, tt, self.now)

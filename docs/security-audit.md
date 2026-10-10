@@ -39,7 +39,7 @@ Quy ước:
 | QĐ15 | Thư mục chung chỉ có máy **Windows 10 và Linux** dùng | Pha 5 (F8) |
 | QĐ16 | Giữ tính năng chạy mã (pyodide, chạy trong trình duyệt) của Open WebUI | — |
 
-**Trạng thái:** chủ dự án chưa duyệt sửa code (10/10/2026) — mọi pha ở mục 5 vẫn là kế hoạch.
+**Trạng thái (10/10/2026):** chủ dự án đã duyệt **Pha 1**; code Pha 1 đã làm trên nhánh `claude/confident-gauss-ntiwuc` (xem mục 5.2 — "Trạng thái triển khai"). Pha 2–5 vẫn là kế hoạch, chờ duyệt từng pha.
 
 ## 1. Tóm tắt (bản 2)
 
@@ -278,6 +278,25 @@ Box cài mới chưa có máy trạm: Pha 3 + 4 có hiệu lực ngay trong mộ
    - Test nâng cấp 2.40.7 → 2.42.6.
 - **Hoàn tác:** dừng n8n → trả `${DATA}/n8n.truoc-<bản-cũ>` về chỗ cũ → ghim lại 2.40.7 → chạy bộ cài.
 - **Rủi ro:** migration hỏng (đã có bản chép); `JWT_EXPIRES_IN=30d`: token bị lộ dùng được tới 30 ngày và không thu hồi được (không có Redis) — chấp nhận theo QĐ13; sau Pha 4 (HTTPS) và Pha 4b (đổi `WEBUI_SECRET_KEY`) đường lộ token qua nghe lén không còn; [Unverified] định dạng `30d` — kiểm khi làm (mặc định của Open WebUI là `4w`); tắt Functions/Tools (Box không dùng).
+
+#### Trạng thái triển khai Pha 1 (10/10/2026)
+Đã làm (và khác/bổ sung so với kế hoạch ở trên):
+- Digest: **cả 6 image** đã ghim tag + digest index đa kiến trúc (tự lấy từ registry; n8n khớp với kết quả agent).
+- Tự chép dữ liệu n8n trước khi đổi image (`box-stack/tasks/main.yml`): đã thử biểu thức nhận diện image bằng ansible-core thật với 4 trường hợp
+  (bản cũ, cùng bản, bản khác tag, chưa có compose). Dùng `regex_findall` và lớp ký tự không có dấu `\` vì ansible-core 2.16 (trên Box) và 2.19
+  xử lý chuỗi thoát khác nhau; `regex_search` có nhóm thu thập còn **báo lỗi** trên 2.19 khi không khớp.
+- `failed_when` khi nhập quy trình chỉ bắt chữ `blocked by policy` (không bắt `Skipped` như kế hoạch, vì chưa biết chữ này có xuất hiện trong
+  đầu ra bình thường không → tránh làm hỏng cài đặt vì báo nhầm).
+- `ENABLE_ADMIN_CHAT_ACCESS`/`ENABLE_ADMIN_EXPORT`: đã đối chiếu mã nguồn v0.11.4 — chặn xem chat người khác và xuất chat/tải CSDL **qua Open WebUI**;
+  không phải mã hóa: người có root trên Box vẫn đọc được file dữ liệu (đã ghi vào tài liệu cho đơn vị).
+- `JWT_EXPIRES_IN=30d`: định dạng hợp lệ (`parse_duration` trong mã nguồn). N1 (`ENABLE_PLUGINS=false`) chỉ đọc từ biến môi trường: ✔ `env.py`.
+- N7: máy trạm báo `sudo_so` (số tài khoản, không gửi tên); Box cảnh báo khi > 1; bộ cài Desktop cảnh báo (biến `onebee_tai_khoan_quan_tri`).
+- N4 và `cai-hang-loat.md` đã sửa.
+Chưa làm hoặc chưa kiểm được trong môi trường này (không có Docker lồng/systemd):
+- Chạy `run-box-test-in-systemd-container.sh` đầy đủ (cài Box thật, nâng cấp từ bản cũ, `changed=0` lần 2) và test nâng cấp 2.40.7 → 2.42.6.
+- Kiểm tay trên Box thật: n8n khởi động được với image mới + migration, 9 quy trình nhập/kích hoạt đúng, trang tóm tắt PDF hiển thị tốt;
+  `N8N_MCP_*` và `N8N_DISABLED_MODULES` được n8n 2.42.6 nhận (đọc từ mã nguồn, chưa chạy thật).
+- Ghim `ansible-lint` về bản chạy trên Ubuntu 24.04 (ansible-core 2.16) — CI vẫn lint bằng 2.19.
 
 ### 5.3 Pha 2 — Báo tình trạng có chữ ký, ghim khóa SSH có chứng minh, thu hồi, kênh đẩy cấu hình
 Bản thiết kế đầu bị phản biện chỉ ra 1 điểm chặn: dùng khóa riêng lưu băm trong n8n + tự ghim khóa host từ báo cáo do n8n ghi → n8n vẫn nằm trong chuỗi tin cậy, và "ghim lần đầu" vẫn là tin mù qua HTTP. Thiết kế dưới đây sửa điều đó. [Inference] Đây là đề xuất của người rà soát; cần duyệt.

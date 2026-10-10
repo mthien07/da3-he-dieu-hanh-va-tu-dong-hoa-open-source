@@ -22,6 +22,7 @@ NGUONG_SAO_LUU_GIO = 72      # quá 3 ngày chưa sao lưu → cảnh báo
 NGUONG_IM_LANG_GIO = 48      # quá 2 ngày không báo tình trạng → máy tắt/mất mạng/gỡ bộ cài?
 NGUONG_O_TRONG = 10          # ổ hệ thống còn dưới 10% → sắp đầy
 NGUONG_GOI_CHO = 30          # quá 30 gói chờ cập nhật → tự động cập nhật có vấn đề
+NGUONG_TAI_KHOAN_SUDO = 1    # quá 1 tài khoản có sudo → cảnh báo (chủ trương: nhân viên không có sudo)
 NGUONG_IP_GIO = 2            # chỉ SSH tới IP máy trạm báo trong 2 giờ gần nhất (IP động có thể đã đổi chủ)
 TEN_HOP_LE = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
 
@@ -82,6 +83,9 @@ def danh_gia(ten, gio_sao_luu, tt, bay_gio):
         tom_tat.append("đã cập nhật" if not cho else f"{cho} gói chờ cập nhật")
     if tt.get("can_khoi_dong_lai") is True:
         canh_bao.append("cần khởi động lại để hoàn tất cập nhật")
+    sudo_so = so(tt, "sudo_so")
+    if sudo_so is not None and sudo_so > NGUONG_TAI_KHOAN_SUDO:
+        canh_bao.append(f"{int(sudo_so)} tài khoản có quyền sudo (chỉ quản trị máy nên có — nhân viên dùng tài khoản thường)")
     return canh_bao, " · ".join(tom_tat)
 
 

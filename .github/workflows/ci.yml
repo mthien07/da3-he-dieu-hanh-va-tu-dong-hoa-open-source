@@ -33,6 +33,7 @@ jobs:
       - name: Kiểm thử đơn vị (Python) + mẫu Jinja đọc được
         run: |
           python3 -m unittest discover -s tests/box -p 'test_*.py'
+          python3 -m unittest discover -s tests/desktop -p 'test_*.py'
           python3 -m unittest tests/ai/test_scoring_and_report.py
           python3 tests/kiem-tra-mau-jinja.py
       - name: yamllint

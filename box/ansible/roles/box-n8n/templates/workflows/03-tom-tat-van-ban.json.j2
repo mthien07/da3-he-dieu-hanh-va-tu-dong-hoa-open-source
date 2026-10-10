@@ -1,3 +1,6 @@
+{# Trang kết quả dùng respondWith "text" (n8n lọc sanitize-html) + thoát & < > : câu trả lời của AI đọc từ PDF do người dùng tải lên,
+   không để thành HTML thô ("showText" in {{{responseText}}} không qua lọc — docs/security-audit.md S1). Giữ các dòng "-" nhờ
+   white-space: pre-line của trang. #}
 {% set js %}
 const text = String($input.first().json.text || '').trim();
 const soY = Number($('Biểu mẫu tóm tắt').first().json.so_y || 5);
@@ -34,8 +37,8 @@ return [{ json: { body: {
      "parameters": {"method": "POST", "url": "http://ollama:11434/api/chat", "sendBody": true, "specifyBody": "json",
        "jsonBody": "={{ '{{' }} JSON.stringify($json.body) {{ '}}' }}", "options": {"timeout": 600000}}},
     {"id": "tt-5", "name": "Hiện bản tóm tắt", "type": "n8n-nodes-base.form", "typeVersion": 2.5, "position": [880, 0],
-     "parameters": {"operation": "completion", "respondWith": "showText",
-       "responseText": "={{ '{{' }} ($json.message && $json.message.content) || $json.loi || 'Không tóm tắt được, thử lại sau.' {{ '}}' }}"}}
+     "parameters": {"operation": "completion", "respondWith": "text", "completionTitle": "Bản tóm tắt",
+       "completionMessage": "={{ '{{' }} String(($json.message && $json.message.content) || $json.loi || 'Không tóm tắt được, thử lại sau.').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') {{ '}}' }}"}}
   ],
   "connections": {
     "Biểu mẫu tóm tắt": {"main": [[{"node": "Đọc chữ trong PDF", "type": "main", "index": 0}]]},

@@ -91,10 +91,19 @@ Máy trạm cài bản v0.1 (file `sao-luu.env`) được bộ cài tự đổi 
    (kho sao lưu máy trạm là bản sao nên không nằm trong bản sao lưu Box — máy trạm tự tạo kho mới ở lần sao lưu sau).
 Đã diễn tập tự động trong container (`tests/box/check-khoi-phuc-toan-bo.sh`); nên diễn tập 1 lần trên máy ảo trước khi bán.
 
+## Nâng cấp phiên bản dịch vụ
+Phiên bản các dịch vụ (Caddy, Ollama, Open WebUI, n8n, Uptime Kuma, rest-server) ghim cả **tag lẫn digest** trong
+`box/ansible/group_vars/all.yml` (`onebee_box_images`). Nâng cấp = sửa cả hai rồi chạy lại bộ cài. Với n8n, mỗi lần đổi image bộ cài
+**tự dừng n8n và chép nguyên thư mục dữ liệu** sang `/srv/onebee/n8n.truoc-<phiên-bản-cũ>` (n8n chạy migration CSDL khi khởi động,
+không quay lui được). Hoàn tác: `docker compose stop n8n` (trong `/opt/onebee-box`) → xóa `/srv/onebee/n8n` → đổi tên thư mục chép về
+`/srv/onebee/n8n` → ghim lại image cũ → chạy lại bộ cài. Thư mục chép không tự xóa — xóa tay khi đã dùng ổn:
+`sudo rm -rf /srv/onebee/n8n.truoc-*`. n8n 2.40.x đã ngừng nhận bản vá (bản cuối 2.40.7).
+
 ## Quyền riêng tư
 Box giữ mật khẩu kho sao lưu của từng máy trạm (để tự dọn bản cũ) → người quản trị Box **đọc được** bản sao lưu `/home`
 của mọi máy. Box còn có **quyền quản trị (root) trên máy trạm** qua SSH để cập nhật. Cần thông báo 2 điều này cho đơn vị
-khi triển khai, và giữ Box kín (chỉ kỹ thuật viên có mật khẩu).
+khi triển khai, và giữ Box kín (chỉ kỹ thuật viên có mật khẩu). Chat Trợ lý AI của nhân viên: tài khoản quản trị Open WebUI bị chặn
+không xem/xuất được, nhưng người có root trên Box vẫn đọc được file dữ liệu — cũng cần nói rõ với đơn vị.
 
 ## Giới hạn đã biết
 - Chưa giới hạn dung lượng từng máy trạm trên Box; theo dõi bằng `sudo onebee-box trang-thai`.
