@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Cài / gỡ CA của OneBee Box vào trình duyệt (Firefox, Chromium, Chrome) bằng chính sách doanh nghiệp (rà soát bảo mật F3).
-Cách dùng: onebee-chinh-sach-trinh-duyet.py cai <file-pem-CA> | go
+Cách dùng: onebee-chinh-sach-trinh-duyet.py cai <file-pem-CA> [--https <IP-Box>] | go
  - Firefox: chính sách Certificates.Install ghi vào /etc/firefox/policies/policies.json. File ở /etc THAY THẾ file
    /usr/lib/firefox/distribution/policies.json của gói → trộn nội dung gói vào rồi mới thêm mục OneBee; khi gỡ, trả về đúng nội dung gói
    (hoặc xóa file nếu gói không có). Firefox KHÔNG tự gỡ chứng chỉ đã nạp khi bỏ chính sách → 'go' gỡ thêm khỏi từng hồ sơ bằng certutil (cố gắng hết sức).
+ - Có --https <IP>: Firefox và Chromium/Chrome mở sẵn Box bằng https:// (trang chủ + dấu trang do quản trị đặt), để người dùng không gõ tay
+   http:// (HSTS vô tác dụng với địa chỉ IP). KHÔNG bật DisableSecurityBypass / HTTPS-Only: máy in, thiết bị LAN dùng chứng chỉ tự ký vẫn phải
+   mở được. Tập huấn: cảnh báo chứng chỉ ở địa chỉ Box = dấu hiệu bị tấn công, không bấm qua.
  - Chromium/Chrome: CACertificatesWithConstraints — trình duyệt tự áp ràng buộc tên của CA; gỡ = xóa file chính sách.
 Biến ONEBEE_GOC: tiền tố thư mục gốc (để kiểm thử); mặc định rỗng."""
 import base64
@@ -64,7 +67,17 @@ def rang_buoc(file_pem):
     return cidr, dns
 
 
-def cai(file_pem):
+DICH_VU = [("Trợ lý AI", 3000, ""), ("Tự động hóa (n8n)", 5678, ""), ("Giám sát", 3001, ""),
+           ("Báo cần hỗ trợ", 5678, "form/onebee-ho-tro"), ("Nhập đơn hàng", 5678, "form/onebee-don-hang")]
+
+
+def dau_trang(ip):
+    """Danh sách dấu trang do quản trị đặt (định dạng ManagedBookmarks dùng chung cho Firefox và Chrome)."""
+    return [{"toplevel_name": "OneBee Box"}, {"name": "Trang giới thiệu OneBee Box", "url": f"https://{ip}/"}] + \
+        [{"name": ten, "url": f"https://{ip}:{cong}/{duong}"} for ten, cong, duong in DICH_VU]
+
+
+def cai(file_pem, ip_https=None):
     doi = False
     goi = doc_json(FIREFOX_GOI) or {}
     cs = goi.get("policies", {}) if isinstance(goi.get("policies", {}), dict) else {}
@@ -72,12 +85,18 @@ def cai(file_pem):
     chung_chi = dict(goi["policies"].get("Certificates", {}))
     chung_chi["Install"] = [x for x in chung_chi.get("Install", []) if x != DICH_CA] + [DICH_CA]
     goi["policies"]["Certificates"] = chung_chi
+    if ip_https:
+        goi["policies"]["Homepage"] = {"URL": f"https://{ip_https}/", "StartPage": "homepage"}
+        goi["policies"]["ManagedBookmarks"] = dau_trang(ip_https)
     doi |= ghi_neu_doi(FIREFOX_ETC, goi)
     b64 = pem_sang_der_b64(file_pem)
     cidr, dns = rang_buoc(file_pem)
     for p in CHROME_FILES:
-        doi |= ghi_neu_doi(p, {"CACertificatesWithConstraints": [
-            {"certificate": b64, "constraints": {"permitted_cidrs": cidr, "permitted_dns_names": dns}}]})
+        chinh_sach = {"CACertificatesWithConstraints": [
+            {"certificate": b64, "constraints": {"permitted_cidrs": cidr, "permitted_dns_names": dns}}]}
+        if ip_https:
+            chinh_sach.update(HomepageLocation=f"https://{ip_https}/", ManagedBookmarks=dau_trang(ip_https))
+        doi |= ghi_neu_doi(p, chinh_sach)
     return doi
 
 
@@ -122,10 +141,10 @@ def go():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 3 and sys.argv[1] == "cai":
-        thay_doi = cai(sys.argv[2])
+    if len(sys.argv) in (3, 5) and sys.argv[1] == "cai" and (len(sys.argv) == 3 or sys.argv[3] == "--https"):
+        thay_doi = cai(sys.argv[2], sys.argv[4] if len(sys.argv) == 5 else None)
     elif len(sys.argv) == 2 and sys.argv[1] == "go":
         thay_doi = go()
     else:
-        sys.exit("Cách dùng: onebee-chinh-sach-trinh-duyet.py cai <file-pem-CA> | go")
+        sys.exit("Cách dùng: onebee-chinh-sach-trinh-duyet.py cai <file-pem-CA> [--https <IP-Box>] | go")
     print("đã đổi" if thay_doi else "không đổi")

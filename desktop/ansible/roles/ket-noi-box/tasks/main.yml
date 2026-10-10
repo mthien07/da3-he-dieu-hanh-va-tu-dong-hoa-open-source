@@ -17,8 +17,11 @@
 
 - name: Lấy các dòng liên quan CA
   ansible.builtin.set_fact:
-    onebee_kn: "{{ dict((onebee_kn_raw.content | b64decode | regex_findall('(?m)^([A-Z_]+)=\"?(.*?)\"?\\s*$'))
-                   | selectattr(0, 'in', ['BOX_CA', 'BOX_CA_VAN_TAY', 'BOX_IP']) | list) if onebee_kn_env.stat.exists else {} }}"
+    # Mẫu không dùng dấu gạch chéo ngược (ansible-core 2.16 và 2.19 xử lý chuỗi thoát trong Jinja khác nhau);
+    # các giá trị BOX_* chỉ gồm base64/số/chấm
+    onebee_kn: >-
+      {{ dict(onebee_kn_raw.content | b64decode | regex_findall('(?m)^(BOX_[A-Z_]+)="?([A-Za-z0-9+/=.]*)'))
+         if onebee_kn_env.stat.exists else {} }}
   no_log: true
 
 - name: Kiểm tra dấu của role (đã từng cài CA OneBee chưa)
@@ -43,6 +46,29 @@
     group: root
     mode: "0755"
   loop: [onebee-kiem-ca.py, onebee-chinh-sach-trinh-duyet.py]
+
+# ---- Dấu bền "máy đã bật HTTPS" (BOX_HTTPS=1): hoi, onebee-bao-tinh-trang, onebee-sao-luu từ chối http:// khi có dấu này, để kẻ chen giữa
+# mạng LAN không hạ cấp được kết nối. Chỉ Box đẩy BOX_HTTPS=0 mới xóa dấu; thiếu dòng BOX_HTTPS (cấu hình cũ) thì giữ nguyên.
+# Ghi dấu NGOÀI khối CA: CA lỗi thì máy báo lỗi chứng chỉ (an toàn), không lùi về http.
+- name: Ghi dấu máy đã bật HTTPS
+  ansible.builtin.copy:
+    content: "1\n"
+    dest: /var/lib/onebee/https-bat
+    owner: root
+    group: root
+    mode: "0644"
+  when: onebee_kn.BOX_HTTPS | default('') == '1'
+
+- name: Xóa dấu HTTPS khi Box báo hoàn tác
+  ansible.builtin.file:
+    path: /var/lib/onebee/https-bat
+    state: absent
+  when: onebee_kn.BOX_HTTPS | default('') == '0'
+
+- name: Kiểm tra dấu HTTPS sau khi cập nhật
+  ansible.builtin.stat:
+    path: /var/lib/onebee/https-bat
+  register: onebee_kn_https
 
 # ---- Có BOX_CA: kiểm thật kỹ rồi mới cài ----
 - name: Cài CA của OneBee Box
@@ -84,7 +110,12 @@
 
         - name: Chính sách trình duyệt (Firefox, Chromium, Chrome)
           ansible.builtin.command:
-            argv: [/usr/local/lib/onebee/onebee-chinh-sach-trinh-duyet.py, cai, /usr/local/share/ca-certificates/onebee-box-ca.crt]
+            argv: "{{ onebee_kn_lenh_trinh_duyet + (['--https', onebee_kn.BOX_IP] if onebee_kn_https.stat.exists else []) }}"
+          vars:
+            onebee_kn_lenh_trinh_duyet:
+              - /usr/local/lib/onebee/onebee-chinh-sach-trinh-duyet.py
+              - cai
+              - /usr/local/share/ca-certificates/onebee-box-ca.crt
           register: onebee_kn_tt
           changed_when: onebee_kn_tt.stdout is search('đã đổi')
 

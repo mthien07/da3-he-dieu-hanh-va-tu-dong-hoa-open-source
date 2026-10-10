@@ -113,6 +113,24 @@ class ChinhSachTrinhDuyet(unittest.TestCase):
             self.assertFalse(os.path.exists(p), p)
         self.assertEqual(self.td("go"), "không đổi")
 
+    def test_https_dat_trang_chu_va_dau_trang_roi_go_tra_lai(self):
+        goi = {"policies": {"DisableAppUpdate": True}}
+        self.dat_goi(goi)
+        self.assertEqual(self.td("cai", self.pem, "--https", "192.168.1.10"), "đã đổi")
+        nd = json.load(open(self.ff))["policies"]
+        self.assertEqual(nd["Homepage"]["URL"], "https://192.168.1.10/")
+        urls = [b["url"] for b in nd["ManagedBookmarks"] if "url" in b]
+        self.assertIn("https://192.168.1.10:3000/", urls)
+        self.assertTrue(all(u.startswith("https://") for u in urls))
+        self.assertNotIn("DisableSecurityBypass", nd)          # QĐ8: máy in/thiết bị LAN tự ký vẫn phải mở được
+        self.assertNotIn("HttpsOnlyMode", nd)
+        ch = json.load(open(self.chrome))
+        self.assertEqual(ch["HomepageLocation"], "https://192.168.1.10/")
+        self.assertEqual(ch["ManagedBookmarks"], nd["ManagedBookmarks"])
+        self.assertEqual(self.td("cai", self.pem, "--https", "192.168.1.10"), "không đổi")
+        self.td("go")
+        self.assertEqual(json.load(open(self.ff)), goi)
+
     def test_tron_voi_file_cua_goi_firefox_va_tra_ve_nguyen_ven(self):
         goi = {"policies": {"DisableAppUpdate": True, "Certificates": {"ImportEnterpriseRoots": True, "Install": ["/etc/khac.crt"]}}}
         self.dat_goi(goi)

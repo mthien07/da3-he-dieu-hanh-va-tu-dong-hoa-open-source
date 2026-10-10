@@ -16,6 +16,7 @@ import json
 import os
 import shutil
 import socket
+import ssl
 import subprocess
 import sys
 import time
@@ -87,6 +88,37 @@ def so_tai_khoan_sudo(duong_dan="/etc/group"):
         return None
     return len(thanh_vien)
 
+CA_ONEBEE = "/usr/local/share/ca-certificates/onebee-box-ca.crt"
+HTTPS_BAT = "/var/lib/onebee/https-bat"   # dấu bền: Box đã báo bật HTTPS cho máy này (chỉ cờ BOX_HTTPS=0 do Box đẩy mới xóa)
+
+
+def mo(req, timeout):
+    """urlopen có ghim CA: https:// chỉ tin CA riêng của OneBee Box (không tin CA công cộng); http:// bị từ chối khi máy đã bật HTTPS
+    (kẻ chen giữa mạng LAN không hạ cấp được kết nối về HTTP để đọc mật khẩu/khóa)."""
+    ngu_canh = None
+    if req.full_url.startswith("https://"):
+        try:
+            ngu_canh = ssl.create_default_context(cafile=CA_ONEBEE)
+        except (OSError, ssl.SSLError):
+            sys.exit("Máy chưa có chứng chỉ CA của OneBee Box. Báo người quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>")
+    elif os.path.exists(HTTPS_BAT):
+        sys.exit("Máy này đã bật HTTPS nhưng cấu hình còn địa chỉ http:// — KHÔNG gửi. Báo người quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>")
+    return urllib.request.urlopen(req, timeout=timeout, context=ngu_canh)
+
+
+def loi_mang(e):
+    """Thông báo cho lỗi kết nối/HTTP chung. None nếu không phải loại này. Lỗi chứng chỉ được nêu riêng: đó có thể là dấu hiệu bị tấn công."""
+    if isinstance(e, urllib.error.HTTPError):
+        if e.code in (502, 503, 504):
+            return "Dịch vụ trên OneBee Box chưa chạy hoặc đang khởi động. Thử lại sau vài phút; vẫn lỗi thì báo người quản trị."
+        if e.code in (301, 308):
+            return "Cấu hình địa chỉ OneBee Box đã cũ (Box chuyển sang HTTPS). Báo người quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>"
+        return None
+    if isinstance(e, urllib.error.URLError) and isinstance(getattr(e, "reason", None), ssl.SSLError):
+        return ("CHỨNG CHỈ CỦA ONEBEE BOX KHÔNG HỢP LỆ — dừng lại, đừng nhập mật khẩu ở bất cứ đâu. "
+                "Có thể có thiết bị lạ giả danh Box: báo người quản trị ngay.")
+    return None
+
 
 def main():
     if os.geteuid() != 0:
@@ -120,12 +152,12 @@ def main():
                                  method="POST",
                                  headers={"Content-Type": "application/json", "X-OneBee-Key": conf["TINH_TRANG_KEY"]})
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with mo(req, 30) as r:
             r.read()
     except urllib.error.HTTPError as e:
-        sys.exit(f"OneBee Box từ chối tình trạng (mã {e.code}) — kiểm tra khóa TINH_TRANG_KEY hoặc chạy lại 'onebee-box them-may'.")
+        sys.exit(loi_mang(e) or f"OneBee Box từ chối tình trạng (mã {e.code}) — kiểm tra khóa TINH_TRANG_KEY hoặc chạy lại 'onebee-box them-may'.")
     except (urllib.error.URLError, OSError) as e:
-        sys.exit(f"Không gửi được tình trạng về OneBee Box ({e}) — Box tắt hoặc mất mạng, lần sau gửi lại.")
+        sys.exit(loi_mang(e) or f"Không gửi được tình trạng về OneBee Box ({e}) — Box tắt hoặc mất mạng, lần sau gửi lại.")
     print(f"Đã gửi tình trạng máy {tt['ten']} về Box: {cho} gói chờ cập nhật, ổ trống {tt['o_trong_phan_tram']}%.")
     return 0
 

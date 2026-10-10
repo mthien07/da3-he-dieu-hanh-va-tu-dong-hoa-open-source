@@ -45,6 +45,20 @@ Lần đầu tải vài GB image. Xong sẽ in địa chỉ trang giới thiệu
 
 ![Trang giới thiệu OneBee Box](anh/01-trang-gioi-thieu-box.png)
 
+### Bật HTTPS (khuyến nghị — chưa bật mặc định)
+Mật khẩu và khóa đang đi qua LAN dạng rõ ở chế độ HTTP. Bật HTTPS (CA riêng của Box + Caddy, xem `docs/adr/0005-https-noi-bo-caddy-ca-rang-buoc-ten.md`):
+1. Cài/cập nhật Box như trên → bộ cài tự đẩy CA xuống mọi máy trạm đã cấp (máy tắt thì bật lên rồi `sudo onebee-box dong-bo-may --tat-ca`).
+2. Kiểm: `sudo onebee-box may-chua-nhan-ca` không in tên máy nào.
+3. Đặt `onebee_box_https: true` trong `box/ansible/group_vars/all.yml`, chạy lại bộ cài. Nếu còn máy chưa nhận CA, bộ cài **giữ HTTP** và nêu tên máy.
+4. Từ đó dùng `https://<ip-box>[:cổng]`; các cổng 3000/5678/3001/8000 do Caddy giữ (cổng backend đóng hẳn); `http://` tới các cổng này tự chuyển sang `https://`.
+   Máy trạm nhận URL https + chứng chỉ CA, Firefox mở sẵn Box bằng https. **Máy tắt lúc chuyển**: bật lên rồi `sudo onebee-box dong-bo-may <tên>` (trong 30 ngày với máy đã ghim khóa SSH).
+5. **Thiết bị không do OneBee quản lý** (laptop kỹ thuật, điện thoại, máy của quản lý): tải `http://<ip-box>/onebee-ca.crt`, đối chiếu vân tay SHA-256 với `sudo onebee-box in-ca` (hoặc bản in `in-khoa`) rồi mới cài.
+   Sau khi đã cài, **mọi** cảnh báo chứng chỉ ở địa chỉ Box là dấu hiệu bị tấn công — không bấm "tiếp tục", báo kỹ thuật.
+6. Kỹ thuật vào Box qua Tailscale: thêm dòng `/etc/hosts` `<IP Tailscale của Box> box.<mã đơn vị>.onebee.internal`, mở `https://box.<mã đơn vị>.onebee.internal:3000` (mở bằng IP 100.x trần không dùng được).
+   Mỗi khách dùng **một hồ sơ Firefox riêng** (CA của khách A chỉ cấp cho tên của khách A, nhưng các khách hay trùng dải `192.168.1.x`).
+7. Hoàn tác: `onebee_box_https: false` → chạy lại bộ cài (máy trạm tự nhận cờ `BOX_HTTPS=0`, về HTTP).
+Hết hạn CA trung gian (1 năm) được gia hạn tự động mỗi đêm sao lưu; `sudo onebee-box trang-thai` hiện số ngày còn lại.
+
 ## 3. Việc làm ngay sau khi cài
 0. **SSH vào Box chỉ bằng khóa** (Box giữ khóa vào được mọi máy trạm): từ máy kỹ thuật `ssh-copy-id <tài-khoản>@<ip-box>`,
    thử `ssh <tài-khoản>@<ip-box>` vào được, rồi chạy lại `sudo ./box/onebee-box-install.sh` → Box tắt đăng nhập SSH bằng mật khẩu

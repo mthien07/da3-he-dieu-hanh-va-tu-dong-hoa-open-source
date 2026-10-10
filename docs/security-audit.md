@@ -537,6 +537,22 @@ Cập nhật các hướng dẫn trong `docs/huong-dan/`, `README.md`, `tests/RE
 
 **Hoàn tác:** `onebee_box_https: false` → chạy bộ cài → `dong-bo-may --tat-ca` (đẩy cờ hoàn tác, URL http). Mẫu giữ nhánh HTTP ít nhất 1 bản phát hành.
 
+#### Trạng thái triển khai Pha 4 (10/10/2026)
+Đã làm: biến `onebee_box_https` (+ `onebee_box_https_bo_qua_chot_chan`), chốt chặn máy chưa nhận CA (dấu `ca-da-dong-bo/<tên>` do `dong-bo-may` ghi **sau khi** máy cài đúng CA),
+dấu `https-da-bat`, Caddyfile HTTPS (CA riêng đặt sẵn, `default_sni`, `http_redirect` 308, h1+h2, `stream_close_delay 5m`, `request_body 256MB` cho rest-server,
+site Kuma chỉ khi đã có quản trị, tên phụ `box.<mã>.onebee.internal`), compose hai chế độ (backend bỏ `ports:`, Caddy `no-new-privileges` + `cap_drop ALL`), chuyển HTTP↔HTTPS (dừng dịch vụ giữ cổng,
+backend trước portal sau, xóa chứng chỉ Caddy khi CA đổi, `caddy reload` khi chỉ Caddyfile đổi), kiểm sức khỏe qua HTTPS có kiểm nội dung (Kuma kiểm trong container khi chưa mở cổng), mọi lời gọi
+nội bộ của Box theo dấu HTTPS, n8n/Open WebUI/Kuma theo thiết kế, tự `dong-bo-may --tat-ca` cuối bộ cài, máy trạm (ghim CA, từ chối http khi có dấu, thông báo lỗi, F7 `onebee-sao-luu`),
+Firefox/Chromium trang chủ + dấu trang https, ADR 0005, hướng dẫn.
+Khác thiết kế: (1) Kuma **không** dùng `editMonitor` (các theo dõi nội bộ giữ `http://<dịch vụ>` nên URL không đổi giữa hai chế độ — YAGNI), chỉ thêm 1 theo dõi cổng Caddy khi HTTPS; (2) **không** ghim subnet compose
++ `FORWARDED_ALLOW_IPS` cho Open WebUI (chưa có bằng chứng cần; `X-Forwarded-*` chỉ tới từ Caddy vì backend không còn cổng); (3) mặc định `onebee_box_https: false` (đổi mặc định ở bản sau);
+(4) `restic` dùng `RESTIC_CACERT` (chỉ tin CA OneBee) thay vì kho hệ thống; (5) chưa có thông báo "khóa CA sắp hết hạn" trong payload email quy trình 01 — cảnh báo nằm trong log sao lưu (được gửi trong email) và `trang-thai`.
+Đã kiểm trong container làm việc: **Caddy 2.11.4 thật** chạy đúng Caddyfile do template sinh — nối bằng IP không SNI và bằng tên, chuỗi tới CA riêng (openssl `Verification: OK`), mỗi cổng tới đúng backend
+(có `X-Forwarded-Proto: https`), `http://` → 308, cổng 80 chỉ CA/hướng dẫn, CA lạ bị từ chối, Kuma chỉ có site khi sẵn sàng; compose hai chế độ; client TLS thật (CA lạ bị chặn, từ chối http khi có dấu, lỗi 502/308);
+toàn bộ `dong-bo-may-tram.yml` + role `ket-noi-box` bằng ansible-core 2.19 (HTTP → HTTPS → chạy lại `changed=0` → hoàn tác). **Chưa kiểm** (cần Docker/Box/máy thật): mọi thứ qua Docker bridge (hairpin `https://<IP>:<cổng>` từ chính Box,
+`default_sni` với IP container, nhận cổng khi chuyển), bộ cài Box đầy đủ ở chế độ HTTPS và `changed=0`, WebSocket chat/trình soạn n8n/Kuma, cookie Secure thật của Open WebUI/n8n, CSP biểu mẫu n8n qua Caddy,
+`cap_drop ALL` có chạy được với image Caddy, n8n 2.42.6 với các biến proxy, Kuma `setSettings`, restic tải lớn qua Caddy, trình duyệt thật (Firefox/Chromium đọc chính sách, `certutil -D`), ansible-core 2.16.
+
 ### 5.6 Pha 4b — Xoay khóa bắt buộc (chạy khi máy cuối cùng đã đồng bộ HTTPS)
 Lý do: QĐ3 nhằm chống nghe lén. Mọi thứ đã đi qua LAN dạng rõ trước khi có HTTPS vẫn còn hiệu lực.
 - Theo từng máy (đẩy bằng `dong-bo-may`): mật khẩu htpasswd kho sao lưu, khóa `hoi`.

@@ -138,6 +138,20 @@ class CaRieng(unittest.TestCase):
         self.assertEqual(open(f"{self.ca}/root.crt", "rb").read(), goc)   # gốc không đổi → máy trạm không phải nhận CA lại
         self.assertEqual(chay("openssl", "verify", "-CAfile", f"{self.ca}/root.crt", f"{self.ca}/inter.crt").returncode, 0)
 
+    def test_thu_muc_cho_caddy_chi_co_goc_va_trung_gian_khong_co_khoa_goc(self):
+        pki = f"{self.t}/pki"
+        env = dict(os.environ, ONEBEE_PKI_OUT=pki)
+        r = chay(SCRIPT, self.ca, "anphu", "127.0.0.1", env=env)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "đã đổi"))   # thư mục mới → đổi
+        self.assertEqual(sorted(os.listdir(pki)), ["inter.crt", "inter.key", "root.crt"])
+        self.assertEqual(oct(os.stat(f"{pki}/inter.key").st_mode & 0o777), "0o600")
+        self.assertEqual(open(f"{pki}/root.crt").read(), open(f"{self.ca}/root.crt").read())
+        r = chay(SCRIPT, self.ca, "anphu", "127.0.0.1", env=env)
+        self.assertEqual((r.returncode, r.stdout), (0, ""))                 # chạy lại không đổi
+        open(f"{pki}/root.key", "w").write("khoa goc chep nham")
+        chay(SCRIPT, self.ca, "anphu", "127.0.0.1", env=env)
+        self.assertFalse(os.path.exists(f"{pki}/root.key"))                 # khóa gốc không bao giờ nằm ở thư mục này
+
     def test_tu_choi_dau_vao_sai(self):
         for ma in ("Viet Hoa", "-abc", "a" * 40, "co.dau"):
             self.assertNotEqual(chay(SCRIPT, f"{self.t}/x", ma, "10.0.0.1").returncode, 0, ma)

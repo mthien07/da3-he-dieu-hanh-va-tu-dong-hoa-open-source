@@ -246,6 +246,37 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)   # thiếu CA → không dựng được cấu hình → không đẩy gì
         self.assertNotIn("BOX_CA", r.stdout)
 
+    def kv(self, ten="ketoan-01"):
+        r = self.chay("them-may", ten)
+        return dict(l.split("=", 1) for l in r.stdout.splitlines() if "=" in l and not l.startswith("#"))
+
+    def test_http_hay_https_theo_dau_https_da_bat(self):
+        kv = self.kv()
+        self.assertEqual(kv["BOX_HTTPS"], "0")
+        self.assertTrue(kv["RESTIC_REPOSITORY"].startswith("rest:http://"))
+        self.assertTrue(kv["HOI_URL"].startswith("http://") and kv["TINH_TRANG_URL"].startswith("http://"))
+        open(f"{self.t}/secrets/https-da-bat", "w").write("1\n")
+        kv = self.kv()
+        self.assertEqual(kv["BOX_HTTPS"], "1")
+        self.assertTrue(kv["RESTIC_REPOSITORY"].startswith("rest:https://ketoan-01:"))
+        self.assertEqual(kv["HOI_URL"], "https://192.168.1.10:3000")
+        self.assertEqual(kv["TINH_TRANG_URL"], "https://192.168.1.10:5678/webhook/onebee-tinh-trang")
+
+    def test_may_chua_nhan_ca_cho_den_khi_dong_bo_ghi_dau(self):
+        self.kv("ketoan-01")
+        self.kv("kho-02")
+        self.assertEqual(sorted(self.chay("may-chua-nhan-ca").stdout.split()), ["ketoan-01", "kho-02"])
+        os.makedirs(f"{self.t}/secrets/ca-da-dong-bo")
+        vt = open(f"{self.t}/secrets/ca/root.sha256").read().strip()
+        open(f"{self.t}/secrets/ca-da-dong-bo/ketoan-01", "w").write(vt + "\n")
+        self.assertEqual(self.chay("may-chua-nhan-ca").stdout.split(), ["kho-02"])
+        open(f"{self.t}/secrets/ca-da-dong-bo/kho-02", "w").write("0" * 64 + "\n")   # dấu của CA cũ (đã xoay CA) không tính
+        self.assertEqual(self.chay("may-chua-nhan-ca").stdout.split(), ["kho-02"])
+
+    def test_dong_bo_tat_ca_khi_chua_cap_may_nao_khong_loi(self):
+        r = self.chay("dong-bo-may", "--tat-ca")
+        self.assertIn("Chưa cấp máy trạm nào", r.stdout)
+
     def test_chua_cap_thi_khong_vao_danh_sach(self):
         self.assertEqual(self.chay("cap-nhat-may", "la-hoac", kiem=False).returncode, 1)
         self.assertEqual(self.chay("cap-nhat-may", "../etc", kiem=False).returncode, 1)

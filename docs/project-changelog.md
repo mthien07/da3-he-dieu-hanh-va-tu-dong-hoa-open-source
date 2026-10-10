@@ -28,6 +28,16 @@
   (`CACertificatesWithConstraints`); thiếu `BOX_CA` thì gỡ sạch (kể cả hồ sơ Firefox, bằng certutil).
 - `dong-bo-may` giờ chạy lại đúng các task của bộ cài desktop (CA, cấu hình `hoi`, mục menu) trên máy trạm — không còn giới hạn "chỉ ghi file cấu hình".
 - Caddy của Box: gắn cả thư mục Caddyfile + `/data` `/config` (sửa N5).
+### Bảo mật — Pha 4 (xem `docs/security-audit.md`, F3: HTTPS nội bộ, `docs/adr/0005-…`)
+- **`onebee_box_https: true`** bật HTTPS: Caddy là dịch vụ DUY NHẤT công bố cổng (80 chứng chỉ gốc + hướng dẫn, 443 trang giới thiệu, 3000/5678/3001/8000 TLS); 4 dịch vụ
+  backend mất `ports:`. Chứng chỉ do CA riêng cấp (`default_sni` cho kết nối bằng IP; `box.<mã>.onebee.internal` cho kỹ thuật qua Tailscale); `http://` tới cổng TLS → 308.
+  Chốt chặn: lần bật đầu, mọi máy đã cấp phải đã nhận CA (không thì giữ HTTP và nêu tên máy). Dấu `secrets/https-da-bat`; chuyển HTTP↔HTTPS dừng các dịch vụ giữ cổng rồi
+  khởi động backend trước, Caddy sau. Cuối bộ cài tự `dong-bo-may --tat-ca` khi CA/HTTPS đổi. Mặc định `false` (một bản phát hành giữ nhánh HTTP).
+- Ứng dụng: n8n sau proxy (`N8N_PROTOCOL/HOST/EDITOR_BASE_URL/PROXY_HOPS`, bỏ `N8N_SECURE_COOKIE=false`); Open WebUI cookie Secure + `CORS_ALLOW_ORIGIN` + `WEBUI_URL` qua API;
+  Uptime Kuma Trust Proxy + theo dõi cổng Caddy; Caddy `no-new-privileges`, `cap_drop ALL` + `NET_BIND_SERVICE`; kiểm sức khỏe kiểm cả nội dung.
+- Máy trạm: `hoi`, `onebee-bao-tinh-trang`, `onebee-sao-luu` chỉ tin CA OneBee (ghim), **từ chối `http://` khi có dấu bền `/var/lib/onebee/https-bat`** (cờ `BOX_HTTPS=1`; chỉ Box đẩy `BOX_HTTPS=0` mới xóa);
+  báo lỗi dễ hiểu (chứng chỉ lạ = có thể bị tấn công; 502/503/504; 301/308). `onebee-sao-luu` đọc cấu hình từng dòng, không chạy như mã shell (F7). Firefox/Chromium: trang chủ + dấu trang https.
+- Kiểm thử: Caddy 2.11.4 thật (đã chạy), compose hai chế độ, ca, client TLS thật, `tests/box/check-https.sh`.
 ### Bảo mật — Pha 2 (xem `docs/security-audit.md`, F2)
 - **Báo cáo tình trạng máy trạm có chữ ký** (HMAC-SHA256, khóa suy từ mật khẩu kho sao lưu của máy — chưa từng đi qua mạng). n8n không giữ khóa;
   Box tự kiểm chữ ký + độ lệch giờ (chống phát lại) khi in bảng/báo cáo. Báo cáo sai chữ ký được nêu rõ; báo cáo cũ không ký vẫn nhận (chuyển

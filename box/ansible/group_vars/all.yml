@@ -31,6 +31,10 @@ onebee_box_dia_chi: ""
 # Kỹ thuật vào Box qua Tailscale bằng tên box.<mã đơn vị>.onebee.internal (máy kỹ thuật thêm dòng /etc/hosts trỏ tới IP Tailscale của Box).
 # HTTPS (Pha 4): false = dịch vụ vẫn chạy HTTP như cũ (CA đã tạo, máy trạm nhận CA). Chỉ bật sau khi mọi máy trạm đã đồng bộ CA.
 onebee_box_https: false
+# Bỏ qua chốt chặn "mọi máy đã cấp phải nhận CA trước" khi bật HTTPS (máy hỏng/bỏ không còn liên lạc được).
+# Máy bị bỏ sót mất kết nối tới Box
+# cho tới khi chạy: sudo onebee-box dong-bo-may <tên-máy>
+onebee_box_https_bo_qua_chot_chan: false
 
 # Cổng trong mạng LAN (KHÔNG mở các cổng này ra Internet trên router)
 onebee_box_ports:

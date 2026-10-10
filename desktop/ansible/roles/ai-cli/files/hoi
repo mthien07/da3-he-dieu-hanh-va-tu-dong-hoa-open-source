@@ -9,10 +9,42 @@ Cấu hình: /etc/onebee-hoi.conf (do bộ cài OneBee OS tạo). Câu hỏi kh�
 import json
 import os
 import select
+import ssl
 import stat
 import sys
 import urllib.error
 import urllib.request
+
+CA_ONEBEE = "/usr/local/share/ca-certificates/onebee-box-ca.crt"
+HTTPS_BAT = "/var/lib/onebee/https-bat"   # dấu bền: Box đã báo bật HTTPS cho máy này (chỉ cờ BOX_HTTPS=0 do Box đẩy mới xóa)
+
+
+def mo(req, timeout):
+    """urlopen có ghim CA: https:// chỉ tin CA riêng của OneBee Box (không tin CA công cộng); http:// bị từ chối khi máy đã bật HTTPS
+    (kẻ chen giữa mạng LAN không hạ cấp được kết nối về HTTP để đọc mật khẩu/khóa)."""
+    ngu_canh = None
+    if req.full_url.startswith("https://"):
+        try:
+            ngu_canh = ssl.create_default_context(cafile=CA_ONEBEE)
+        except (OSError, ssl.SSLError):
+            sys.exit("Máy chưa có chứng chỉ CA của OneBee Box. Báo người quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>")
+    elif os.path.exists(HTTPS_BAT):
+        sys.exit("Máy này đã bật HTTPS nhưng cấu hình còn địa chỉ http:// — KHÔNG gửi. Báo người quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>")
+    return urllib.request.urlopen(req, timeout=timeout, context=ngu_canh)
+
+
+def loi_mang(e):
+    """Thông báo cho lỗi kết nối/HTTP chung. None nếu không phải loại này. Lỗi chứng chỉ được nêu riêng: đó có thể là dấu hiệu bị tấn công."""
+    if isinstance(e, urllib.error.HTTPError):
+        if e.code in (502, 503, 504):
+            return "Dịch vụ trên OneBee Box chưa chạy hoặc đang khởi động. Thử lại sau vài phút; vẫn lỗi thì báo người quản trị."
+        if e.code in (301, 308):
+            return "Cấu hình địa chỉ OneBee Box đã cũ (Box chuyển sang HTTPS). Báo người quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>"
+        return None
+    if isinstance(e, urllib.error.URLError) and isinstance(getattr(e, "reason", None), ssl.SSLError):
+        return ("CHỨNG CHỈ CỦA ONEBEE BOX KHÔNG HỢP LỆ — dừng lại, đừng nhập mật khẩu ở bất cứ đâu. "
+                "Có thể có thiết bị lạ giả danh Box: báo người quản trị ngay.")
+    return None
 
 CONF = "/etc/onebee-hoi.conf"
 NOTE = "(Trợ lý AI có thể sai — kiểm tra lại số liệu, thông tin quan trọng.)"
@@ -63,13 +95,17 @@ def main():
                                           "Authorization": f"Bearer {conf['HOI_API_KEY']}"})
     print("Đang hỏi Trợ lý OneBee...", file=sys.stderr, flush=True)
     try:
-        with urllib.request.urlopen(req, timeout=300) as r:
+        with mo(req, 300) as r:
             answer = json.load(r)["choices"][0]["message"]["content"].strip()
-    except urllib.error.HTTPError as e:
+    except (urllib.error.HTTPError, urllib.error.URLError) as e:
+        if loi_mang(e):
+            sys.exit(loi_mang(e))
+        if not isinstance(e, urllib.error.HTTPError):
+            sys.exit("Không kết nối được OneBee Box. Kiểm tra mạng nội bộ hoặc báo người quản trị.")
         if e.code in (401, 403):
             sys.exit("Khóa Trợ lý AI của máy này không hợp lệ hoặc đã bị thu hồi. Báo người quản trị OneBee.")
         sys.exit(f"OneBee Box báo lỗi {e.code}. Thử lại sau hoặc báo người quản trị.")
-    except (urllib.error.URLError, TimeoutError, OSError):
+    except (TimeoutError, OSError):
         sys.exit("Không kết nối được OneBee Box. Kiểm tra mạng nội bộ hoặc báo người quản trị.")
     except (KeyError, IndexError, ValueError):
         sys.exit("OneBee Box trả về dữ liệu không đọc được. Báo người quản trị.")

@@ -80,7 +80,7 @@
       changed_when: true
     - name: Chờ n8n chạy lại
       ansible.builtin.uri:
-        url: "http://127.0.0.1:{{ onebee_box_ports.n8n }}/healthz"
+        url: "{{ onebee_box_goi_noi_bo }}:{{ onebee_box_ports.n8n }}/healthz"
       register: onebee_n8n_health
       until: onebee_n8n_health.status == 200
       retries: 100   # sau khi nâng cấp n8n chạy migration CSDL lúc khởi động

@@ -1,0 +1,59 @@
+---
+# Quyết định bật HTTPS cho lần chạy này (rà soát bảo mật F3, Pha 4).
+# onebee_box_https là ý muốn; onebee_https_hieu_luc là kết quả sau chốt chặn.
+# Chốt chặn: lần BẬT đầu tiên, mọi máy đã cấp phải đã nhận CA (dấu ${SECRETS}/ca-da-dong-bo/<tên> do 'dong-bo-may' ghi) —
+# máy chưa có CA mà Box đóng cổng HTTP thì mất liên lạc. Khi HTTPS đã bật, máy cấp thêm sau đó không chặn nữa
+# (cấu hình in ra từ them-may đã mang sẵn CA + địa chỉ https).
+# Kết quả ghi thành dấu ${SECRETS}/https-da-bat (có trong bản sao lưu): các lệnh onebee-box đọc dấu này để biết gọi http hay https.
+
+- name: Dấu HTTPS đã có từ trước chưa
+  ansible.builtin.stat:
+    path: "{{ onebee_box_secrets }}/https-da-bat"
+  register: onebee_https_dau_cu
+
+- name: Máy đã cấp mà chưa nhận CA hiện tại
+  ansible.builtin.command: /usr/local/sbin/onebee-box may-chua-nhan-ca
+  register: onebee_chua_ca
+  changed_when: false
+  when: onebee_box_https | bool and not onebee_https_dau_cu.stat.exists
+
+- name: Chốt quyết định bật HTTPS
+  ansible.builtin.set_fact:
+    onebee_https_hieu_luc: >-
+      {{ (onebee_box_https | bool) and (onebee_https_dau_cu.stat.exists
+         or (onebee_chua_ca.stdout_lines | default([]) | length == 0) or (onebee_box_https_bo_qua_chot_chan | bool)) }}
+
+- name: Báo HTTPS chưa bật được vì còn máy chưa nhận CA
+  ansible.builtin.debug:
+    msg: >-
+      CHƯA BẬT HTTPS (dịch vụ giữ HTTP): các máy {{ onebee_chua_ca.stdout_lines | join(', ') }} chưa nhận CA của Box. Bật máy lên rồi chạy:
+      sudo onebee-box dong-bo-may --tat-ca, sau đó chạy lại bộ cài. Máy hỏng/bỏ không dùng: sudo onebee-box thu-hoi-may <tên>
+      (hoặc đặt onebee_box_https_bo_qua_chot_chan: true — máy bị bỏ sót sẽ mất kết nối tới Box cho tới khi được đồng bộ).
+  when: onebee_box_https | bool and not (onebee_https_hieu_luc | bool)
+
+- name: Ghi dấu HTTPS đã bật
+  ansible.builtin.copy:
+    content: "1\n"
+    dest: "{{ onebee_box_secrets }}/https-da-bat"
+    owner: root
+    group: root
+    mode: "0600"
+  when: onebee_https_hieu_luc | bool
+  register: onebee_https_ghi
+
+- name: Xóa dấu HTTPS (HTTPS tắt hoặc chưa bật được)
+  ansible.builtin.file:
+    path: "{{ onebee_box_secrets }}/https-da-bat"
+    state: absent
+  when: not (onebee_https_hieu_luc | bool)
+  register: onebee_https_xoa
+
+# Gốc địa chỉ cho các bước Ansible gọi dịch vụ từ chính Box (cùng quy tắc với dia_chi_noi_bo trong common.sh)
+- name: Gốc địa chỉ gọi dịch vụ từ Box
+  ansible.builtin.set_fact:
+    onebee_box_goi_noi_bo: "{{ ('https://' ~ onebee_box_ip) if (onebee_https_hieu_luc | bool) else 'http://127.0.0.1' }}"
+
+# Chuyển HTTP ↔ HTTPS: các bước sau (dừng dịch vụ giữ cổng, đẩy cấu hình xuống máy trạm) chỉ chạy khi trạng thái thật sự đổi
+- name: Ghi nhận trạng thái HTTPS có đổi không
+  ansible.builtin.set_fact:
+    onebee_https_doi: "{{ onebee_https_ghi is changed or onebee_https_xoa is changed }}"

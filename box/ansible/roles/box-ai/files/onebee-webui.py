@@ -7,7 +7,8 @@
   onebee-webui.py xoa-tai-khoan <ten>   Xóa tài khoản may-<ten> (thu hồi khóa hoi của máy; idempotent)
 
 Đọc cấu hình từ biến môi trường: WEBUI_URL, WEBUI_ADMIN_EMAIL, WEBUI_ADMIN_PASSWORD, ONEBEE_AI_MODEL,
-ONEBEE_LOI_DAN (đường dẫn file lời dặn), ONEBEE_SECRETS (thư mục bí mật).
+ONEBEE_LOI_DAN (đường dẫn file lời dặn), ONEBEE_SECRETS (thư mục bí mật),
+ONEBEE_WEBUI_PUBLIC_URL (địa chỉ công khai của Open WebUI, rỗng = chưa bật HTTPS).
 Mã thoát: 0 xong · 1 Open WebUI chưa sẵn sàng/lỗi khác (thử lại được) · 3 sai mật khẩu quản trị (không thử lại).
 """
 import json
@@ -72,9 +73,11 @@ def enforce_settings(token):
     status, cfg = call("GET", "/api/v1/auths/admin/config", token)
     if status != 200:
         sys.exit(f"LỖI: không đọc được cài đặt quản trị ({status}): {cfg}")
-    if any(cfg.get(k) != v for k, v in ADMIN_CONFIG.items()):
+    # WEBUI_URL (địa chỉ công khai: https://<IP>:3000 khi Box bật HTTPS, rỗng khi còn HTTP) lưu trong CSDL → đặt qua API như các cài đặt khác
+    muon = {**ADMIN_CONFIG, "WEBUI_URL": os.environ.get("ONEBEE_WEBUI_PUBLIC_URL", "")}
+    if any(cfg.get(k) != v for k, v in muon.items()):
         # bỏ trường rỗng (vd I18N=null) — gửi lại null bị Open WebUI từ chối
-        payload = {k: v for k, v in {**cfg, **ADMIN_CONFIG}.items() if v is not None}
+        payload = {k: v for k, v in {**cfg, **muon}.items() if v is not None}
         status, data = call("POST", "/api/v1/auths/admin/config", token, payload)
         if status != 200:
             sys.exit(f"LỖI: không lưu được cài đặt quản trị ({status}): {data}")

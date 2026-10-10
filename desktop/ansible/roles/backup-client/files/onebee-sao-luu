@@ -6,11 +6,23 @@ set -euo pipefail
 CONF=/etc/onebee/may-tram.env
 [[ ${EUID} -eq 0 ]] || { echo "Hãy chạy bằng quyền quản trị: sudo $0" >&2; exit 1; }
 [[ -r ${CONF} ]] || { echo "Chưa cấu hình sao lưu (${CONF})" >&2; exit 1; }
-# Chỉ nạp 2 dòng RESTIC_ (file còn các dòng khác, có thể có ký tự xuống dòng kiểu Windows khi dán)
-set -a
-# shellcheck disable=SC1090
-. <(grep -E '^RESTIC_(REPOSITORY|PASSWORD)=' "${CONF}" | tr -d '\r')
-set +a
+# Chỉ nạp 2 dòng RESTIC_ — đọc từng dòng KHÓA=giá trị, KHÔNG chạy file như mã shell (rà soát bảo mật F7: dòng lạ trong file không thành lệnh).
+# File còn các dòng khác, có thể có ký tự xuống dòng kiểu Windows khi dán.
+CA=/usr/local/share/ca-certificates/onebee-box-ca.crt
+while IFS='=' read -r khoa gia_tri; do
+  gia_tri="${gia_tri%$'\r'}"; gia_tri="${gia_tri#\"}"; gia_tri="${gia_tri%\"}"
+  case "${khoa}" in RESTIC_REPOSITORY | RESTIC_PASSWORD) export "${khoa}=${gia_tri}" ;; *) ;; esac
+done <"${CONF}"
+[[ -n "${RESTIC_REPOSITORY:-}" && -n "${RESTIC_PASSWORD:-}" ]] || { echo "Thiếu RESTIC_REPOSITORY hoặc RESTIC_PASSWORD trong ${CONF}" >&2; exit 1; }
+case "${RESTIC_REPOSITORY}" in
+  rest:https://*)
+    # Kho qua HTTPS: chỉ tin CA riêng của OneBee Box (không tin CA công cộng)
+    [[ -s ${CA} ]] || { echo "Chưa có chứng chỉ CA của OneBee Box (${CA}) — báo quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>" >&2; exit 1; }
+    export RESTIC_CACERT="${CA}" ;;
+  rest:http://*)
+    [[ ! -e /var/lib/onebee/https-bat ]] || { echo "Máy đã bật HTTPS nhưng cấu hình kho còn http:// — không sao lưu. Báo quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>" >&2; exit 1; } ;;
+  *) ;;
+esac
 restic cat config >/dev/null 2>&1 || restic init
 restic backup --tag onebee-may-tram --exclude-caches \
   --exclude '/home/*/.cache' --exclude '/home/*/.local/share/Trash' /home

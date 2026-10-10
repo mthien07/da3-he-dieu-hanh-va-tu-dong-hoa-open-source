@@ -52,9 +52,19 @@
     group: root
     mode: "0750"
 
+- name: Tạo thư mục chứng chỉ cho Caddy (chỉ gốc + trung gian, không có khóa gốc)
+  ansible.builtin.file:
+    path: "{{ onebee_box_dir }}/portal"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
 - name: Sinh / gia hạn CA riêng của Box (khóa gốc ở thư mục bí mật, không gắn vào container)
   ansible.builtin.command: >-
     /usr/local/lib/onebee-box/onebee-ca.sh {{ onebee_box_secrets }}/ca {{ onebee_box_ma_don_vi }} {{ onebee_box_ip }}
+  environment:
+    ONEBEE_PKI_OUT: "{{ onebee_box_dir }}/portal/pki"
   register: onebee_ca
   changed_when: onebee_ca.stdout is search('đã đổi')
   failed_when: onebee_ca.rc != 0

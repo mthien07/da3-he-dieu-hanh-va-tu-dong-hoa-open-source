@@ -24,12 +24,13 @@
     - name: Kiểm cấu hình sắp đẩy đủ các dòng bắt buộc, không rỗng
       ansible.builtin.assert:
         that:
-          - cau_hinh is search('(?m)^RESTIC_REPOSITORY=rest:http://[^:@/]+:[^@/]+@')
+          - cau_hinh is search('(?m)^RESTIC_REPOSITORY=rest:https?://[^:@/]+:[^@/]+@')
           - cau_hinh is search('(?m)^RESTIC_PASSWORD=[^\\s]+')
           - cau_hinh is search('(?m)^TINH_TRANG_KEY=[^\\s]+')
           - cau_hinh is search('(?m)^QUAN_TRI_SSH_KEY="ssh-ed25519 ')
           - cau_hinh is search('(?m)^BOX_CA=[A-Za-z0-9+/=]{100,}$')
           - cau_hinh is search('(?m)^BOX_CA_VAN_TAY=[0-9a-f]{64}$')
+          - cau_hinh is search('(?m)^BOX_HTTPS=[01]$')
         fail_msg: "Cấu hình dựng cho {{ inventory_hostname }} thiếu dòng bắt buộc — không đẩy"
         quiet: true
       vars:
@@ -55,6 +56,37 @@
     - name: Cài / gỡ CA của Box (kiểm vân tay + ràng buộc tên rồi mới cài)
       ansible.builtin.include_role:
         name: ket-noi-box
+
+    # CA phải đã được cài ĐÚNG bản vừa đẩy (role chỉ cảnh báo khi CA không đạt kiểm tra) — mới được tính là máy đã nhận CA
+    - name: Đọc dấu CA đã cài trên máy
+      ansible.builtin.slurp:
+        src: /var/lib/onebee/ket-noi-box
+      register: onebee_dau_ca
+
+    - name: Kiểm máy đã cài đúng CA vừa đẩy
+      ansible.builtin.assert:
+        that: (onebee_dau_ca.content | b64decode | trim) == van_tay
+        fail_msg: "Máy {{ inventory_hostname }} chưa cài CA vừa đẩy (vân tay không đạt kiểm tra?) — xem cảnh báo ở trên"
+        quiet: true
+      vars:
+        van_tay: >-
+          {{ lookup('ansible.builtin.file', onebee_cau_hinh_dir ~ '/' ~ inventory_hostname ~ '.env')
+             | regex_findall('(?m)^BOX_CA_VAN_TAY=([0-9a-f]{64})$') | first }}
+      no_log: true
+
+    - name: Ghi dấu trên Box — máy này đã nhận CA
+      ansible.builtin.copy:
+        content: "{{ van_tay }}\n"
+        dest: "{{ onebee_dau_ca_dir }}/{{ inventory_hostname }}"
+        owner: root
+        group: root
+        mode: "0600"
+      vars:
+        van_tay: >-
+          {{ lookup('ansible.builtin.file', onebee_cau_hinh_dir ~ '/' ~ inventory_hostname ~ '.env')
+             | regex_findall('(?m)^BOX_CA_VAN_TAY=([0-9a-f]{64})$') | first }}
+      delegate_to: localhost
+      become: false
 
     - name: Đọc lại cấu hình máy trạm vừa ghi
       ansible.builtin.include_role:

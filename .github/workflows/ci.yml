@@ -29,7 +29,14 @@ jobs:
         run: >-
           shellcheck -e SC2016 desktop/*.sh desktop/ansible/roles/backup-client/files/onebee-sao-luu
           desktop/ansible/roles/ho-tro-tu-xa/files/onebee-ho-tro box/ansible/roles/box-firewall/files/onebee-tuong-lua
-          box/*.sh tests/desktop/*.sh tests/desktop/extended/*.sh tests/box/*.sh
+          box/*.sh box/ansible/roles/box-stack/files/onebee-ca.sh tests/desktop/*.sh tests/desktop/extended/*.sh tests/box/*.sh
+      # Test Caddyfile HTTPS chạy Caddy THẬT: lấy đúng binary từ image đã ghim digest trong group_vars (không tải từ nơi khác)
+      - name: Lấy caddy từ image đã ghim digest
+        run: |
+          img="$(grep -oP '^  caddy: \K\S+' box/ansible/group_vars/all.yml)"
+          docker create --name caddy-tmp "${img}" >/dev/null
+          docker cp caddy-tmp:/usr/bin/caddy /tmp/caddy && docker rm caddy-tmp >/dev/null
+          echo "ONEBEE_TEST_CADDY=/tmp/caddy" >> "$GITHUB_ENV"
       - name: Kiểm thử đơn vị (Python) + mẫu Jinja đọc được
         run: |
           sudo apt-get install -y -q apache2-utils openssh-client   # test lệnh shell của onebee-box dùng htpasswd, ssh-keygen thật
