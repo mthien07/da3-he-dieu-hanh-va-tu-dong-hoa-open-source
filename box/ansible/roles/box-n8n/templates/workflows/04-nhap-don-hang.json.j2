@@ -1,19 +1,16 @@
 {% set js %}
+{% include 'workflows/_csv-js.j2' %}
 // Ghi 1 dòng CSV (UTF-8) vào thư mục chung: \\Box\chung\don-hang\don-hang-YYYY-MM.csv
 const j = $input.first().json;
 // Giờ theo múi giờ của quy trình (Asia/Ho_Chi_Minh)
 const thang = $now.toFormat('yyyy-MM');
 const sl = Number(j.so_luong_kg), gia = Number(j.don_gia);
 if (!Number.isFinite(sl) || !Number.isFinite(gia) || sl <= 0 || gia < 0) throw new Error('Số lượng hoặc đơn giá không hợp lệ');
-// Chữ bắt đầu bằng = + - @ sẽ bị Calc/Excel hiểu là công thức → thêm dấu ' phía trước
-const safe = v => { const t = String(v ?? '').replace(/\r?\n/g, ' '); return /^[=+\-@\t]/.test(t) ? "'" + t : t; };
-const esc = v => '"' + safe(v).replace(/"/g, '""') + '"';
 const thanhTien = Math.round(sl * gia);
 const cot = [$now.toFormat('yyyy-MM-dd HH:mm'),
              j.khach_hang, j.mat_hang, sl, gia, thanhTien, j.ngay_giao, j.ghi_chu];
-const line = cot.map(esc).join(',') + '\n';
-return [{ json: { thang, thanh_tien: thanhTien },
-          binary: { data: { data: Buffer.from(line, 'utf8').toString('base64'), mimeType: 'text/csv', fileName: `don-hang-${thang}.csv` } } }];
+const line = dongCsv(cot);
+return [{ json: { thang, thanh_tien: thanhTien }, binary: tep(line, `don-hang-${thang}.csv`) }];
 {% endset %}
 {
   "id": "onebeeDonHang001",

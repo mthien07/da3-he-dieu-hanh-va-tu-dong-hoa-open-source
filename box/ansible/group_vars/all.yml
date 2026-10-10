@@ -49,6 +49,10 @@ onebee_box_ports:
 # KHÔNG đưa mạng Wi-Fi khách vào. Tắt hẳn (chỉ khi cần dò lỗi): onebee_box_tuong_lua_bat: false
 onebee_box_tuong_lua_bat: true
 onebee_box_lan_cho_phep: []
+# Kỹ thuật vào Box qua Tailscale: địa chỉ Tailscale (100.x.y.z hoặc dải) của MÁY KỸ THUẬT được vào web/SSH/thư mục chung của Box
+# (QĐ6, rà soát bảo mật F5). Để trống: mọi kết nối qua tailscale0 bị chặn. Cổng mạng lạ khác (card phụ, wg0, tun0) luôn bị chặn.
+# Nên kèm ACL phía Tailscale: tag:kythuat → Box tcp 22,80,443,3000,5678,3001; thiết bị khác trong tailnet không vào được Box.
+onebee_box_tailscale_cho_phep: []
 
 # SSH vào Box chỉ bằng khóa, không cho root — tự bật khi đã có khóa SSH của tài khoản quản trị (~/.ssh/authorized_keys)
 onebee_box_ssh_chi_khoa: true
@@ -61,6 +65,9 @@ onebee_box_admin_email: quantri@onebee.lan             # tài khoản quản tr�
 
 # Chỉ cho các dải mạng nội bộ vào thư mục chung
 onebee_box_samba_hosts_allow: "127. 10. 172.16.0.0/12 192.168."
+
+# Samba chỉ SMB 3.1.1 + bắt buộc mã hóa (Windows 10+, Linux). false khi còn máy Windows 7/8 hoặc thiết bị quét cũ cần nối thư mục chung.
+onebee_box_samba_smb3: true
 
 # Thư mục chung Samba
 onebee_box_samba_share: chung
