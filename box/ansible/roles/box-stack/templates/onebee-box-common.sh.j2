@@ -40,13 +40,14 @@ secret_co_san() {
 }
 
 # Tên các máy trạm ĐÃ CẤP và CHƯA thu hồi — MỘT nơi liệt kê duy nhất (báo cáo, cập nhật, đồng bộ cấu hình, khôi phục đều dùng)
-# Máy đã thu hồi có file may-<tên>-thu-hoi; kho sao lưu và mật khẩu kho của máy vẫn giữ lại (để khôi phục/dọn bản cũ)
+# Máy đã thu hồi có file ${SECRETS}/thu-hoi/<tên> (thư mục riêng, không lẫn với may-<tên>-hoi/-repo của máy khác tên gần giống);
+# kho sao lưu và mật khẩu kho của máy vẫn giữ lại (để khôi phục/dọn bản cũ)
 may_da_cap() {
   local f ten
   for f in "${SECRETS}"/may-*-repo; do
     [[ -e "${f}" ]] || continue
     ten="$(basename "${f}")"; ten="${ten#may-}"; ten="${ten%-repo}"
-    [[ -e "${SECRETS}/may-${ten}-thu-hoi" ]] || printf '%s\n' "${ten}"
+    [[ -e "${SECRETS}/thu-hoi/${ten}" ]] || printf '%s\n' "${ten}"
   done
 }
 

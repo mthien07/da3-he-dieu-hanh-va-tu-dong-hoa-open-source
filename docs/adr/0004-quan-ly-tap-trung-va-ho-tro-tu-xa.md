@@ -15,7 +15,8 @@ hỗ trợ từ xa khi người dùng gặp sự cố — nhưng **người dùn
      rà soát bảo mật 10/10/2026 (F2) cho thấy khóa đó đi qua HTTP mỗi giờ nên không còn chấp nhận được.
    - **Cách mới:** báo cáo **ký HMAC-SHA256** bằng khóa suy từ mật khẩu kho sao lưu của máy (`RESTIC_PASSWORD`; restic mã hóa phía máy nên
      chưa từng đi qua mạng). n8n **không giữ khóa** — chỉ nhận máy có file đánh dấu trong `may-da-cap/` (Box ghi, n8n chỉ đọc) và lưu
-     nguyên văn; **Box tự kiểm chữ ký** + độ lệch giờ ký (chống phát lại). Khóa chung ở cửa chỉ còn là bộ lọc rác. Báo cáo cũ không ký vẫn
+     nguyên văn; **Box tự kiểm chữ ký** + độ lệch giờ ký (giới hạn phát lại trong ±10 phút qua đường bình thường; n8n bị chiếm phát lại được
+     báo cáo ký cũ nhưng IP nằm trong phần ký + khóa ghim + chứng minh nên không lái được SSH). Khóa chung ở cửa chỉ còn là bộ lọc rác. Báo cáo cũ không ký vẫn
      nhận (chuyển tiếp) nhưng gắn nhãn "chưa ký". **Tình trạng sao lưu vẫn lấy từ kho trên Box.**
    - **IP để SSH:** máy chưa ghim chỉ dùng IP trong báo cáo có chữ ký hợp lệ ≤ 2 giờ; máy đã ghim khóa SSH dùng IP tới 30 ngày (IP đã sang
      máy khác thì khóa host lệch, SSH dừng). **Lần đầu vào máy phải chứng minh** biết mật khẩu kho sao lưu (đọc qua SSH, so với bản

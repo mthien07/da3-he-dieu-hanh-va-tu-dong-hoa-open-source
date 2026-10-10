@@ -23,10 +23,16 @@ Box cảnh báo máy trạm khi: quá 3 ngày chưa sao lưu · quá 2 ngày kh�
 Máy trạm gửi mỗi giờ: tên, IP, phiên bản, số gói chờ cập nhật, cần khởi động lại không, ổ còn trống, đã bật bao lâu,
 lần sao lưu cuối, số tài khoản có quyền sudo. **Không gửi** tên file, nội dung, lịch sử dùng máy. Gửi ngay trên máy trạm: `sudo onebee-bao-tinh-trang`.
 
+**Nâng cấp theo thứ tự: Box trước, máy trạm sau.** Box mới nhận được cả báo cáo cũ lẫn mới. Máy trạm đã nâng cấp mà Box còn bản cũ thì quy trình
+n8n cũ bỏ hết trường của báo cáo mới (Box không biết địa chỉ máy, bảng tình trạng trống).
+
 **Báo cáo có chữ ký.** Mỗi báo cáo được ký (HMAC-SHA256) bằng khóa suy từ mật khẩu kho sao lưu của máy — mật khẩu này chưa từng đi qua
 mạng. n8n (nơi nhận) không giữ khóa nên không giả được; Box tự kiểm chữ ký khi in bảng. Báo cáo sai chữ ký được nêu rõ ("giả mạo, hoặc mật
 khẩu sao lưu trên máy khác với Box"); báo cáo chưa ký (máy chạy mã cũ) hiện cảnh báo "chạy lại bộ cài OneBee OS trên máy" và **không** được
-dùng để chọn địa chỉ SSH. Box chỉ nhận báo cáo của máy **đã cấp** (`them-may`), máy đã thu hồi hoặc tên lạ bị bỏ.
+dùng để chọn địa chỉ SSH máy chưa ghim (máy đã ghim vẫn dùng được: khóa SSH lệch thì dừng). Chữ ký đúng nhưng giờ ký lệch giờ Box quá 10 phút
+→ cảnh báo "đồng hồ máy sai hoặc báo cáo cũ bị gửi lại" (kiểm tra giờ/NTP của máy). Chống phát lại có giới hạn: qua đường bình thường chỉ phát lại
+được trong ±10 phút; n8n bị chiếm có thể phát lại báo cáo đã ký cũ nhưng địa chỉ nằm trong phần đã ký, cộng khóa SSH đã ghim và bước chứng
+minh, nên không lái được SSH tới máy lạ. Box chỉ nhận báo cáo của máy **đã cấp** (`them-may`), máy đã thu hồi hoặc tên lạ bị bỏ.
 
 ## 2. Cập nhật phần mềm máy trạm
 ```bash
@@ -64,7 +70,11 @@ thiếu). File cũ trên máy giữ lại bản `.~`. Lệnh chỉ cập nhật 
 
 `thu-hoi-may` gỡ: tài khoản kho sao lưu HTTP, tài khoản + khóa Trợ lý AI (`hoi`) của máy, khóa SSH đã ghim, chỗ nhận báo cáo tình trạng; máy
 biến khỏi bảng tình trạng, báo cáo và danh sách cập nhật. **Giữ** kho sao lưu và mật khẩu kho của máy (khôi phục dữ liệu, dọn bản cũ).
-Thu hồi vẫn có hiệu lực sau `khoi-phuc-toan-bo`. Cấp lại cùng tên: `them-may <tên>` (mật khẩu kho HTTP và khóa `hoi` mới). Nhật ký các lệnh
+Thu hồi vẫn có hiệu lực sau `khoi-phuc-toan-bo` **nếu đã có bản sao lưu Box sau lúc thu hồi** — chạy ngay `sudo onebee-box sao-luu` (lệnh nhắc
+lúc thu hồi); ổ hỏng trước lần sao lưu kế tiếp thì khôi phục sẽ cấp lại máy. Cấp lại cùng tên: `them-may <tên>` — mật khẩu kho HTTP, khóa
+`hoi` **và mật khẩu kho sao lưu** đều mới (mật khẩu kho cũ là khóa ký + bằng chứng danh tính máy, máy cũ bị mất cắp vẫn biết nó); kho cũ cất
+sang `/srv/onebee/restic/<tên>.cu-<ngày giờ>`, mật khẩu cũ ở `/etc/onebee-box/secrets/cu-<tên>-repo-<ngày giờ>` (vẫn được `in-khoa` in).
+Máy mới sao lưu từ đầu vào kho mới (kho cũ không tự dọn bản — xóa tay khi không cần). Nhật ký các lệnh
 này ở `/var/log/onebee-box/` (chỉ root đọc).
 
 ## 3. Hỗ trợ từ xa (người dùng phải đồng ý)

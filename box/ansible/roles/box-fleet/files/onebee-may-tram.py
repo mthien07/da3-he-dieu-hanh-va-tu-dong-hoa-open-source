@@ -7,12 +7,16 @@
   onebee-may-tram.py kho     <thu-muc-tinh-trang> ten ...            In "ten ip [ghim|chua-ghim]" của máy có thể SSH tới (cập nhật qua SSH)
 
 Biến môi trường (do lệnh onebee-box đặt):
-  ONEBEE_BI_MAT  thư mục bí mật của Box (có may-<ten>-repo): bật kiểm chữ ký báo cáo. Không đặt → không kiểm (chỉ dùng khi thử).
-  ONEBEE_DA_GHIM danh sách máy đã ghim khóa SSH (ngăn cách bằng dấu phẩy): bật cột thứ 3 và quy tắc tin IP của lệnh kho.
+  ONEBEE_BI_MAT  thư mục bí mật của Box (có may-<ten>-repo): bật kiểm chữ ký báo cáo. Không đặt → không kiểm (bang/payload khi thử); kho từ chối.
+  ONEBEE_DA_GHIM danh sách máy đã ghim khóa SSH (ngăn cách bằng dấu phẩy, có thể rỗng): quy tắc tin IP của lệnh kho (bắt buộc đặt cho kho).
 
 Chữ ký báo cáo (rà soát bảo mật 10/10, F2): máy trạm gửi {"ten", "du_lieu": "<JSON dạng chuỗi>", "ky": HMAC-SHA256}. Khóa ký suy từ
 mật khẩu kho sao lưu của máy (RESTIC_PASSWORD — chưa từng đi qua mạng), n8n KHÔNG giữ khóa nên không giả được báo cáo; Box tự kiểm ở đây.
 Báo cáo cũ (JSON phẳng, không chữ ký) vẫn đọc được nhưng bị gắn nhãn "chưa ký" và không được tin để chọn địa chỉ SSH máy chưa ghim.
+Chữ ký đúng nhưng giờ ký lệch giờ Box quá 10 phút → nhãn "lech-gio" (đồng hồ máy sai, hoặc báo cáo cũ bị phát lại): hiện cảnh báo, không tin để chọn IP
+máy chưa ghim. Giới hạn: qua n8n bình thường vẫn phát lại được trong ±10 phút; n8n bị chiếm có thể phát lại báo cáo ký cũ (IP nằm trong phần đã ký +
+khóa SSH đã ghim + bước chứng minh nên không lái được SSH tới máy lạ).
+Lệnh kho BẮT BUỘC có ONEBEE_BI_MAT và ONEBEE_DA_GHIM (thiếu thì từ chối — không có chế độ "tin IP chưa ký").
 
 ten=gio: tên máy trạm đã cấp (onebee-box them-may) = số giờ từ lần sao lưu cuối (Box tự đọc kho sao lưu;
 "null" = chưa có bản nào, "loi" = không đọc được kho, ví dụ đang bận dọn; số âm = có bản ghi ngày tương lai).
@@ -55,7 +59,7 @@ def doc_mat_khau(bi_mat, ten):
 
 
 def kiem_chu_ky(env, ten, bi_mat):
-    """Giải bao bì báo cáo có chữ ký. Trả về (tt, trang_thai): tt là dict (hoặc None), trang_thai: hop-le | sai."""
+    """Giải bao bì báo cáo có chữ ký. Trả về (tt, trang_thai): hop-le | lech-gio (chữ ký đúng nhưng giờ ký lệch) | sai (tt = None)."""
     mk = doc_mat_khau(bi_mat, ten)
     du_lieu, ky = env.get("du_lieu"), env.get("ky")
     if not mk or not isinstance(du_lieu, str) or not isinstance(ky, str):
@@ -67,14 +71,15 @@ def kiem_chu_ky(env, ten, bi_mat):
     except ValueError:
         return None, "sai"
     gui_luc, nhan_luc = so(tt, "gui_luc") if isinstance(tt, dict) else None, so(env, "nhan_luc")
-    if not isinstance(tt, dict) or tt.get("ten") != ten or gui_luc is None or nhan_luc is None \
-            or abs(nhan_luc - gui_luc) > SAI_LECH_DONG_HO_GIAY:
+    if not isinstance(tt, dict) or tt.get("ten") != ten or gui_luc is None or nhan_luc is None:
         return None, "sai"
+    if abs(nhan_luc - gui_luc) > SAI_LECH_DONG_HO_GIAY:
+        return dict(tt, nhan_luc=gui_luc), "lech-gio"   # lấy giờ KÝ làm giờ báo cáo: báo cáo cũ phát lại không trông như vừa gửi
     return dict(tt, nhan_luc=nhan_luc), "hop-le"
 
 
 def doc_tinh_trang(thu_muc, ten, bi_mat=None):
-    """Đọc <ten>.json. Có bi_mat thì kiểm chữ ký và gắn nhãn tt["_ky"]: hop-le | sai | chua-ky (báo cáo cũ, JSON phẳng)."""
+    """Đọc <ten>.json. Có bi_mat thì kiểm chữ ký và gắn nhãn tt["_ky"]: hop-le | lech-gio | sai | chua-ky (báo cáo cũ, JSON phẳng)."""
     try:
         with open(os.path.join(thu_muc, f"{ten}.json"), encoding="utf-8") as f:
             tt = json.load(f)
@@ -120,6 +125,8 @@ def danh_gia(ten, gio_sao_luu, tt, bay_gio):
     if tt.get("_ky") == "sai":
         canh_bao.append("báo cáo tình trạng sai chữ ký (giả mạo, hoặc mật khẩu sao lưu trên máy khác với Box) — kiểm tra máy này")
         return canh_bao, "; ".join(tom_tat)
+    if tt.get("_ky") == "lech-gio":
+        canh_bao.append("báo cáo có chữ ký đúng nhưng giờ ký lệch giờ Box quá 10 phút — đồng hồ máy sai (kiểm tra giờ/NTP), hoặc báo cáo cũ bị gửi lại")
     if tt.get("_ky") == "chua-ky":
         canh_bao.append("báo cáo chưa có chữ ký (máy chạy mã cũ) — chạy lại bộ cài OneBee OS trên máy này")
     nhan = so(tt, "nhan_luc")
@@ -180,7 +187,7 @@ def in_bang(rows):
 
 
 def in_kho(thu_muc, danh_sach):
-    """In "ten ip" (thêm cột ghim|chua-ghim khi có ONEBEE_DA_GHIM) cho máy có thể SSH tới.
+    """In "ten ip ghim|chua-ghim" cho máy có thể SSH tới.
 
     Máy ĐÃ ghim khóa SSH: tin IP báo trong 30 ngày (khóa host lệch thì SSH tự dừng), chỉ loại báo cáo sai chữ ký.
     Máy CHƯA ghim: chỉ tin IP trong báo cáo CÓ CHỮ KÝ HỢP LỆ, mới trong 2 giờ — báo cáo chưa ký (khóa chung gửi qua HTTP) không đủ tin để
@@ -188,17 +195,19 @@ def in_kho(thu_muc, danh_sach):
     """
     bi_mat = os.environ.get("ONEBEE_BI_MAT") or None
     da_ghim_env = os.environ.get("ONEBEE_DA_GHIM")
-    da_ghim = {t for t in (da_ghim_env or "").split(",") if t}
+    if bi_mat is None or da_ghim_env is None:
+        print("kho cần ONEBEE_BI_MAT và ONEBEE_DA_GHIM (do lệnh onebee-box đặt) — từ chối để không tin IP của báo cáo chưa kiểm", file=sys.stderr)
+        return 2
+    da_ghim = {t for t in da_ghim_env.split(",") if t}
     for ten in danh_sach:
         tt = doc_tinh_trang(thu_muc, ten, bi_mat) if TEN_HOP_LE.match(ten) else None
         nhan = so(tt or {}, "nhan_luc")
         if nhan is None:
             continue
         ghim = ten in da_ghim
-        if bi_mat is not None and da_ghim_env is not None:
-            ky = (tt or {}).get("_ky")
-            if ky == "sai" or (not ghim and ky != "hop-le"):
-                continue
+        ky = (tt or {}).get("_ky")
+        if ky == "sai" or (not ghim and ky != "hop-le"):
+            continue
         tuoi_toi_da = NGUONG_IP_DA_GHIM_NGAY * 86400 if ghim else NGUONG_IP_GIO * 3600
         if time.time() - nhan > tuoi_toi_da:
             continue
@@ -206,10 +215,7 @@ def in_kho(thu_muc, danh_sach):
             ip = str(ipaddress.IPv4Address((tt or {}).get("ip", "")))
         except ValueError:
             continue
-        cot = [ten, ip]
-        if da_ghim_env is not None:
-            cot.append("ghim" if ghim else "chua-ghim")
-        print(*cot)
+        print(ten, ip, "ghim" if ghim else "chua-ghim")
     return 0
 
 

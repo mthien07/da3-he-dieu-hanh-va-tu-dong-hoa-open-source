@@ -59,8 +59,8 @@ PY
 }
 check "Open WebUI (CSDL): không đăng ký tự do, không chia sẻ cộng đồng, phiên 30 ngày, nhân viên tạo được khóa API nhưng không chia sẻ chat" \
   webui_cai_dat_dung
-check "n8n chỉ ĐỌC được danh sách máy đã cấp (may-da-cap): không tự thêm máy để nhận báo cáo giả" bash -c \
-  "[ -d /srv/onebee/may-da-cap ] && ! docker exec onebee-n8n sh -c 'touch /home/node/.n8n-files/may-da-cap/thu-ghi' 2>/dev/null"
+check "n8n chỉ ĐỌC được danh sách máy đã cấp (may-da-cap): gắn read-only, không tự thêm máy để nhận báo cáo giả" bash -c \
+  "[ -d /srv/onebee/may-da-cap ] && [ \"\$(docker inspect -f '{{range .Mounts}}{{if eq .Destination \"/home/node/.n8n-files/may-da-cap\"}}{{.RW}}{{end}}{{end}}' onebee-n8n)\" = false ]"
 check "Ollama KHÔNG mở cổng ra ngoài (11434)" bash -c "! curl -s -m 3 http://127.0.0.1:11434/ >/dev/null"
 check "Ollama chạy được bên trong (Open WebUI gọi tới)" bash -c "docker exec onebee-open-webui curl -s -m 10 http://ollama:11434/api/version | grep -q version"
 check "Open WebUI không gọi AI đám mây (ENABLE_OPENAI_API=false)" \
