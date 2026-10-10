@@ -30,10 +30,51 @@ check "Trang giới thiệu gửi kèm tiêu đề bảo mật (chống nhúng k
   "h=\$(curl -sI -m 10 http://127.0.0.1/); grep -qi '^x-frame-options: DENY' <<<\"\$h\" && ! grep -qi '^server:' <<<\"\$h\""
 check "n8n khóa chặt: không có nút chạy lệnh hệ thống, nút Code không đọc biến môi trường" bash -c \
   "docker exec onebee-n8n printenv NODES_EXCLUDE | grep -q executeCommand && docker exec onebee-n8n printenv N8N_BLOCK_ENV_ACCESS_IN_NODE | grep -qx true"
+check "n8n: tắt mô-đun Agents và MCP, chặn nút Git (rà soát bảo mật 10/10)" bash -c \
+  "docker exec onebee-n8n printenv N8N_DISABLED_MODULES | grep -qx agents && docker exec onebee-n8n printenv NODES_EXCLUDE | grep -q n8n-nodes-base.git \
+   && docker exec onebee-n8n printenv N8N_MCP_ACCESS_ENABLED | grep -qx false"
+check "Các image dịch vụ ghim theo digest (@sha256), n8n không còn dòng 2.40.x đã ngừng vá" bash -c \
+  "for c in onebee-portal onebee-ollama onebee-n8n onebee-uptime-kuma onebee-rest-server; do docker inspect -f '{{.Config.Image}}' \$c | grep -q '@sha256:' || exit 1; done; \
+   ! docker inspect -f '{{.Config.Image}}' onebee-n8n | grep -q ':2.40'"
+check "Open WebUI: tắt Functions/Tools; quản trị không đọc/xuất chat; tắt chia sẻ chat (biến môi trường)" bash -c \
+  "for kv in ENABLE_PLUGINS ENABLE_ADMIN_CHAT_ACCESS ENABLE_ADMIN_EXPORT USER_PERMISSIONS_CHAT_SHARE ENABLE_COMMUNITY_SHARING; do \
+     [ \"\$(docker exec onebee-open-webui printenv \$kv)\" = false ] || exit 1; done"
+
+# Cài đặt lưu trong CSDL của Open WebUI (biến môi trường chỉ có tác dụng với bản cài mới) → hỏi qua API quản trị
+webui_cai_dat_dung() {
+  local t cfg perms
+  t="$(curl -s -m 20 -X POST http://127.0.0.1:3000/api/v1/auths/signin -H 'Content-Type: application/json' \
+       -d "{\"email\":\"quantri@onebee.lan\",\"password\":\"$(cat /etc/onebee-box/secrets/webui-admin-password)\"}" \
+       | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')" || return 1
+  cfg="$(curl -s -m 20 -H "Authorization: Bearer ${t}" http://127.0.0.1:3000/api/v1/auths/admin/config)"
+  perms="$(curl -s -m 20 -H "Authorization: Bearer ${t}" http://127.0.0.1:3000/api/v1/users/default/permissions)"
+  python3 - "${cfg}" "${perms}" <<'PY'
+import json, sys
+cfg, perms = json.loads(sys.argv[1]), json.loads(sys.argv[2])
+ok = (cfg["ENABLE_SIGNUP"] is False and cfg["ENABLE_COMMUNITY_SHARING"] is False and cfg["JWT_EXPIRES_IN"] == "30d"
+      and cfg["API_KEYS_ALLOWED_ENDPOINTS"] == "/api/chat/completions,/api/models"
+      and perms["features"]["api_keys"] is True and perms["chat"]["share"] is False)
+sys.exit(0 if ok else 1)
+PY
+}
+check "Open WebUI (CSDL): không đăng ký tự do, không chia sẻ cộng đồng, phiên 30 ngày, nhân viên tạo được khóa API nhưng không chia sẻ chat" \
+  webui_cai_dat_dung
+check "n8n chỉ ĐỌC được danh sách máy đã cấp (may-da-cap): gắn read-only, không tự thêm máy để nhận báo cáo giả" bash -c \
+  "[ -d /srv/onebee/may-da-cap ] && [ \"\$(docker inspect -f '{{range .Mounts}}{{if eq .Destination \"/home/node/.n8n-files/may-da-cap\"}}{{.RW}}{{end}}{{end}}' onebee-n8n)\" = false ]"
 check "Ollama KHÔNG mở cổng ra ngoài (11434)" bash -c "! curl -s -m 3 http://127.0.0.1:11434/ >/dev/null"
 check "Ollama chạy được bên trong (Open WebUI gọi tới)" bash -c "docker exec onebee-open-webui curl -s -m 10 http://ollama:11434/api/version | grep -q version"
 check "Open WebUI không gọi AI đám mây (ENABLE_OPENAI_API=false)" \
   bash -c "docker exec onebee-open-webui printenv ENABLE_OPENAI_API | grep -qx false"
+check "CA riêng: thư mục 700, khóa 600, gốc + trung gian có ràng buộc tên critical (chỉ IP Box /32 + <mã>.onebee.internal)" bash -c \
+  "cd /etc/onebee-box/secrets/ca && [ \$(stat -c %a .) = 700 ] && [ \$(stat -c %a root.key) = 600 ] && [ \$(stat -c %a inter.key) = 600 ] \
+   && for c in root inter; do openssl x509 -in \$c.crt -noout -text | grep -A3 'Name Constraints: critical' | grep -q 'IP:.*/255.255.255.255' || exit 1; done \
+   && openssl x509 -in root.crt -noout -text | grep -q 'DNS:kiem-thu.onebee.internal'"
+check "CA riêng: Box tin CA của chính nó; chứng chỉ gốc công khai tại /onebee-ca.crt; khóa CA không gắn vào container nào" bash -c \
+  "openssl verify -CApath /etc/ssl/certs /etc/onebee-box/secrets/ca/inter.crt >/dev/null \
+   && curl -sf http://127.0.0.1/onebee-ca.crt | cmp - /etc/onebee-box/secrets/ca/root.crt \
+   && ! docker inspect \$(docker ps -q) --format '{{range .Mounts}}{{.Source}} {{end}}' | grep -q 'secrets/ca'"
+check "onebee-box in-ca in vân tay đúng chứng chỉ gốc" bash -c \
+  "onebee-box in-ca | grep -q \"\$(sha256sum < <(openssl x509 -in /etc/onebee-box/secrets/ca/root.crt -outform DER) | cut -d' ' -f1 | tr a-f A-F | sed 's/../&:/g; s/:\$//')\""
 check "File .env chỉ root đọc (600)" bash -c "[ \"\$(stat -c %a /opt/onebee-box/.env)\" = 600 ]"
 check "Thư mục bí mật chỉ root vào (700)" bash -c "[ \"\$(stat -c %a /etc/onebee-box/secrets)\" = 700 ]"
 check "Khóa bí mật đã sinh, không để trống" bash -c "grep -Eq '^WEBUI_SECRET_KEY=[A-Za-z0-9]{48}$' /opt/onebee-box/.env && grep -Eq '^N8N_ENCRYPTION_KEY=[A-Za-z0-9]{48}$' /opt/onebee-box/.env"

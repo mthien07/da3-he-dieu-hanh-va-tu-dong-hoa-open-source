@@ -46,6 +46,29 @@
     group: root
     mode: "0644"
 
+# Chủ trương: nhân viên không có sudo (một số lỗi leo quyền / lộ khóa trong rà soát bảo mật chỉ chặn được khi đúng như vậy).
+# Chỉ cảnh báo, không tự gỡ quyền của ai (tài khoản mẫu tạo lúc cài Mint mặc định có sudo).
+- name: Liệt kê tài khoản có quyền sudo
+  ansible.builtin.shell: |
+    set -o pipefail
+    getent group sudo admin | cut -d: -f4 | tr ',' '\n' | grep -v -e '^$' -e '^root$' | sort -u || true
+  args:
+    executable: /bin/bash
+  register: onebee_sudo_users
+  changed_when: false
+
+- name: Cảnh báo tài khoản có quyền sudo ngoài danh sách quản trị
+  ansible.builtin.debug:
+    msg: >-
+      CẢNH BÁO: các tài khoản có quyền sudo: {{ onebee_sudo_users.stdout_lines | join(', ') }}.
+      {{ ('Ngoài danh sách onebee_tai_khoan_quan_tri: '
+          ~ (onebee_sudo_users.stdout_lines | difference(onebee_tai_khoan_quan_tri) | join(', ')))
+         if onebee_tai_khoan_quan_tri | length > 0 else 'Chỉ tài khoản quản trị máy nên có sudo.' }}
+      Nhân viên dùng tài khoản thường: sudo deluser <tên> sudo (làm trên tài khoản quản trị).
+  when: >-
+    (onebee_tai_khoan_quan_tri | length > 0 and (onebee_sudo_users.stdout_lines | difference(onebee_tai_khoan_quan_tri) | length > 0))
+    or (onebee_tai_khoan_quan_tri | length == 0 and onebee_sudo_users.stdout_lines | length > 1)
+
 - name: Ghi phiên bản OneBee OS
   ansible.builtin.copy:
     dest: /etc/onebee-release

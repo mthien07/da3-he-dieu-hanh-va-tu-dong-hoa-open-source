@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Báo lỗ hổng bảo mật (riêng tư)
+    url: https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source/security/advisories/new
+    about: Không báo lỗ hổng bằng Issue công khai.
+  - name: 📖 Hướng dẫn cài từ A đến Z
+    url: https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source/blob/main/docs/huong-dan/huong-dan-cai-dat-tu-a-den-z.md
+    about: Đọc trước khi hỏi về cài đặt.

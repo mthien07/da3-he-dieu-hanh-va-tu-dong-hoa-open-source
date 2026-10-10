@@ -1,0 +1,71 @@
+name: 🐞 Báo lỗi
+description: Bộ cài dừng, dịch vụ không chạy, kết quả sai với tài liệu
+title: "[Lỗi] "
+labels: ["loi"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Cảm ơn bạn đã báo lỗi. **Lỗ hổng bảo mật: KHÔNG báo ở đây** — dùng mục "Báo lỗ hổng bảo mật (riêng tư)"
+        khi tạo Issue mới, hoặc xem SECURITY.md ở thư mục gốc repo.
+        Trước khi dán nhật ký: **xóa mật khẩu, khóa (`in-khoa`), địa chỉ IP thật, tên khách hàng**.
+  - type: dropdown
+    id: thanh-phan
+    attributes:
+      label: Thành phần
+      options:
+        - OneBee Box (máy chủ)
+        - Máy trạm OneBee OS Desktop
+        - Trợ lý AI / lệnh hoi
+        - Quy trình tự động (n8n) / email
+        - Sao lưu / khôi phục
+        - HTTPS / chứng chỉ
+        - Tài liệu hướng dẫn
+        - Bộ kiểm thử (tests/)
+    validations:
+      required: true
+  - type: input
+    id: phien-ban
+    attributes:
+      label: Phiên bản hoặc commit
+      description: "Bản phát hành (vd v1.0.0-rc.1) hoặc kết quả `git rev-parse --short HEAD`"
+      placeholder: "v1.0.0-rc.1 / 9a8b950"
+    validations:
+      required: true
+  - type: dropdown
+    id: moi-truong
+    attributes:
+      label: Chạy ở đâu
+      options:
+        - Máy thật
+        - Máy ảo (VirtualBox/VMware/Proxmox)
+        - Container kiểm thử (tests/)
+    validations:
+      required: true
+  - type: input
+    id: he-dieu-hanh
+    attributes:
+      label: Hệ điều hành
+      placeholder: "Ubuntu Server 24.04 / Linux Mint 22.3 Cinnamon"
+  - type: textarea
+    id: cac-buoc
+    attributes:
+      label: Các bước để gặp lỗi
+      placeholder: |
+        1. sudo ./box/onebee-box-install.sh
+        2. sudo onebee-box them-may ketoan-01
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: mong-doi
+    attributes:
+      label: Mong đợi gì, thực tế ra sao
+    validations:
+      required: true
+  - type: textarea
+    id: nhat-ky
+    attributes:
+      label: Nhật ký (30 dòng cuối, đã xóa bí mật)
+      description: "Box: /var/log/onebee/box-install-*.log, /var/log/onebee-box/ · Máy trạm: /var/log/onebee/"
+      render: shell

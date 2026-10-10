@@ -9,10 +9,21 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Hội_thi-KNĐMST_2026-f4b942?style=flat-square" alt="Contest"/>
-  <img src="https://img.shields.io/badge/Phiên_bản-1.0.0--rc.1_(bản_thử)-00d4aa?style=flat-square" alt="Stage"/>
-  <img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="License"/>
-  <img src="https://img.shields.io/badge/HTX_OneBee-MST_1102128064-grey?style=flat-square" alt="Tax ID"/>
+  <a href="https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source/actions/workflows/ci.yml"><img src="https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
+  <a href="https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source/releases"><img src="https://img.shields.io/github/v/release/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source?include_prereleases&style=flat-square&label=Ph%C3%A1t%20h%C3%A0nh&color=00d4aa" alt="Phát hành"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="License MIT"/></a>
+  <a href="https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source/commits"><img src="https://img.shields.io/github/last-commit/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source?style=flat-square&label=C%E1%BA%ADp%20nh%E1%BA%ADt" alt="Cập nhật"/></a>
+  <img src="https://img.shields.io/badge/AI-ch%E1%BA%A1y%20t%E1%BA%A1i%20ch%E1%BB%97%20(Gemma%204)-8a2be2?style=flat-square" alt="AI chạy tại chỗ"/>
+  <img src="https://img.shields.io/badge/H%E1%BB%99i_thi-KN%C4%90MST_2026-f4b942?style=flat-square" alt="Hội thi"/>
+</p>
+
+<p align="center">
+  <a href="docs/huong-dan/huong-dan-cai-dat-tu-a-den-z.md"><b>📖 Cài từ A đến Z</b></a> ·
+  <a href="#-tài-liệu">Tài liệu</a> ·
+  <a href="tests/README.md">Kiểm thử</a> ·
+  <a href="docs/kiem-thu-tren-may-that.md">Kết quả kiểm thử</a> ·
+  <a href="SECURITY.md">Bảo mật</a> ·
+  <a href="CONTRIBUTING.md">Đóng góp</a>
 </p>
 
 ---
@@ -38,7 +49,18 @@
  └─ onebee-ho-tro (khi người dùng bấm)◀──SSH────── └─ onebee-box: them-may, may-tram, cap-nhat-may, bao-cao-tuan …
 ```
 
+<table>
+  <tr>
+    <td width="50%"><img src="docs/huong-dan/anh/01-trang-gioi-thieu-box.png" alt="Trang giới thiệu OneBee Box"/><br/><sub>Trang giới thiệu của OneBee Box trong mạng LAN</sub></td>
+    <td width="50%"><img src="docs/huong-dan/anh/02-tro-ly-ai-tieng-viet.png" alt="Trợ lý OneBee soạn thông báo tiếng Việt"/><br/><sub>Trợ lý AI tiếng Việt chạy tại chỗ soạn thông báo họp HTX</sub></td>
+  </tr>
+</table>
+
+<sub>Ảnh chụp từ Box chạy trong môi trường kiểm thử, không phải tại đơn vị thật.</sub>
+
 ## 🚀 Cài đặt
+> **Người không chuyên**: làm theo [Hướng dẫn cài từ A đến Z](docs/huong-dan/huong-dan-cai-dat-tu-a-den-z.md) — có sơ đồ, từng lệnh dán được, kết quả phải thấy.
+
 Bản phát hành (file nén + SHA256SUMS): [Releases](https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source/releases).
 Tự thử trên máy ảo trước khi cài cho đơn vị: [thu-nghiem-tren-may-ao.md](docs/huong-dan/thu-nghiem-tren-may-ao.md).
 
@@ -53,6 +75,7 @@ cd onebee && sudo ./desktop/onebee-install.sh
 ## 📚 Tài liệu
 | Việc | Tài liệu |
 |---|---|
+| **Cài từ A đến Z cho người không chuyên** | [huong-dan-cai-dat-tu-a-den-z.md](docs/huong-dan/huong-dan-cai-dat-tu-a-den-z.md) |
 | Cài máy trạm / Box | [cai-dat-onebee-os-desktop.md](docs/huong-dan/cai-dat-onebee-os-desktop.md) · [cai-dat-onebee-box.md](docs/huong-dan/cai-dat-onebee-box.md) |
 | Cài nhiều máy, sao lưu Windows bằng Clonezilla | [cai-hang-loat.md](docs/huong-dan/cai-hang-loat.md) |
 | Trợ lý AI, quy trình tự động, email | [dung-tro-ly-ai-va-quy-trinh-tu-dong.md](docs/huong-dan/dung-tro-ly-ai-va-quy-trinh-tu-dong.md) |
@@ -64,11 +87,15 @@ cd onebee && sudo ./desktop/onebee-install.sh
 
 ## 📌 Trạng thái (1.0.0-rc.1 — bản thử)
 - ✅ Đủ tính năng cho 1 đơn vị: máy trạm, Box, Trợ lý AI, quy trình email, quản lý máy trạm, hỗ trợ từ xa, sổ hỗ trợ + khảo sát,
-  giám sát, **khôi phục toàn bộ Box khi hỏng ổ** (đã diễn tập tự động).
-- ✅ Kiểm tự động trong container: Box 81/81 bước, Desktop 5 kịch bản, 18 unit test, Trợ lý AI 98% bộ chấm 40 câu — xem [tests/README.md](tests/README.md); CI chạy phần Desktop mỗi lần đẩy code.
-- ✅ Model AI chọn bằng bộ chấm 40 câu tiếng Việt: [ADR 0003](docs/adr/0003-chon-model-ai-gemma.md), [reports/ai/](reports/ai/).
-- ⏳ **Chưa thử trên máy ảo/máy thật** (phiên Cinnamon thật, phần cứng, LAN thật, tốc độ AI) → làm theo
-  [danh sách thử](docs/huong-dan/thu-nghiem-tren-may-ao.md); đạt thì phát hành 1.0.0.
+  giám sát, HTTPS nội bộ (CA riêng của Box), xoay khóa, **khôi phục toàn bộ Box khi hỏng ổ**.
+- ✅ Kiểm thử tự động ngày 10–11/10/2026 ([chi tiết](docs/kiem-thu-tren-may-that.md)):
+  unit test Box 100 bài + Desktop 39 bài + AI 17 bài; lint với ansible-core 2.19 và **2.16** (bản trên Ubuntu 24.04);
+  Desktop trong container Linux Mint 22.3 (5 kịch bản, 83 PASS); **Box đầy đủ trên Docker Desktop** với model sản phẩm `gemma4:e2b-it-qat`
+  (cài 2 lần, AI, n8n qua email, sao lưu, máy trạm, quản lý tập trung, tường lửa, hỏng ổ → khôi phục, bật/tắt HTTPS, xoay khóa, khởi động lại) —
+  mọi bước đạt khi chạy nối tiếp sau các bản sửa; kết quả lần chạy lại từ đầu ghi trong phiếu kiểm thử.
+  Lần chạy này tìm và sửa 2 lỗi sản phẩm + 2 lỗi trong bộ kiểm thử.
+- ✅ Model AI chọn bằng bộ chấm 40 câu tiếng Việt (98%): [ADR 0003](docs/adr/0003-chon-model-ai-gemma.md), [reports/ai/](reports/ai/).
+- ⏳ **Chưa cài trên máy thật tại đơn vị nào** (phiên Cinnamon thật, phần cứng, LAN thật, tốc độ AI) → [danh sách thử](docs/huong-dan/thu-nghiem-tren-may-ao.md); đạt thì phát hành 1.0.0.
 - ⏳ Chạy thử 4 tuần tại HTX OneBee → số liệu thật cho giá, video hướng dẫn.
 
 Mọi con số về tốc độ, chi phí, tiết kiệm chỉ công bố khi có file đo trong `reports/`. Hiện **chưa có** số đo trên máy thật.
@@ -77,8 +104,13 @@ Mọi con số về tốc độ, chi phí, tiết kiệm chỉ công bố khi c�
 Chưa có giá chính thức — tính từ chi phí thật của đợt chạy thử: [bang-gia.md](docs/kinh-doanh/bang-gia.md).
 Dải giá trong hồ sơ hội thi là giả định nội bộ, chưa có cơ sở chi phí.
 
+## 🤝 Đóng góp và bảo mật
+- Báo lỗi / đề xuất: [Issues](https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source/issues) (có mẫu sẵn) · Hướng dẫn đóng góp, cách chạy kiểm thử: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Lỗ hổng bảo mật: **báo riêng**, không mở Issue — [SECURITY.md](SECURITY.md) · Quy tắc ứng xử: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- Thấy dự án hữu ích? Bấm ⭐ để nhiều HTX biết tới hơn.
+
 ## ⚖️ Giấy phép
-Mã nguồn repo: **MIT**. Thành phần giữ giấy phép của tác giả ([LICENSES.md](LICENSES.md)). Lưu ý khi giới thiệu "mã nguồn mở":
+Mã nguồn repo: **MIT** ([LICENSE](LICENSE)). Thành phần giữ giấy phép của tác giả ([LICENSES.md](LICENSES.md)). Lưu ý khi giới thiệu "mã nguồn mở":
 | Thành phần | Giấy phép |
 |---|---|
 | Linux Mint/Ubuntu, LibreOffice, IBus/Bamboo, Ollama, restic, Samba, Caddy, Uptime Kuma, x11vnc | Nguồn mở (chuẩn OSI) |
@@ -90,6 +122,9 @@ Mã nguồn repo: **MIT**. Thành phần giữ giấy phép của tác giả ([L
 `demo/index.html` là giao diện **mô phỏng** (số liệu minh họa, không chạy AI thật). Hồ sơ dự thi: `docs/hoi-thi/`.
 
 ## 📞 Liên hệ
+
+**Tác giả dự án: Dương Minh Thiện**
+- 📱 0777 794 089
 
 **Hợp tác xã OneBee**
 - 📍 45 đường số 6, KDC Thái Dương, Phường Long An, Tây Ninh
