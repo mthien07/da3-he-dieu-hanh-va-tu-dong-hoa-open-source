@@ -6,6 +6,7 @@
   - Tra cứu sâu hơn bằng 9 agent chạy song song, chỉ đọc: mở từng advisory, đọc mã nguồn n8n/Open WebUI/Caddy, lập danh sách mọi chỗ trong repo phải sửa.
   - 2 vòng phản biện kế hoạch: một soi chỗ làm hỏng hoặc bỏ sót, một soi lỗ hổng trong chính thiết kế.
   - Người viết đã tự kiểm lại 4 khẳng định có ảnh hưởng lớn nhất trên mã nguồn gốc (đánh dấu ✔). Các khẳng định khác ghi "(agent)": agent đã đọc nguồn gốc, người viết chưa tự kiểm lại.
+- **Bản 2.1 — 10/10/2026:** thêm QĐ5–QĐ8 (mã đơn vị, Tailscale qua Box, IP tĩnh, máy in tự ký); sửa Pha 3, 4, 5 và mục 6 cho khớp.
 
 Chế độ **chỉ đọc**: chưa sửa code.
 - **Không** chạy hệ thống, không quét bằng công cụ (trivy, npm audit…), không thử khai thác thật.
@@ -25,6 +26,12 @@ Quy ước:
 | QĐ2 | Mỗi khách hàng một tailnet riêng | F5, F14 |
 | QĐ3 | Đưa HTTPS vào | F3 → Pha 3–4 |
 | QĐ4 | Giữ Ansible + `onebee-quantri ALL=(root) NOPASSWD: ALL` | F4 = rủi ro chấp nhận |
+| QĐ5 | Mỗi khách một mã đơn vị đặt vào CA: viết tắt tên khách, chữ thường không dấu, số, gạch nối (vd `htx-onebee`); kỹ thuật nhập lúc cài Box, bộ cài từ chối nếu để trống | Pha 3 |
+| QĐ6 | Kỹ thuật toàn quyền qua Tailscale **theo đường qua Box như hiện nay**: giao diện web và SSH của Box, cập nhật và SSH máy trạm từ Box. Xem/điều khiển màn hình máy trạm vẫn cần người dùng bấm đồng ý (ADR 0004 giữ nguyên) | Pha 3, 4, 5 (F5, F14) |
+| QĐ7 | Box dùng IP tĩnh (bắt buộc) | Pha 3 |
+| QĐ8 | Máy trạm phải dùng được máy in/thiết bị LAN có chứng chỉ tự ký → **không** chặn nút "chấp nhận rủi ro" của Firefox, không bật HTTPS-Only | Pha 4 |
+
+**Trạng thái:** chủ dự án chưa duyệt sửa code (10/10/2026) — mọi pha ở mục 5 vẫn là kế hoạch.
 
 ## 1. Tóm tắt (bản 2)
 
@@ -336,13 +343,19 @@ Bản thiết kế đầu bị phản biện chỉ ra 1 điểm chặn: dùng kh
 ### 5.4 Pha 3 — CA riêng mỗi Box (dịch vụ vẫn HTTP)
 **Thiết kế đã sửa theo phản biện:**
 - **Biến bắt buộc:**
-  - `onebee_box_ma_don_vi` — nhãn DNS riêng mỗi khách, không mặc định theo hostname, chặn giá trị mặc định như `onebee-box`.
-  - `onebee_box_dia_chi` — IP tĩnh, tính một lần, sửa N3.
+  - `onebee_box_ma_don_vi` (QĐ5) — viết tắt tên khách, regex `^[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?$`; không mặc định theo hostname; chặn giá trị mặc định như `onebee-box`.
+  - `onebee_box_dia_chi` (QĐ7) — IP tĩnh, tính một lần, sửa N3. Bộ cài cảnh báo nếu cổng mạng chính đang lấy IP qua DHCP (khuyên đặt trước DHCP trên router hoặc netplan tĩnh) và nếu IP thực khác giá trị đã khai.
   - Cả hai lưu cạnh CA (`secrets/ca/ca.conf`) và đọc lại ở các lần chạy và khi khôi phục.
 - **Ràng buộc tên** (name constraints, critical):
-  - IP: chỉ IP Box `/32` (+ IP Tailscale `/32` nếu dùng). **Không** dùng cả dải LAN: lộ khóa thì giả được router, NAS, camera.
+  - IP: chỉ IP Box `/32`. **Không** dùng cả dải LAN: lộ khóa thì giả được router, NAS, camera.
   - DNS: `<ma_don_vi>.onebee.internal`. Bắt buộc có ràng buộc DNS, nếu không mọi tên miền đều mở.
   - Đổi IP Box = xoay CA. Đằng nào cũng phải đến từng máy vì `from=` trong `authorized_keys`.
+- **Truy cập của kỹ thuật qua Tailscale (QĐ6):**
+  - Caddy thêm địa chỉ site `https://box.<ma_don_vi>.onebee.internal:<cổng>` cho mọi dịch vụ.
+  - Máy kỹ thuật thêm dòng `/etc/hosts`: `<IP Tailscale của Box> box.<ma_don_vi>.onebee.internal` → trình duyệt gửi SNI, nhận đúng chứng chỉ. Mở bằng IP 100.x trần không dùng được (không có SNI → Caddy trả chứng chỉ của IP LAN).
+  - Vì dùng tên, **không** cần thêm IP Tailscale vào ràng buộc CA.
+  - Máy kỹ thuật tin CA của nhiều khách: mỗi khách **một hồ sơ Firefox riêng**. Nhãn DNS khác nhau giữa các khách → CA của khách A không giả được tên của khách B. Không mở Box của khách khác bằng IP LAN trong hồ sơ đã tin CA khách A (các khách hay trùng dải `192.168.1.x`).
+  - SSH vào Box qua Tailscale giữ như hiện nay (chỉ khóa, không root). SSH máy trạm vẫn đi qua Box (`from=` = IP LAN của Box).
 - **Root nằm ngoài container:**
   - Ansible dùng openssl sinh root (pathlen:1, ràng buộc như trên, 10 năm) + intermediate (pathlen:0, cùng ràng buộc, 1 năm).
   - Caddy chỉ nhận root cert + **intermediate cert/key**. (agent) Caddy 2.11.4 cho phép bỏ khóa root; Caddy không tự gia hạn intermediate được cấp → bộ cài gia hạn khi còn < 60 ngày.
@@ -414,9 +427,11 @@ Bản thiết kế đầu bị phản biện chỉ ra 1 điểm chặn: dùng kh
 - `onebee-sao-luu`: sửa F7 (đọc `while IFS='=' read`), đặt `RESTIC_CACERT` khi kho là https.
 - Thông báo lỗi: 502/503/504 → "dịch vụ trên Box chưa chạy"; 301/308 → "cấu hình URL cũ — báo quản trị chạy `dong-bo-may`". Cập nhật test đang chờ câu "Không kết nối được OneBee Box".
 - **Firefox chống hạ cấp** (HSTS vô tác dụng với IP):
-  - `ManagedBookmarks` + `Homepage` dạng https;
-  - tùy quyết định: `DisableSecurityBypass.InvalidCertificate=true` (mục 6);
-  - in lại tờ phím tắt, tài liệu đào tạo với https.
+  - `ManagedBookmarks` + `Homepage` dạng https → người dùng mở Box bằng dấu trang, không gõ tay `http://`;
+  - **không** bật `DisableSecurityBypass` và HTTPS-Only (QĐ8: máy in, thiết bị LAN tự ký phải dùng được);
+  - đào tạo: Box đã được tin, nên **mọi** cảnh báo chứng chỉ ở địa chỉ Box là dấu hiệu bị tấn công → không bấm qua, báo kỹ thuật ngay (cảnh báo ở máy in thì được bấm qua);
+  - in lại tờ phím tắt, tài liệu đào tạo với https;
+  - ghi vào ADR 0005: rủi ro còn lại do vẫn bấm qua được cảnh báo (người dùng bấm qua cảnh báo giả ở địa chỉ Box → lộ mật khẩu).
 
 **Chốt chặn và tự đồng bộ:**
 - Còn máy đã cấp chưa đồng bộ CA → lần chạy này giữ HTTP và in danh sách máy (có biến bỏ qua).
@@ -457,7 +472,7 @@ Lý do: QĐ3 nhằm chống nghe lén. Mọi thứ đã đi qua LAN dạng rõ t
 ### 5.7 Pha 5 — P2
 | Mục | Việc |
 |---|---|
-| F5 | Sửa code tường lửa: áp chuỗi lọc cho mọi cổng mạng trừ `lo`/`docker*`/`br-*`, hoặc danh sách cho phép riêng `tailscale0` (IP 100.x của máy kỹ thuật). Tài liệu ACL Tailscale mẫu theo QĐ2 |
+| F5 | Sửa code tường lửa: áp chuỗi lọc cho mọi cổng mạng trừ `lo`/`docker*`/`br-*`. Riêng `tailscale0`: biến `onebee_box_tailscale_cho_phep` (IP 100.x hoặc dải của máy kỹ thuật) → chỉ máy kỹ thuật vào được web/SSH của Box (QĐ6). Tài liệu ACL Tailscale mẫu theo QĐ2/QĐ6: `tag:kythuat` → Box tcp 22, 80, 443, 3000, 5678, 3001; → máy trạm tcp 5900 (VNC, vẫn cần người dùng đồng ý); thiết bị khác trong tailnet không vào được Box |
 | F8 | `server min protocol = SMB3_00` + `server smb encrypt = required`, sau khi kiểm máy khách (mục 6) |
 | F9 | Tài khoản biểu mẫu theo phòng/người, ghi người đăng nhập vào CSV; siết `N8N_CONTENT_SECURITY_POLICY` (giảm GHSA-29xw) |
 | F11 | `no-new-privileges` mọi container; rest-server `cap_drop: [ALL]` + `read_only`; cân nhắc image Uptime Kuma `-rootless` |
@@ -481,15 +496,13 @@ Kiểm soát bù thật của F4:
 - Ghim khóa SSH: đây là kiểm soát cho F2.
 
 ## 6. Câu hỏi còn mở (cần chủ dự án quyết; có đề xuất mặc định)
-1. **Mã đơn vị** (`onebee_box_ma_don_vi`, nhãn DNS của CA): quy tắc đặt? Đề xuất: viết tắt không dấu theo tên khách, ví dụ `htx-onebee`. Phải chốt trước khi Box sinh CA (đổi sau = xoay CA).
-2. **Kỹ thuật mở giao diện Box qua Tailscale?** Có → thêm IP Tailscale `/32` vào ràng buộc + tên phụ `box.<ma>.onebee.internal` + dòng `/etc/hosts` trên máy kỹ thuật (IP 100.x trần không dùng được vì không có SNI).
-3. **Bắt buộc IP tĩnh/đặt trước DHCP cho Box?** Đề xuất: bắt buộc (đổi IP = xoay CA + đến từng máy).
-4. **Firefox máy trạm: chặn bấm "chấp nhận rủi ro" chứng chỉ** (`DisableSecurityBypass`)? Đề xuất: bật. Đánh đổi: router, máy in tự ký trong LAN cũng không mở được qua https lỗi.
-5. **Khóa gốc CA:** để trên Box (`secrets/ca`, không vào container) hay cất USB ngoài Box? Đề xuất: để trên Box (F4 đã coi Box là điểm tin cậy; USB thêm thao tác mỗi năm khi gia hạn intermediate).
-6. **Phiên Open WebUI** `JWT_EXPIRES_IN`: 7 ngày hay 24 giờ? Đề xuất: 7 ngày.
-7. **Nhân viên có tài khoản web Open WebUI không?** Hướng dẫn hiện bảo quản trị tạo; nếu có thì advisory cần đăng nhập về sau sẽ áp dụng.
-8. **Thư mục chung:** có máy Windows 8.1/Server 2012/macOS dùng không? (trước khi bắt buộc mã hóa SMB).
-9. **Chạy mã (pyodide) trong Open WebUI:** giữ hay tắt? Đề xuất: giữ (chạy trong trình duyệt).
+Đã quyết ngày 10/10: mã đơn vị (QĐ5), Tailscale (QĐ6), IP tĩnh (QĐ7), máy in tự ký (QĐ8). Còn lại — nếu không có ý kiến khác sẽ làm theo đề xuất:
+1. **Duyệt sửa code:** chưa duyệt. Pha 1 không phụ thuộc các câu dưới đây, có thể bắt đầu bất cứ lúc nào.
+2. **Khóa gốc CA:** để trên Box (`secrets/ca`, không vào container) hay cất USB ngoài Box? Đề xuất: để trên Box (F4 đã coi Box là điểm tin cậy; USB thêm thao tác mỗi năm khi gia hạn intermediate). Cần trước Pha 3.
+3. **Phiên Open WebUI** `JWT_EXPIRES_IN`: 7 ngày hay 24 giờ? Đề xuất: 7 ngày. Cần trước Pha 1.
+4. **Nhân viên có tài khoản web Open WebUI không?** Hướng dẫn hiện bảo quản trị tạo; nếu có thì advisory cần đăng nhập về sau sẽ áp dụng.
+5. **Thư mục chung:** có máy Windows 8.1/Server 2012/macOS dùng không? Cần trước khi bắt buộc mã hóa SMB (Pha 5).
+6. **Chạy mã (pyodide) trong Open WebUI:** giữ hay tắt? Đề xuất: giữ (chạy trong trình duyệt).
 
 **Cần kiểm trên máy thật** (không phải quyết định, sẽ làm trong lúc triển khai):
 - Firefox deb của Mint 22: có `distribution/policies.json` không, có đọc `/etc/firefox/policies` không, đường dẫn `p11-kit-trust.so`.
