@@ -612,6 +612,18 @@ mẫu n8n hai chế độ; playbook `dong-bo-may-tram.yml` bằng ansible-core 2
 | S3, S4 | Thêm `\r` vào regex, `trim()` thống nhất (dùng `_csv-js.j2` cho quy trình 04), lọc `[\r\n]` khỏi tiêu đề email |
 | Khác | Quét image rest-server; nâng Ollama 0.40.x có kế hoạch (tải lại model nếu lùi); thử tắt thêm mô-đun n8n không dùng; `onebee-box doi-ca` (xoay CA), `doi-khoa-quan-tri` (xoay khóa SSH quản trị) |
 
+#### Trạng thái triển khai Pha 5 (10/10/2026)
+**Đã làm:** F5 tường lửa lọc mọi cổng mạng trừ `lo`/`docker*`/`br-*` (LAN chỉ qua cổng mạng chính; `tailscale0` chỉ địa chỉ trong `onebee_box_tailscale_cho_phep`; bộ cài cảnh báo khi Box nối Tailscale mà chưa khai), IPv4 + IPv6;
+F8 Samba `server min protocol = SMB3_11` + `server smb encrypt = required` (biến `onebee_box_samba_smb3` để tắt); F11 `no-new-privileges` mọi container, rest-server `cap_drop ALL` + `read_only`;
+F6 ghim GitHub Actions theo SHA (`actions/checkout` v4.4.0, `setup-python` v5.6.0) + `renovate.json` (regex manager cho image trong `group_vars/all.yml`, không tự gộp); S3/S4 `_csv-js.j2` thay mọi ký tự điều khiển + cắt khoảng trắng,
+quy trình 04 dùng chung mã CSV; xoay CA qua `onebee_box_xoay_ca` (+ `onebee-ca.sh --xoay` cất CA cũ); `gia-han-ca`; xoay vòng nhật ký 90 ngày.
+**Chưa làm (có lý do):** F9 tài khoản biểu mẫu theo phòng/người (n8n Form Trigger chỉ có 1 credential basic-auth cho mỗi biểu mẫu; theo người cần chế độ đăng nhập n8n `n8nUserAuth` — cần quyết định thiết kế riêng và liên quan GHSA-3qcw);
+`siết N8N_CONTENT_SECURITY_POLICY` (n8n tự đặt CSP sandbox cho biểu mẫu; chưa có bằng chứng cần siết thêm); `doi-khoa-quan-tri` (xoay khóa SSH quản trị: cần giai đoạn chạy song song hai khóa trong `authorized_keys` trên mọi máy, vì dong-bo-may đẩy qua chính khóa đang xoay — thiết kế
+đề xuất: dòng `QUAN_TRI_SSH_KEY` chứa 2 khóa, đẩy bằng khóa cũ, đổi tên khóa khi mọi máy báo xong, rồi đẩy lần 2 chỉ còn khóa mới); F13 ký bản phát hành (minisign/cosign — cần chọn công cụ + nơi giữ khóa ký);
+cờ phiên bản desktop tối thiểu; thẻ restic `truoc-nang-cap`; nâng Ollama 0.40 (cần tải lại model khi lùi, nên làm có kế hoạch); quét image rest-server; thử tắt thêm mô-đun n8n.
+**Đã kiểm trong container làm việc:** test tường lửa bằng iptables giả (cấu trúc chuỗi, tách IPv4/IPv6, chạy lại không nhân đôi, tắt gỡ sạch); compose; mã CSV chạy bằng node thật. **Chưa kiểm:** tường lửa thật trên Box/Docker (hairpin, thứ tự với quy tắc Docker),
+Tailscale thật, Samba SMB 3.1.1 + mã hóa với Windows 10/Linux Mint (`testparm`, `smbstatus`), `no-new-privileges`/`read_only` có làm các image chạy không, Renovate đọc được `renovate.json`.
+
 ### 5.8 F4 (chấp nhận) — kiểm soát bù, đã sửa theo phản biện
 Kiểm soát bù thật của F4:
 - **Giảm bề mặt tấn công của Box:**

@@ -15,6 +15,8 @@ Tất cả chạy trên máy có Docker. Mạng có proxy HTTPS tự ký: đặt
 \* đo trên máy thử nghiệm của nhóm, lần đầu tải image lâu hơn.
 
 Test Caddyfile HTTPS (`tests/box/test_onebee_caddy_https.py`) chạy **Caddy thật** trên máy: đặt `ONEBEE_TEST_CADDY=/đường/dẫn/caddy` (CI lấy từ đúng image đã ghim digest); không có Caddy thì bài này bị bỏ qua.
+Các bài unit mới: `test_onebee_ca.py` (CA, ràng buộc tên bằng openssl/Python/curl), `test_onebee_caddy_https.py` (Caddy thật), `test_onebee_compose_https.py`, `test_onebee_tuong_lua.py` (iptables giả), `test_onebee_n8n_templates.py` (mẫu n8n + mã CSV bằng node),
+`tests/desktop/test_onebee_ket_noi_box.py`, `test_onebee_clients_https.py`, `test_onebee_hoi.py` (máy chủ TLS thật). Tích hợp (Docker lồng, chưa chạy ở nơi viết): `check-https.sh`, `check-xoay-khoa.sh`, các sửa trong `verify-box-install.sh`/`check-khoi-phuc-toan-bo.sh`/`run-box-test-in-systemd-container.sh`.
 `tests/box/check-https.sh` (Docker lồng, chạy trong `run-box-test-in-systemd-container.sh`): chốt chặn, bật/tắt HTTPS, cổng, TLS, 308, cookie Secure, CORS, CSP n8n, máy trạm qua HTTPS.
 
 ## Chưa kiểm được bằng container (phải thử máy ảo / máy thật)

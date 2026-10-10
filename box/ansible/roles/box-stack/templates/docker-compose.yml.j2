@@ -48,6 +48,7 @@ services:
     container_name: onebee-ollama
     restart: unless-stopped
     logging: *logging
+    security_opt: ["no-new-privileges:true"]   # F11: tiến trình trong container không tự nâng quyền
     # Không mở cổng ra LAN: chỉ Open WebUI gọi được (API Ollama không có mật khẩu)
     volumes:
       - {{ onebee_box_data }}/ollama:/root/.ollama
@@ -57,6 +58,7 @@ services:
     container_name: onebee-open-webui
     restart: unless-stopped
     logging: *logging
+    security_opt: ["no-new-privileges:true"]   # F11: tiến trình trong container không tự nâng quyền
     depends_on: [ollama]
 {% if not https %}
     ports: ["0.0.0.0:{{ onebee_box_ports.open_webui }}:8080"]
@@ -106,6 +108,7 @@ services:
     container_name: onebee-n8n
     restart: unless-stopped
     logging: *logging
+    security_opt: ["no-new-privileges:true"]   # F11: tiến trình trong container không tự nâng quyền
 {% if not https %}
     ports: ["0.0.0.0:{{ onebee_box_ports.n8n }}:5678"]
 {% endif %}
@@ -162,6 +165,7 @@ services:
     container_name: onebee-uptime-kuma
     restart: unless-stopped
     logging: *logging
+    security_opt: ["no-new-privileges:true"]   # F11: tiến trình trong container không tự nâng quyền
 {% if not https %}
     # Chỉ mở ra LAN sau khi đã tạo tài khoản quản trị (trước đó Uptime Kuma mở trang "tạo tài khoản đầu tiên")
     ports: ["{{ onebee_kuma_dia_chi | default('0.0.0.0') }}:{{ onebee_box_ports.uptime_kuma }}:3001"]
@@ -176,6 +180,10 @@ services:
     container_name: onebee-rest-server
     restart: unless-stopped
     logging: *logging
+    security_opt: ["no-new-privileges:true"]   # F11: tiến trình trong container không tự nâng quyền
+    cap_drop: [ALL]
+    read_only: true      # chỉ ghi được vào volume /data
+    tmpfs: [/tmp]
 {% if not https %}
     ports: ["0.0.0.0:{{ onebee_box_ports.rest_server }}:8000"]
 {% endif %}

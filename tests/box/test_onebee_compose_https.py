@@ -51,6 +51,15 @@ class ComposeHaiCheDo(unittest.TestCase):
         self.assertNotIn("0.0.0.0:3001:3001", s["portal"]["ports"])
         self.assertIn("0.0.0.0:3000:3000", s["portal"]["ports"])
 
+    def test_moi_container_khong_duoc_tu_nang_quyen_va_rest_server_khoa_chat(self):
+        for che_do in (False, True):
+            s = ve(che_do)
+            for ten, dv in s.items():
+                self.assertIn("no-new-privileges:true", dv["security_opt"], ten)
+            rs = s["rest-server"]
+            self.assertEqual((rs["cap_drop"], rs["read_only"]), (["ALL"], True))
+            self.assertEqual(rs["tmpfs"], ["/tmp"])
+
     def test_https_cau_hinh_ung_dung(self):
         s = ve(True)
         n = s["n8n"]["environment"]
