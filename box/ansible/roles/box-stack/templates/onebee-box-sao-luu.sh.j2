@@ -130,9 +130,9 @@ cmd_sao_luu_co_bao_cao() {
 # Bản sao lưu cũ có thể còn tài khoản Trợ lý AI của máy đã thu hồi sau lần sao lưu đó → xóa lại (chờ Open WebUI chạy, tối đa ~2 phút)
 xoa_tai_khoan_may_da_thu_hoi() {
   local f ten lan
-  for f in "${SECRETS}"/may-*-thu-hoi; do
+  for f in "${SECRETS}"/thu-hoi/*; do
     [[ -e "${f}" ]] || continue
-    ten="$(basename "${f}")"; ten="${ten#may-}"; ten="${ten%-thu-hoi}"
+    ten="$(basename "${f}")"
     for lan in $(seq 24); do
       webui xoa-tai-khoan "${ten}" >/dev/null 2>&1 && continue 2
       sleep 5
@@ -167,7 +167,7 @@ cmd_khoi_phuc_toan_bo() {
   # Kho sao lưu máy trạm không nằm trong bản sao lưu Box → cấp lại tài khoản kho bằng mật khẩu cũ
   # (máy trạm dùng cấu hình cũ, tự tạo kho mới ở lần sao lưu sau)
   : >"${DATA}/restic/.htpasswd"
-  # Chỉ máy còn được cấp: máy đã thu hồi (có file may-<tên>-thu-hoi) không được cấp lại quyền vào kho dù bản sao lưu còn mật khẩu cũ
+  # Chỉ máy còn được cấp: máy đã thu hồi (có file thu-hoi/<tên>) không được cấp lại quyền vào kho dù bản sao lưu còn mật khẩu cũ
   while read -r ten; do
     [[ -s "${SECRETS}/may-${ten}-http" ]] || continue
     htpasswd -B -i "${DATA}/restic/.htpasswd" "${ten}" <"${SECRETS}/may-${ten}-http" 2>/dev/null

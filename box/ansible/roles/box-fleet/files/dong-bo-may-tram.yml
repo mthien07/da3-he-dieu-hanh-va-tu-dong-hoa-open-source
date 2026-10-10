@@ -20,6 +20,22 @@
         fail_msg: "Máy ở địa chỉ này không phải {{ inventory_hostname }} — không đẩy cấu hình"
         quiet: true
 
+    # Lớp phụ: dòng bắt buộc phải có giá trị (onebee-box đã kiểm trước khi dựng file; kiểm lại vì file sắp ghi đè cấu hình đang chạy được)
+    - name: Kiểm cấu hình sắp đẩy đủ các dòng bắt buộc, không rỗng
+      ansible.builtin.assert:
+        that:
+          - cau_hinh is search('(?m)^RESTIC_REPOSITORY=rest:http://[^:@/]+:[^@/]+@')
+          - cau_hinh is search('(?m)^RESTIC_PASSWORD=[^\\s]+')
+          - cau_hinh is search('(?m)^TINH_TRANG_KEY=[^\\s]+')
+          - cau_hinh is search('(?m)^QUAN_TRI_SSH_KEY="ssh-ed25519 ')
+        fail_msg: "Cấu hình dựng cho {{ inventory_hostname }} thiếu dòng bắt buộc — không đẩy"
+        quiet: true
+      vars:
+        cau_hinh: "{{ lookup('ansible.builtin.file', onebee_cau_hinh_dir ~ '/' ~ inventory_hostname ~ '.env') }}"
+      delegate_to: localhost
+      become: false
+      no_log: true
+
     - name: Ghi cấu hình mới (giữ bản cũ cạnh file, quyền 600)
       ansible.builtin.copy:
         src: "{{ onebee_cau_hinh_dir }}/{{ inventory_hostname }}.env"

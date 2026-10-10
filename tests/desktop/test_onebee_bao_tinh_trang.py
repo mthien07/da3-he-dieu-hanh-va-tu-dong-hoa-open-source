@@ -43,6 +43,12 @@ class SoTaiKhoanSudo(unittest.TestCase):
 
 
 class ChuKy(unittest.TestCase):
+    def test_vector_co_dinh_trung_voi_phia_box(self):
+        # Cùng vector với tests/box/test_onebee_may_tram.py (đã đối chiếu bằng openssl): hai phía ký/kiểm phải khớp từng bit
+        self.assertEqual(bt.ky_bao_cao("mat-khau", '{"a": 1}'), "74a539bdbbb008e1811d060d2cce3a6685b0673d55d18df3cfe18fb1eca665b5")
+        self.assertEqual(bt.ky_bao_cao("Mật khẩu có dấu 123", '{"ten": "a"}'),
+                         "f58ed6c936281dcd7a5152a1cd38c078dcbbcc69de140788f8c4ba3f9181c569")
+
     def test_khop_voi_ma_phia_box(self):
         for mk, dl in (("mat-khau", "{}"), ("Mật khẩu có dấu 123", '{"ten": "a", "ghi_chú": "đ"}')):
             self.assertEqual(bt.ky_bao_cao(mk, dl), box.ky_bao_cao(mk, dl))

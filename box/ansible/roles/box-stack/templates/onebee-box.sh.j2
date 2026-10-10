@@ -25,6 +25,11 @@ LIB=/usr/local/lib/onebee-box
 
 [[ ${EUID} -eq 0 ]] || die "Hãy chạy bằng quyền quản trị: sudo onebee-box $*"
 
+# File/thư mục tạm có bí mật (cấu hình đẩy xuống máy, inventory…) được dọn khi thoát, KỂ CẢ thoát bằng die (trap RETURN không chạy khi exit)
+TAM_DON=()
+don_tam() { [[ -z "${TAM_DON[*]:-}" ]] || rm -rf "${TAM_DON[@]}"; }
+trap don_tam EXIT
+
 cmd_trang_thai() {
   compose ps --format 'table {{ '{{' }}.Name{{ '}}' }}\t{{ '{{' }}.Status{{ '}}' }}'
   echo; df -h "${DATA}" | tail -1 | awk '{print "Ổ dữ liệu: đã dùng " $3 "/" $2 " (" $5 ")"}'
@@ -35,11 +40,15 @@ cmd_trang_thai() {
 # In cấu hình dán vào máy trạm — CHỈ ĐỌC bí mật đã có (không tạo tài khoản/khóa, không ghi htpasswd). Thiếu bí mật nào thì dừng (die),
 # không in cấu hình thiếu. them-may tạo bí mật trước rồi gọi hàm này; dong-bo-may gọi lại để đẩy cấu hình xuống máy.
 in_cau_hinh_may() {
-  local ten="$1" ip http_pw repo_pw tram_key hoi_key=""
+  local ten="$1" ip http_pw repo_pw tram_key hoi_key="" f
+  # Kiểm đủ bí mật TRƯỚC khi in gì (die gọi thẳng ở đây; die trong $(…) chỉ thoát subshell của nó, hàm vẫn in tiếp file thiếu mật khẩu)
+  for f in "${SECRETS}/may-${ten}-http" "${SECRETS}/may-${ten}-repo" "${SECRETS}/tinh-trang-key" "${SSH_DIR}/quan-tri.pub"; do
+    [[ -s "${f}" ]] || die "Thiếu ${f} — máy ${ten} chưa cấp đủ hoặc đã thu hồi (cấp lại: sudo onebee-box them-may ${ten})"
+  done
   ip="$(box_ip)"; [[ -n "${ip}" ]] || die "Không xác định được IP của Box — đặt onebee_box_address trong group_vars"
-  http_pw="$(secret_co_san "may-${ten}-http")"
-  repo_pw="$(secret_co_san "may-${ten}-repo")"
-  tram_key="$(secret_co_san tinh-trang-key)"
+  http_pw="$(cat "${SECRETS}/may-${ten}-http")"
+  repo_pw="$(cat "${SECRETS}/may-${ten}-repo")"
+  tram_key="$(cat "${SECRETS}/tinh-trang-key")"
   # Đã lưu khóa thì dùng. Máy từng có tài khoản Trợ lý AI mà chưa lưu khóa (cấp từ bản cũ) → lấy lại khóa đã cấp, KHÔNG tạo mới;
   # lấy không được thì dừng (không in cấu hình thiếu dòng hoi). Máy chưa từng có tài khoản thì không in dòng hoi
   if [[ -s "${SECRETS}/may-${ten}-hoi" ]]; then
@@ -62,10 +71,18 @@ in_cau_hinh_may() {
 }
 
 cmd_them_may() {
-  local ten="${1:-}" ip http_pw repo_pw hoi_key
+  local ten="${1:-}" ip http_pw repo_pw hoi_key thoi_diem
   [[ "${ten}" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]] || die "Tên máy chỉ gồm chữ thường không dấu, số, dấu gạch (vd: ketoan-01)"
   ip="$(box_ip)"; [[ -n "${ip}" ]] || die "Không xác định được IP của Box — đặt onebee_box_address trong group_vars"
-  rm -f "${SECRETS}/may-${ten}-thu-hoi"   # cấp lại cho máy từng thu hồi: mật khẩu kho HTTP và tài khoản Trợ lý AI được tạo mới
+  if [[ -e "${SECRETS}/thu-hoi/${ten}" ]]; then
+    # Cấp lại cho máy từng thu hồi: máy cũ (mất cắp, nghi chiếm) vẫn biết MẬT KHẨU KHO cũ — mà mật khẩu kho là khóa ký báo cáo và là bằng chứng
+    # danh tính máy → phải đổi. Cất kho + mật khẩu cũ sang tên khác (mở lại dữ liệu cũ bằng restic khi cần; in-khoa vẫn in mật khẩu cũ),
+    # máy mới bắt đầu kho mới. Mật khẩu kho HTTP và tài khoản Trợ lý AI cũng được tạo mới.
+    thoi_diem="$(date +%Y%m%d-%H%M%S)"
+    [[ ! -e "${SECRETS}/may-${ten}-repo" ]] || mv "${SECRETS}/may-${ten}-repo" "${SECRETS}/cu-${ten}-repo-${thoi_diem}"
+    [[ ! -d "${DATA}/restic/${ten}" ]] || mv "${DATA}/restic/${ten}" "${DATA}/restic/${ten}.cu-${thoi_diem}"
+    rm -f "${SECRETS}/thu-hoi/${ten}"
+  fi
   http_pw="$(secret "may-${ten}-http")"
   repo_pw="$(secret "may-${ten}-repo")"
   secret tinh-trang-key >/dev/null
@@ -87,16 +104,18 @@ cmd_thu_hoi_may() {
   local ten="${1:-}" xac_nhan="${2:-}" tra_loi
   [[ "${ten}" =~ ^[a-z0-9][a-z0-9-]{0,31}$ && -e "${SECRETS}/may-${ten}-repo" ]] || die "Cách dùng: sudo onebee-box thu-hoi-may <tên-máy-đã-cấp> [--dong-y]"
   if [[ "${xac_nhan}" != --dong-y ]]; then
-    read -rp "Thu hồi máy ${ten}? Máy sẽ không sao lưu, hỏi Trợ lý AI, báo tình trạng hay nhận cập nhật được nữa. Gõ 'thu hoi' để xác nhận: " tra_loi
+    read -rp "Thu hồi máy ${ten}? Máy sẽ không sao lưu, hỏi Trợ lý AI, báo tình trạng hay nhận cập nhật được nữa. Gõ 'thu hoi' để xác nhận: " tra_loi \
+      || die "Cần xác nhận: chạy trong cửa sổ dòng lệnh, hoặc thêm --dong-y"
     [[ "${tra_loi}" == "thu hoi" ]] || die "Đã hủy"
   fi
-  (umask 077; : >"${SECRETS}/may-${ten}-thu-hoi")   # đánh dấu TRƯỚC: lỡ dừng giữa chừng thì máy đã bị coi là thu hồi
+  (umask 077; mkdir -p "${SECRETS}/thu-hoi"; : >"${SECRETS}/thu-hoi/${ten}")   # đánh dấu TRƯỚC: lỡ dừng giữa chừng thì máy đã bị coi là thu hồi
   htpasswd -D "${DATA}/restic/.htpasswd" "${ten}" 2>/dev/null || true
   webui xoa-tai-khoan "${ten}" || warn "Chưa xóa được tài khoản Trợ lý AI may-${ten}@onebee.lan (Open WebUI chưa chạy?) — chạy lại lệnh này sau"
   rm -f "${SECRETS}/may-${ten}-http" "${SECRETS}/may-${ten}-webui" "${SECRETS}/may-${ten}-hoi" "${DATA}/tinh-trang-may/${ten}.json"
   ssh-keygen -R "${ten}" -f "${SSH_DIR}/known_hosts" >/dev/null 2>&1 || true
   dong_bo_ten_may >/dev/null
-  echo "Đã thu hồi máy ${ten}. Kho sao lưu của máy vẫn còn trên Box. Cấp lại: sudo onebee-box them-may ${ten}"
+  echo "Đã thu hồi máy ${ten}. Kho sao lưu của máy vẫn còn trên Box. Cấp lại (mật khẩu kho mới, kho cũ cất riêng): sudo onebee-box them-may ${ten}"
+  echo "LƯU Ý: chạy NGAY 'sudo onebee-box sao-luu' để bản sao lưu Box ghi nhận việc thu hồi — nếu ổ hỏng trước lần sao lưu 23:00, khôi phục sẽ cấp lại máy này."
 }
 
 # Máy cài lại hệ điều hành (khóa SSH của máy đổi): bỏ khóa đã ghim; lần cap-nhat-may sau máy phải chứng minh lại rồi mới được ghim mới
@@ -153,7 +172,8 @@ chung_minh_may() {
   local ten="$1" ip="$2" kh="$3" mode="$4" pw dong loi
   pw="$(secret_co_san "may-${ten}-repo")"
   loi="$(mktemp)"
-  if ! dong="$(ssh -i "${SSH_DIR}/quan-tri" -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile="${kh}" \
+  # -n: ssh KHÔNG được đọc stdin — hàm này chạy trong vòng lặp "while read" đọc danh sách máy; thiếu -n thì ssh nuốt các dòng còn lại
+  if ! dong="$(ssh -n -i "${SSH_DIR}/quan-tri" -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile="${kh}" \
         -o StrictHostKeyChecking="${mode}" -o HostKeyAlias="${ten}" -o UpdateHostKeys=no -o ConnectTimeout=10 \
         "onebee-quantri@${ip}" 'sudo grep -m1 "^RESTIC_PASSWORD=" /etc/onebee/may-tram.env' 2>"${loi}")"; then
     warn "Không SSH vào ${ten} (${ip}) được: $(tail -n 1 "${loi}")"
@@ -186,7 +206,7 @@ chuan_bi_may() {
       echo "Đã ghim khóa SSH của ${t} ($(ssh-keygen -lf "${tmp}" 2>/dev/null | awk 'NR==1 {print $2}')) sau khi máy chứng minh biết mật khẩu kho sao lưu"
       rm -f "${tmp}"
     elif ! chung_minh_may "${t}" "${ip}" "${kh}" yes; then
-      warn "Bỏ qua ${t}: khóa SSH đã ghim không khớp hoặc máy không chứng minh được. Máy vừa cài lại hệ điều hành? → sudo onebee-box ghim-lai-may ${t}"
+      warn "Bỏ qua ${t}: khóa SSH đã ghim không khớp hoặc máy không chứng minh được. Máy vừa cài lại hệ điều hành? → sudo onebee-box ghim-lai-may ${t}. (Địa chỉ ${ip} có thể lấy từ báo cáo chưa ký — nếu máy không hề cài lại, có thể có máy khác đang giả danh.)"
       continue
     fi
     echo "${t} ansible_host=${ip} ansible_ssh_extra_args='-o HostKeyAlias=${t}'" >>"${inv}"
@@ -202,7 +222,7 @@ chay_playbook_chon() {
   local playbook="$1" ten_log="$2"; shift 2
   local inv log st t
   inv="$(mktemp)"; TEN_BO_QUA="$(mktemp)"
-  trap 'rm -f "${inv}" "${TEN_BO_QUA}"; trap - RETURN' RETURN
+  TAM_DON+=("${inv}" "${TEN_BO_QUA}")
   chuan_bi_may "${inv}" "${CHON_MAY[@]}"
   while read -r t; do
     [[ -z "${t}" ]] || warn "Bỏ qua ${t}: máy chưa báo tình trạng hợp lệ trong 2 giờ qua (máy tắt? chưa chạy bộ cài mới có ký báo cáo? chưa biết địa chỉ)"
@@ -235,8 +255,8 @@ cmd_dong_bo_may() {
   local thu_muc t
   local -a co=()
   chon_may "${1:-}" || die "Cách dùng: sudo onebee-box dong-bo-may <tên-máy-đã-cấp> | --tat-ca"
-  thu_muc="$(mktemp -d)"   # 0700; nội dung cấu hình chứa mật khẩu → xóa khi xong
-  trap 'rm -rf "${thu_muc}"; trap - RETURN' RETURN
+  thu_muc="$(mktemp -d)"   # 0700; nội dung cấu hình chứa mật khẩu → xóa khi thoát (kể cả thoát lỗi)
+  TAM_DON+=("${thu_muc}")
   for t in "${CHON_MAY[@]}"; do
     # Dựng trong subshell: thiếu bí mật thì die chỉ dừng subshell → bỏ qua máy đó, KHÔNG đẩy file thiếu
     if ( umask 077; in_cau_hinh_may "${t}" >"${thu_muc}/${t}.env" ); then co+=("${t}")

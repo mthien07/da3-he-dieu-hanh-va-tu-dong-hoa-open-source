@@ -99,9 +99,11 @@ class ChuKy(unittest.TestCase):
         return buf.getvalue()
 
     def test_vector_chu_ky_co_dinh(self):
-        # Mã máy trạm (desktop/.../onebee-bao-tinh-trang) phải ra đúng giá trị này — xem tests/desktop/test_onebee_bao_tinh_trang.py
-        self.assertEqual(mt.ky_bao_cao("mat-khau", "{\"a\": 1}"), mt.ky_bao_cao("mat-khau", "{\"a\": 1}"))
-        self.assertEqual(len(mt.ky_bao_cao("mat-khau", "x")), 64)
+        # Giá trị cố định, đã đối chiếu độc lập bằng openssl: K = HMAC-SHA256(khóa=mật khẩu, "onebee-tinh-trang-v1"), chữ ký = HMAC-SHA256(K, dữ liệu).
+        # Đổi cách ký là phá tương thích với mọi máy trạm đã cài → test này phải đỏ. Mã máy trạm có cùng vector (tests/desktop).
+        self.assertEqual(mt.ky_bao_cao("mat-khau", '{"a": 1}'), "74a539bdbbb008e1811d060d2cce3a6685b0673d55d18df3cfe18fb1eca665b5")
+        self.assertEqual(mt.ky_bao_cao("Mật khẩu có dấu 123", '{"ten": "a"}'),
+                         "f58ed6c936281dcd7a5152a1cd38c078dcbbcc69de140788f8c4ba3f9181c569")
         self.assertNotEqual(mt.ky_bao_cao("mat-khau", "x"), mt.ky_bao_cao("mat-khau-khac", "x"))
 
     def test_hop_le(self):
@@ -125,9 +127,14 @@ class ChuKy(unittest.TestCase):
         bc["ten"] = "ketoan-01"
         self.ghi("ketoan-01", bc)
         self.assertEqual(self.doc()["_ky"], "sai")
-        # 4) phát lại báo cáo cũ: giờ ký cách giờ Box nhận quá 10 phút
+        # 4) phát lại báo cáo cũ (hoặc đồng hồ máy sai): chữ ký đúng nhưng giờ ký cách giờ Box nhận quá 10 phút → nhãn riêng,
+        #    giờ báo cáo = giờ KÝ (không trông như vừa gửi) và không đủ tin để chọn IP máy chưa ghim
         self.ghi("ketoan-01", bao_cao_ky(self.bi_mat, "ketoan-01", {}, gui_luc=now - 3600, nhan_luc=now))
-        self.assertEqual(self.doc()["_ky"], "sai")
+        tt = self.doc()
+        self.assertEqual(tt["_ky"], "lech-gio")
+        self.assertAlmostEqual(tt["nhan_luc"], now - 3600, delta=5)
+        cb, _ = mt.danh_gia("ketoan-01", 5, dict(tt, o_trong_phan_tram=50, cap_nhat_cho=0), now)
+        self.assertTrue(any("lệch giờ" in c for c in cb))
         # 5) máy chưa cấp (không có file mật khẩu) → không kiểm được → sai
         self.ghi("la-hoac", bao_cao_ky(self.bi_mat, "la-hoac", {}))
         self.assertEqual(self.doc("la-hoac")["_ky"], "sai")
@@ -165,15 +172,31 @@ class ChuKy(unittest.TestCase):
         self.ghi("ketoan-01", bao_cao_ky(self.bi_mat, "ketoan-01", {"ip": "10.0.0.66"}, mat_khau="doan-mo"))
         self.assertEqual(self.kho("ketoan-01", da_ghim="ketoan-01"), "")  # sai chữ ký → bỏ
 
-    def test_kho_khong_bat_xac_thuc_khi_thieu_moi_truong_van_giu_hanh_vi_cu(self):
+    def test_kho_tu_choi_khi_thieu_moi_truong(self):
+        # Mặc định ĐÓNG: thiếu ONEBEE_BI_MAT/ONEBEE_DA_GHIM thì không bao giờ tin IP chưa kiểm
         self.ghi("a", {"ten": "a", "ip": "192.168.1.9", "nhan_luc": time.time() - 600})
+        for k in ("ONEBEE_BI_MAT", "ONEBEE_DA_GHIM"):
+            os.environ.pop(k, None)
         buf = io.StringIO()
         with redirect_stdout(buf):
-            mt.main(["x", "kho", self.tt_dir, "a"])
-        self.assertEqual(buf.getvalue(), "a 192.168.1.9\n")
+            self.assertEqual(mt.main(["x", "kho", self.tt_dir, "a"]), 2)
+        self.assertEqual(buf.getvalue(), "")
+        os.environ["ONEBEE_BI_MAT"] = self.bi_mat       # có một biến thôi cũng chưa đủ
+        self.assertEqual(mt.main(["x", "kho", self.tt_dir, "a"]), 2)
+
+    def test_kho_may_chua_ghim_voi_chu_ky_lech_gio_khong_dung_duoc(self):
+        now = time.time()
+        self.ghi("ketoan-01", bao_cao_ky(self.bi_mat, "ketoan-01", {"ip": "192.168.1.9"}, gui_luc=now - 3600, nhan_luc=now))
+        self.assertEqual(self.kho("ketoan-01", da_ghim=""), "")
 
 
 class DocFile(unittest.TestCase):
+    def setUp(self):
+        self._bm = tempfile.TemporaryDirectory()
+        self.addCleanup(self._bm.cleanup)
+        os.environ["ONEBEE_BI_MAT"], os.environ["ONEBEE_DA_GHIM"] = self._bm.name, "a,c,cu,moi"   # đã ghim: báo cáo cũ không ký được dùng IP
+        self.addCleanup(lambda: [os.environ.pop(k, None) for k in ("ONEBEE_BI_MAT", "ONEBEE_DA_GHIM")])
+
     def test_bo_qua_file_sai_ten_va_ten_khong_hop_le(self):
         with tempfile.TemporaryDirectory() as d:
             with open(os.path.join(d, "a.json"), "w") as f:
@@ -186,15 +209,15 @@ class DocFile(unittest.TestCase):
                 mt.main(["x", "kho", d, "a", "c", "../c"])
             self.assertEqual(buf.getvalue(), "")  # IP bậy không lọt vào danh sách máy để SSH
 
-    def test_kho_bo_bao_cao_cu_hon_2_gio(self):
+    def test_kho_may_da_ghim_bo_bao_cao_qua_30_ngay(self):
         with tempfile.TemporaryDirectory() as d:
-            for ten, tuoi in (("moi", 600), ("cu", 3 * 3600)):
+            for ten, tuoi in (("moi", 600), ("cu", 40 * 86400)):
                 with open(os.path.join(d, f"{ten}.json"), "w") as f:
                     json.dump({"ten": ten, "ip": "192.168.1.9", "nhan_luc": time.time() - tuoi}, f)
             buf = io.StringIO()
             with redirect_stdout(buf):
                 mt.main(["x", "kho", d, "moi", "cu"])
-            self.assertEqual(buf.getvalue(), "moi 192.168.1.9\n")  # IP cũ có thể đã sang máy khác
+            self.assertEqual(buf.getvalue(), "moi 192.168.1.9 ghim\n")
 
     def test_loi_doc_kho_khac_chua_sao_luu(self):
         rows = mt.tong_hop("/khong-co", ["a=loi", "b=null", "c=-5000"])

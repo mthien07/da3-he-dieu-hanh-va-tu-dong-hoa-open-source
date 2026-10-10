@@ -18,14 +18,17 @@
 ### Bảo mật — Pha 2 (xem `docs/security-audit.md`, F2)
 - **Báo cáo tình trạng máy trạm có chữ ký** (HMAC-SHA256, khóa suy từ mật khẩu kho sao lưu của máy — chưa từng đi qua mạng). n8n không giữ khóa;
   Box tự kiểm chữ ký + độ lệch giờ (chống phát lại) khi in bảng/báo cáo. Báo cáo sai chữ ký được nêu rõ; báo cáo cũ không ký vẫn nhận (chuyển
-  tiếp) nhưng gắn nhãn "chưa ký" và không được dùng để chọn địa chỉ SSH.
+  tiếp) nhưng gắn nhãn "chưa ký" và không được dùng để chọn địa chỉ SSH máy chưa ghim. Chữ ký đúng mà giờ ký lệch >10 phút → nhãn "lệch giờ".
 - **n8n chỉ nhận báo cáo của máy đã cấp**: quy trình "Nhận tình trạng máy trạm" đọc file đánh dấu theo tên trong `/srv/onebee/may-da-cap/`
   (Box ghi, gắn chỉ đọc vào n8n); tên chưa cấp/đã thu hồi → dừng, không ghi file. Hết đường tạo file tên tùy ý.
 - **SSH máy trạm: chứng minh rồi mới ghim.** Bỏ `StrictHostKeyChecking=accept-new`. Lần đầu vào máy: dùng IP trong báo cáo CÓ CHỮ KÝ (≤ 2 giờ),
   SSH đọc mật khẩu kho sao lưu trên máy và so với bản Box giữ; trùng mới ghim khóa SSH. Các lần sau `StrictHostKeyChecking=yes` + chứng minh
   lại (kể cả khóa ghim do bản cũ tạo). Máy giả ở IP đã báo không được ghim và không nhận gì.
 - Lệnh mới: `thu-hoi-may` (gỡ kho HTTP, khóa Trợ lý AI, ghim SSH, chỗ báo tình trạng; bền qua `khoi-phuc-toan-bo`), `ghim-lai-may`,
-  `dong-bo-may` (đẩy lại `may-tram.env` từ Box, chỉ tới máy đã chứng minh; thiếu bí mật thì bỏ qua máy, không đẩy file thiếu).
+  `dong-bo-may` (đẩy lại `may-tram.env` từ Box, chỉ tới máy đã chứng minh; thiếu bí mật thì bỏ qua máy, không đẩy file thiếu — kiểm cả ở playbook).
+  Cấp lại máy đã thu hồi **đổi cả mật khẩu kho sao lưu** (kho + mật khẩu cũ cất riêng). Dấu thu hồi ở `secrets/thu-hoi/<tên>`.
+  Sau rà soát Opus: sửa `ssh` nuốt danh sách khiến `--tat-ca` chỉ làm máy đầu (thêm `-n`), file tạm chứa mật khẩu dọn bằng trap EXIT,
+  `kho` mặc định đóng, nhãn "lệch giờ".
   `in_cau_hinh_may` tách khỏi `them-may`: chỉ đọc bí mật có sẵn, không tạo tài khoản/khóa. Một hàm `may_da_cap` liệt kê máy cho mọi nơi;
   `secret_co_san` không tự sinh khóa. Nhật ký `/var/log/onebee-box/` chỉ root đọc.
 - `onebee-webui.py`: thêm `lay-khoa` (chỉ đọc khóa đã cấp) và `xoa-tai-khoan`.

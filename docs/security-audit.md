@@ -393,6 +393,11 @@ Bản thiết kế đầu bị phản biện chỉ ra 1 điểm chặn: dùng kh
 - **Không gửi `hostkey` trong báo cáo**; bước chứng minh (đọc mật khẩu kho qua SSH rồi so) thay thế, và thực hiện bằng shell (`chung_minh_may`) chứ
   không bằng playbook riêng (`--ghim-lan-dau` không còn). Bước chứng minh chạy lại mỗi lần vào máy, nên cũng xác minh các khóa ghim cũ do bản trước tạo.
 - Quy tắc IP của `kho`: máy chưa ghim = báo cáo ký hợp lệ ≤ 2 giờ; máy đã ghim = tới 30 ngày, loại báo cáo sai chữ ký.
+- Sửa sau rà soát Opus (commit tiếp theo Pha 2): `ssh` trong vòng lặp nuốt danh sách (`--tat-ca` chỉ làm máy đầu → `ssh -n`); cấp lại máy đã thu
+  hồi giữ mật khẩu kho cũ (là khóa ký + bằng chứng danh tính; máy mất cắp tiếp tục chứng minh được) → nay đổi mật khẩu kho, cất kho cũ; `dong-bo-may`
+  vẫn đẩy cấu hình thiếu mật khẩu (die trong `$(…)` không dừng hàm) → kiểm đủ bí mật trước khi in + assert trong playbook; dấu thu hồi `may-<tên>-thu-hoi`
+  trùng tên khóa `hoi` của máy `<tên>-thu` → chuyển sang `secrets/thu-hoi/<tên>`; file tạm chứa bí mật còn lại khi `die` → trap EXIT; `kho` mở
+  mặc định → đóng; thêm nhãn "lệch giờ"; `thu-hoi-may` nhắc chạy `sao-luu` (thu hồi chỉ bền qua khôi phục nếu đã có bản sao lưu sau đó).
 - Chưa làm: cờ phiên bản desktop tối thiểu (`ONEBEE_TOI_THIEU`); xoay vòng nhật ký 90 ngày (nhật ký đã chỉ root đọc); hạ sudo `NOPASSWD: ALL`
   (đã chấp nhận, F4).
 - `dong-bo-may` chỉ cập nhật `/etc/onebee/may-tram.env` + kiểm báo cáo; file sinh từ cấu hình (`/etc/onebee-hoi.conf`, menu) cần chạy lại bộ cài

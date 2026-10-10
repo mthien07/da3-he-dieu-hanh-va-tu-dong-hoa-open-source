@@ -31,6 +31,8 @@ HAVE_TOOLS = all(shutil.which(t) for t in ("ssh-keygen", "htpasswd", "bash", "py
 SSH_GIA = r'''#!/usr/bin/env python3
 import json, os, sys
 a = sys.argv[1:]
+if "-n" not in a:   # ssh thật không có -n sẽ đọc hết stdin → nuốt các dòng còn lại của vòng lặp "while read" gọi nó
+    sys.stdin.read()
 opts = {}
 i = 0
 while i < len(a):
@@ -303,12 +305,32 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertEqual(self.chay("cap-nhat-may", "ketoan-01", kiem=False).returncode, 1)
         self.assertEqual(self.chay("cap-nhat-may", "--tat-ca", kiem=False).returncode, 1)
         self.assertFalse(os.path.exists(f"{self.t}/secrets/may-ketoan-01-http"))
+        self.assertTrue(os.path.exists(f"{self.t}/secrets/thu-hoi/ketoan-01"))
         # chạy lại thu hồi: an toàn
         self.chay("thu-hoi-may", "ketoan-01", "--dong-y")
-        # cấp lại: mật khẩu kho HTTP và tài khoản Trợ lý AI mới
+        # cấp lại: mật khẩu kho HTTP, tài khoản Trợ lý AI VÀ mật khẩu kho sao lưu (khóa ký + bằng chứng danh tính) đều mới
+        repo_cu = self.mat_khau("ketoan-01")
+        os.makedirs(f"{self.t}/data/restic/ketoan-01")
+        open(f"{self.t}/data/restic/ketoan-01/config", "w").write("kho cu")
         self.chay("them-may", "ketoan-01")
         self.assertNotEqual(open(f"{self.t}/secrets/may-ketoan-01-http").read(), http_cu)
+        self.assertNotEqual(self.mat_khau("ketoan-01"), repo_cu)
+        self.assertFalse(os.path.exists(f"{self.t}/secrets/thu-hoi/ketoan-01"))
+        cu = [f for f in os.listdir(f"{self.t}/secrets") if f.startswith("cu-ketoan-01-repo-")]
+        self.assertEqual(len(cu), 1)                                                  # mật khẩu kho cũ cất lại để mở dữ liệu cũ
+        self.assertEqual(open(f"{self.t}/secrets/{cu[0]}").read().strip(), repo_cu)
+        self.assertFalse(os.path.exists(f"{self.t}/data/restic/ketoan-01"))            # kho mới bắt đầu trống, kho cũ cất sang tên khác
+        self.assertTrue(any(d.startswith("ketoan-01.cu-") for d in os.listdir(f"{self.t}/data/restic")))
         self.assertTrue(os.path.exists(f"{self.t}/data/may-da-cap/ketoan-01"))
+        # MÁY CŨ (bị mất cắp) vẫn biết mật khẩu kho cũ, vẫn có khóa chung và khóa quản trị: không còn chứng minh được là máy ketoan-01
+        self.sim["10.1.1.5"] = {"hostkey": self.khoa_host("cu"), "password": repo_cu}
+        self.dat_sim()
+        self.bao_cao("ketoan-01", "10.1.1.5", mat_khau=repo_cu)       # báo cáo ký bằng mật khẩu cũ → sai chữ ký, không được chọn IP
+        so_lan_truoc = len(self.ansible_goi())
+        r = self.chay("cap-nhat-may", "ketoan-01", kiem=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertFalse(self.da_ghim("ketoan-01"))
+        self.assertEqual(len(self.ansible_goi()), so_lan_truoc)
 
     def test_dong_bo_may_day_dung_cau_hinh_chi_toi_may_da_chung_minh(self):
         self.cap_may("ketoan-01", "10.1.1.5")
@@ -355,6 +377,51 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertEqual(self.chay("dong-bo-ten-may").stdout.strip(), "")  # lần 2 không đổi → Ansible changed=0
         mode = stat.S_IMODE(os.stat(f"{self.t}/data/may-da-cap/a").st_mode)
         self.assertEqual(mode, 0o640)
+
+    def test_tat_ca_xu_ly_du_moi_may_ssh_khong_nuot_danh_sach(self):
+        """Hồi quy: ssh không có -n đọc hết stdin của vòng lặp danh sách máy → --tat-ca chỉ làm máy đầu."""
+        for i, ten in enumerate(("a1", "b2", "c3")):
+            self.cap_may(ten, f"10.1.1.{10 + i}")
+        self.chay("cap-nhat-may", "--tat-ca")
+        goi = self.ansible_goi()
+        self.assertEqual(len(goi), 1)
+        inv = open(f"{self.t}/out/{goi[0]}/inventory").read()
+        for ten in ("a1", "b2", "c3"):
+            self.assertIn(f"{ten} ansible_host=", inv)
+            self.assertTrue(self.da_ghim(ten))
+        self.assertEqual(len(self.ssh_goi()), 3)
+
+    def test_dong_bo_may_thieu_bi_mat_nao_cung_khong_day_file_thieu(self):
+        """Hồi quy: die trong command substitution không dừng hàm → file cấu hình thiếu mật khẩu HTTP vẫn được đẩy đi."""
+        self.cap_may("ketoan-01", "10.1.1.5")
+        for thieu in ("may-ketoan-01-http", "tinh-trang-key"):
+            bak = open(f"{self.t}/secrets/{thieu}").read()
+            os.remove(f"{self.t}/secrets/{thieu}")
+            r = self.chay("dong-bo-may", "ketoan-01", kiem=False)
+            self.assertNotEqual(r.returncode, 0, thieu)
+            self.assertEqual(self.ansible_goi(), [], thieu)
+            open(f"{self.t}/secrets/{thieu}", "w").write(bak)
+        os.remove(f"{self.t}/ssh/quan-tri.pub")
+        self.assertNotEqual(self.chay("dong-bo-may", "ketoan-01", kiem=False).returncode, 0)
+        self.assertEqual(self.ansible_goi(), [])
+
+    def test_ten_gan_giong_khong_lam_song_lai_may_da_thu_hoi(self):
+        """Hồi quy: dấu thu hồi từng là file may-<tên>-thu-hoi, trùng tên khóa hoi của máy "<tên>-thu" → máy đã thu hồi "sống lại"."""
+        self.chay("them-may", "kho")
+        self.chay("them-may", "kho-thu")
+        self.chay("thu-hoi-may", "kho", "--dong-y")
+        self.assertEqual(sorted(os.listdir(f"{self.t}/data/may-da-cap")), ["kho-thu"])
+        self.chay("thu-hoi-may", "kho-thu", "--dong-y")
+        self.chay("them-may", "kho-thu")
+        self.assertEqual(sorted(os.listdir(f"{self.t}/data/may-da-cap")), ["kho-thu"])   # "kho" vẫn bị thu hồi
+
+    def test_thoat_loi_van_don_file_tam_chua_bi_mat(self):
+        """Hồi quy: trap RETURN không chạy khi die → inventory và thư mục cấu hình (mật khẩu) còn lại trong /tmp."""
+        self.cap_may("ketoan-01", "10.1.1.5")
+        self.bao_cao("ketoan-01", "10.1.1.5", ky=False)      # không máy nào vào được → die "Không có máy nào để làm"
+        self.assertNotEqual(self.chay("dong-bo-may", "ketoan-01", kiem=False).returncode, 0)
+        self.assertNotEqual(self.chay("cap-nhat-may", "ketoan-01", kiem=False).returncode, 0)
+        self.assertEqual(os.listdir(f"{self.t}/tmp"), [])
 
 
 if __name__ == "__main__":
