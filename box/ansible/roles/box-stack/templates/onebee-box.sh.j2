@@ -14,6 +14,8 @@
 #   onebee-box khoi-phuc-thu       Thử khôi phục 1 file từ bản sao lưu Box (kiểm tra sao lưu dùng được)
 #   onebee-box khoi-phuc-toan-bo [file-khóa]   Hỏng ổ Box: trên Box cài lại, lấy lại toàn bộ dữ liệu từ ổ sao lưu
 #   onebee-box may-chua-nhan-ca    Máy đã cấp mà chưa nhận CA hiện tại (chặn bật HTTPS)
+#   onebee-box go-khoa-hoi-may     Xóa tài khoản/khóa Trợ lý AI theo MÁY (sau khi nhân viên đã dùng khóa riêng; xem onebee_box_hoi_khoa_may)
+#   onebee-box xoay-khoa [--may <tên>|--tat-ca] [--box]   Đổi mật khẩu/khóa (kho HTTP + khóa hoi theo máy; --box: mật khẩu quản trị, biểu mẫu, n8n)
 #   onebee-box in-ca               In vân tay + thông tin CA riêng của Box (đối chiếu khi cài CA lên thiết bị khác)
 #   onebee-box in-khoa             In các khóa bí mật để cất ngoài Box (thiếu khóa thì bản sao lưu vô dụng)
 #   onebee-box dat-mat-khau-email  Nhập mật khẩu hộp thư gửi (SMTP) cho n8n
@@ -57,18 +59,23 @@ cmd_in_ca() {
 # In cấu hình dán vào máy trạm — CHỈ ĐỌC bí mật đã có (không tạo tài khoản/khóa, không ghi htpasswd). Thiếu bí mật nào thì dừng (die),
 # không in cấu hình thiếu. them-may tạo bí mật trước rồi gọi hàm này; dong-bo-may gọi lại để đẩy cấu hình xuống máy.
 in_cau_hinh_may() {
-  local ten="$1" ip http_pw repo_pw tram_key hoi_key="" f esq
+  local ten="$1" ip http_pw repo_pw tram_key="" hoi_key="" f esq
   # Kiểm đủ bí mật TRƯỚC khi in gì (die gọi thẳng ở đây; die trong $(…) chỉ thoát subshell của nó, hàm vẫn in tiếp file thiếu mật khẩu)
-  for f in "${SECRETS}/may-${ten}-http" "${SECRETS}/may-${ten}-repo" "${SECRETS}/tinh-trang-key" "${SSH_DIR}/quan-tri.pub" "${CA_DIR}/root.crt"; do
+  for f in "${SECRETS}/may-${ten}-http" "${SECRETS}/may-${ten}-repo" "${SSH_DIR}/quan-tri.pub" "${CA_DIR}/root.crt"; do
     [[ -s "${f}" ]] || die "Thiếu ${f} — máy ${ten} chưa cấp đủ hoặc đã thu hồi (cấp lại: sudo onebee-box them-may ${ten})"
   done
   ip="$(box_ip)"; [[ -n "${ip}" ]] || die "Không xác định được IP của Box — đặt onebee_box_dia_chi trong group_vars"
   http_pw="$(cat "${SECRETS}/may-${ten}-http")"
   repo_pw="$(cat "${SECRETS}/may-${ten}-repo")"
-  tram_key="$(cat "${SECRETS}/tinh-trang-key")"
+  if [[ "${TINH_TRANG_KHOA_CHUNG}" == true ]]; then
+    [[ -s "${SECRETS}/tinh-trang-key" ]] || die "Thiếu ${SECRETS}/tinh-trang-key — chạy lại bộ cài OneBee Box"
+    tram_key="$(cat "${SECRETS}/tinh-trang-key")"
+  fi
   # Đã lưu khóa thì dùng. Máy từng có tài khoản Trợ lý AI mà chưa lưu khóa (cấp từ bản cũ) → lấy lại khóa đã cấp, KHÔNG tạo mới;
   # lấy không được thì dừng (không in cấu hình thiếu dòng hoi). Máy chưa từng có tài khoản thì không in dòng hoi
-  if [[ -s "${SECRETS}/may-${ten}-hoi" ]]; then
+  if [[ "${HOI_KHOA_MAY}" != true ]]; then
+    hoi_key=""   # không còn khóa theo máy: nhân viên tự đăng nhập (hoi --dang-nhap)
+  elif [[ -s "${SECRETS}/may-${ten}-hoi" ]]; then
     hoi_key="$(cat "${SECRETS}/may-${ten}-hoi")"
   elif [[ -e "${SECRETS}/may-${ten}-webui" ]]; then
     hoi_key="$(webui lay-khoa "${ten}")" || die "Không lấy được khóa Trợ lý AI của máy ${ten} (Open WebUI chưa chạy?) — thử lại sau"
@@ -79,12 +86,11 @@ in_cau_hinh_may() {
   esq="$(giao_thuc_may)"
   echo "RESTIC_REPOSITORY=rest:${esq}://${ten}:${http_pw}@${ip}:${REST_PORT}/${ten}/"
   echo "RESTIC_PASSWORD=${repo_pw}"
-  if [[ -n "${hoi_key}" ]]; then
-    echo "HOI_URL=${esq}://${ip}:${AI_PORT}"
-    echo "HOI_API_KEY=${hoi_key}"
-  fi
+  # Địa chỉ Trợ lý AI luôn in (hoi --dang-nhap cần); khóa của MÁY chỉ in ở giai đoạn chuyển tiếp
+  echo "HOI_URL=${esq}://${ip}:${AI_PORT}"
+  [[ -z "${hoi_key}" ]] || echo "HOI_API_KEY=${hoi_key}"
   echo "TINH_TRANG_URL=${esq}://${ip}:${N8N_PORT}/webhook/onebee-tinh-trang"
-  echo "TINH_TRANG_KEY=${tram_key}"
+  [[ -z "${tram_key}" ]] || echo "TINH_TRANG_KEY=${tram_key}"
   echo "QUAN_TRI_SSH_KEY=\"$(cat "${SSH_DIR}/quan-tri.pub")\""
   # CA riêng của Box: chứng chỉ gốc (DER, base64 một dòng) + vân tay tính lại từ chứng chỉ. Máy trạm (role ket-noi-box) kiểm vân tay
   # VÀ kiểm chứng chỉ đúng là CA có ràng buộc tên (chỉ IP Box + *.onebee.internal) rồi mới cài
@@ -109,13 +115,16 @@ cmd_them_may() {
   fi
   http_pw="$(secret "may-${ten}-http")"
   repo_pw="$(secret "may-${ten}-repo")"
-  secret tinh-trang-key >/dev/null
+  [[ "${TINH_TRANG_KHOA_CHUNG}" != true ]] || secret tinh-trang-key >/dev/null
   # -i: đọc mật khẩu từ stdin (không lộ trong danh sách tiến trình)
   htpasswd -B -i "${DATA}/restic/.htpasswd" "${ten}" <<<"${http_pw}" 2>/dev/null
-  hoi_key="$(webui cap-khoa "${ten}")" || {
-    warn "Chưa cấp được khóa Trợ lý AI (Open WebUI chưa chạy?) — sao lưu vẫn dùng được; chạy lại lệnh này sau để bật hoi"
-    hoi_key=""
-  }
+  hoi_key=""
+  if [[ "${HOI_KHOA_MAY}" == true ]]; then
+    hoi_key="$(webui cap-khoa "${ten}")" || {
+      warn "Chưa cấp được khóa Trợ lý AI (Open WebUI chưa chạy?) — sao lưu vẫn dùng được; chạy lại lệnh này sau để bật hoi"
+      hoi_key=""
+    }
+  fi
   [[ -z "${hoi_key}" ]] || (umask 077; printf '%s' "${hoi_key}" >"${SECRETS}/may-${ten}-hoi")
   dong_bo_ten_may >/dev/null
   echo "# Dán nội dung dưới đây vào máy trạm ${ten}: /etc/onebee/may-tram.env, rồi chạy lại bộ cài OneBee OS"
@@ -140,6 +149,19 @@ cmd_thu_hoi_may() {
   dong_bo_ten_may >/dev/null
   echo "Đã thu hồi máy ${ten}. Kho sao lưu của máy vẫn còn trên Box. Cấp lại (mật khẩu kho mới, kho cũ cất riêng): sudo onebee-box them-may ${ten}"
   echo "LƯU Ý: chạy NGAY 'sudo onebee-box sao-luu' để bản sao lưu Box ghi nhận việc thu hồi — nếu ổ hỏng trước lần sao lưu 23:00, khôi phục sẽ cấp lại máy này."
+}
+
+# Bỏ khóa Trợ lý AI theo MÁY (Pha 4c): xóa tài khoản may-<tên>@onebee.lan trên Open WebUI + khóa đã lưu. Chỉ sau khi đặt onebee_box_hoi_khoa_may: false
+# và chạy lại bộ cài + dong-bo-may --tat-ca (để máy không còn HOI_API_KEY). Nhân viên chưa chạy 'hoi --dang-nhap' sẽ không hỏi được nữa.
+cmd_go_khoa_hoi_may() {
+  local ten loi=0
+  [[ "${HOI_KHOA_MAY}" != true ]] || die "Chưa tắt khóa theo máy: đặt onebee_box_hoi_khoa_may: false trong group_vars, chạy lại bộ cài, rồi dong-bo-may --tat-ca trước"
+  while read -r ten; do
+    webui xoa-tai-khoan "${ten}" >/dev/null || { warn "Chưa xóa được tài khoản Trợ lý AI của máy ${ten} (Open WebUI chưa chạy?)"; loi=1; continue; }
+    rm -f "${SECRETS}/may-${ten}-webui" "${SECRETS}/may-${ten}-hoi"
+    echo "Đã bỏ khóa Trợ lý AI theo máy: ${ten}"
+  done < <(may_da_cap)
+  return "${loi}"
 }
 
 # Máy cài lại hệ điều hành (khóa SSH của máy đổi): bỏ khóa đã ghim; lần cap-nhat-may sau máy phải chứng minh lại rồi mới được ghim mới
@@ -276,10 +298,15 @@ cmd_cap_nhat_may() {
 # Chỉ cập nhật FILE cấu hình và kiểm báo cáo chạy được; các file sinh từ cấu hình (/etc/onebee-hoi.conf, mục menu…) do bộ cài desktop
 # tạo lại — chạy lại bộ cài trên máy sau khi đổi hoi/URL (từ Pha 3 Box sẽ tự làm bước này).
 cmd_dong_bo_may() {
-  local thu_muc t
-  local -a co=()
   if [[ "${1:-}" == --tat-ca && -z "$(may_da_cap)" ]]; then echo "Chưa cấp máy trạm nào — không có gì để đồng bộ."; return 0; fi
   chon_may "${1:-}" || die "Cách dùng: sudo onebee-box dong-bo-may <tên-máy-đã-cấp> | --tat-ca"
+  cmd_dong_bo_may_da_chon
+}
+
+# Đẩy cấu hình xuống các máy đang nằm trong CHON_MAY (đã qua chon_may)
+cmd_dong_bo_may_da_chon() {
+  local thu_muc t
+  local -a co=()
   thu_muc="$(mktemp -d)"   # 0700; nội dung cấu hình chứa mật khẩu → xóa khi thoát (kể cả thoát lỗi)
   TAM_DON+=("${thu_muc}")
   for t in "${CHON_MAY[@]}"; do
@@ -292,6 +319,86 @@ cmd_dong_bo_may() {
   # Dấu "máy đã nhận CA" do playbook ghi (task cuối, chỉ khi CA đã cài đúng vân tay) — cổng chặn bật HTTPS dựa vào dấu này
   (umask 077; mkdir -p "${SECRETS}/ca-da-dong-bo")
   chay_playbook_chon dong-bo-may-tram.yml dong-bo-may -e "onebee_cau_hinh_dir=${thu_muc}" -e "onebee_dau_ca_dir=${SECRETS}/ca-da-dong-bo"
+}
+
+# ---- Xoay khóa (Pha 4b) ----
+# Lý do: trước khi có HTTPS, mật khẩu/khóa đã đi qua LAN dạng rõ — còn hiệu lực dù hôm nay đã mã hóa. Cũng dùng khi nghi ngờ lộ khóa.
+# RESTIC_PASSWORD KHÔNG xoay (chưa từng đi qua mạng; đổi là mất bản sao lưu cũ). N8N_ENCRYPTION_KEY KHÔNG xoay (đổi là mất thông tin đăng nhập đã lưu trong n8n).
+
+# Một máy: mật khẩu kho HTTP mới (htpasswd) + khóa Trợ lý AI theo máy mới (nếu còn dùng). Ghi bí mật mới TRƯỚC khi đẩy xuống máy
+xoay_khoa_may() {
+  local ten="$1" khoa_moi
+  rm -f "${SECRETS}/may-${ten}-http"
+  htpasswd -B -i "${DATA}/restic/.htpasswd" "${ten}" <<<"$(secret "may-${ten}-http")" 2>/dev/null
+  if [[ "${HOI_KHOA_MAY}" == true && -e "${SECRETS}/may-${ten}-webui" ]]; then
+    khoa_moi="$(webui xoay-khoa "${ten}")" || { warn "Chưa đổi được khóa Trợ lý AI của máy ${ten} (Open WebUI chưa chạy?) — giữ khóa cũ"; return 0; }
+    (umask 077; printf '%s' "${khoa_moi}" >"${SECRETS}/may-${ten}-hoi")
+  fi
+  echo "Đã tạo mật khẩu mới cho máy ${ten}"
+}
+
+# Phía Box: mật khẩu quản trị Trợ lý AI + giám sát (đổi trong CSDL của dịch vụ), mật khẩu chủ n8n, mật khẩu biểu mẫu, khóa webhook n8n,
+# WEBUI_SECRET_KEY (hủy mọi phiên đăng nhập Open WebUI). Phần Ansible áp dụng (.env, thông tin đăng nhập n8n) cần chạy lại bộ cài ngay sau đó
+xoay_khoa_box() {
+  local moi
+  moi="$(ngau_nhien 24)"
+  ONEBEE_MAT_KHAU_MOI="${moi}" webui doi-mat-khau-quan-tri
+  (umask 077; printf '%s' "${moi}" >"${SECRETS}/webui-admin-password")
+  if [[ -e "${SECRETS}/uptime-kuma-da-co-quan-tri" ]]; then
+    moi="$(ngau_nhien 24)"
+    KUMA_USER=quantri KUMA_PASS="$(cat "${SECRETS}/uptime-kuma-password")" KUMA_PASS_MOI="${moi}" \
+      docker exec -i -w /app -e KUMA_USER -e KUMA_PASS -e KUMA_PASS_MOI onebee-uptime-kuma node - </usr/local/lib/onebee-box/onebee-kuma.js \
+      || die "Không đổi được mật khẩu giám sát — các mật khẩu khác CHƯA đổi thêm. Kiểm tra: sudo onebee-box trang-thai"
+    (umask 077; printf '%s' "${moi}" >"${SECRETS}/uptime-kuma-password")
+  fi
+  moi="$(ngau_nhien 24)"
+  (umask 077; printf '%s' "${moi}" >"${SECRETS}/n8n-owner-password"
+   htpasswd -niBC 10 onebee <<<"${moi}" | cut -d: -f2 | tr -d '\n' >"${SECRETS}/n8n-owner-hash")
+  # Khóa gửi tình trạng dùng chung (nếu còn dùng): bộ cài sinh lại; PHẢI đẩy xuống máy bằng dong-bo-may --tat-ca ngay sau đó
+  [[ "${TINH_TRANG_KHOA_CHUNG}" != true ]] || { rm -f "${SECRETS}/tinh-trang-key"; echo "LƯU Ý: sau bộ cài, chạy: sudo onebee-box dong-bo-may --tat-ca (khóa gửi tình trạng đã đổi)"; }
+  rm -f "${SECRETS}/webui-secret-key" "${SECRETS}/bieu-mau-nhanvien" "${SECRETS}/bieu-mau-kythuat" "${SECRETS}/n8n-webhook-key"
+  # Bộ cài (Ansible lookup password) sinh lại các file vừa xóa; n8n-webhook-key cần có NGAY cho bao_cao_n8n ở lần chạy sau
+  secret n8n-webhook-key >/dev/null
+  echo "Đã đổi: mật khẩu quản trị Trợ lý AI và giám sát (trong dịch vụ); đã tạo mới: mật khẩu chủ n8n, mật khẩu biểu mẫu (nhanvien, kythuat), khóa webhook n8n, WEBUI_SECRET_KEY."
+}
+
+cmd_xoay_khoa() {
+  local box=0 muc="" a tra_loi t bo_cai
+  local -a ds=()
+  while [[ $# -gt 0 ]]; do
+    a="$1"; shift
+    case "${a}" in
+      --box) box=1 ;;
+      --tat-ca) muc=--tat-ca ;;
+      --may) muc="${1:-}"; [[ $# -eq 0 ]] || shift ;;
+      --dong-y) tra_loi="dong-y" ;;
+      *) die "Cách dùng: sudo onebee-box xoay-khoa [--may <tên-máy> | --tat-ca] [--box] [--dong-y]" ;;
+    esac
+  done
+  [[ -n "${muc}" || ${box} -eq 1 ]] || die "Cách dùng: sudo onebee-box xoay-khoa [--may <tên-máy> | --tat-ca] [--box] [--dong-y]"
+  if [[ -n "${muc}" ]]; then chon_may "${muc}" || die "Máy không tồn tại hoặc chưa cấp: ${muc}"; ds=("${CHON_MAY[@]}"); fi
+  if [[ "${tra_loi:-}" != dong-y ]]; then
+    read -rp "Xoay khóa: ${ds[*]:-} $([[ ${box} -eq 1 ]] && echo '+ khóa của Box') — máy tắt sẽ mất quyền sao lưu/hỏi AI tới khi 'dong-bo-may'. Gõ 'xoay khoa' để xác nhận: " tra_loi \
+      || die "Cần xác nhận: chạy trong cửa sổ dòng lệnh, hoặc thêm --dong-y"
+    [[ "${tra_loi}" == "xoay khoa" ]] || die "Đã hủy"
+  fi
+  for t in "${ds[@]}"; do xoay_khoa_may "${t}"; done
+  if [[ ${box} -eq 1 ]]; then
+    xoay_khoa_box
+    bo_cai="$(cat "${LIB}/duong-dan-bo-cai" 2>/dev/null || true)"
+    if [[ -x "${bo_cai}" ]]; then
+      echo "Chạy bộ cài để áp dụng (.env, thông tin đăng nhập n8n)..."
+      "${bo_cai}" || die "Bộ cài chưa xong — chạy lại NGAY: sudo ${bo_cai} (Box đang ở trạng thái nửa chừng)"
+    else
+      warn "KHÔNG tìm thấy bộ cài — chạy NGAY bộ cài OneBee Box (sudo ./box/onebee-box-install.sh) để áp dụng; trước đó n8n/biểu mẫu/báo cáo sao lưu có thể lỗi"
+    fi
+  fi
+  if [[ -n "${ds[*]:-}" ]]; then
+    echo "Đẩy cấu hình mới xuống máy..."
+    CHON_MAY=("${ds[@]}")
+    cmd_dong_bo_may_da_chon || warn "Có máy chưa nhận được mật khẩu mới (tắt/mất mạng): bật máy lên rồi chạy: sudo onebee-box dong-bo-may <tên-máy>"
+  fi
+  echo "Xong. In lại khóa để cất: sudo onebee-box in-khoa. Nhân viên đổi mật khẩu Trợ lý AI đã từng gõ qua HTTP (hướng dẫn trong buổi đào tạo)."
 }
 
 cmd_in_khoa() {
@@ -330,10 +437,12 @@ case "${1:-}" in
   khoi-phuc-thu) with_lock cmd_khoi_phuc_thu ;;
   khoi-phuc-toan-bo) shift; with_lock cmd_khoi_phuc_toan_bo "$@" ;;
   in-khoa) cmd_in_khoa ;;
+  xoay-khoa) shift; cmd_xoay_khoa "$@" ;;
   in-ca) cmd_in_ca ;;
+  go-khoa-hoi-may) cmd_go_khoa_hoi_may ;;
   may-chua-nhan-ca) may_chua_nhan_ca ;;
   dat-mat-khau-email) cmd_dat_mat_khau_email ;;
   email-thu) bao_cao_n8n THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
                && echo "Đã chuyển cho n8n gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
-  *) sed -n '2,20p' "$0" | sed 's/^# //'; exit 1 ;;
+  *) sed -n '2,22p' "$0" | sed 's/^# //'; exit 1 ;;
 esac

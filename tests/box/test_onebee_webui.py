@@ -67,6 +67,18 @@ class WebuiGia(BaseHTTPRequestHandler):
         if self.path == "/api/v1/users/default/permissions":
             self.state["perms"] = body
             return self._gui(200, body)
+        if self.path == "/api/v1/auths/api_key":   # tạo lại khóa: khóa cũ mất hiệu lực
+            email = self.headers.get("Authorization", "").replace("Bearer tok-", "")
+            moi = f"sk-moi-{len(self.state.setdefault('khoa_da_cap', []))}"
+            self.state["khoa_da_cap"].append(moi)
+            self.state.setdefault("khoa", {})["tok-" + email] = moi
+            return self._gui(200, {"api_key": moi})
+        if self.path == "/api/v1/auths/update/password":
+            email = self.headers.get("Authorization", "").replace("Bearer tok-", "")
+            if self.state.get("mat_khau", {}).get(email) != body.get("password"):
+                return self._gui(400, {"detail": "sai"})
+            self.state["mat_khau"][email] = body["new_password"]
+            return self._gui(200, True)
         self._gui(404, {"detail": "not found"})
 
 
@@ -201,6 +213,26 @@ class TaiKhoanMay(unittest.TestCase):
         WebuiGia.state["khoa"] = {}
         with self.assertRaises(SystemExit):
             self.w.lay_khoa("a")  # có tài khoản nhưng chưa có khóa → không tạo khóa
+
+    def test_xoay_khoa_doi_khoa_va_khong_tao_tai_khoan(self):
+        self.ghi_mk("a", "mk-may-a")
+        moi = self.chay(self.w.xoay_khoa, "a")
+        self.assertEqual(moi, "sk-moi-0")
+        self.assertEqual(self.chay(self.w.lay_khoa, "a"), "sk-moi-0")                 # khóa đọc lại là khóa mới
+        self.assertEqual([p for p in self.ghi_gi() if "add" in p or "DELETE" in p], [])
+        with self.assertRaises(SystemExit):
+            self.w.xoay_khoa("khong-co")                                                  # chưa có tài khoản → không tự tạo
+
+    def test_doi_mat_khau_quan_tri_doi_trong_csdl(self):
+        try:
+            os.environ["ONEBEE_MAT_KHAU_MOI"] = "Mat-Khau-Moi-123456"
+            self.chay(self.w.doi_mat_khau_quan_tri)
+            self.assertEqual(WebuiGia.state["mat_khau"]["quantri@onebee.lan"], "Mat-Khau-Moi-123456")
+            os.environ["ONEBEE_MAT_KHAU_MOI"] = "ngan"
+            with self.assertRaises(SystemExit):
+                self.w.doi_mat_khau_quan_tri()                                            # quá ngắn → từ chối
+        finally:
+            os.environ.pop("ONEBEE_MAT_KHAU_MOI", None)
 
     def test_xoa_tai_khoan_chi_xoa_dung_tai_khoan_may(self):
         self.assertIn("Đã xóa", self.chay(self.w.xoa_tai_khoan, "a"))

@@ -203,6 +203,15 @@
     - {src: onebee-box-sao-luu.sh.j2, dest: /usr/local/lib/onebee-box/sao-luu.sh, mode: "0640"}
     - {src: onebee-box.sh.j2, dest: /usr/local/sbin/onebee-box, mode: "0750"}
 
+# Đường dẫn bộ cài: onebee-box xoay-khoa --box chạy lại bộ cài để áp dụng mật khẩu mới
+- name: Ghi đường dẫn bộ cài OneBee Box
+  ansible.builtin.copy:
+    content: "{{ (playbook_dir ~ '/../onebee-box-install.sh') | realpath }}\n"
+    dest: /usr/local/lib/onebee-box/duong-dan-bo-cai
+    owner: root
+    group: root
+    mode: "0640"
+
 # Bật HTTPS hay giữ HTTP (chốt chặn: mọi máy đã cấp phải nhận CA trước) → onebee_https_hieu_luc, onebee_https_doi
 - name: Quyết định bật HTTPS
   ansible.builtin.include_tasks: https.yml

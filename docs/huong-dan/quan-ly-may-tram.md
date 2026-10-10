@@ -62,8 +62,16 @@ tài khoản khác bị từ chối). Kỹ thuật cần vào máy trạm bằng
 ## 2b. Đẩy lại cấu hình, thu hồi máy
 ```bash
 sudo onebee-box dong-bo-may ketoan-01      # đẩy lại /etc/onebee/may-tram.env từ Box xuống máy (cũng chỉ tới máy đã chứng minh được)
+sudo onebee-box xoay-khoa --may ketoan-01  # đổi mật khẩu kho HTTP + khóa hoi của máy rồi đẩy xuống máy (--tat-ca: mọi máy; --box: khóa phía Box)
 sudo onebee-box thu-hoi-may ketoan-01      # mất máy, nhân viên nghỉ, nghi bị giả mạo (hỏi xác nhận; --dong-y để bỏ hỏi)
 ```
+`xoay-khoa` dùng khi nghi lộ khóa, sau khi bật HTTPS (mật khẩu đã đi qua mạng dạng rõ vẫn còn hiệu lực), hoặc định kỳ. `--may/--tat-ca` đổi mật khẩu kho HTTP
+(htpasswd) + khóa `hoi` theo máy rồi chạy `dong-bo-may`; máy tắt thì mất quyền sao lưu tới khi bật lên và `dong-bo-may <tên>`. `--box` đổi mật khẩu quản trị Trợ lý AI và giám sát
+(trong dịch vụ), mật khẩu chủ n8n, mật khẩu biểu mẫu `nhanvien`/`kythuat`, khóa webhook n8n, `WEBUI_SECRET_KEY` (mọi phiên Open WebUI phải đăng nhập lại) rồi **chạy lại bộ cài ngay**
+để áp dụng — ghi lại mật khẩu mới bằng `sudo onebee-box in-khoa`. **Không xoay** `RESTIC_PASSWORD` (chưa từng đi qua mạng; đổi là mất bản sao lưu cũ) và `N8N_ENCRYPTION_KEY`
+(đổi là mất thông tin đăng nhập đã lưu trong n8n). Khóa gửi tình trạng dùng chung chỉ còn là bộ lọc rác: khi mọi máy đã chạy bản desktop mới, đặt `onebee_box_khoa_tinh_trang_chung: false`
+(n8n thôi đòi khóa, Box thôi đẩy `TINH_TRANG_KEY`; credential cũ còn nằm trong n8n, xóa tay trên giao diện nếu muốn).
+
 `dong-bo-may` dùng khi đổi khóa/URL: cấu hình dựng từ đúng nguồn của `them-may`, thiếu khóa nào của máy thì bỏ qua máy đó (không đẩy file
 thiếu). File cũ trên máy giữ lại bản `.~`. Lệnh chỉ cập nhật file cấu hình và kiểm báo cáo chạy được; các file sinh từ cấu hình
 (`/etc/onebee-hoi.conf`, mục menu) do bộ cài desktop tạo lại — chạy lại bộ cài trên máy nếu đổi dòng `HOI_*`.

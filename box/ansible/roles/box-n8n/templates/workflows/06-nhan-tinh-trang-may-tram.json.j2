@@ -1,4 +1,4 @@
-{# Rà soát bảo mật F2: n8n KHÔNG giữ khóa ký. Quy trình chỉ (1) nhận khi có khóa lọc chung ở cửa (header), (2) chỉ nhận máy ĐÃ CẤP
+{# Rà soát bảo mật F2: n8n KHÔNG giữ khóa ký. Quy trình chỉ (1) nhận khi có khóa lọc chung ở cửa (header; bỏ khi onebee_box_khoa_tinh_trang_chung: false), (2) chỉ nhận máy ĐÃ CẤP
    — Box giữ mỗi máy một file đánh dấu trong may-da-cap/ (gắn chỉ đọc; nút đọc file lỗi "No file(s) found" thì dừng, không ghi gì),
    (3) lưu nguyên văn bao bì có chữ ký. Box tự kiểm chữ ký bằng mật khẩu kho sao lưu của máy (onebee-may-tram.py). #}
 {% set js_ten %}
@@ -43,9 +43,10 @@ return [{ json: { ten, ok: true },
   "nodes": [
     {"id": "tt-1", "name": "Máy trạm gửi tình trạng", "type": "n8n-nodes-base.webhook", "typeVersion": 2.1,
      "position": [0, 0], "webhookId": "0e7c1b2a-0000-4000-8000-000000000006",
-     "parameters": {"httpMethod": "POST", "path": "onebee-tinh-trang", "authentication": "headerAuth",
-       "responseMode": "lastNode", "options": {}},
-     "credentials": {"httpHeaderAuth": {"id": "onebeeTram000001", "name": "OneBee — khóa máy trạm gửi tình trạng"}}},
+     "parameters": {"httpMethod": "POST", "path": "onebee-tinh-trang",
+       "authentication": "{{ 'headerAuth' if onebee_box_khoa_tinh_trang_chung | bool else 'none' }}",
+       "responseMode": "lastNode", "options": {}}{% if onebee_box_khoa_tinh_trang_chung | bool %},
+     "credentials": {"httpHeaderAuth": {"id": "onebeeTram000001", "name": "OneBee — khóa máy trạm gửi tình trạng"}}{% endif %}},
     {"id": "tt-2", "name": "Lấy tên máy", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [220, 0],
      "parameters": {"jsCode": {{ js_ten | to_json }}}},
     {"id": "tt-3", "name": "Máy đã được cấp?", "type": "n8n-nodes-base.readWriteFile", "typeVersion": 1.1, "position": [440, 0],

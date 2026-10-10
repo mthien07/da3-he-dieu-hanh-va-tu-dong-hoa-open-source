@@ -11,6 +11,8 @@ SHARE="${DATA}/{{ onebee_box_samba_share }}"
 REST_PORT="{{ onebee_box_ports.rest_server }}"
 BOX_ADDRESS="{{ onebee_box_ip }}"   # tính MỘT lần trong Ansible (tasks/ca.yml) — shell và compose dùng cùng giá trị
 BOX_MA_DON_VI="{{ onebee_box_ma_don_vi }}"
+TINH_TRANG_KHOA_CHUNG="{{ onebee_box_khoa_tinh_trang_chung | bool | lower }}"   # true = còn đòi/đẩy khóa gửi tình trạng dùng chung (chuyển tiếp)
+HOI_KHOA_MAY="{{ onebee_box_hoi_khoa_may | bool | lower }}"   # true = còn cấp khóa Trợ lý AI theo máy (giai đoạn chuyển tiếp)
 CA_DIR="${SECRETS}/ca"
 KEEP_BOX=({{ onebee_box_backup_keep }})
 # Kho máy trạm: luôn giữ mọi bản trong 30 ngày gần nhất (chặn trường hợp bản giả mạo ngày tương lai đẩy bản thật ra)
@@ -19,10 +21,13 @@ KEEP_MAY=(--keep-within 30d {{ onebee_box_backup_keep }})
 die() { printf 'LỖI: %s\n' "$*" >&2; exit 1; }
 warn() { printf 'CẢNH BÁO: %s\n' "$*" >&2; }
 
+# Chuỗi ngẫu nhiên $1 ký tự chữ-số. Nguồn hữu hạn (không đọc /dev/urandom vô tận) để không có SIGPIPE làm pipeline báo lỗi 141 dưới "set -o pipefail"
+ngau_nhien() { head -c 2048 /dev/urandom | tr -dc 'A-Za-z0-9' | head -c "$1"; }
+
 # Sinh (một lần) và đọc mật khẩu ngẫu nhiên lưu trong thư mục bí mật
 secret() {
   local f="${SECRETS}/$1"
-  [[ -s "${f}" ]] || (umask 077; tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32 >"${f}")
+  [[ -s "${f}" ]] || (umask 077; ngau_nhien 32 >"${f}")
   cat "${f}"
 }
 

@@ -12,7 +12,7 @@
   của nhân viên rồi đăng nhập bằng tài khoản đó (đã đối chiếu mã nguồn: `update_user_by_id`; nhân viên sẽ biết vì mật khẩu cũ không còn dùng
   được), và người có quyền root trên Box vẫn đọc được file dữ liệu (`/srv/onebee/open-webui`) và bản sao lưu của nó; thư mục `/home` trên máy trạm cũng nằm trong bản
   sao lưu mà quản trị Box đọc được (xem "Quyền riêng tư" trong hướng dẫn cài Box).
-  Lệnh `hoi` hiện vẫn dùng khóa theo từng **máy** (mục 2); khóa theo từng **nhân viên** là kế hoạch (`docs/security-audit.md`, Pha 4c).
+  Lệnh `hoi` dùng khóa của **từng nhân viên** (mục 2); khóa theo từng **máy** chỉ còn là giai đoạn chuyển tiếp.
 - Chọn **"Trợ lý OneBee"**: model Gemma chạy trên Box + lời dặn tiếng Việt (không bịa số liệu, hướng dẫn máy OneBee,
   biết ngày hôm nay, được nhờ soạn văn bản thì soạn ngay, chỗ thiếu để [trong ngoặc vuông]).
 
@@ -28,8 +28,18 @@ hoi "tóm tắt đoạn này thành 3 ý" < bien-ban.txt
 ```
 Bật cho 1 máy: trên Box chạy `sudo onebee-box them-may <tên-máy>` → dán kết quả vào máy trạm tại
 `/etc/onebee/may-tram.env` → chạy lại bộ cài OneBee OS trên máy trạm (vừa bật sao lưu vừa bật `hoi`).
-Khóa của mỗi máy **chỉ gọi được hỏi đáp**; thu hồi: xóa tài khoản `may-<tên>@onebee.lan` trong Open WebUI
-(chạy lại `them-may <tên>` sẽ tạo tài khoản + khóa mới). Cấu hình `hoi` nằm ở `/etc/onebee-hoi.conf` (mọi người đọc được);
+
+**Mỗi nhân viên dùng khóa riêng của mình** (hỏi bằng tài khoản của mình, thu hồi được từng người). Làm một lần trên máy, chọn một cách:
+```bash
+hoi --dang-nhap   # nhập email + mật khẩu Trợ lý AI của bạn; hoi lấy khóa rồi CHỈ lưu khóa (không lưu mật khẩu); cần Box đã bật HTTPS
+hoi --dan-khoa    # tự tạo khóa trên web (Cài đặt → Tài khoản → Khóa API) rồi dán vào; hoi thử khóa trước khi lưu
+hoi --dang-xuat   # xóa khóa của bạn khỏi máy này
+```
+Khóa lưu ở `~/.config/onebee/hoi-khoa` (chỉ chính tài khoản Linux đó đọc; máy nhiều người thì mỗi người một khóa). Khóa chỉ gọi được hỏi đáp + danh sách model.
+**Thu hồi**: quản trị xóa tài khoản nhân viên trên Open WebUI → khóa mất hiệu lực (`hoi` báo "đã bị thu hồi").
+**Chuyển tiếp**: nhân viên chưa thiết lập khóa riêng thì `hoi` tạm dùng khóa chung của máy (`/etc/onebee-hoi.conf`, **mọi tài khoản trên máy đọc được**) kèm nhắc.
+Khi mọi nhân viên đã dùng khóa riêng: đặt `onebee_box_hoi_khoa_may: false` trong `box/ansible/group_vars/all.yml`, chạy lại bộ cài, `sudo onebee-box dong-bo-may --tat-ca`,
+rồi `sudo onebee-box go-khoa-hoi-may` (xóa các tài khoản `may-<tên>@onebee.lan`). Từ đó `them-may` thôi cấp khóa theo máy. Cấu hình địa chỉ ở `/etc/onebee-hoi.conf`;
 mật khẩu sao lưu ở `/etc/onebee/` chỉ root đọc được.
 
 **Đổi mật khẩu quản trị (Trợ lý AI, n8n) trên giao diện web**: ghi mật khẩu mới vào file tương ứng trong

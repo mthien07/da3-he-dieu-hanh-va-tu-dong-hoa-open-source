@@ -224,6 +224,9 @@ echo "===== HỎNG Ổ BOX → CÀI LẠI + KHÔI PHỤC TOÀN BỘ ====="
 echo "===== BẬT / TẮT HTTPS (CA riêng + Caddy) ====="
 "${REPO_ROOT}/tests/box/check-https.sh" "${BOX}" "${CLIENT}"
 
+echo "===== XOAY KHÓA (máy trạm + Box) ====="
+"${REPO_ROOT}/tests/box/check-xoay-khoa.sh" "${BOX}" "${CLIENT}"
+
 echo "===== CHƯA GẮN Ổ SAO LƯU ====="
 box 'umount /mnt/onebee-sao-luu
      if onebee-box sao-luu > /root/sl3.log 2>&1; then echo "FAIL  Vẫn sao lưu khi chưa gắn ổ"; exit 1; fi

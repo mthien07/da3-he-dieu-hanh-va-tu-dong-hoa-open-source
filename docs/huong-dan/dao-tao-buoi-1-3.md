@@ -28,7 +28,9 @@ Kiểm tra cuối buổi: mỗi người làm 1 văn bản thật của mình, x
 Mục tiêu: dùng được các tiện ích trên OneBee Box, biết dữ liệu được sao lưu thế nào.
 1. (15') Trợ lý AI `http://<ip-box>:3000` → chọn "Trợ lý OneBee": soạn công văn nháp, tóm tắt văn bản.
    **AI có thể sai** — luôn đọc lại số liệu, tên, ngày tháng. Không dán mật khẩu, số tài khoản vào ô hỏi.
-   Lệnh `hoi` trên máy (cho người quen dòng lệnh).
+   Lệnh `hoi` trên máy (cho người quen dòng lệnh): mỗi người chạy một lần `hoi --dang-nhap` (hoặc `hoi --dan-khoa`) để dùng khóa riêng của mình.
+   **Nhân viên đã từng gõ mật khẩu Trợ lý AI/biểu mẫu khi Box còn chạy HTTP: đổi mật khẩu ngay** (Open WebUI → Cài đặt → Tài khoản → đổi mật khẩu).
+   Khi Box đã bật HTTPS: mở Box bằng dấu trang/trang chủ của trình duyệt; **mọi cảnh báo chứng chỉ ở địa chỉ Box là dấu hiệu bị tấn công — không bấm "tiếp tục", báo kỹ thuật.**
 2. (15') Biểu mẫu: tóm tắt PDF (`/form/onebee-tom-tat`), nhập đơn hàng (`/form/onebee-don-hang`) — tài khoản `nhanvien`.
 3. (10') Sao lưu: máy tự sao lưu 12:00 hằng ngày lên Box; lỡ xóa file thì báo hỗ trợ để lấy lại (loại "Sao lưu / mất file").
 4. (10') Hỗ trợ từ xa: menu "Cho phép hỗ trợ từ xa" → đọc mã cho kỹ thuật → khi máy hỏi thì bấm "Cho phép".

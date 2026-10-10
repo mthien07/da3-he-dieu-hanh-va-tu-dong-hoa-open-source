@@ -1,6 +1,7 @@
 // Cấu hình Uptime Kuma của OneBee Box: tạo tài khoản quản trị (lần đầu), email báo khi dịch vụ ngừng, danh sách theo dõi.
 // Chạy bên trong container Uptime Kuma: docker exec -i -w /app -e ... onebee-uptime-kuma node - < onebee-kuma.js
 // Biến: KUMA_USER, KUMA_PASS, KUMA_MONITORS (JSON), KUMA_SMTP (JSON, rỗng = không gửi email),
+//       KUMA_PASS_MOI (đặt = đổi mật khẩu quản trị sang giá trị này sau khi đăng nhập; dùng cho onebee-box xoay-khoa --box),
 //       KUMA_TRUST_PROXY ("1" = tin tiêu đề X-Forwarded-* của Caddy đứng trước; "0" = không; trống = không đụng)
 // Mã thoát: 0 xong · 1 lỗi (thử lại được) · 3 sai mật khẩu quản trị
 const { io } = require("socket.io-client");
@@ -58,6 +59,11 @@ socket.on("connect", async () => {
         notificationIDList: tbId ? { [tbId]: true } : {}, ...m,
       });
       if (!r.ok) out(1, `LỖI: không thêm được theo dõi ${m.name}: ${r.msg}`);
+      doi++;
+    }
+    if (process.env.KUMA_PASS_MOI) {
+      const r = await call("changePassword", { currentPassword: pass, newPassword: process.env.KUMA_PASS_MOI });
+      if (!r.ok) out(1, `LỖI: không đổi được mật khẩu quản trị Uptime Kuma: ${r.msg}`);
       doi++;
     }
     out(0, doi ? `Uptime Kuma: đã cập nhật (${doi} thay đổi)` : "Uptime Kuma: không đổi");

@@ -28,6 +28,13 @@
   (`CACertificatesWithConstraints`); thiếu `BOX_CA` thì gỡ sạch (kể cả hồ sơ Firefox, bằng certutil).
 - `dong-bo-may` giờ chạy lại đúng các task của bộ cài desktop (CA, cấu hình `hoi`, mục menu) trên máy trạm — không còn giới hạn "chỉ ghi file cấu hình".
 - Caddy của Box: gắn cả thư mục Caddyfile + `/data` `/config` (sửa N5).
+### Bảo mật — Pha 4b/4c (xem `docs/security-audit.md`, F2/F10)
+- **`onebee-box xoay-khoa [--may <tên>|--tat-ca] [--box]`**: đổi mật khẩu kho HTTP + khóa `hoi` theo máy rồi `dong-bo-may`; `--box` đổi mật khẩu quản trị Trợ lý AI/giám sát (trong dịch vụ),
+  chủ n8n, biểu mẫu, khóa webhook, `WEBUI_SECRET_KEY` rồi chạy lại bộ cài. Không xoay `RESTIC_PASSWORD`/`N8N_ENCRYPTION_KEY`. `onebee-webui.py`: `xoay-khoa`, `doi-mat-khau-quan-tri`; `onebee-kuma.js`: `KUMA_PASS_MOI`.
+- **`hoi` theo từng nhân viên**: `hoi --dang-nhap` (email + mật khẩu → chỉ lưu khóa `~/.config/onebee/hoi-khoa` 0600, từ chối khi URL còn http://), `hoi --dan-khoa` (kiểm khóa trước khi lưu),
+  `hoi --dang-xuat`. Khóa máy chỉ còn là chuyển tiếp (nhắc dùng khóa riêng); `onebee_box_hoi_khoa_may: false` + `onebee-box go-khoa-hoi-may` bỏ hẳn khóa máy và đóng F10.
+- `onebee_box_khoa_tinh_trang_chung: false`: bỏ khóa gửi tình trạng dùng chung (n8n không đòi, Box không đẩy `TINH_TRANG_KEY`; client coi khóa là tùy chọn). Mặc định `true` (chuyển tiếp).
+- Sửa: `secret()` có thể trả mã 141 (SIGPIPE) khi sinh mật khẩu lần đầu dưới `pipefail` → nguồn ngẫu nhiên hữu hạn.
 ### Bảo mật — Pha 4 (xem `docs/security-audit.md`, F3: HTTPS nội bộ, `docs/adr/0005-…`)
 - **`onebee_box_https: true`** bật HTTPS: Caddy là dịch vụ DUY NHẤT công bố cổng (80 chứng chỉ gốc + hướng dẫn, 443 trang giới thiệu, 3000/5678/3001/8000 TLS); 4 dịch vụ
   backend mất `ports:`. Chứng chỉ do CA riêng cấp (`default_sni` cho kết nối bằng IP; `box.<mã>.onebee.internal` cho kỹ thuật qua Tailscale); `http://` tới cổng TLS → 308.

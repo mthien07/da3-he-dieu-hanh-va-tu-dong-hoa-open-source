@@ -4,7 +4,7 @@
 Gửi: tên máy, địa chỉ IP trong LAN, phiên bản, số gói chờ cập nhật (bản vá bảo mật riêng), cần khởi động lại không,
 dung lượng ổ còn trống, thời gian đã bật, lần sao lưu cuối, SỐ tài khoản có quyền sudo (không gửi tên tài khoản).
 KHÔNG gửi tên file, nội dung hay lịch sử dùng máy.
-Cấu hình: /etc/onebee/may-tram.env (MAY_TRAM, BOX_IP, TINH_TRANG_URL, TINH_TRANG_KEY — lấy từ 'onebee-box them-may').
+Cấu hình: /etc/onebee/may-tram.env (MAY_TRAM, BOX_IP, TINH_TRANG_URL, TINH_TRANG_KEY nếu có — lấy từ 'onebee-box them-may').
 
 Báo cáo được KÝ (HMAC-SHA256) bằng khóa suy từ RESTIC_PASSWORD trong cùng file cấu hình — mật khẩu kho sao lưu, restic mã hóa phía máy
 trạm nên mật khẩu này chưa từng đi qua mạng. Box kiểm chữ ký bằng bản mật khẩu của nó; n8n (nơi nhận) không giữ khóa nên không giả được báo cáo.
@@ -124,7 +124,7 @@ def main():
     if os.geteuid() != 0:
         sys.exit("Hãy chạy bằng quyền quản trị: sudo onebee-bao-tinh-trang")
     conf = doc_khoa_gia_tri(CONF)
-    if not all(conf.get(k) for k in ("MAY_TRAM", "BOX_IP", "TINH_TRANG_URL", "TINH_TRANG_KEY")):
+    if not all(conf.get(k) for k in ("MAY_TRAM", "BOX_IP", "TINH_TRANG_URL")):
         print("Máy chưa cấp quản lý từ Box (thiếu cấu hình trong /etc/onebee/may-tram.env) — bỏ qua.")
         return 0
     cho, bao_mat = goi_cho_cap_nhat()
@@ -148,14 +148,16 @@ def main():
         "o_trong_phan_tram": round(o.free * 100 / o.total, 1), "o_trong_gb": round(o.free / 1e9, 1),
         "khoi_dong_gio": bat_gio, "sao_luu_cuoi": sao_luu, "sudo_so": so_tai_khoan_sudo(),
     }
+    tieu_de = {"Content-Type": "application/json"}
+    if conf.get("TINH_TRANG_KEY"):   # khóa lọc chung ở cửa n8n: chỉ còn trong giai đoạn chuyển tiếp (Box đặt onebee_box_khoa_tinh_trang_chung: false thì không có)
+        tieu_de["X-OneBee-Key"] = conf["TINH_TRANG_KEY"]
     req = urllib.request.Request(conf["TINH_TRANG_URL"], data=json.dumps(dong_goi(tt, conf.get("RESTIC_PASSWORD"))).encode("utf-8"),
-                                 method="POST",
-                                 headers={"Content-Type": "application/json", "X-OneBee-Key": conf["TINH_TRANG_KEY"]})
+                                 method="POST", headers=tieu_de)
     try:
         with mo(req, 30) as r:
             r.read()
     except urllib.error.HTTPError as e:
-        sys.exit(loi_mang(e) or f"OneBee Box từ chối tình trạng (mã {e.code}) — kiểm tra khóa TINH_TRANG_KEY hoặc chạy lại 'onebee-box them-may'.")
+        sys.exit(loi_mang(e) or f"OneBee Box từ chối tình trạng (mã {e.code}) — kiểm tra khóa TINH_TRANG_KEY (nếu có) hoặc chạy lại 'onebee-box them-may'.")
     except (urllib.error.URLError, OSError) as e:
         sys.exit(loi_mang(e) or f"Không gửi được tình trạng về OneBee Box ({e}) — Box tắt hoặc mất mạng, lần sau gửi lại.")
     print(f"Đã gửi tình trạng máy {tt['ten']} về Box: {cho} gói chờ cập nhật, ổ trống {tt['o_trong_phan_tram']}%.")
