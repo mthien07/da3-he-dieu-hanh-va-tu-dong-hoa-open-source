@@ -292,13 +292,13 @@
 - name: CA đổi — xóa chứng chỉ cũ của Caddy và khởi động lại cổng
   ansible.builtin.shell: >-
     rm -rf {{ onebee_box_data }}/caddy/data/caddy/certificates && docker restart onebee-portal
-  when: onebee_ca is changed and (onebee_https_hieu_luc | bool)
+  when: (onebee_ca is changed or onebee_https_doi | bool) and (onebee_https_hieu_luc | bool)
   changed_when: true
 
 # Caddyfile đổi mà container không bị tạo lại (compose giữ nguyên) → nạp lại cấu hình, không đứt kết nối đang có
 - name: Nạp lại cấu hình Caddy
   ansible.builtin.command: docker exec onebee-portal caddy reload --config /etc/caddy/Caddyfile --force
-  when: onebee_caddyfile is changed and not (onebee_ca is changed and (onebee_https_hieu_luc | bool))
+  when: onebee_caddyfile is changed and not ((onebee_ca is changed or onebee_https_doi | bool) and (onebee_https_hieu_luc | bool))
   register: onebee_caddy_reload
   retries: 5
   delay: 3
@@ -362,6 +362,10 @@
   retries: 120
   delay: 5
   when: (onebee_https_hieu_luc | bool) and onebee_kuma_xong.stat.exists
+
+# Dịch vụ đã chuyển xong → ghi/xóa dấu HTTPS (các lệnh onebee-box, kể cả "dong-bo-tro-ly" ở role sau, từ đây gọi theo chế độ mới)
+- name: Ghi nhận trạng thái HTTPS
+  ansible.builtin.include_tasks: https-dau.yml
 
 # Giám sát: tạo sẵn tài khoản quản trị Uptime Kuma (không còn "ai mở trước thành quản trị"), danh sách theo dõi
 # các dịch vụ của Box, email báo khi dịch vụ ngừng (khi đã cấu hình email)

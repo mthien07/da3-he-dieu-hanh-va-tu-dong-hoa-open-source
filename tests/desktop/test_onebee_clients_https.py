@@ -33,6 +33,7 @@ BAO = nap("bao_tinh_trang_https", os.path.join(ROLES, "quan-ly-tap-trung/files/o
 
 class May(BaseHTTPRequestHandler):
     ma = 200
+    dich = "https://khac.example/"   # nơi 301/308 chỉ tới
 
     def log_message(self, *a):
         pass
@@ -41,7 +42,7 @@ class May(BaseHTTPRequestHandler):
         self.rfile.read(int(self.headers.get("Content-Length", 0)))
         self.send_response(May.ma)
         if May.ma in (301, 308):
-            self.send_header("Location", "https://khac.example/")
+            self.send_header("Location", May.dich)
         self.send_header("Content-Type", "application/json")
         nd = json.dumps({"choices": [{"message": {"content": "xin chào"}}]}).encode()
         self.send_header("Content-Length", str(len(nd)))
@@ -131,6 +132,32 @@ class KhachHttps(unittest.TestCase):
             HOI.mo(self.req(self.cong_that), 10)
         self.assertIn("dong-bo-may", str(cx.exception))
 
+    def test_cau_hinh_cu_http_tren_box_da_chuyen_https_thi_theo_308_mot_lan_cung_may_chu(self):
+        for m in (HOI, BAO):
+            May.ma, May.dich = 308, f"https://127.0.0.1:{self.cong_that}/x"
+            try:
+                May.ma = 308
+                # máy chủ http trả 308 → https cùng host; máy chủ https đích trả 200 (đổi mã lại ngay sau lần đầu)
+                kq = []
+                orig = May.do_POST
+
+                def post(self_, orig=orig):
+                    if self_.server.server_port == self.cong_http:
+                        return orig(self_)
+                    May.ma = 200
+                    return orig(self_)
+                May.do_POST = post
+                with m.mo(self.req(self.cong_http, "http"), 10) as r:
+                    kq.append(r.status)
+                self.assertEqual(kq, [200])
+            finally:
+                May.do_POST, May.ma, May.dich = orig, 200, "https://khac.example/"
+            # Location tới máy chủ KHÁC: không theo
+            May.ma = 308
+            with self.assertRaises(urllib.error.HTTPError):
+                m.mo(self.req(self.cong_http, "http"), 10)
+            May.ma = 200
+
     def test_loi_502_503_504_va_chuyen_huong_cu(self):
         for ma, mong in ((502, "chưa chạy"), (503, "chưa chạy"), (504, "chưa chạy"), (308, "dong-bo-may")):
             May.ma = ma
@@ -167,10 +194,10 @@ class SaoLuuDocCauHinh(unittest.TestCase):
             return r, env
 
     def test_chi_nap_hai_dong_restic_va_khong_chay_dong_la_nhu_lenh(self):
-        r, env = self.chay("RESTIC_REPOSITORY=rest:http://a:b@1.2.3.4:8000/a/\r\nRESTIC_PASSWORD=mk=co=dau-bang\r\n"
-                           "QUAN_TRI_SSH_KEY=\"x\"\n$(touch /tmp/bi-chay-lenh)\n`touch /tmp/bi-chay-lenh2`\n")
+        r, env = self.chay("RESTIC_REPOSITORY=rest:http://a:b@1.2.3.4:8000/a/\r\nQUAN_TRI_SSH_KEY=\"x\"\n$(touch /tmp/bi-chay-lenh)\n"
+                           "`touch /tmp/bi-chay-lenh2`\nRESTIC_PASSWORD=mk=co=dau-bang=")        # dòng cuối KHÔNG có xuống dòng; giá trị kết thúc bằng =
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("REPO=rest:http://a:b@1.2.3.4:8000/a/ PW=mk=co=dau-bang CACERT=", env)
+        self.assertIn("REPO=rest:http://a:b@1.2.3.4:8000/a/ PW=mk=co=dau-bang= CACERT=", env)
         self.assertFalse(os.path.exists("/tmp/bi-chay-lenh") or os.path.exists("/tmp/bi-chay-lenh2"))
 
     def test_kho_https_dat_cacert_va_kho_http_bi_chan_khi_co_dau(self):

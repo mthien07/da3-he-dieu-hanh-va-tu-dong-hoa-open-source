@@ -49,29 +49,66 @@
       no_log: true
       register: onebee_cfg_moi
 
-    # Các tệp sinh từ cấu hình (CA tin cậy + trình duyệt, cấu hình lệnh hoi, mục menu) dựng lại bằng CHÍNH các task của bộ cài desktop
-    # (role chép từ repo vào Box ở box-fleet) — một nguồn duy nhất, không có bản sao thứ hai để lệch nhau.
-    # CA trước, để báo cáo bên dưới đã dùng được địa chỉ https
-    - name: Cài / gỡ CA của Box (kiểm vân tay + ràng buộc tên rồi mới cài)
-      ansible.builtin.include_role:
-        name: ket-noi-box
+    - name: Nhớ trạng thái dấu HTTPS trên máy (để trả lại nếu phải khôi phục)
+      ansible.builtin.stat:
+        path: /var/lib/onebee/https-bat
+      register: onebee_https_truoc
 
-    # CA phải đã được cài ĐÚNG bản vừa đẩy (role chỉ cảnh báo khi CA không đạt kiểm tra) — mới được tính là máy đã nhận CA
-    - name: Đọc dấu CA đã cài trên máy
-      ansible.builtin.slurp:
-        src: /var/lib/onebee/ket-noi-box
-      register: onebee_dau_ca
+    # CA không cài được (vân tay/ràng buộc không đạt) thì TRẢ LẠI cấu hình cũ: cấu hình mới có thể đã đổi sang https
+    # mà máy chưa tin CA → mất liên lạc với Box
+    - name: Cài CA rồi mới tin cấu hình mới
+      block:
+        # Các tệp sinh từ cấu hình (CA tin cậy + trình duyệt, cấu hình lệnh hoi, mục menu) dựng lại bằng CHÍNH các task của bộ cài desktop
+        # (role chép từ repo vào Box ở box-fleet) — một nguồn duy nhất, không có bản sao thứ hai để lệch nhau.
+        # CA trước, để báo cáo bên dưới đã dùng được địa chỉ https
+        - name: Cài / gỡ CA của Box (kiểm vân tay + ràng buộc tên rồi mới cài)
+          ansible.builtin.include_role:
+            name: ket-noi-box
 
-    - name: Kiểm máy đã cài đúng CA vừa đẩy
-      ansible.builtin.assert:
-        that: (onebee_dau_ca.content | b64decode | trim) == van_tay
-        fail_msg: "Máy {{ inventory_hostname }} chưa cài CA vừa đẩy (vân tay không đạt kiểm tra?) — xem cảnh báo ở trên"
-        quiet: true
-      vars:
-        van_tay: >-
-          {{ lookup('ansible.builtin.file', onebee_cau_hinh_dir ~ '/' ~ inventory_hostname ~ '.env')
-             | regex_findall('(?m)^BOX_CA_VAN_TAY=([0-9a-f]{64})$') | first }}
-      no_log: true
+        # CA phải đã được cài ĐÚNG bản vừa đẩy (role chỉ cảnh báo khi CA không đạt kiểm tra) — mới được tính là máy đã nhận CA
+        - name: Đọc dấu CA đã cài trên máy
+          ansible.builtin.slurp:
+            src: /var/lib/onebee/ket-noi-box
+          register: onebee_dau_ca
+
+        - name: Kiểm máy đã cài đúng CA vừa đẩy
+          ansible.builtin.assert:
+            that: (onebee_dau_ca.content | b64decode | trim) == van_tay
+            fail_msg: "Máy {{ inventory_hostname }} chưa cài CA vừa đẩy (vân tay không đạt kiểm tra?) — xem cảnh báo ở trên"
+            quiet: true
+          vars:
+            van_tay: >-
+              {{ lookup('ansible.builtin.file', onebee_cau_hinh_dir ~ '/' ~ inventory_hostname ~ '.env')
+                 | regex_findall('(?m)^BOX_CA_VAN_TAY=([0-9a-f]{64})$') | first }}
+          no_log: true
+      rescue:
+        - name: Khôi phục cấu hình cũ (CA mới không đạt kiểm tra)
+          ansible.builtin.copy:
+            src: "{{ onebee_cfg_moi.backup_file }}"
+            remote_src: true
+            dest: /etc/onebee/may-tram.env
+            owner: root
+            group: root
+            mode: "0600"
+          when: onebee_cfg_moi.backup_file is defined
+          no_log: true
+
+        - name: Trả lại dấu HTTPS như trước khi đẩy cấu hình mới
+          ansible.builtin.file:
+            path: /var/lib/onebee/https-bat
+            state: absent
+          when: not onebee_https_truoc.stat.exists
+
+        - name: Dựng lại CA, dấu HTTPS theo cấu hình cũ
+          ansible.builtin.include_role:
+            name: ket-noi-box
+          when: onebee_cfg_moi.backup_file is defined
+
+        - name: Báo máy giữ nguyên cấu hình cũ
+          ansible.builtin.fail:
+            msg: >-
+              Máy {{ inventory_hostname }} không nhận được CA mới nên GIỮ cấu hình cũ (đã khôi phục).
+              Xem cảnh báo của ket-noi-box ở trên.
 
     - name: Ghi dấu trên Box — máy này đã nhận CA
       ansible.builtin.copy:

@@ -115,6 +115,7 @@ class CaRieng(unittest.TestCase):
         r = chay(SCRIPT, self.ca, "anphu", "192.168.9.9")
         self.assertEqual(r.returncode, 4)
         self.assertIn("xoay CA", r.stderr)
+        self.assertIn("onebee_box_xoay_ca", r.stderr)
         r = chay(SCRIPT, self.ca, "khac", "127.0.0.1")
         self.assertEqual(r.returncode, 4)
         van_tay_cu = open(f"{self.ca}/root.sha256").read()

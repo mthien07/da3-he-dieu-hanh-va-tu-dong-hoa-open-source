@@ -21,7 +21,9 @@ box "grep -q 'CHƯA BẬT HTTPS' /root/cai-chot-chan.log && grep -q 'kho-03' /ro
   echo 'PASS  Còn máy chưa nhận CA (kho-03) → bộ cài giữ HTTP, nêu tên máy, dịch vụ vẫn chạy'"
 
 echo "===== HTTPS: BẬT ====="
-box "onebee-box thu-hoi-may kho-03 --dong-y >/dev/null
+# Máy giả của các bài kiểm trước (kho-02...) không có máy thật để nhận CA → thu hồi hết, chỉ giữ ketoan-01 (máy thật) đã đồng bộ
+box "for m in kho-02 kho-03; do onebee-box thu-hoi-may \$m --dong-y >/dev/null 2>&1 || true; done
+  [ -z \"\$(onebee-box may-chua-nhan-ca | grep -v '^ketoan-01\$')\" ] || { echo 'FAIL  Còn máy khác ngoài ketoan-01 chưa nhận CA'; onebee-box may-chua-nhan-ca; exit 1; }
   onebee-box dong-bo-may ketoan-01 > /root/dong-bo-ca.log 2>&1 || { tail -20 /root/dong-bo-ca.log; exit 1; }
   [ \"\$(cat /etc/onebee-box/secrets/ca-da-dong-bo/ketoan-01)\" = \"\$(cat /etc/onebee-box/secrets/ca/root.sha256)\" ]"
 cai bat-https
@@ -42,7 +44,7 @@ box "[ -e /etc/onebee-box/secrets/https-da-bat ] || { echo 'FAIL  Chưa có dấ
   echo 'PASS  http://IP:3000 → 308 sang https; cổng 80 phục vụ chứng chỉ gốc'
   curl -sf -m 10 https://${IP}:3000/health | grep -q true && curl -sf -m 10 https://${IP}:5678/healthz | grep -q ok \
     || { echo 'FAIL  Dịch vụ không trả lời qua HTTPS'; exit 1; }
-  ! curl -s -m 3 http://127.0.0.1:3000/ >/dev/null 2>&1 || { echo 'FAIL  Cổng backend 127.0.0.1:3000 vẫn mở'; exit 1; }"
+  [ \"\$(curl -s -o /dev/null -m 3 -w '%{http_code}' http://127.0.0.1:3000/)\" = 308 ] || { echo 'FAIL  127.0.0.1:3000 không phải cổng Caddy (308)'; exit 1; }"
 
 box "pw=\$(cat /etc/onebee-box/secrets/webui-admin-password)
   hdr=\$(curl -si -m 20 -X POST https://${IP}:3000/api/v1/auths/signin -H 'Content-Type: application/json' \

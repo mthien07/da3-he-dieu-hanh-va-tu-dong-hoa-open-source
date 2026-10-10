@@ -98,7 +98,16 @@ ca_con_ngay() {
 # Vân tay SHA-256 CA gốc (hex thường, 64 ký tự), tính lại từ chứng chỉ (không tin file root.sha256)
 ca_van_tay() { openssl x509 -in "${CA_DIR}/root.crt" -outform DER | sha256sum | cut -d' ' -f1; }
 # Gia hạn CA trung gian khi còn < 60 ngày (Caddy không tự gia hạn chứng chỉ trung gian được cấp sẵn). In "đã đổi" khi có đổi.
-gia_han_ca() { /usr/local/lib/onebee-box/onebee-ca.sh "${CA_DIR}" "${BOX_MA_DON_VI}" "$(box_ip)"; }
+# Trung gian mới phải tới được Caddy: chép sang portal/pki (ONEBEE_PKI_OUT); nếu HTTPS đang bật thì xóa chứng chỉ lá cũ và khởi động lại cổng.
+gia_han_ca() {
+  local kq
+  kq="$(ONEBEE_PKI_OUT="${BOX_DIR}/portal/pki" /usr/local/lib/onebee-box/onebee-ca.sh "${CA_DIR}" "${BOX_MA_DON_VI}" "$(box_ip)")" || return 1
+  if [[ "${kq}" == *"đã đổi"* ]] && https_bat; then
+    rm -rf "${DATA}/caddy/data/caddy/certificates"
+    docker restart onebee-portal >/dev/null || return 1
+  fi
+  printf '%s\n' "${kq}"
+}
 
 # ---- HTTPS (Pha 4) ----
 # Dấu ${SECRETS}/https-da-bat do bộ cài Ansible ghi/xóa (tasks/https.yml) sau khi quyết định bật HTTPS; nằm trong thư mục bí mật nên có trong bản sao lưu.

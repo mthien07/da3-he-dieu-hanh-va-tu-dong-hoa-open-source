@@ -11,6 +11,7 @@ Cách dùng: onebee-chinh-sach-trinh-duyet.py cai <file-pem-CA> [--https <IP-Box
 Biến ONEBEE_GOC: tiền tố thư mục gốc (để kiểm thử); mặc định rỗng."""
 import base64
 import glob
+import importlib.util
 import json
 import os
 import re
@@ -54,16 +55,15 @@ def pem_sang_der_b64(p):
 
 
 def rang_buoc(file_pem):
-    """(danh sách CIDR, danh sách tên DNS) mà CA cho phép — đọc từ chính chứng chỉ, để trình duyệt tự áp."""
-    ext = subprocess.run(["openssl", "x509", "-in", file_pem, "-noout", "-ext", "nameConstraints"], capture_output=True, text=True, check=True).stdout
-    cidr, dns = [], []
-    for dong in ext.splitlines():
-        s = dong.strip()
-        if s.startswith("IP:"):
-            ip, mask = s[3:].split("/")
-            cidr.append(f"{ip}/{sum(bin(int(o)).count('1') for o in mask.split('.'))}")
-        elif s.startswith("DNS:"):
-            dns.append(s[4:])
+    """(danh sách CIDR, danh sách tên DNS) mà CA cho phép — đọc bằng bộ đọc NGHIÊM của onebee-kiem-ca.py (cùng thư mục), để trình duyệt tự áp."""
+    spec = importlib.util.spec_from_file_location("onebee_kiem_ca", os.path.join(os.path.dirname(os.path.abspath(__file__)), "onebee-kiem-ca.py"))
+    kiem = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(kiem)
+    ips, dns = kiem.rang_buoc_tu_pem(file_pem)
+    cidr = []
+    for x in ips:
+        ip, mask = x.split("/")
+        cidr.append(f"{ip}/{sum(bin(int(o)).count('1') for o in mask.split('.'))}")
     return cidr, dns
 
 
