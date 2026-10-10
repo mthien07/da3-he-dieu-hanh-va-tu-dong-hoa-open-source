@@ -6,7 +6,7 @@
   - Tra cứu sâu hơn bằng 9 agent chạy song song, chỉ đọc: mở từng advisory, đọc mã nguồn n8n/Open WebUI/Caddy, lập danh sách mọi chỗ trong repo phải sửa.
   - 2 vòng phản biện kế hoạch: một soi chỗ làm hỏng hoặc bỏ sót, một soi lỗ hổng trong chính thiết kế.
   - Người viết đã tự kiểm lại 4 khẳng định có ảnh hưởng lớn nhất trên mã nguồn gốc (đánh dấu ✔). Các khẳng định khác ghi "(agent)": agent đã đọc nguồn gốc, người viết chưa tự kiểm lại.
-- **Bản 2.1 — 10/10/2026:** thêm QĐ5–QĐ12 (mã đơn vị, Tailscale qua Box, IP tĩnh, máy in tự ký, tài khoản Trợ lý AI cho từng nhân viên, không đọc/chia sẻ chat, 2 cách đăng nhập `hoi`); sửa Pha 1, 3, 4, 5, thêm Pha 4c, sửa mục 6.
+- **Bản 2.1 — 10/10/2026:** thêm QĐ5–QĐ16 (mã đơn vị, Tailscale qua Box, IP tĩnh, máy in tự ký, tài khoản Trợ lý AI cho từng nhân viên, không đọc/chia sẻ chat, 2 cách đăng nhập `hoi`, phiên 1 tháng, khóa CA trên Box, Samba chỉ Win 10 + Linux, giữ pyodide); sửa Pha 1, 3, 4, 5, thêm Pha 4c, sửa mục 6.
 
 Chế độ **chỉ đọc**: chưa sửa code.
 - **Không** chạy hệ thống, không quét bằng công cụ (trivy, npm audit…), không thử khai thác thật.
@@ -34,6 +34,10 @@ Quy ước:
 | QĐ10 | Quản trị **không** được đọc chat Trợ lý AI của nhân viên: tắt `ENABLE_ADMIN_CHAT_ACCESS` và `ENABLE_ADMIN_EXPORT` | Pha 1 |
 | QĐ11 | **Tắt** chia sẻ đoạn chat giữa nhân viên | Pha 1 |
 | QĐ12 | `hoi` đăng nhập được bằng **cả hai** cách: email + mật khẩu (`hoi --dang-nhap`) hoặc dán khóa API tự tạo trên web (`hoi --dan-khoa`) | Pha 4c |
+| QĐ13 | Phiên đăng nhập Open WebUI giữ **1 tháng** (`JWT_EXPIRES_IN=30d`) | Pha 1 |
+| QĐ14 | Khóa gốc CA để **trên Box** (`secrets/ca`, chỉ root, không gắn vào container nào) | Pha 3 |
+| QĐ15 | Thư mục chung chỉ có máy **Windows 10 và Linux** dùng | Pha 5 (F8) |
+| QĐ16 | Giữ tính năng chạy mã (pyodide, chạy trong trình duyệt) của Open WebUI | — |
 
 **Trạng thái:** chủ dự án chưa duyệt sửa code (10/10/2026) — mọi pha ở mục 5 vẫn là kế hoạch.
 
@@ -128,7 +132,7 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
 
 ### F8 — Samba · Thấp · XÁC NHẬN
 - `samba/tasks/main.yml:14-20,52-65`: 1 tài khoản `onebee`; không đặt `smb encrypt`/`server min protocol`.
-- (agent) Trên Samba 4.19, `server min protocol = SMB3` nghĩa là **chỉ** 3.1.1 → dùng `SMB3_00` nếu cần cho Windows 8.1.
+- (agent) Trên Samba 4.19, `server min protocol = SMB3` nghĩa là **chỉ** 3.1.1. Theo QĐ15 (chỉ Windows 10 + Linux) dùng được mức này.
 
 ### F9 — Biểu mẫu n8n dùng 1 tài khoản chung · Thấp · XÁC NHẬN
 - `credentials.json.j2:28-32`. Không phân biệt người nhập. Đây cũng là đường tải file của GHSA-29xw (F1).
@@ -253,7 +257,7 @@ Box cài mới chưa có máy trạm: Pha 3 + 4 có hiệu lực ngay trong mộ
    - Không bao giờ đặt `N8N_INSECURE_DISABLE_FORM_HTML_SANDBOX`.
 5. **Open WebUI:**
    - Env: `ENABLE_PLUGINS: "false"` (N1, biến này chỉ đọc từ env).
-   - `ADMIN_CONFIG` (`onebee-webui.py`) thêm `ENABLE_COMMUNITY_SHARING: False` và `JWT_EXPIRES_IN: "7d"` (F12, S5; đây là đường duy nhất đổi được Box đã cài). Mirror vào env cho bản cài mới.
+   - `ADMIN_CONFIG` (`onebee-webui.py`) thêm `ENABLE_COMMUNITY_SHARING: False` và `JWT_EXPIRES_IN: "30d"` (F12, S5, QĐ13; đây là đường duy nhất đổi được Box đã cài). Mirror vào env cho bản cài mới.
    - **Tài khoản nhân viên (QĐ9)** — ✔ mặc định trong mã Open WebUI v0.11.4: `ENABLE_ADMIN_CHAT_ACCESS=True` (`env.py`, quản trị đọc được chat của mọi người), `USER_PERMISSIONS_CHAT_SHARE=True` (nhân viên chia sẻ được chat), `ENABLE_ADMIN_EXPORT=True`:
      - QĐ10: env `ENABLE_ADMIN_CHAT_ACCESS: "false"` và `ENABLE_ADMIN_EXPORT: "false"` (cả hai chỉ đọc từ env — ✔ `env.py`/`config.py`). Sao lưu dữ liệu đã có restic của Box, không cần nút xuất trên web;
      - QĐ11: tắt `chat.share` trong quyền mặc định của người dùng qua API (`enforce_settings` trong `onebee-webui.py`, như cách đang bật quyền khóa API — vì quyền mặc định lưu trong CSDL) + env `USER_PERMISSIONS_CHAT_SHARE: "false"` cho bản cài mới;
@@ -273,7 +277,7 @@ Box cài mới chưa có máy trạm: Pha 3 + 4 có hiệu lực ngay trong mộ
    - `run-box-test…:50`: lệnh sed đổi sang `-slim` phải bỏ đuôi digest.
    - Test nâng cấp 2.40.7 → 2.42.6.
 - **Hoàn tác:** dừng n8n → trả `${DATA}/n8n.truoc-<bản-cũ>` về chỗ cũ → ghim lại 2.40.7 → chạy bộ cài.
-- **Rủi ro:** migration hỏng (đã có bản chép); `JWT_EXPIRES_IN=7d` buộc đăng nhập lại mỗi tuần; tắt Functions/Tools (Box không dùng).
+- **Rủi ro:** migration hỏng (đã có bản chép); `JWT_EXPIRES_IN=30d`: token bị lộ dùng được tới 30 ngày và không thu hồi được (không có Redis) — chấp nhận theo QĐ13; sau Pha 4 (HTTPS) và Pha 4b (đổi `WEBUI_SECRET_KEY`) đường lộ token qua nghe lén không còn; [Unverified] định dạng `30d` — kiểm khi làm (mặc định của Open WebUI là `4w`); tắt Functions/Tools (Box không dùng).
 
 ### 5.3 Pha 2 — Báo tình trạng có chữ ký, ghim khóa SSH có chứng minh, thu hồi, kênh đẩy cấu hình
 Bản thiết kế đầu bị phản biện chỉ ra 1 điểm chặn: dùng khóa riêng lưu băm trong n8n + tự ghim khóa host từ báo cáo do n8n ghi → n8n vẫn nằm trong chuỗi tin cậy, và "ghim lần đầu" vẫn là tin mù qua HTTP. Thiết kế dưới đây sửa điều đó. [Inference] Đây là đề xuất của người rà soát; cần duyệt.
@@ -372,7 +376,7 @@ Bản thiết kế đầu bị phản biện chỉ ra 1 điểm chặn: dùng kh
   - Ansible dùng openssl sinh root (pathlen:1, ràng buộc như trên, 10 năm) + intermediate (pathlen:0, cùng ràng buộc, 1 năm).
   - Caddy chỉ nhận root cert + **intermediate cert/key**. (agent) Caddy 2.11.4 cho phép bỏ khóa root; Caddy không tự gia hạn intermediate được cấp → bộ cài gia hạn khi còn < 60 ngày.
   - Cảnh báo "CA trung gian/gốc còn N ngày" trong `trang-thai` và email sao lưu (thêm vào payload quy trình 01).
-  - Khóa root ở `secrets/ca/` (0700, chỉ root trên máy chủ), **không** gắn vào container nào. Nằm trong bản sao lưu Box (đã mã hóa bằng khóa `restic-box`).
+  - Khóa root ở `secrets/ca/` (QĐ14; 0700, chỉ root trên máy chủ), **không** gắn vào container nào. Nằm trong bản sao lưu Box (đã mã hóa bằng khóa `restic-box`).
 - **Dữ liệu Caddy:** gắn `${DATA}/caddy:/data` và `/config`; gắn **cả thư mục** Caddyfile (sửa N5).
 - **Box tin CA** (`update-ca-certificates`) để script và kiểm tra sức khỏe gọi `https://<IP>:<cổng>` — phương án B (5.5).
 - **Khôi phục:** trước `restic restore` xóa các dấu của bản cài lại (`https-da-bat`…); sau restore: xóa `${DATA}/caddy/*`, `update-ca-certificates --fresh` với root cũ, dựng lại `ten-da-cap.json`.
@@ -511,7 +515,7 @@ Làm sau Pha 4, vì `hoi --dang-nhap` gửi mật khẩu → cần HTTPS. Có th
 | Mục | Việc |
 |---|---|
 | F5 | Sửa code tường lửa: áp chuỗi lọc cho mọi cổng mạng trừ `lo`/`docker*`/`br-*`. Riêng `tailscale0`: biến `onebee_box_tailscale_cho_phep` (IP 100.x hoặc dải của máy kỹ thuật) → chỉ máy kỹ thuật vào được web/SSH của Box (QĐ6). Tài liệu ACL Tailscale mẫu theo QĐ2/QĐ6: `tag:kythuat` → Box tcp 22, 80, 443, 3000, 5678, 3001; → máy trạm tcp 5900 (VNC, vẫn cần người dùng đồng ý); thiết bị khác trong tailnet không vào được Box |
-| F8 | `server min protocol = SMB3_00` + `server smb encrypt = required`, sau khi kiểm máy khách (mục 6) |
+| F8 | QĐ15 (chỉ Windows 10 + Linux): `server min protocol = SMB3` (= chỉ SMB 3.1.1, có kiểm toàn vẹn chống hạ cấp) + `server smb encrypt = required`. Windows 10 hỗ trợ SMB 3.1.1 và mã hóa; Linux Mint (GVFS/libsmbclient) mặc định thương lượng tới 3.1.1 (agent). Thử trên 1 máy Windows 10 + 1 máy Mint trước khi áp cho cả đơn vị; kiểm cột mã hóa bằng `smbstatus` |
 | F9 | Tài khoản biểu mẫu theo phòng/người, ghi người đăng nhập vào CSV; siết `N8N_CONTENT_SECURITY_POLICY` (giảm GHSA-29xw) |
 | F11 | `no-new-privileges` mọi container; rest-server `cap_drop: [ALL]` + `read_only`; cân nhắc image Uptime Kuma `-rootless` |
 | F13, F6 | Ký tag/bản phát hành (minisign/cosign); ghim GitHub Actions theo SHA; Renovate (regex manager cho `group_vars/all.yml`); lịch ghim lại n8n mỗi 1–2 tuần |
@@ -533,13 +537,9 @@ Kiểm soát bù thật của F4:
 - Ràng buộc tên CA: chiếm Box = cài được CA bất kỳ lên máy trạm.
 - Ghim khóa SSH: đây là kiểm soát cho F2.
 
-## 6. Câu hỏi còn mở (cần chủ dự án quyết; có đề xuất mặc định)
-Đã quyết ngày 10/10: mã đơn vị (QĐ5), Tailscale (QĐ6), IP tĩnh (QĐ7), máy in tự ký (QĐ8), tài khoản Trợ lý AI cho từng nhân viên (QĐ9), không đọc chat (QĐ10), không chia sẻ chat (QĐ11), 2 cách đăng nhập `hoi` (QĐ12). Còn lại — nếu không có ý kiến khác sẽ làm theo đề xuất:
-1. **Duyệt sửa code:** chưa duyệt. Pha 1 không phụ thuộc các câu dưới đây, có thể bắt đầu bất cứ lúc nào.
-2. **Khóa gốc CA:** để trên Box (`secrets/ca`, không vào container) hay cất USB ngoài Box? Đề xuất: để trên Box (F4 đã coi Box là điểm tin cậy; USB thêm thao tác mỗi năm khi gia hạn intermediate). Cần trước Pha 3.
-3. **Phiên Open WebUI** `JWT_EXPIRES_IN`: 7 ngày hay 24 giờ? Đề xuất: 7 ngày. Cần trước Pha 1.
-4. **Thư mục chung:** có máy Windows 8.1/Server 2012/macOS dùng không? Cần trước khi bắt buộc mã hóa SMB (Pha 5).
-5. **Chạy mã (pyodide) trong Open WebUI:** giữ hay tắt? Đề xuất: giữ (chạy trong trình duyệt).
+## 6. Câu hỏi còn mở
+Mọi câu hỏi thiết kế đã được chủ dự án trả lời (QĐ1–QĐ16, mục 0). Chỉ còn:
+1. **Duyệt sửa code.** Kế hoạch đã đủ quyết định cho cả 6 pha. Đề xuất làm lần lượt, bắt đầu Pha 1; mỗi pha báo kết quả test trước khi sang pha sau.
 
 **Cần kiểm trên máy thật** (không phải quyết định, sẽ làm trong lúc triển khai):
 - Firefox deb của Mint 22: có `distribution/policies.json` không, có đọc `/etc/firefox/policies` không, đường dẫn `p11-kit-trust.so`.
