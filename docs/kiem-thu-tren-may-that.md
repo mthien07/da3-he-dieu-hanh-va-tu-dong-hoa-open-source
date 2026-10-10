@@ -32,7 +32,9 @@ Lỗi tìm được và đã sửa trong lần chạy này (chi tiết ở mục
 Kiểm thêm tay trên Box test (Mac): `n8n --version` = `2.42.6`; log n8n không có `blocked by policy|content-import|X-Forwarded`;
 portal `[ALL] [CAP_NET_BIND_SERVICE] [no-new-privileges:true]`, rest-server `ro=true drop=[ALL]`, mọi dịch vụ `no-new-privileges`; máy thu hồi `kho-02` không còn trong `.htpasswd`.
 
-Lần chạy runner gốc từ đầu ở `9a8b950` (Mac): **đang chạy — điền kết quả khi xong.**
+**Lần chạy runner gốc từ đầu (Mac, 11/10 03:39 → 05:38, ~2 giờ, gồm tải lại ~8 GB image + model):** `tests/box/run-box-test-in-systemd-container.sh` không sửa gì,
+mã nguồn bằng `9a8b950` (khác HEAD của PR chỉ ở unit test, runner không dùng) → **122 PASS / 0 FAIL, `TẤT CẢ BƯỚC KIỂM THỬ BOX ĐẠT`**, gồm cả bước giám sát mở 2 bước (T1),
+xoay khóa máy trạm (N11, T2 — dòng "Máy trạm nhận mật khẩu + khóa mới…" có in) và khởi động lại Box (N12). Nhật ký: `~/onebee-da3-test-logs/box-test-full-2.log` trên máy tác giả.
 
 ---
 
@@ -94,7 +96,7 @@ Lần chạy runner gốc từ đầu ở `9a8b950` (Mac): **đang chạy — đ
   (d) `desktop/ansible/roles/ket-noi-box/tasks/main.yml`, `ai-cli/tasks/cau-hinh-hoi.yml`.
 
 ### A4. Box đầy đủ trong container systemd + Docker lồng (quan trọng nhất)
-- [ ] **A4.1 Chạy** — (a) Linux có Docker (cgroup v2, chạy được `--privileged`), **≥ 30 GB trống** (image ~6 GB + model + volume), RAM ≥ 8 GB.
+- [x] **A4.1 Chạy** — (a) Linux có Docker (cgroup v2, chạy được `--privileged`), **≥ 30 GB trống** (image ~6 GB + model + volume), RAM ≥ 8 GB.
   Biến: `ONEBEE_TEST_EXTRA_CA` (proxy tự ký), `ONEBEE_TEST_MODEL` (mặc định `gemma4:e2b-it-qat`; `gemma3:1b` nhanh hơn, chỉ để thử kết nối),
   `ONEBEE_TEST_FULL_WEBUI=1` (image Open WebUI đầy đủ thay `-slim`), `ONEBEE_TEST_KEEP=1` (giữ container để xem), `ONEBEE_TEST_MINT_IMAGE`.
   (b)
