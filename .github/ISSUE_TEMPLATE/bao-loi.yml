@@ -29,7 +29,7 @@ body:
     attributes:
       label: Phiên bản hoặc commit
       description: "Bản phát hành (vd v1.0.0-rc.1) hoặc kết quả `git rev-parse --short HEAD`"
-      placeholder: "v1.0.0-rc.1 / 0536a61"
+      placeholder: "v1.0.0-rc.1 / b8f67fc"
     validations:
       required: true
   - type: dropdown
