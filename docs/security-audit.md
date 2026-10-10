@@ -6,7 +6,7 @@
   - Tra cứu sâu hơn bằng 9 agent chạy song song, chỉ đọc: mở từng advisory, đọc mã nguồn n8n/Open WebUI/Caddy, lập danh sách mọi chỗ trong repo phải sửa.
   - 2 vòng phản biện kế hoạch: một soi chỗ làm hỏng hoặc bỏ sót, một soi lỗ hổng trong chính thiết kế.
   - Người viết đã tự kiểm lại 4 khẳng định có ảnh hưởng lớn nhất trên mã nguồn gốc (đánh dấu ✔). Các khẳng định khác ghi "(agent)": agent đã đọc nguồn gốc, người viết chưa tự kiểm lại.
-- **Bản 2.1 — 10/10/2026:** thêm QĐ5–QĐ9 (mã đơn vị, Tailscale qua Box, IP tĩnh, máy in tự ký, tài khoản Trợ lý AI cho từng nhân viên); sửa Pha 1, 3, 4, 5, thêm Pha 4c, sửa mục 6.
+- **Bản 2.1 — 10/10/2026:** thêm QĐ5–QĐ12 (mã đơn vị, Tailscale qua Box, IP tĩnh, máy in tự ký, tài khoản Trợ lý AI cho từng nhân viên, không đọc/chia sẻ chat, 2 cách đăng nhập `hoi`); sửa Pha 1, 3, 4, 5, thêm Pha 4c, sửa mục 6.
 
 Chế độ **chỉ đọc**: chưa sửa code.
 - **Không** chạy hệ thống, không quét bằng công cụ (trivy, npm audit…), không thử khai thác thật.
@@ -31,6 +31,9 @@ Quy ước:
 | QĐ7 | Box dùng IP tĩnh (bắt buộc) | Pha 3 |
 | QĐ8 | Máy trạm phải dùng được máy in/thiết bị LAN có chứng chỉ tự ký → **không** chặn nút "chấp nhận rủi ro" của Firefox, không bật HTTPS-Only | Pha 4 |
 | QĐ9 | Mỗi nhân viên được cấp **1 tài khoản Trợ lý AI**, dùng cho cả bản web và lệnh `hoi` trên terminal Linux (thay cho khóa dùng chung theo máy) | Pha 1, Pha 4c; F10 |
+| QĐ10 | Quản trị **không** được đọc chat Trợ lý AI của nhân viên: tắt `ENABLE_ADMIN_CHAT_ACCESS` và `ENABLE_ADMIN_EXPORT` | Pha 1 |
+| QĐ11 | **Tắt** chia sẻ đoạn chat giữa nhân viên | Pha 1 |
+| QĐ12 | `hoi` đăng nhập được bằng **cả hai** cách: email + mật khẩu (`hoi --dang-nhap`) hoặc dán khóa API tự tạo trên web (`hoi --dan-khoa`) | Pha 4c |
 
 **Trạng thái:** chủ dự án chưa duyệt sửa code (10/10/2026) — mọi pha ở mục 5 vẫn là kế hoạch.
 
@@ -252,9 +255,11 @@ Box cài mới chưa có máy trạm: Pha 3 + 4 có hiệu lực ngay trong mộ
    - Env: `ENABLE_PLUGINS: "false"` (N1, biến này chỉ đọc từ env).
    - `ADMIN_CONFIG` (`onebee-webui.py`) thêm `ENABLE_COMMUNITY_SHARING: False` và `JWT_EXPIRES_IN: "7d"` (F12, S5; đây là đường duy nhất đổi được Box đã cài). Mirror vào env cho bản cài mới.
    - **Tài khoản nhân viên (QĐ9)** — ✔ mặc định trong mã Open WebUI v0.11.4: `ENABLE_ADMIN_CHAT_ACCESS=True` (`env.py`, quản trị đọc được chat của mọi người), `USER_PERMISSIONS_CHAT_SHARE=True` (nhân viên chia sẻ được chat), `ENABLE_ADMIN_EXPORT=True`:
-     - theo quyết định ở mục 6: đặt `ENABLE_ADMIN_CHAT_ACCESS` (và `ENABLE_ADMIN_EXPORT`) trong env; tắt quyền chia sẻ chat trong quyền mặc định của người dùng qua API (như cách `enforce_settings` đang bật quyền khóa API);
+     - QĐ10: env `ENABLE_ADMIN_CHAT_ACCESS: "false"` và `ENABLE_ADMIN_EXPORT: "false"` (cả hai chỉ đọc từ env — ✔ `env.py`/`config.py`). Sao lưu dữ liệu đã có restic của Box, không cần nút xuất trên web;
+     - QĐ11: tắt `chat.share` trong quyền mặc định của người dùng qua API (`enforce_settings` trong `onebee-webui.py`, như cách đang bật quyền khóa API — vì quyền mặc định lưu trong CSDL) + env `USER_PERMISSIONS_CHAT_SHARE: "false"` cho bản cài mới;
+     - test: tài khoản quản trị gọi API xem chat của nhân viên bị từ chối; quyền mặc định `chat.share=false`;
      - giữ quyền tạo khóa API cho tài khoản thường (`onebee-webui.py:75-80`) — cần cho `hoi` theo từng nhân viên; khóa vẫn chỉ gọi được hỏi đáp;
-     - hướng dẫn: quản trị tạo tài khoản cho từng nhân viên (Bảng quản trị → Người dùng), nghỉ việc thì xóa tài khoản; ghi rõ cho nhân viên quản trị có đọc được chat hay không.
+     - hướng dẫn: quản trị tạo tài khoản cho từng nhân viên (Bảng quản trị → Người dùng), nghỉ việc thì xóa tài khoản; ghi rõ cho nhân viên: quản trị **không** đọc được chat (QĐ10), không chia sẻ được chat (QĐ11).
 6. **N7 (bảo đảm QĐ1):**
    - Bộ cài desktop cảnh báo khi có tài khoản người dùng (UID ≥ 1000) ngoài tài khoản quản trị đã khai báo nằm trong nhóm `sudo`/`admin`. Biến `onebee_tai_khoan_quan_tri`; tùy chọn dừng hẳn bằng cờ.
    - `onebee-bao-tinh-trang` gửi số tài khoản trong nhóm sudo; `onebee-box may-tram` cảnh báo khi > 1.
@@ -484,7 +489,7 @@ Làm sau Pha 4, vì `hoi --dang-nhap` gửi mật khẩu → cần HTTPS. Có th
   - gọi `POST /api/v1/auths/signin` rồi lấy/tạo khóa API của chính tài khoản đó;
   - lưu **chỉ khóa** vào `~/.config/onebee/hoi-khoa` (file 0600, thư mục 0700), không lưu mật khẩu;
   - từ chối khi URL còn là `http://`.
-- **Cách dự phòng:** nhân viên tự tạo khóa trên web (Cài đặt → Tài khoản → Khóa API) rồi `hoi --dan-khoa`.
+- **`hoi --dan-khoa` (QĐ12, cách thứ hai, ngang hàng):** nhân viên tự tạo khóa trên web (Cài đặt → Tài khoản → Khóa API) rồi dán vào; `hoi` gọi thử `/api/models` để kiểm khóa trước khi lưu. Dùng được cả trước Pha 4.
 - **`hoi --dang-xuat`:** xóa file khóa trên máy.
 - **Thu hồi:** quản trị xóa tài khoản nhân viên trên web → khóa API mất hiệu lực. [Inference] Phiên web cũng hết hiệu lực vì tài khoản không còn — cần test.
 - `/etc/onebee-hoi.conf` chỉ còn URL + model, **không còn khóa** → F10 đóng.
@@ -495,7 +500,8 @@ Làm sau Pha 4, vì `hoi --dang-nhap` gửi mật khẩu → cần HTTPS. Có th
 - Máy nhiều người dùng: mỗi tài khoản Linux một file khóa riêng; file nằm trong `/home` nên được sao lưu (đã mã hóa) lên Box.
 - **File chính:** `desktop/ansible/roles/ai-cli/files/hoi`, `ai-cli/tasks/main.yml`, `onebee-box.sh.j2` (`them-may`), `onebee-webui.py` (`cap-khoa`), `dung-tro-ly-ai-va-quy-trinh-tu-dong.md`, `dao-tao-buoi-1-3.md`.
 - **Test:**
-  - chưa đăng nhập → hướng dẫn rõ;
+  - chưa đăng nhập → hướng dẫn rõ cả 2 cách;
+  - `--dan-khoa` với khóa sai → không lưu, báo lỗi;
   - đăng nhập → hỏi được, file 0600;
   - tài khoản đã xóa → báo "khóa đã bị thu hồi";
   - URL `http://` → từ chối đăng nhập;
@@ -528,15 +534,12 @@ Kiểm soát bù thật của F4:
 - Ghim khóa SSH: đây là kiểm soát cho F2.
 
 ## 6. Câu hỏi còn mở (cần chủ dự án quyết; có đề xuất mặc định)
-Đã quyết ngày 10/10: mã đơn vị (QĐ5), Tailscale (QĐ6), IP tĩnh (QĐ7), máy in tự ký (QĐ8), tài khoản Trợ lý AI cho từng nhân viên (QĐ9). Còn lại — nếu không có ý kiến khác sẽ làm theo đề xuất:
+Đã quyết ngày 10/10: mã đơn vị (QĐ5), Tailscale (QĐ6), IP tĩnh (QĐ7), máy in tự ký (QĐ8), tài khoản Trợ lý AI cho từng nhân viên (QĐ9), không đọc chat (QĐ10), không chia sẻ chat (QĐ11), 2 cách đăng nhập `hoi` (QĐ12). Còn lại — nếu không có ý kiến khác sẽ làm theo đề xuất:
 1. **Duyệt sửa code:** chưa duyệt. Pha 1 không phụ thuộc các câu dưới đây, có thể bắt đầu bất cứ lúc nào.
 2. **Khóa gốc CA:** để trên Box (`secrets/ca`, không vào container) hay cất USB ngoài Box? Đề xuất: để trên Box (F4 đã coi Box là điểm tin cậy; USB thêm thao tác mỗi năm khi gia hạn intermediate). Cần trước Pha 3.
 3. **Phiên Open WebUI** `JWT_EXPIRES_IN`: 7 ngày hay 24 giờ? Đề xuất: 7 ngày. Cần trước Pha 1.
-4. **Quản trị có được đọc chat Trợ lý AI của nhân viên không?** ✔ Open WebUI mặc định: **được** (`ENABLE_ADMIN_CHAT_ACCESS=True`), kèm xuất dữ liệu (`ENABLE_ADMIN_EXPORT=True`). Đề xuất: tắt cả hai; nếu giữ thì phải báo trước cho nhân viên. Cần trước Pha 1.
-5. **Nhân viên có được chia sẻ đoạn chat cho nhau không?** ✔ Mặc định: được. Đề xuất: tắt (bớt đường cho loại lỗ hổng "người đã đăng nhập tấn công người khác"). Cần trước Pha 1.
-6. **Đăng nhập `hoi`:** bằng email + mật khẩu (`hoi --dang-nhap`, sau HTTPS) hay dán khóa tạo trên web? Đề xuất: cả hai, mặc định `--dang-nhap`.
-7. **Thư mục chung:** có máy Windows 8.1/Server 2012/macOS dùng không? Cần trước khi bắt buộc mã hóa SMB (Pha 5).
-8. **Chạy mã (pyodide) trong Open WebUI:** giữ hay tắt? Đề xuất: giữ (chạy trong trình duyệt).
+4. **Thư mục chung:** có máy Windows 8.1/Server 2012/macOS dùng không? Cần trước khi bắt buộc mã hóa SMB (Pha 5).
+5. **Chạy mã (pyodide) trong Open WebUI:** giữ hay tắt? Đề xuất: giữ (chạy trong trình duyệt).
 
 **Cần kiểm trên máy thật** (không phải quyết định, sẽ làm trong lúc triển khai):
 - Firefox deb của Mint 22: có `distribution/policies.json` không, có đọc `/etc/firefox/policies` không, đường dẫn `p11-kit-trust.so`.
