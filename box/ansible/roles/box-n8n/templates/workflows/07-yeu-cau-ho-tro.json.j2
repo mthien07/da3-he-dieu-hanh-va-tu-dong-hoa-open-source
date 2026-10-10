@@ -9,10 +9,11 @@ if (!['Bình thường', 'Gấp (đang dừng việc)'].includes(j.muc_do)) thro
 const ma = $now.toFormat('yyMMdd-HHmmss') + '-' + String(Math.floor(Math.random() * 90) + 10);
 const gap = String(j.muc_do || '').startsWith('Gấp');
 const line = dongCsv([ma, $now.toFormat('yyyy-MM-dd HH:mm'), j.may, j.loai, gap ? 'gap' : 'binh-thuong', j.nguoi_bao, j.mo_ta]);
+// Tiêu đề email một dòng: safe() đã đổi mọi ký tự điều khiển (\r \n) thành dấu cách → không chèn được tiêu đề thư khác
 const subject = `[OneBee] ${gap ? 'GẤP — ' : ''}Yêu cầu hỗ trợ ${ma}: ${safe(j.loai)}`;
 const text = [`Mã: ${ma}`, `Máy: ${safe(j.may) || '(không ghi)'}`, `Người báo: ${safe(j.nguoi_bao) || '(không ghi)'}`,
   `Loại: ${safe(j.loai)} · Mức độ: ${safe(j.muc_do)}`, '', safe(j.mo_ta), '',
-  'Xử lý xong: mở biểu mẫu "Xử lý yêu cầu hỗ trợ" trên Box (http://{{ onebee_box_address or ansible_default_ipv4.address | default('<ip-box>') }}:{{ onebee_box_ports.n8n }}/form/onebee-xu-ly), nhập mã trên.'].join('\n');
+  'Xử lý xong: mở biểu mẫu "Xử lý yêu cầu hỗ trợ" trên Box ({{ 'https' if onebee_https_hieu_luc | bool else 'http' }}://{{ onebee_box_ip }}:{{ onebee_box_ports.n8n }}/form/onebee-xu-ly), nhập mã trên.'].join('\n');
 return [{ json: { ma, subject, text }, binary: tep(line, 'yeu-cau.csv') }];
 {% endset %}
 {

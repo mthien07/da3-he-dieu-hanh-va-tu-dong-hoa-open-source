@@ -1,0 +1,32 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "timezone": "Asia/Ho_Chi_Minh",
+  "schedule": ["before 9am on monday"],
+  "prConcurrentLimit": 3,
+  "labels": ["phụ-thuộc"],
+  "packageRules": [
+    {
+      "description": "Image dịch vụ của Box: KHÔNG tự gộp — mỗi bản nâng phải thử trên Box thử (n8n chạy migration CSDL không quay lui; Caddy 2.11.6+ đổi timeout idle). Renovate chỉ mở PR để xem, người duyệt thử rồi mới gộp.",
+      "matchFileNames": ["box/ansible/group_vars/all.yml"],
+      "automerge": false,
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "n8n: kiểm tra bản vá bảo mật mỗi 1–2 tuần (dòng cũ ngừng nhận bản vá khi có dòng mới 2 bản lớn)",
+      "matchPackageNames": ["n8nio/n8n"],
+      "schedule": ["before 9am every 2 weeks on monday"]
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Image trong box/ansible/group_vars/all.yml dạng  khóa: docker.io/owner/ten:tag@sha256:digest",
+      "managerFilePatterns": ["/^box/ansible/group_vars/all\\.yml$/"],
+      "matchStrings": [
+        "^\\s+[a-z_]+:\\s+(?<depName>[a-z0-9./_-]+):(?<currentValue>[A-Za-z0-9._-]+)@(?<currentDigest>sha256:[a-f0-9]{64})\\s*$"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ]
+}

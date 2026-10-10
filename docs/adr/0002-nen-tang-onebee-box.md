@@ -10,7 +10,7 @@
 3. **Dịch vụ chạy bằng Docker Compose**, image **ghim phiên bản cố định** trong `box/ansible/group_vars/all.yml`
    (nâng cấp = sửa phiên bản → chạy lại bộ cài).
 4. **Không mở API Ollama ra LAN** (API không có mật khẩu). Người dùng hỏi AI qua Open WebUI (có tài khoản).
-5. **HTTP trong LAN, không TLS ở v0.1.** Truy cập từ xa chỉ qua VPN (Tailscale/WireGuard). Không mở cổng trên router.
+5. **HTTP trong LAN (v0.1); từ rà soát bảo mật 10/10/2026 có thể bật HTTPS nội bộ** (CA riêng + Caddy, xem ADR 0005; bật bằng `onebee_box_https: true`, mặc định chưa bật). Truy cập từ xa chỉ qua VPN (Tailscale/WireGuard). Không mở cổng trên router.
 6. **Samba cài thẳng trên máy chủ** (gói Ubuntu, nhận bản vá tự động), không chạy trong container.
 7. **Sao lưu 2 tầng bằng restic**:
    - Máy trạm → Box (rest-server, `--private-repos --append-only`): mỗi máy chỉ thấy kho của mình và **không xóa được**

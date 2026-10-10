@@ -9,7 +9,11 @@ BACKUP_REPO="{{ onebee_box_backup_repo }}"
 BACKUP_MOUNT="$(dirname "${BACKUP_REPO}")"
 SHARE="${DATA}/{{ onebee_box_samba_share }}"
 REST_PORT="{{ onebee_box_ports.rest_server }}"
-BOX_ADDRESS="{{ onebee_box_address }}"
+BOX_ADDRESS="{{ onebee_box_ip }}"   # tính MỘT lần trong Ansible (tasks/ca.yml) — shell và compose dùng cùng giá trị
+BOX_MA_DON_VI="{{ onebee_box_ma_don_vi }}"
+TINH_TRANG_KHOA_CHUNG="{{ onebee_box_khoa_tinh_trang_chung | bool | lower }}"   # true = còn đòi/đẩy khóa gửi tình trạng dùng chung (chuyển tiếp)
+HOI_KHOA_MAY="{{ onebee_box_hoi_khoa_may | bool | lower }}"   # true = còn cấp khóa Trợ lý AI theo máy (giai đoạn chuyển tiếp)
+CA_DIR="${SECRETS}/ca"
 KEEP_BOX=({{ onebee_box_backup_keep }})
 # Kho máy trạm: luôn giữ mọi bản trong 30 ngày gần nhất (chặn trường hợp bản giả mạo ngày tương lai đẩy bản thật ra)
 KEEP_MAY=(--keep-within 30d {{ onebee_box_backup_keep }})
@@ -17,24 +21,125 @@ KEEP_MAY=(--keep-within 30d {{ onebee_box_backup_keep }})
 die() { printf 'LỖI: %s\n' "$*" >&2; exit 1; }
 warn() { printf 'CẢNH BÁO: %s\n' "$*" >&2; }
 
+# Chuỗi ngẫu nhiên $1 ký tự chữ-số. Nguồn hữu hạn (không đọc /dev/urandom vô tận) để không có SIGPIPE làm pipeline báo lỗi 141 dưới "set -o pipefail"
+ngau_nhien() { head -c 2048 /dev/urandom | tr -dc 'A-Za-z0-9' | head -c "$1"; }
+
 # Sinh (một lần) và đọc mật khẩu ngẫu nhiên lưu trong thư mục bí mật
 secret() {
   local f="${SECRETS}/$1"
-  [[ -s "${f}" ]] || (umask 077; tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32 >"${f}")
+  [[ -s "${f}" ]] || (umask 077; ngau_nhien 32 >"${f}")
   cat "${f}"
 }
 
-# Địa chỉ IPv4 của Box trong LAN: lấy từ cấu hình, nếu trống thì lấy IP của cổng ra mạng chính (không lấy docker/VPN)
+# Có $1 trong danh sách các tham số còn lại không (không dùng "... | grep -q": với pipefail, grep thoát sớm làm bên trước chết vì SIGPIPE → lúc đúng lúc sai)
+trong_mang() {
+  local x="$1" y
+  shift
+  for y in "$@"; do [[ "${y}" == "${x}" ]] && return 0; done
+  return 1
+}
+
+# Như secret() nhưng KHÔNG tự sinh khi thiếu: dùng ở mọi nơi trừ lệnh cấp máy (them-may), kẻo vô tình "hồi sinh" máy đã thu hồi
+secret_co_san() {
+  local f="${SECRETS}/$1"
+  [[ -s "${f}" ]] || die "Thiếu bí mật $1 (máy chưa cấp, hoặc đã thu hồi?)"
+  cat "${f}"
+}
+
+# Tên các máy trạm ĐÃ CẤP và CHƯA thu hồi — MỘT nơi liệt kê duy nhất (báo cáo, cập nhật, đồng bộ cấu hình, khôi phục đều dùng)
+# Máy đã thu hồi có file ${SECRETS}/thu-hoi/<tên> (thư mục riêng, không lẫn với may-<tên>-hoi/-repo của máy khác tên gần giống);
+# kho sao lưu và mật khẩu kho của máy vẫn giữ lại (để khôi phục/dọn bản cũ)
+may_da_cap() {
+  local f ten
+  for f in "${SECRETS}"/may-*-repo; do
+    [[ -e "${f}" ]] || continue
+    ten="$(basename "${f}")"; ten="${ten#may-}"; ten="${ten%-repo}"
+    [[ -e "${SECRETS}/thu-hoi/${ten}" ]] || printf '%s\n' "${ten}"
+  done
+}
+
+# Thư mục file đánh dấu máy đã cấp: n8n (gắn chỉ đọc) chỉ nhận báo cáo tình trạng của máy có file <tên> ở đây.
+# In "đã đổi" khi có thay đổi (để bộ cài Ansible báo changed đúng)
+MAY_DA_CAP_DIR="${DATA}/may-da-cap"
+dong_bo_ten_may() {
+  local ten f doi=0
+  local -a ds=()
+  mapfile -t ds < <(may_da_cap)
+  install -d -m 0750 -o root -g 1000 "${MAY_DA_CAP_DIR}"
+  for ten in "${ds[@]}"; do
+    f="${MAY_DA_CAP_DIR}/${ten}"
+    if [[ ! -f "${f}" ]]; then
+      echo 1 >"${f}"; chown root:1000 "${f}"; chmod 0640 "${f}"; doi=1
+    fi
+  done
+  for f in "${MAY_DA_CAP_DIR}"/*; do
+    [[ -e "${f}" ]] || continue
+    ten="$(basename "${f}")"
+    trong_mang "${ten}" "${ds[@]}" || { rm -f "${f}"; doi=1; }
+  done
+  [[ ${doi} -eq 0 ]] || echo "đã đổi"
+}
+
+# Địa chỉ IPv4 của Box trong LAN: Ansible đã chốt (onebee_box_dia_chi hoặc IP cổng ra mạng chính); dự phòng khi trống thì tự dò
 box_ip() {
   if [[ -n "${BOX_ADDRESS}" ]]; then echo "${BOX_ADDRESS}"; return; fi
   ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}'
 }
 
+# ---- CA riêng của Box (tạo bởi tasks/ca.yml → onebee-ca.sh) ----
+# Số ngày còn lại của chứng chỉ $1 (root | inter) trong ${CA_DIR}; in -1 nếu thiếu/đã hết hạn
+ca_con_ngay() {
+  local f="${CA_DIR}/$1.crt" het giay
+  [[ -s "${f}" ]] || { echo -1; return; }
+  het="$(openssl x509 -in "${f}" -noout -enddate | cut -d= -f2)"
+  giay=$(( $(date -d "${het}" +%s) - $(date +%s) ))
+  echo $(( giay > 0 ? giay / 86400 : -1 ))
+}
+# Vân tay SHA-256 CA gốc (hex thường, 64 ký tự), tính lại từ chứng chỉ (không tin file root.sha256)
+ca_van_tay() { openssl x509 -in "${CA_DIR}/root.crt" -outform DER | sha256sum | cut -d' ' -f1; }
+# Gia hạn CA trung gian khi còn < 60 ngày (Caddy không tự gia hạn chứng chỉ trung gian được cấp sẵn). In "đã đổi" khi có đổi.
+# Trung gian mới phải tới được Caddy: chép sang portal/pki (ONEBEE_PKI_OUT); nếu HTTPS đang bật thì xóa chứng chỉ lá cũ và khởi động lại cổng.
+gia_han_ca() {
+  local kq
+  kq="$(ONEBEE_PKI_OUT="${BOX_DIR}/portal/pki" /usr/local/lib/onebee-box/onebee-ca.sh "${CA_DIR}" "${BOX_MA_DON_VI}" "$(box_ip)")" || return 1
+  if [[ "${kq}" == *"đã đổi"* ]] && https_bat; then
+    rm -rf "${DATA}/caddy/data/caddy/certificates"
+    docker restart onebee-portal >/dev/null || return 1
+  fi
+  printf '%s\n' "${kq}"
+}
+
+# ---- HTTPS (Pha 4) ----
+# Dấu ${SECRETS}/https-da-bat do bộ cài Ansible ghi/xóa (tasks/https.yml) sau khi quyết định bật HTTPS; nằm trong thư mục bí mật nên có trong bản sao lưu.
+HTTPS_DAU="${SECRETS}/https-da-bat"
+https_bat() { [[ -e "${HTTPS_DAU}" ]]; }
+# Gốc địa chỉ để script TRÊN BOX gọi dịch vụ: HTTPS thì qua đúng đường người dùng đi (https://<IP>:<cổng>, Box tin CA của chính nó) — cổng backend không còn mở;
+# HTTP thì gọi thẳng vào cổng backend trên 127.0.0.1
+dia_chi_noi_bo() { if https_bat; then echo "https://${BOX_ADDRESS}"; else echo "http://127.0.0.1"; fi; }
+# Địa chỉ người dùng/máy trạm dùng (nằm trong cấu hình đẩy xuống máy trạm)
+giao_thuc_may() { if https_bat; then echo https; else echo http; fi; }
+# Máy đã cấp mà chưa được đẩy CA hiện tại (dấu ${SECRETS}/ca-da-dong-bo/<tên> do 'dong-bo-may' ghi sau khi máy cài CA xong) — chặn bật HTTPS
+may_chua_nhan_ca() {
+  local vt ten
+  vt="$(ca_van_tay)"
+  while read -r ten; do
+    [[ "$(cat "${SECRETS}/ca-da-dong-bo/${ten}" 2>/dev/null)" == "${vt}" ]] || printf '%s\n' "${ten}"
+  done < <(may_da_cap)
+}
+
 compose() { docker compose --project-directory "${BOX_DIR}" "$@"; }
+
+# Bắt rest-server đọc lại .htpasswd NGAY sau mỗi lần sửa (cấp/thu hồi/xoay mật khẩu kho HTTP).
+# Tự nó chỉ kiểm file tối đa 30 giây/lần và nhớ mật khẩu đã đúng → trong khoảng đó mật khẩu cũ/máy đã thu hồi vẫn vào được kho.
+# SIGHUP = rest-server tự nạp lại file + xóa bộ nhớ đệm (rest-server 0.14, htpasswd.go). Dịch vụ chưa chạy thì bỏ qua (lúc khởi động sẽ đọc file mới).
+# Gửi bằng 'docker exec … kill -HUP 1', KHÔNG dùng 'docker kill -s HUP': Docker (29.x) coi mọi 'docker kill' là dừng tay
+# (HasBeenManuallyStopped) → khởi động lại Box thì kho sao lưu KHÔNG tự chạy lại dù restart: unless-stopped (bắt được khi chạy A4).
+nap_lai_kho_http() { docker exec onebee-rest-server kill -HUP 1 >/dev/null 2>&1 || true; }
 
 # Gọi công cụ quản lý Open WebUI (tạo Trợ lý OneBee, cấp khóa API cho máy trạm)
 webui() {
-  WEBUI_URL="http://127.0.0.1:{{ onebee_box_ports.open_webui }}" WEBUI_ADMIN_EMAIL={{ onebee_box_admin_email | quote }} \
+  WEBUI_URL="$(dia_chi_noi_bo):{{ onebee_box_ports.open_webui }}" ONEBEE_WEBUI_PUBLIC_URL="$(https_bat && echo "https://${BOX_ADDRESS}:{{ onebee_box_ports.open_webui }}" || true)" \
+  WEBUI_ADMIN_EMAIL={{ onebee_box_admin_email | quote }} \
   WEBUI_ADMIN_PASSWORD="$(cat "${SECRETS}/webui-admin-password")" ONEBEE_AI_MODEL="{{ onebee_box_ai_model }}" \
   ONEBEE_LOI_DAN=/usr/local/lib/onebee-box/tro-ly-onebee-loi-dan.md ONEBEE_SECRETS="${SECRETS}" \
     python3 /usr/local/lib/onebee-box/onebee-webui.py "$@"

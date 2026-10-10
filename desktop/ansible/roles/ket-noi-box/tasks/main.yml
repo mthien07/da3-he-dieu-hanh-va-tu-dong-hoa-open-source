@@ -1,0 +1,158 @@
+---
+# Kết nối máy trạm với OneBee Box bằng HTTPS: tin CA RIÊNG của Box (có ràng buộc tên) — hệ thống, Firefox, Chromium/Chrome.
+# Tự đọc /etc/onebee/may-tram.env (chạy được cả từ bộ cài desktop lẫn từ 'onebee-box dong-bo-may' do Box đẩy xuống).
+# Dòng BOX_CA / BOX_CA_VAN_TAY do 'onebee-box them-may' in. Thiếu BOX_CA → gỡ CA OneBee đã cài (nếu có dấu của role này).
+
+- name: Kiểm tra đã có cấu hình máy trạm chưa
+  ansible.builtin.stat:
+    path: /etc/onebee/may-tram.env
+  register: onebee_kn_env
+
+- name: Đọc cấu hình máy trạm
+  ansible.builtin.slurp:
+    src: /etc/onebee/may-tram.env
+  register: onebee_kn_raw
+  when: onebee_kn_env.stat.exists
+  no_log: true
+
+- name: Lấy các dòng liên quan CA
+  ansible.builtin.set_fact:
+    # Mẫu không dùng dấu gạch chéo ngược (ansible-core 2.16 và 2.19 xử lý chuỗi thoát trong Jinja khác nhau);
+    # các giá trị BOX_* chỉ gồm base64/số/chấm
+    onebee_kn: >-
+      {{ dict(onebee_kn_raw.content | b64decode | regex_findall('(?m)^(BOX_[A-Z_]+)="?([A-Za-z0-9+/=.]*)'))
+         if onebee_kn_env.stat.exists else {} }}
+  no_log: true
+
+- name: Kiểm tra dấu của role (đã từng cài CA OneBee chưa)
+  ansible.builtin.stat:
+    path: /var/lib/onebee/ket-noi-box
+  register: onebee_kn_dau
+
+- name: Tạo thư mục công cụ và trạng thái OneBee
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop: [/usr/local/lib/onebee, /var/lib/onebee]
+
+# certutil (gỡ CA khỏi hồ sơ Firefox khi bỏ/xoay CA) nằm trong libnss3-tools
+- name: Cài libnss3-tools
+  ansible.builtin.apt:
+    name: libnss3-tools
+    state: present
+
+- name: Cài công cụ kiểm CA và chính sách trình duyệt
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/usr/local/lib/onebee/{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+  loop: [onebee-kiem-ca.py, onebee-chinh-sach-trinh-duyet.py]
+
+# ---- Dấu bền "máy đã bật HTTPS" (BOX_HTTPS=1): hoi, onebee-bao-tinh-trang, onebee-sao-luu từ chối http:// khi có dấu này, để kẻ chen giữa
+# mạng LAN không hạ cấp được kết nối. Chỉ Box đẩy BOX_HTTPS=0 mới xóa dấu; thiếu dòng BOX_HTTPS (cấu hình cũ) thì giữ nguyên.
+# Ghi dấu NGOÀI khối CA: CA lỗi thì máy báo lỗi chứng chỉ (an toàn), không lùi về http.
+- name: Ghi dấu máy đã bật HTTPS
+  ansible.builtin.copy:
+    content: "1\n"
+    dest: /var/lib/onebee/https-bat
+    owner: root
+    group: root
+    mode: "0644"
+  when: onebee_kn.BOX_HTTPS | default('') == '1'
+
+- name: Xóa dấu HTTPS khi Box báo hoàn tác
+  ansible.builtin.file:
+    path: /var/lib/onebee/https-bat
+    state: absent
+  when: onebee_kn.BOX_HTTPS | default('') == '0'
+
+- name: Kiểm tra dấu HTTPS sau khi cập nhật
+  ansible.builtin.stat:
+    path: /var/lib/onebee/https-bat
+  register: onebee_kn_https
+
+# ---- Có BOX_CA: kiểm thật kỹ rồi mới cài ----
+- name: Cài CA của OneBee Box
+  when: onebee_kn.BOX_CA | default('') | length > 0
+  block:
+    - name: Kiểm vân tay + ràng buộc tên của CA
+      ansible.builtin.command:
+        argv:
+          - /usr/local/lib/onebee/onebee-kiem-ca.py
+          - "{{ onebee_kn.BOX_CA }}"
+          - "{{ onebee_kn.BOX_CA_VAN_TAY | default('') }}"
+          - "{{ onebee_kn.BOX_IP | default('') }}"
+      register: onebee_kn_kiem
+      changed_when: false
+      failed_when: false
+
+    - name: Báo CA không đạt (KHÔNG cài — CA không ràng buộc giả được mọi trang web)
+      ansible.builtin.debug:
+        msg: "CẢNH BÁO: CA từ OneBee Box không được cài: {{ onebee_kn_kiem.stderr | default('') }}"
+      when: onebee_kn_kiem.rc != 0
+
+    - name: Cài CA vào kho hệ thống, Firefox, Chromium/Chrome
+      when: onebee_kn_kiem.rc == 0
+      block:
+        - name: Chép CA vào kho hệ thống
+          ansible.builtin.copy:
+            content: "{{ onebee_kn_kiem.stdout }}"
+            dest: /usr/local/share/ca-certificates/onebee-box-ca.crt
+            owner: root
+            group: root
+            mode: "0644"
+          register: onebee_kn_he_thong
+
+        - name: Cập nhật kho CA hệ thống (Python, curl, restic tin CA)
+          # noqa: no-handler — chạy cả khi role được gọi bằng include_role từ playbook của Box, nên không dùng handler
+          ansible.builtin.command: update-ca-certificates --fresh
+          when: onebee_kn_he_thong is changed
+          changed_when: true
+
+        - name: Chính sách trình duyệt (Firefox, Chromium, Chrome)
+          ansible.builtin.command:
+            argv: "{{ onebee_kn_lenh_trinh_duyet + (['--https', onebee_kn.BOX_IP] if onebee_kn_https.stat.exists else []) }}"
+          vars:
+            onebee_kn_lenh_trinh_duyet:
+              - /usr/local/lib/onebee/onebee-chinh-sach-trinh-duyet.py
+              - cai
+              - /usr/local/share/ca-certificates/onebee-box-ca.crt
+          register: onebee_kn_tt
+          changed_when: onebee_kn_tt.stdout is search('đã đổi')
+
+        - name: Ghi dấu đã cài CA (để lần sau không có BOX_CA thì biết cần gỡ)
+          ansible.builtin.copy:
+            content: "{{ onebee_kn.BOX_CA_VAN_TAY }}\n"
+            dest: /var/lib/onebee/ket-noi-box
+            owner: root
+            group: root
+            mode: "0644"
+
+# ---- Không còn BOX_CA mà role từng cài: gỡ sạch (kể cả hồ sơ Firefox) ----
+- name: Gỡ CA OneBee đã cài
+  when:
+    - onebee_kn.BOX_CA | default('') | length == 0
+    - onebee_kn_dau.stat.exists
+  block:
+    - name: Gỡ chính sách và hồ sơ trình duyệt
+      ansible.builtin.command: /usr/local/lib/onebee/onebee-chinh-sach-trinh-duyet.py go
+      register: onebee_kn_go
+      changed_when: onebee_kn_go.stdout is search('đã đổi')
+
+    - name: Xóa CA khỏi kho hệ thống
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop: [/usr/local/share/ca-certificates/onebee-box-ca.crt, /var/lib/onebee/ket-noi-box]
+      register: onebee_kn_xoa
+
+    - name: Cập nhật kho CA hệ thống sau khi gỡ
+      # noqa: no-handler — như trên
+      ansible.builtin.command: update-ca-certificates --fresh
+      when: onebee_kn_xoa is changed
+      changed_when: true

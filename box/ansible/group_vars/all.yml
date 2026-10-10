@@ -9,17 +9,32 @@ onebee_box_data: /srv/onebee                 # dữ liệu các dịch vụ
 onebee_box_secrets: /etc/onebee-box/secrets  # mật khẩu sinh tự động (chỉ root đọc)
 onebee_box_ssh_dir: /etc/onebee-box/secrets/ssh  # khóa SSH quản trị máy trạm (riêng từng Box, có trong bản sao lưu Box)
 
-# Phiên bản image (ghim cố định; nâng cấp có kiểm soát bằng cách sửa ở đây rồi chạy lại bộ cài)
+# Phiên bản image: ghim theo tag + digest (tag trên registry có thể bị đẩy lại — Docker Hub đã đẩy lại caddy:2.11.4 ngày 23/9/2026).
+# Nâng cấp có kiểm soát: sửa cả tag lẫn digest rồi chạy lại bộ cài. Digest là của bản đa kiến trúc (index), lấy ngày 10/10/2026.
+# n8n: bản 2.40.x đã ngừng nhận bản vá (bản cuối 2.40.7) — dòng 2.42.x trở đi mới còn được vá (docs/security-audit.md, F1).
 onebee_box_images:
-  caddy: docker.io/library/caddy:2.11.4
-  ollama: docker.io/ollama/ollama:0.34.4
-  open_webui: ghcr.io/open-webui/open-webui:v0.11.4
-  n8n: docker.io/n8nio/n8n:2.40.7
-  uptime_kuma: docker.io/louislam/uptime-kuma:2.5.5
-  rest_server: docker.io/restic/rest-server:0.14.0
+  caddy: docker.io/library/caddy:2.11.4@sha256:0c994536bddb66445885237f1a5dcc1916bccea922661c76b4e9fc24061f9b52
+  ollama: docker.io/ollama/ollama:0.34.4@sha256:8262851b2846b87c649eddf3e76beb270c52f4d1bc94559f47efde16b0841551
+  open_webui: ghcr.io/open-webui/open-webui:v0.11.4@sha256:9591b13f13843c7721c2b8eaf7382846c81b3ffe126526d1888d1fed50c6a33f
+  n8n: docker.io/n8nio/n8n:2.42.6@sha256:526daa38b68e923cc00c5280d18b4da5d489f115a73bdbf3b8e452b184197a9a
+  uptime_kuma: docker.io/louislam/uptime-kuma:2.5.5@sha256:c74379ac4509ce2d2c2633f509e67003ee2e45b6e995c5e43fc101f45a0e1fbe
+  rest_server: docker.io/restic/rest-server:0.14.0@sha256:d2aff06f47eb38637dff580c3e6bce4af98f386c396a25d32eb6727ec96214a5
 
-# Địa chỉ IPv4 của Box trong LAN để in vào cấu hình máy trạm (để trống: tự lấy IP cổng ra mạng chính)
-onebee_box_address: ""
+# Mã đơn vị — BẮT BUỘC, viết tắt tên khách hàng (vd "hoptacxa-an-phu" → "anphu"): chữ thường không dấu, số, gạch giữa, tối đa 32 ký tự.
+# Nằm trong chứng chỉ CA riêng của Box (chỉ được cấp tên <mã>.onebee.internal) nên mỗi khách một mã khác nhau; đổi mã = xoay CA.
+onebee_box_ma_don_vi: ""
+
+# Địa chỉ IPv4 TĨNH của Box trong LAN — nên khai (hoặc đặt "giữ IP cố định" cho Box trên router). Trống: lấy IP cổng ra mạng chính
+# và cảnh báo. Nằm trong chứng chỉ CA; đổi IP = xoay CA (onebee-box doi-ca) và đồng bộ lại mọi máy trạm.
+onebee_box_dia_chi: ""
+
+# Kỹ thuật vào Box qua Tailscale bằng tên box.<mã đơn vị>.onebee.internal (máy kỹ thuật thêm dòng /etc/hosts trỏ tới IP Tailscale của Box).
+# HTTPS (Pha 4): false = dịch vụ vẫn chạy HTTP như cũ (CA đã tạo, máy trạm nhận CA). Chỉ bật sau khi mọi máy trạm đã đồng bộ CA.
+onebee_box_https: false
+# Bỏ qua chốt chặn "mọi máy đã cấp phải nhận CA trước" khi bật HTTPS (máy hỏng/bỏ không còn liên lạc được).
+# Máy bị bỏ sót mất kết nối tới Box
+# cho tới khi chạy: sudo onebee-box dong-bo-may <tên-máy>
+onebee_box_https_bo_qua_chot_chan: false
 
 # Cổng trong mạng LAN (KHÔNG mở các cổng này ra Internet trên router)
 onebee_box_ports:
@@ -34,6 +49,10 @@ onebee_box_ports:
 # KHÔNG đưa mạng Wi-Fi khách vào. Tắt hẳn (chỉ khi cần dò lỗi): onebee_box_tuong_lua_bat: false
 onebee_box_tuong_lua_bat: true
 onebee_box_lan_cho_phep: []
+# Kỹ thuật vào Box qua Tailscale: địa chỉ Tailscale (100.x.y.z hoặc dải) của MÁY KỸ THUẬT được vào web/SSH/thư mục chung của Box
+# (QĐ6, rà soát bảo mật F5). Để trống: mọi kết nối qua tailscale0 bị chặn. Cổng mạng lạ khác (card phụ, wg0, tun0) luôn bị chặn.
+# Nên kèm ACL phía Tailscale: tag:kythuat → Box tcp 22,80,443,3000,5678,3001; thiết bị khác trong tailnet không vào được Box.
+onebee_box_tailscale_cho_phep: []
 
 # SSH vào Box chỉ bằng khóa, không cho root — tự bật khi đã có khóa SSH của tài khoản quản trị (~/.ssh/authorized_keys)
 onebee_box_ssh_chi_khoa: true
@@ -46,6 +65,9 @@ onebee_box_admin_email: quantri@onebee.lan             # tài khoản quản tr�
 
 # Chỉ cho các dải mạng nội bộ vào thư mục chung
 onebee_box_samba_hosts_allow: "127. 10. 172.16.0.0/12 192.168."
+
+# Samba chỉ SMB 3.1.1 + bắt buộc mã hóa (Windows 10+, Linux). false khi còn máy Windows 7/8 hoặc thiết bị quét cũ cần nối thư mục chung.
+onebee_box_samba_smb3: true
 
 # Thư mục chung Samba
 onebee_box_samba_share: chung
@@ -78,3 +100,23 @@ onebee_box_lich_han:
   - {ten: "Nộp hồ sơ quyết toán thuế năm trước", loai: nam, thang: 3, ngay: cuoi_thang}
   - {ten: "Gửi báo cáo tình hình hoạt động quý cho xã viên (việc nội bộ — ví dụ)", loai: quy, ngay: 15}
 onebee_box_nhac_truoc_ngay: [7, 3, 1, 0]
+
+# Trợ lý AI theo từng nhân viên (Pha 4c): mỗi nhân viên dùng khóa riêng của mình (lệnh `hoi --dang-nhap` / `hoi --dan-khoa`).
+# true (chuyển tiếp): Box vẫn cấp tài khoản + khóa theo từng MÁY (may-<tên>@onebee.lan)
+#   để `hoi` chạy ngay ở nhân viên chưa thiết lập khóa riêng.
+#   Khóa máy nằm trong /etc/onebee-hoi.conf, mọi tài khoản trên máy đọc được (rà soát bảo mật F10).
+# false: thôi cấp tài khoản/khóa theo máy, thôi đẩy HOI_API_KEY xuống máy. Sau đó chạy: sudo onebee-box go-khoa-hoi-may
+#   (xóa các tài khoản may-<tên> cũ trên Open WebUI) — nhân viên nào chưa chạy `hoi --dang-nhap` sẽ không hỏi được nữa.
+onebee_box_hoi_khoa_may: true
+
+# Khóa gửi tình trạng dùng chung (header X-OneBee-Key ở cửa n8n) — chỉ còn là bộ lọc rác, không phải danh tính máy
+# (danh tính = chữ ký HMAC, Pha 2).
+# true (chuyển tiếp): vẫn đòi khóa này và đẩy dòng TINH_TRANG_KEY xuống máy — cần khi còn máy chạy bản desktop cũ
+#   (bản cũ không báo tình trạng nếu thiếu khóa).
+# false: n8n không đòi khóa, Box thôi tạo/đẩy khóa. Chỉ đặt false khi MỌI máy đã chạy lại bộ cài desktop bản mới.
+onebee_box_khoa_tinh_trang_chung: true
+
+# Xoay CA (đổi mã đơn vị hoặc IP của Box, hoặc nghi lộ khóa CA): đặt true MỘT LẦN cùng lúc đổi
+# onebee_box_ma_don_vi / onebee_box_dia_chi, chạy bộ cài, rồi đặt lại false.
+# CA cũ được cất ở /etc/onebee-box/secrets/ca.cu-<ngày giờ>; CA mới tự đẩy xuống mọi máy trạm (máy tắt: dong-bo-may khi bật lại).
+onebee_box_xoay_ca: false

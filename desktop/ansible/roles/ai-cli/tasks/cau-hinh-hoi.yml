@@ -1,0 +1,33 @@
+---
+# /etc/onebee-hoi.conf sinh từ cấu hình máy trạm (onebee_may_tram). Dùng chung với playbook dong-bo-may-tram.yml của Box.
+# Khóa Trợ lý AI của TỪNG NHÂN VIÊN nằm ở ~/.config/onebee/hoi-khoa (lệnh 'hoi --dang-nhap'), không ở đây.
+# Dòng HOI_API_KEY (khóa của MÁY, mọi tài khoản trên máy đọc được — rà soát bảo mật F10) chỉ còn ở giai đoạn chuyển tiếp:
+# Box bỏ dòng này khi đặt onebee_box_hoi_khoa_may: false; file được ghi lại không có dòng đó.
+
+- name: Lấy địa chỉ + khóa Trợ lý AI (từ cấu hình máy trạm, role backup-client đã đọc)
+  ansible.builtin.set_fact:
+    onebee_hoi_url: "{{ onebee_may_tram.HOI_URL | default('') }}"
+    onebee_hoi_key: "{{ onebee_may_tram.HOI_API_KEY | default('') }}"
+  no_log: true
+
+- name: Tạo cấu hình lệnh hoi (người dùng trên máy đọc được)
+  ansible.builtin.copy:
+    dest: /etc/onebee-hoi.conf
+    content: |
+      # Quản lý bởi OneBee OS
+      HOI_URL={{ onebee_hoi_url }}
+      {% if onebee_hoi_key | length > 0 %}
+      HOI_API_KEY={{ onebee_hoi_key }}
+      {% endif %}
+      HOI_MODEL=onebee-tro-ly
+    owner: root
+    group: root
+    mode: "0644"
+  when: onebee_hoi_url | length > 0
+  no_log: true
+
+- name: Gỡ cấu hình hoi cũ khi máy không còn địa chỉ Trợ lý AI
+  ansible.builtin.file:
+    path: /etc/onebee-hoi.conf
+    state: absent
+  when: onebee_hoi_url | length == 0

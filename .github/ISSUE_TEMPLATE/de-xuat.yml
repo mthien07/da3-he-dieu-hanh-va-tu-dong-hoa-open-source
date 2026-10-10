@@ -1,0 +1,29 @@
+name: 💡 Đề xuất tính năng
+description: Việc đơn vị cần làm mà OneBee OS chưa hỗ trợ
+title: "[Đề xuất] "
+labels: ["de-xuat"]
+body:
+  - type: textarea
+    id: van-de
+    attributes:
+      label: Đơn vị đang gặp vấn đề gì?
+      description: Kể theo công việc hằng ngày (ai làm, làm gì, mất bao lâu), chưa cần nói giải pháp
+    validations:
+      required: true
+  - type: textarea
+    id: mong-muon
+    attributes:
+      label: Bạn muốn OneBee làm được gì?
+    validations:
+      required: true
+  - type: textarea
+    id: thay-the
+    attributes:
+      label: Hiện đang xoay xở thế nào?
+  - type: checkboxes
+    id: nguyen-tac
+    attributes:
+      label: Kiểm tra trước khi gửi
+      options:
+        - label: Đề xuất không cần gửi dữ liệu của đơn vị ra ngoài Internet (hoặc đã nêu rõ nếu cần)
+        - label: Đã tìm trong Issues, chưa có đề xuất trùng

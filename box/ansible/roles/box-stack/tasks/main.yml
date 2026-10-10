@@ -1,6 +1,10 @@
 ---
 # Bộ dịch vụ OneBee Box chạy bằng Docker Compose
 
+# Mã đơn vị, IP, CA riêng — trước mọi thứ khác (chốt onebee_box_ip cho cấu hình sinh bên dưới)
+- name: Mã đơn vị, địa chỉ IP và CA riêng của Box
+  ansible.builtin.include_tasks: ca.yml
+
 - name: Tạo thư mục cài đặt và dữ liệu
   ansible.builtin.file:
     path: "{{ item.path }}"
@@ -11,7 +15,12 @@
   loop:
     - {path: "{{ onebee_box_dir }}", mode: "0750"}
     - {path: "{{ onebee_box_dir }}/portal"}
+    - {path: "{{ onebee_box_dir }}/portal/caddy"}
     - {path: "{{ onebee_box_dir }}/portal/site"}
+    - {path: "{{ onebee_box_dir }}/portal/site-http"}
+    - {path: "{{ onebee_box_data }}/caddy", mode: "0700"}
+    - {path: "{{ onebee_box_data }}/caddy/data", mode: "0700"}
+    - {path: "{{ onebee_box_data }}/caddy/config", mode: "0700"}
     - {path: "{{ onebee_box_data }}"}
     - {path: "{{ onebee_box_data }}/ollama", mode: "0700"}
     - {path: "{{ onebee_box_data }}/open-webui", mode: "0700"}
@@ -22,6 +31,15 @@
     - {path: "{{ onebee_box_data }}/restic", mode: "0700"}
     - {path: "{{ onebee_box_dir }}/n8n-import", owner: "1000", mode: "0700"}
     - {path: "{{ onebee_box_dir }}/n8n-import/workflows", owner: "1000", mode: "0700"}
+
+# Danh sách máy đã cấp cho n8n đọc (chỉ đọc): root ghi, nhóm 1000 (n8n) đọc. Nội dung do onebee-box dong-bo-ten-may dựng từ bí mật
+- name: Tạo thư mục danh sách máy đã cấp (n8n chỉ đọc)
+  ansible.builtin.file:
+    path: "{{ onebee_box_data }}/may-da-cap"
+    state: directory
+    owner: root
+    group: "1000"
+    mode: "0750"
 
 - name: Tạo file tài khoản kho sao lưu (rest-server) nếu chưa có
   ansible.builtin.copy:
@@ -67,26 +85,112 @@
   ansible.builtin.set_fact:
     onebee_kuma_dia_chi: "{{ '0.0.0.0' if onebee_kuma_xong.stat.exists else '127.0.0.1' }}"
 
-- name: Sinh cấu hình dịch vụ
-  ansible.builtin.template:
-    src: "{{ item.src }}"
-    dest: "{{ onebee_box_dir }}/{{ item.dest }}"
-    owner: root
-    group: root
-    mode: "0644"
-  loop:
-    - {src: docker-compose.yml.j2, dest: docker-compose.yml}
-    - {src: Caddyfile.j2, dest: portal/Caddyfile}
-    - {src: index.html.j2, dest: portal/site/index.html}
+# Nâng cấp n8n chạy migration CSDL SQLite lúc khởi động, không quay lui được → chép nguyên thư mục dữ liệu n8n trước khi
+# đổi image (lúc n8n đã dừng). Hoàn tác: dừng n8n, trả thư mục chép về chỗ cũ, ghim lại image cũ, chạy lại bộ cài.
+# Chép vào thư mục .tmp rồi đổi tên: chép dở (ổ đầy, mất điện) không bị coi là bản chép hoàn chỉnh. Tên có dấu thời gian: mỗi lần
+# đổi image có một bản riêng. Không xóa tự động — xóa tay sau khi đã dùng ổn: sudo rm -rf /srv/onebee/n8n.truoc-*
+- name: Kiểm tra đã có docker-compose.yml của lần cài trước chưa
+  ansible.builtin.stat:
+    path: "{{ onebee_box_dir }}/docker-compose.yml"
+  register: onebee_compose_cu
 
-- name: Tạo thư mục thư viện lệnh onebee-box
-  ansible.builtin.file:
-    path: /usr/local/lib/onebee-box
-    state: directory
-    owner: root
-    group: root
-    mode: "0750"
+- name: Đọc docker-compose.yml của lần cài trước
+  ansible.builtin.slurp:
+    src: "{{ onebee_box_dir }}/docker-compose.yml"
+  register: onebee_compose_cu_nd
+  when: onebee_compose_cu.stat.exists
 
+# regex_findall (không phải regex_search): trả danh sách rỗng khi không khớp, chạy giống nhau trên ansible-core 2.16 (Ubuntu 24.04) và 2.19.
+# Mẫu không dùng dấu gạch chéo ngược (2.16 và 2.19 xử lý chuỗi thoát trong Jinja khác nhau)
+- name: Xác định image n8n đang dùng và image sắp đổi sang
+  ansible.builtin.set_fact:
+    onebee_n8n_anh_cu: >-
+      {{ ((onebee_compose_cu_nd.content | b64decode) | regex_findall('image: ([A-Za-z0-9._/:@-]*n8nio/n8n[A-Za-z0-9._:@-]*)')
+         | first | default('')) if onebee_compose_cu.stat.exists else '' }}
+    onebee_n8n_ban_sao: >-
+      {{ onebee_box_data }}/n8n.truoc-{{ ((onebee_compose_cu_nd.content | b64decode)
+         | regex_findall('n8nio/n8n:([A-Za-z0-9._-]+)') | first | default('khong-ro'))
+         if onebee_compose_cu.stat.exists else 'khong-ro' }}-{{ ansible_facts.date_time.iso8601_basic_short }}
+
+- name: Chép dữ liệu n8n trước khi đổi image
+  when:
+    - onebee_n8n_anh_cu | length > 0
+    - onebee_n8n_anh_cu != onebee_box_images.n8n
+  block:
+    # Đủ chỗ trống? (ổ đầy cũng làm hỏng ghi SQLite của Open WebUI, Uptime Kuma và thư mục chung Samba) — kiểm TRƯỚC khi dừng n8n
+    - name: Đo dung lượng dữ liệu n8n và chỗ trống trên ổ dữ liệu
+      ansible.builtin.shell: |
+        set -o pipefail
+        echo "$(du -sk {{ onebee_box_data }}/n8n | cut -f1) $(df --output=avail -k {{ onebee_box_data }} | tail -n 1 | tr -d ' ')"
+      args:
+        executable: /bin/bash
+      register: onebee_n8n_dung_luong
+      changed_when: false
+
+    - name: Dừng bộ cài nếu ổ không đủ chỗ cho bản chép (n8n chưa bị dừng)
+      ansible.builtin.assert:
+        that: (onebee_n8n_dung_luong.stdout.split()[1] | int) > (onebee_n8n_dung_luong.stdout.split()[0] | int) * 2 + 1048576
+        fail_msg: >-
+          Không đủ chỗ để chép dữ liệu n8n trước khi nâng cấp (dữ liệu {{ onebee_n8n_dung_luong.stdout.split()[0] }} KB,
+          còn trống {{ onebee_n8n_dung_luong.stdout.split()[1] }} KB; cần ít nhất gấp đôi + 1 GB). Dọn ổ rồi chạy lại bộ cài.
+        quiet: true
+
+    - name: Chép dữ liệu n8n (dừng n8n để chép nhất quán; lỗi giữa chừng thì xóa bản dở và bật lại n8n)
+      block:
+        - name: Dừng n8n
+          ansible.builtin.command: docker compose stop n8n
+          args:
+            chdir: "{{ onebee_box_dir }}"
+          changed_when: true
+
+        # Đảm bảo n8n thật sự đã dừng (không chép SQLite đang mở, có WAL)
+        - name: Kiểm tra n8n không còn chạy
+          ansible.builtin.command: docker compose ps --status running -q n8n
+          args:
+            chdir: "{{ onebee_box_dir }}"
+          register: onebee_n8n_dang_chay
+          changed_when: false
+          failed_when: onebee_n8n_dang_chay.stdout | length > 0
+
+        - name: Xóa thư mục tạm của lần chép dở trước (nếu có)
+          ansible.builtin.file:
+            path: "{{ onebee_n8n_ban_sao }}.tmp"
+            state: absent
+
+        - name: Chép thư mục dữ liệu n8n sang thư mục tạm (giữ nguyên chủ sở hữu và quyền)
+          ansible.builtin.command: "cp -a {{ onebee_box_data }}/n8n {{ onebee_n8n_ban_sao }}.tmp"
+          changed_when: true
+
+        - name: Đổi tên thành bản chép chính thức
+          ansible.builtin.command: "mv {{ onebee_n8n_ban_sao }}.tmp {{ onebee_n8n_ban_sao }}"
+          args:
+            creates: "{{ onebee_n8n_ban_sao }}"
+
+        - name: Báo đã chép
+          ansible.builtin.debug:
+            msg: >-
+              Đã chép dữ liệu n8n sang {{ onebee_n8n_ban_sao }} trước khi đổi {{ onebee_n8n_anh_cu }} → {{ onebee_box_images.n8n }}.
+              Xóa tay khi đã dùng ổn: sudo rm -rf {{ onebee_box_data }}/n8n.truoc-*
+      rescue:
+        - name: Xóa bản chép dở
+          ansible.builtin.file:
+            path: "{{ onebee_n8n_ban_sao }}.tmp"
+            state: absent
+
+        - name: Bật lại n8n (đừng để dịch vụ dừng vì bộ cài lỗi)
+          ansible.builtin.command: docker compose start n8n
+          args:
+            chdir: "{{ onebee_box_dir }}"
+          changed_when: true
+          failed_when: false
+
+        - name: Dừng bộ cài, chưa đổi image
+          ansible.builtin.fail:
+            msg: >-
+              Không chép được dữ liệu n8n trước khi nâng cấp (n8n đã được bật lại, image CHƯA đổi). Kiểm tra ổ đĩa
+              ({{ onebee_box_data }}) rồi chạy lại bộ cài.
+
+# Lệnh onebee-box cài TRƯỚC khi sinh cấu hình dịch vụ: bước quyết định HTTPS (https.yml) gọi "onebee-box may-chua-nhan-ca"
 - name: Cài lệnh quản trị onebee-box
   ansible.builtin.template:
     src: "{{ item.src }}"
@@ -99,31 +203,169 @@
     - {src: onebee-box-sao-luu.sh.j2, dest: /usr/local/lib/onebee-box/sao-luu.sh, mode: "0640"}
     - {src: onebee-box.sh.j2, dest: /usr/local/sbin/onebee-box, mode: "0750"}
 
-- name: Khởi chạy / cập nhật các dịch vụ
+# Đường dẫn bộ cài: onebee-box xoay-khoa --box chạy lại bộ cài để áp dụng mật khẩu mới
+- name: Ghi đường dẫn bộ cài OneBee Box
+  ansible.builtin.copy:
+    content: "{{ (playbook_dir ~ '/../onebee-box-install.sh') | realpath }}\n"
+    dest: /usr/local/lib/onebee-box/duong-dan-bo-cai
+    owner: root
+    group: root
+    mode: "0640"
+
+# Bật HTTPS hay giữ HTTP (chốt chặn: mọi máy đã cấp phải nhận CA trước) → onebee_https_hieu_luc, onebee_https_doi
+- name: Quyết định bật HTTPS
+  ansible.builtin.include_tasks: https.yml
+
+- name: Sinh cấu hình dịch vụ
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ onebee_box_dir }}/{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - {src: docker-compose.yml.j2, dest: docker-compose.yml}
+    - {src: index.html.j2, dest: portal/site/index.html}
+    - {src: huong-dan-ca.html.j2, dest: portal/site-http/index.html}
+
+- name: Sinh cấu hình cổng Caddy
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: "{{ onebee_box_dir }}/portal/caddy/Caddyfile"
+    owner: root
+    group: root
+    mode: "0644"
+  register: onebee_caddyfile
+
+# Chứng chỉ gốc CA là công khai (khóa gốc thì không): máy trạm/thiết bị khác tải về từ http://<IP>/onebee-ca.crt rồi ĐỐI CHIẾU VÂN TAY
+# qua kênh ngoài (bản in khóa, màn hình Box: sudo onebee-box in-ca) — vân tay không hiện trên trang HTTP nào
+- name: Phục vụ chứng chỉ gốc CA (trang giới thiệu HTTP + trang hướng dẫn cài CA)
+  ansible.builtin.copy:
+    src: "{{ onebee_box_secrets }}/ca/root.crt"
+    remote_src: true
+    dest: "{{ onebee_box_dir }}/portal/{{ item }}/onebee-ca.crt"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: [site, site-http]
+
+# Máy đã cấp từ trước (Box nâng cấp) được ghi vào danh sách; Box mới chưa có máy nào thì không đổi gì
+- name: Đồng bộ danh sách máy đã cấp cho n8n
+  ansible.builtin.command: /usr/local/sbin/onebee-box dong-bo-ten-may
+  register: onebee_ten_may
+  changed_when: onebee_ten_may.stdout is search('đã đổi')
+
+# Chuyển HTTP ↔ HTTPS đổi chủ các cổng 3000/5678/3001/8000 (backend ↔ Caddy): dừng các dịch vụ giữ cổng trước,
+# kẻo "port is already allocated".
+# Chỉ làm khi trạng thái HTTPS thật sự đổi (dừng vài chục giây). Image không đổi nên không tải lại gì.
+- name: Chuyển HTTP ↔ HTTPS — dừng các dịch vụ đang giữ cổng
+  ansible.builtin.command: docker compose stop portal open-webui n8n uptime-kuma rest-server
+  args:
+    chdir: "{{ onebee_box_dir }}"
+  when: onebee_https_doi | bool and onebee_compose_cu.stat.exists
+  changed_when: true
+
+# Dịch vụ backend trước, cổng Caddy (portal) sau: không tranh cổng khi chuyển, và Caddy khởi động khi backend đã có
+- name: Khởi chạy / cập nhật dịch vụ backend
+  ansible.builtin.command: docker compose up -d --remove-orphans --no-deps ollama open-webui n8n uptime-kuma rest-server
+  args:
+    chdir: "{{ onebee_box_dir }}"
+  register: onebee_compose_up_be
+  changed_when: onebee_compose_up_be.stderr is search('Creat|Recreat|Start|Pull')
+  # Lần đầu phải tải hơn 10 GB image; mạng chập chờn (gặp thật khi thử 8/10: EOF, DNS lỗi, TLS quá giờ) → thử lại,
+  # phần đã tải được giữ. Image đã có sẵn thì không cần mạng.
+  retries: 5
+  delay: 30
+  until: onebee_compose_up_be.rc == 0
+
+- name: Khởi chạy / cập nhật cổng Caddy (portal)
   ansible.builtin.command: docker compose up -d --remove-orphans
   args:
     chdir: "{{ onebee_box_dir }}"
   register: onebee_compose_up
   changed_when: onebee_compose_up.stderr is search('Creat|Recreat|Start|Pull')
-  # Lần đầu phải tải hơn 10 GB image; mạng chập chờn (gặp thật khi thử 8/10: EOF, DNS lỗi, TLS quá giờ) → thử lại,
-  # phần đã tải được giữ. Image đã có sẵn thì không cần mạng.
   retries: 5
   delay: 30
   until: onebee_compose_up.rc == 0
 
-- name: Chờ các dịch vụ web sẵn sàng
+# CA đổi (xoay CA, gia hạn trung gian): chứng chỉ đã cấp cho từng cổng ký bằng CA cũ → xóa để Caddy cấp lại bằng CA mới, rồi nạp lại
+- name: CA đổi — xóa chứng chỉ cũ của Caddy và khởi động lại cổng
+  ansible.builtin.shell: >-
+    rm -rf {{ onebee_box_data }}/caddy/data/caddy/certificates && docker restart onebee-portal
+  when: (onebee_ca is changed or onebee_https_doi | bool) and (onebee_https_hieu_luc | bool)
+  changed_when: true
+
+# Caddyfile đổi mà container không bị tạo lại (compose giữ nguyên) → nạp lại cấu hình, không đứt kết nối đang có
+- name: Nạp lại cấu hình Caddy
+  ansible.builtin.command: docker exec onebee-portal caddy reload --config /etc/caddy/Caddyfile --force
+  when: onebee_caddyfile is changed and not ((onebee_ca is changed or onebee_https_doi | bool) and (onebee_https_hieu_luc | bool))
+  register: onebee_caddy_reload
+  retries: 5
+  delay: 3
+  until: onebee_caddy_reload.rc == 0
+  changed_when: true
+
+# Các cổng web (chạy lại nhiều lần an toàn). HTTP: gọi thẳng cổng backend trên 127.0.0.1.
+# HTTPS: qua Caddy bằng https://<IP>:<cổng> (Box tin CA riêng);
+# kiểm cả NỘI DUNG vì Caddy trả 200 rỗng khi Host không khớp site nào
+- name: Chờ các dịch vụ web sẵn sàng (HTTP)
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ item }}/"
     status_code: [200, 302, 401]
   register: onebee_http
   until: onebee_http.status in [200, 302, 401]
-  retries: 60
+  retries: 120   # n8n lần đầu sau khi nâng cấp chạy migration CSDL — có thể lâu hơn 5 phút
   delay: 5
   loop:
     - "{{ onebee_box_ports.portal }}"
     - "{{ onebee_box_ports.open_webui }}"
     - "{{ onebee_box_ports.n8n }}"
     - "{{ onebee_box_ports.uptime_kuma }}"
+  when: not (onebee_https_hieu_luc | bool)
+
+- name: Chờ các dịch vụ web sẵn sàng (HTTPS qua Caddy)
+  ansible.builtin.uri:
+    url: "https://{{ onebee_box_ip }}{{ item.cong }}/"
+    status_code: [200, 302, 401]
+    return_content: true
+  register: onebee_https
+  until: onebee_https.status in [200, 302, 401] and (item.noi_dung in onebee_https.content)
+  retries: 120
+  delay: 5
+  loop:
+    - {cong: "", noi_dung: "OneBee Box"}
+    - {cong: ":{{ onebee_box_ports.open_webui }}", noi_dung: "Open WebUI"}
+    - {cong: ":{{ onebee_box_ports.n8n }}", noi_dung: "n8n"}
+  loop_control:
+    label: "{{ item.cong }}"
+  when: onebee_https_hieu_luc | bool
+
+# Uptime Kuma: chưa có tài khoản quản trị thì Caddy chưa mở cổng 3001 → kiểm bên trong container; có rồi thì kiểm qua Caddy
+- name: Chờ Uptime Kuma sẵn sàng (HTTPS, kiểm trong container khi chưa mở cổng 3001)
+  ansible.builtin.command: >-
+    docker exec onebee-uptime-kuma node -e
+    "fetch('http://127.0.0.1:3001/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"
+  register: onebee_kuma_san_sang
+  until: onebee_kuma_san_sang.rc == 0
+  retries: 120
+  delay: 5
+  changed_when: false
+  when: (onebee_https_hieu_luc | bool) and not onebee_kuma_xong.stat.exists
+
+- name: Chờ Uptime Kuma sẵn sàng (HTTPS qua Caddy)
+  ansible.builtin.uri:
+    url: "https://{{ onebee_box_ip }}:{{ onebee_box_ports.uptime_kuma }}/"
+    status_code: [200, 302, 401]
+    return_content: true
+  register: onebee_kuma_https
+  until: onebee_kuma_https.status in [200, 302, 401] and ('Uptime Kuma' in onebee_kuma_https.content)
+  retries: 120
+  delay: 5
+  when: (onebee_https_hieu_luc | bool) and onebee_kuma_xong.stat.exists
+
+# Dịch vụ đã chuyển xong → ghi/xóa dấu HTTPS (các lệnh onebee-box, kể cả "dong-bo-tro-ly" ở role sau, từ đây gọi theo chế độ mới)
+- name: Ghi nhận trạng thái HTTPS
+  ansible.builtin.include_tasks: https-dau.yml
 
 # Giám sát: tạo sẵn tài khoản quản trị Uptime Kuma (không còn "ai mở trước thành quản trị"), danh sách theo dõi
 # các dịch vụ của Box, email báo khi dịch vụ ngừng (khi đã cấu hình email)
@@ -145,7 +387,7 @@
 - name: Cấu hình Uptime Kuma (tài khoản, theo dõi dịch vụ, email báo)
   ansible.builtin.shell: >-
     set -o pipefail;
-    docker exec -i -w /app -e KUMA_USER -e KUMA_PASS -e KUMA_MONITORS -e KUMA_SMTP onebee-uptime-kuma
+    docker exec -i -w /app -e KUMA_USER -e KUMA_PASS -e KUMA_MONITORS -e KUMA_SMTP -e KUMA_TRUST_PROXY onebee-uptime-kuma
     node - < /usr/local/lib/onebee-box/onebee-kuma.js
   args:
     executable: /bin/bash
@@ -154,8 +396,14 @@
     KUMA_PASS: "{{ onebee_kuma_password }}"
     KUMA_MONITORS: "{{ onebee_kuma_monitors | to_json }}"
     KUMA_SMTP: "{{ (onebee_kuma_smtp | to_json) if onebee_box_email.smtp_host else '' }}"
+    KUMA_TRUST_PROXY: "{{ '1' if (onebee_https_hieu_luc | bool) else '0' }}"
   vars:
-    onebee_kuma_monitors:
+    # Theo dõi nội bộ luôn gọi http://<dịch vụ> trong mạng Docker (không phụ thuộc HTTPS); khi bật HTTPS thêm theo dõi cổng Caddy
+    # (ignoreTls: trong container Kuma tên "portal" không khớp chứng chỉ của IP Box — chỉ kiểm Caddy còn trả lời)
+    onebee_kuma_monitors: "{{ onebee_kuma_monitors_goc + (onebee_kuma_monitor_https if (onebee_https_hieu_luc | bool) else []) }}"
+    onebee_kuma_monitor_https:
+      - {name: "Cổng HTTPS (Caddy)", url: "https://portal:443/", ignoreTls: true}
+    onebee_kuma_monitors_goc:
       - {name: "Trang giới thiệu", url: "http://portal/"}
       - {name: "Trợ lý AI (Open WebUI)", url: "http://open-webui:8080/health"}
       - {name: "AI chạy tại chỗ (Ollama)", url: "http://ollama:11434/"}
@@ -195,16 +443,20 @@
       ansible.builtin.set_fact:
         onebee_kuma_dia_chi: 0.0.0.0
 
-    - name: Sinh lại cấu hình dịch vụ với cổng giám sát mở ra LAN
+    - name: Sinh lại cấu hình dịch vụ và cổng Caddy với cổng giám sát mở ra LAN
       ansible.builtin.template:
-        src: docker-compose.yml.j2
-        dest: "{{ onebee_box_dir }}/docker-compose.yml"
+        src: "{{ item.src }}"
+        dest: "{{ onebee_box_dir }}/{{ item.dest }}"
         owner: root
         group: root
         mode: "0644"
+      loop:
+        - {src: docker-compose.yml.j2, dest: docker-compose.yml}
+        - {src: Caddyfile.j2, dest: portal/caddy/Caddyfile}
 
-    - name: Khởi động lại giám sát với cổng mới
-      ansible.builtin.command: docker compose up -d uptime-kuma
+    # HTTP: giám sát tự công bố cổng 3001. HTTPS: Caddy mới công bố cổng 3001 (và có site cho nó) → tạo lại cổng
+    - name: Khởi động lại giám sát / cổng Caddy với cổng mới
+      ansible.builtin.command: docker compose up -d uptime-kuma portal
       args:
         chdir: "{{ onebee_box_dir }}"
       changed_when: true
