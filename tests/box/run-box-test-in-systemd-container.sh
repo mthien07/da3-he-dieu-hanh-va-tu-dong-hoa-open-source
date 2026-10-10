@@ -63,7 +63,7 @@ box "sed -i -E 's#^  smtp_host: .*#  smtp_host: \"mailpit\"#; s#^  smtp_port: .*
 
 echo "===== LẦN 1: cài đặt ====="
 box '/root/onebee-test/box/onebee-box-install.sh > /tmp/run1.log 2>&1 || { tail -40 /tmp/run1.log; exit 1; }; tail -3 /tmp/run1.log'
-box 'grep -q "Khởi động lại giám sát với cổng mới" /tmp/run1.log || { echo "FAIL  Lần cài đầu không mở giám sát theo 2 bước"; exit 1; }
+box 'grep -q "Khởi động lại giám sát / cổng Caddy với cổng mới" /tmp/run1.log || { echo "FAIL  Lần cài đầu không mở giám sát theo 2 bước"; exit 1; }
      echo "PASS  Lần cài đầu: giám sát chỉ mở trong Box tới khi có tài khoản quản trị, rồi mới mở ra LAN"'
 echo "===== LẦN 2: kiểm tra idempotent ====="
 box '/root/onebee-test/box/onebee-box-install.sh > /tmp/run2.log 2>&1
