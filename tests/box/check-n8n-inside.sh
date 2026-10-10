@@ -70,12 +70,17 @@ echo "PASS  Tóm tắt PDF bằng AI nội bộ qua biểu mẫu n8n"
 
 # Rà soát bảo mật (S1): trang kết quả không để HTML thô của AI chạy — quy trình dùng respondWith "text" (n8n lọc sanitize-html)
 # + thoát & < >, và n8n luôn gửi CSP "sandbox" (không có allow-same-origin) cho trang biểu mẫu
-python3 - /opt/onebee-box/n8n-import/workflows/03-tom-tat-van-ban.json <<'PY' || { echo "FAIL  Quy trình tóm tắt PDF còn hiển thị HTML thô (showText) hoặc không thoát < >"; exit 1; }
+# Kiểm quy trình THẬT đang nằm trong n8n (xuất ra từ n8n), không phải file mẫu đã sinh: nếu bước nhập lỗi âm thầm thì bắt được
+docker exec onebee-n8n n8n export:workflow --id=onebeeTomTat0001 --output=/tmp/wf03.json >/dev/null 2>&1 \
+  || { echo "FAIL  Không xuất được quy trình tóm tắt PDF từ n8n (n8n export:workflow)"; exit 1; }
+docker exec onebee-n8n cat /tmp/wf03.json | python3 -c '
 import json, sys
-nut = [n for n in json.load(open(sys.argv[1], encoding="utf-8"))["nodes"] if n["name"] == "Hiện bản tóm tắt"][0]["parameters"]
+d = json.load(sys.stdin)
+wf = d[0] if isinstance(d, list) else d
+nut = [n for n in wf["nodes"] if n["name"] == "Hiện bản tóm tắt"][0]["parameters"]
 assert nut["respondWith"] == "text", nut
 assert "replace(/</g" in nut["completionMessage"] and "replace(/>/g" in nut["completionMessage"], nut
-PY
+' || { echo "FAIL  Quy trình tóm tắt PDF trong n8n còn hiển thị HTML thô (showText) hoặc không thoát < >"; exit 1; }
 hdr=$(curl -s -m 60 -D - -o /dev/null -u "${FORM_AUTH}" "${N8N}${wait_path}?${wait_query}")
 csp=$(grep -i '^content-security-policy:' <<<"${hdr}" || true)
 [[ "${csp,,}" == *sandbox* && "${csp,,}" != *allow-same-origin* ]] \

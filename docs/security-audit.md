@@ -282,17 +282,25 @@ Box cài mới chưa có máy trạm: Pha 3 + 4 có hiệu lực ngay trong mộ
 #### Trạng thái triển khai Pha 1 (10/10/2026)
 Đã làm (và khác/bổ sung so với kế hoạch ở trên):
 - Digest: **cả 6 image** đã ghim tag + digest index đa kiến trúc (tự lấy từ registry; n8n khớp với kết quả agent).
-- Tự chép dữ liệu n8n trước khi đổi image (`box-stack/tasks/main.yml`): đã thử biểu thức nhận diện image bằng ansible-core thật với 4 trường hợp
-  (bản cũ, cùng bản, bản khác tag, chưa có compose). Dùng `regex_findall` và lớp ký tự không có dấu `\` vì ansible-core 2.16 (trên Box) và 2.19
-  xử lý chuỗi thoát khác nhau; `regex_search` có nhóm thu thập còn **báo lỗi** trên 2.19 khi không khớp.
-- `failed_when` khi nhập quy trình chỉ bắt chữ `blocked by policy` (không bắt `Skipped` như kế hoạch, vì chưa biết chữ này có xuất hiện trong
-  đầu ra bình thường không → tránh làm hỏng cài đặt vì báo nhầm).
-- `ENABLE_ADMIN_CHAT_ACCESS`/`ENABLE_ADMIN_EXPORT`: đã đối chiếu mã nguồn v0.11.4 — chặn xem chat người khác và xuất chat/tải CSDL **qua Open WebUI**;
-  không phải mã hóa: người có root trên Box vẫn đọc được file dữ liệu (đã ghi vào tài liệu cho đơn vị).
+- Tự chép dữ liệu n8n trước khi đổi image (`box-stack/tasks/main.yml`), đã sửa sau rà soát Opus: kiểm chỗ trống TRƯỚC khi dừng n8n; chép vào
+  `.tmp` rồi đổi tên (chép dở không bị coi là bản hoàn chỉnh); `rescue`: lỗi giữa chừng thì xóa bản dở, bật lại n8n, dừng bộ cài (image chưa đổi);
+  xác nhận n8n đã dừng trước khi chép (SQLite có WAL); tên bản chép có dấu thời gian. Đã chạy khối này bằng ansible-core thật (docker/cp giả):
+  nhánh thành công và nhánh chép lỗi đều đúng. Biểu thức nhận diện image thử với 4 trường hợp. Dùng `regex_findall` và lớp ký tự không có dấu `\`
+  vì ansible-core 2.16 (trên Box) và 2.19 xử lý chuỗi thoát trong Jinja khác nhau [Inference: chưa thử trên 2.16].
+- `failed_when` khi nhập: thông tin đăng nhập bắt `blocked by policy`, quy trình bắt `blocked by policy|content-import policy violation`
+  (chữ thật của n8n@2.42.6: `Skipping credential … blocked by policy`, `Skipped workflow "…": N content-import policy violation(s)` — đối chiếu
+  mã nguồn `import/credentials.ts`, `import/workflow.ts`; bản đầu chỉ bắt chữ đầu nên không bao giờ khớp với quy trình). Không bắt `Skipped` trơn
+  để khỏi báo nhầm.
+- `ENABLE_ADMIN_CHAT_ACCESS`/`ENABLE_ADMIN_EXPORT`: đã đối chiếu mã nguồn v0.11.4 — chặn xem chat người khác và xuất chat/tải CSDL **qua Open WebUI**
+  (2 biến chỉ đọc từ môi trường). Không phải mã hóa: **quản trị vẫn đặt lại được mật khẩu nhân viên** (`routers/users.py` `update_user_by_id`, quyền
+  admin) rồi đăng nhập đọc chat, và người có root trên Box đọc được file dữ liệu. Đã ghi vào tài liệu cho đơn vị. Rủi ro còn lại này thuộc F4/QĐ10:
+  không chặn được bằng cấu hình; phát hiện được vì mật khẩu cũ của nhân viên mất tác dụng.
 - `JWT_EXPIRES_IN=30d`: định dạng hợp lệ (`parse_duration` trong mã nguồn). N1 (`ENABLE_PLUGINS=false`) chỉ đọc từ biến môi trường: ✔ `env.py`.
 - N7: máy trạm báo `sudo_so` (số tài khoản, không gửi tên); Box cảnh báo khi > 1; bộ cài Desktop cảnh báo (biến `onebee_tai_khoan_quan_tri`).
 - N4 và `cai-hang-loat.md` đã sửa.
 Chưa làm hoặc chưa kiểm được trong môi trường này (không có Docker lồng/systemd):
+- Chụp snapshot restic có tag `truoc-nang-cap` (+ `--keep-tag`) khi có ổ ngoài — hiện chỉ có bản chép cục bộ `n8n.truoc-*` (đủ để hoàn tác n8n).
+- Test hành vi "tài khoản quản trị gọi API xem chat nhân viên bị từ chối" — mới kiểm biến môi trường + đọc mã nguồn; cần thử trên Open WebUI thật.
 - Chạy `run-box-test-in-systemd-container.sh` đầy đủ (cài Box thật, nâng cấp từ bản cũ, `changed=0` lần 2) và test nâng cấp 2.40.7 → 2.42.6.
 - Kiểm tay trên Box thật: n8n khởi động được với image mới + migration, 9 quy trình nhập/kích hoạt đúng, trang tóm tắt PDF hiển thị tốt;
   `N8N_MCP_*` và `N8N_DISABLED_MODULES` được n8n 2.42.6 nhận (đọc từ mã nguồn, chưa chạy thật).

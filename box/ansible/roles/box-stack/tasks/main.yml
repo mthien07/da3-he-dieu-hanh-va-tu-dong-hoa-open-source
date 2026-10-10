@@ -69,7 +69,8 @@
 
 # Nâng cấp n8n chạy migration CSDL SQLite lúc khởi động, không quay lui được → chép nguyên thư mục dữ liệu n8n trước khi
 # đổi image (lúc n8n đã dừng). Hoàn tác: dừng n8n, trả thư mục chép về chỗ cũ, ghim lại image cũ, chạy lại bộ cài.
-# Không xóa tự động — xóa tay sau khi đã dùng ổn: sudo rm -rf /srv/onebee/n8n.truoc-*
+# Chép vào thư mục .tmp rồi đổi tên: chép dở (ổ đầy, mất điện) không bị coi là bản chép hoàn chỉnh. Tên có dấu thời gian: mỗi lần
+# đổi image có một bản riêng. Không xóa tự động — xóa tay sau khi đã dùng ổn: sudo rm -rf /srv/onebee/n8n.truoc-*
 - name: Kiểm tra đã có docker-compose.yml của lần cài trước chưa
   ansible.builtin.stat:
     path: "{{ onebee_box_dir }}/docker-compose.yml"
@@ -89,38 +90,87 @@
       {{ ((onebee_compose_cu_nd.content | b64decode) | regex_findall('image: ([A-Za-z0-9._/:@-]*n8nio/n8n[A-Za-z0-9._:@-]*)')
          | first | default('')) if onebee_compose_cu.stat.exists else '' }}
     onebee_n8n_ban_sao: >-
-      {{ onebee_box_data }}/n8n.truoc-{{ ((onebee_compose_cu_nd.content | b64decode) | regex_findall('n8nio/n8n:([A-Za-z0-9._-]+)')
-         | first | default('khong-ro')) if onebee_compose_cu.stat.exists else 'khong-ro' }}
-
-- name: Kiểm tra đã chép dữ liệu n8n cho lần đổi image này chưa
-  ansible.builtin.stat:
-    path: "{{ onebee_n8n_ban_sao }}"
-  register: onebee_n8n_ban_sao_stat
+      {{ onebee_box_data }}/n8n.truoc-{{ ((onebee_compose_cu_nd.content | b64decode)
+         | regex_findall('n8nio/n8n:([A-Za-z0-9._-]+)') | first | default('khong-ro'))
+         if onebee_compose_cu.stat.exists else 'khong-ro' }}-{{ ansible_facts.date_time.iso8601_basic_short }}
 
 - name: Chép dữ liệu n8n trước khi đổi image
   when:
     - onebee_n8n_anh_cu | length > 0
     - onebee_n8n_anh_cu != onebee_box_images.n8n
-    - not onebee_n8n_ban_sao_stat.stat.exists
   block:
-    - name: Dừng n8n để chép nhất quán
-      ansible.builtin.command: docker compose stop n8n
+    # Đủ chỗ trống? (ổ đầy cũng làm hỏng ghi SQLite của Open WebUI, Uptime Kuma và thư mục chung Samba) — kiểm TRƯỚC khi dừng n8n
+    - name: Đo dung lượng dữ liệu n8n và chỗ trống trên ổ dữ liệu
+      ansible.builtin.shell: |
+        set -o pipefail
+        echo "$(du -sk {{ onebee_box_data }}/n8n | cut -f1) $(df --output=avail -k {{ onebee_box_data }} | tail -n 1 | tr -d ' ')"
       args:
-        chdir: "{{ onebee_box_dir }}"
-      changed_when: true
-      failed_when: false
+        executable: /bin/bash
+      register: onebee_n8n_dung_luong
+      changed_when: false
 
-    - name: Chép thư mục dữ liệu n8n (giữ nguyên chủ sở hữu và quyền)
-      ansible.builtin.command: "cp -a {{ onebee_box_data }}/n8n {{ onebee_n8n_ban_sao }}"
-      args:
-        creates: "{{ onebee_n8n_ban_sao }}"
-      changed_when: true
+    - name: Dừng bộ cài nếu ổ không đủ chỗ cho bản chép (n8n chưa bị dừng)
+      ansible.builtin.assert:
+        that: (onebee_n8n_dung_luong.stdout.split()[1] | int) > (onebee_n8n_dung_luong.stdout.split()[0] | int) * 2 + 1048576
+        fail_msg: >-
+          Không đủ chỗ để chép dữ liệu n8n trước khi nâng cấp (dữ liệu {{ onebee_n8n_dung_luong.stdout.split()[0] }} KB,
+          còn trống {{ onebee_n8n_dung_luong.stdout.split()[1] }} KB; cần ít nhất gấp đôi + 1 GB). Dọn ổ rồi chạy lại bộ cài.
+        quiet: true
 
-    - name: Báo đã chép
-      ansible.builtin.debug:
-        msg: >-
-          Đã chép dữ liệu n8n sang {{ onebee_n8n_ban_sao }} trước khi đổi {{ onebee_n8n_anh_cu }} → {{ onebee_box_images.n8n }}.
-          Xóa tay khi đã dùng ổn: sudo rm -rf {{ onebee_box_data }}/n8n.truoc-*
+    - name: Chép dữ liệu n8n (dừng n8n để chép nhất quán; lỗi giữa chừng thì xóa bản dở và bật lại n8n)
+      block:
+        - name: Dừng n8n
+          ansible.builtin.command: docker compose stop n8n
+          args:
+            chdir: "{{ onebee_box_dir }}"
+          changed_when: true
+
+        # Đảm bảo n8n thật sự đã dừng (không chép SQLite đang mở, có WAL)
+        - name: Kiểm tra n8n không còn chạy
+          ansible.builtin.command: docker compose ps --status running -q n8n
+          args:
+            chdir: "{{ onebee_box_dir }}"
+          register: onebee_n8n_dang_chay
+          changed_when: false
+          failed_when: onebee_n8n_dang_chay.stdout | length > 0
+
+        - name: Xóa thư mục tạm của lần chép dở trước (nếu có)
+          ansible.builtin.file:
+            path: "{{ onebee_n8n_ban_sao }}.tmp"
+            state: absent
+
+        - name: Chép thư mục dữ liệu n8n sang thư mục tạm (giữ nguyên chủ sở hữu và quyền)
+          ansible.builtin.command: "cp -a {{ onebee_box_data }}/n8n {{ onebee_n8n_ban_sao }}.tmp"
+          changed_when: true
+
+        - name: Đổi tên thành bản chép chính thức
+          ansible.builtin.command: "mv {{ onebee_n8n_ban_sao }}.tmp {{ onebee_n8n_ban_sao }}"
+          args:
+            creates: "{{ onebee_n8n_ban_sao }}"
+
+        - name: Báo đã chép
+          ansible.builtin.debug:
+            msg: >-
+              Đã chép dữ liệu n8n sang {{ onebee_n8n_ban_sao }} trước khi đổi {{ onebee_n8n_anh_cu }} → {{ onebee_box_images.n8n }}.
+              Xóa tay khi đã dùng ổn: sudo rm -rf {{ onebee_box_data }}/n8n.truoc-*
+      rescue:
+        - name: Xóa bản chép dở
+          ansible.builtin.file:
+            path: "{{ onebee_n8n_ban_sao }}.tmp"
+            state: absent
+
+        - name: Bật lại n8n (đừng để dịch vụ dừng vì bộ cài lỗi)
+          ansible.builtin.command: docker compose start n8n
+          args:
+            chdir: "{{ onebee_box_dir }}"
+          changed_when: true
+          failed_when: false
+
+        - name: Dừng bộ cài, chưa đổi image
+          ansible.builtin.fail:
+            msg: >-
+              Không chép được dữ liệu n8n trước khi nâng cấp (n8n đã được bật lại, image CHƯA đổi). Kiểm tra ổ đĩa
+              ({{ onebee_box_data }}) rồi chạy lại bộ cài.
 
 - name: Sinh cấu hình dịch vụ
   ansible.builtin.template:

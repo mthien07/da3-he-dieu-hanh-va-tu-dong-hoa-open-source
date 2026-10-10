@@ -103,7 +103,8 @@ không quay lui được). Hoàn tác: `docker compose stop n8n` (trong `/opt/on
 Box giữ mật khẩu kho sao lưu của từng máy trạm (để tự dọn bản cũ) → người quản trị Box **đọc được** bản sao lưu `/home`
 của mọi máy. Box còn có **quyền quản trị (root) trên máy trạm** qua SSH để cập nhật. Cần thông báo 2 điều này cho đơn vị
 khi triển khai, và giữ Box kín (chỉ kỹ thuật viên có mật khẩu). Chat Trợ lý AI của nhân viên: tài khoản quản trị Open WebUI bị chặn
-không xem/xuất được, nhưng người có root trên Box vẫn đọc được file dữ liệu — cũng cần nói rõ với đơn vị.
+không xem/xuất được, nhưng quản trị vẫn đặt lại được mật khẩu nhân viên rồi đăng nhập, và người có root trên Box vẫn đọc được
+file dữ liệu — cũng cần nói rõ với đơn vị.
 
 ## Giới hạn đã biết
 - Chưa giới hạn dung lượng từng máy trạm trên Box; theo dõi bằng `sudo onebee-box trang-thai`.

@@ -4,8 +4,8 @@
 ### Bảo mật (rà soát 10/10/2026 — Pha 1, xem `docs/security-audit.md`)
 - **n8n 2.40.7 → 2.42.6** (dòng 2.40 đã ngừng nhận bản vá; bản mới vá cả 14 advisory ngày 30/9). Mọi image dịch vụ ghim **tag + digest**
   (`@sha256`, bản đa kiến trúc). Mỗi lần đổi image n8n, bộ cài tự dừng n8n và chép dữ liệu sang `/srv/onebee/n8n.truoc-<phiên bản cũ>`
-  (migration CSDL không quay lui được). Chờ dịch vụ sẵn sàng lâu hơn (migration). Nhập quy trình/thông tin đăng nhập báo lỗi nếu n8n
-  in "blocked by policy".
+  (migration CSDL không quay lui được): kiểm chỗ trống trước, chép vào thư mục tạm rồi đổi tên, lỗi giữa chừng thì bật lại n8n và dừng bộ cài.
+  Chờ dịch vụ sẵn sàng lâu hơn (migration). Nhập quy trình/thông tin đăng nhập báo lỗi nếu n8n bỏ qua mục vì chính sách.
 - n8n: tắt mô-đun Agents (bật sẵn từ 2.41.1) và MCP, chặn nút Git; `WEBHOOK_URL` → `N8N_WEBHOOK_URL`.
 - Quy trình "Tóm tắt PDF": trang kết quả dùng chế độ chữ (n8n lọc HTML) và thoát `& < >` — câu trả lời của AI, vốn đọc từ PDF do người dùng
   tải lên, không còn hiển thị thành HTML thô. Đồng thời sửa lỗi các dòng "-" bị dồn thành một đoạn.
