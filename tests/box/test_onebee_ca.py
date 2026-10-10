@@ -124,6 +124,13 @@ class CaRieng(unittest.TestCase):
         self.assertNotEqual(open(f"{self.ca}/root.sha256").read(), van_tay_cu)
         self.assertTrue([d for d in os.listdir(self.t) if d.startswith("ca.cu-")])   # CA cũ được cất lại, không mất
 
+    def test_xoay_khi_ma_va_ip_khong_doi_van_xoay_de_ung_pho_lo_khoa(self):
+        goc_cu = open(f"{self.ca}/root.sha256").read()
+        r = chay(SCRIPT, self.ca, "anphu", "127.0.0.1", "--xoay")
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "đã đổi"), r.stderr)
+        self.assertNotEqual(open(f"{self.ca}/root.sha256").read(), goc_cu)
+        self.assertTrue([d for d in os.listdir(self.t) if d.startswith("ca.cu-")])
+
     def test_gia_han_trung_gian_khi_con_it_ngay_giu_nguyen_goc(self):
         goc = open(f"{self.ca}/root.crt", "rb").read()
         # Giả lập trung gian sắp hết hạn: ký lại với hạn 10 ngày
