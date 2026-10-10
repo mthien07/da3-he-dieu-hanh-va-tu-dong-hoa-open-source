@@ -53,7 +53,7 @@ cmd_sao_luu() {
   if [[ -s "${CA_DIR}/root.crt" ]]; then
     gia_han_ca >/dev/null || warn "Không gia hạn được CA riêng của Box — xem: sudo onebee-box in-ca"
     [[ "$(ca_con_ngay inter)" -ge 30 ]] || warn "CA trung gian của Box còn dưới 30 ngày hoặc đã hết hạn — chạy bộ cài OneBee Box"
-    [[ "$(ca_con_ngay root)" -ge 365 ]] || warn "CA gốc của Box còn dưới 1 năm — lên kế hoạch xoay CA: sudo onebee-box doi-ca"
+    [[ "$(ca_con_ngay root)" -ge 365 ]] || warn "CA gốc của Box còn dưới 1 năm — lên kế hoạch xoay CA (onebee_box_xoay_ca trong group_vars/all.yml)"
   fi
   # Bước 1: tạm dừng dịch vụ có cơ sở dữ liệu, chụp nhanh phần dữ liệu của chúng (nhất quán), chạy lại ngay
   local svcs=(open-webui n8n uptime-kuma)
@@ -169,7 +169,7 @@ cmd_khoi_phuc_toan_bo() {
   # lẫn với CSDL cũ có thể làm hỏng dữ liệu)
   rm -rf "${DATA}/open-webui" "${DATA}/n8n" "${DATA}/uptime-kuma" "${DATA}/ho-tro"
   # CA riêng do lần cài lại vừa sinh phải nhường chỗ cho CA cũ (máy trạm đã tin CA cũ): xóa CA mới rồi khôi phục CA cũ từ bản sao lưu
-  rm -rf "${CA_DIR}" "${HTTPS_DAU}"   # dấu HTTPS do bản cài lại ghi cũng nhường chỗ cho dấu trong bản sao lưu (nếu có)
+  rm -rf "${CA_DIR}" "${HTTPS_DAU}" "${DATA}/caddy/data/caddy/certificates"   # chứng chỉ lá Caddy đã cấp bằng CA của bản cài lại cũng bỏ   # dấu HTTPS do bản cài lại ghi cũng nhường chỗ cho dấu trong bản sao lưu (nếu có)
   restic restore latest --tag onebee-box,csdl --target / || die "Khôi phục dữ liệu Box lỗi — chưa chạy lại dịch vụ"
   restic restore latest --tag onebee-box,chung --target / || warn "Khôi phục thư mục chung lỗi — thử lại lệnh này"
   [[ -s "${CA_DIR}/root.crt" ]] || die "Bản sao lưu không có CA riêng của Box (${CA_DIR}) — không khôi phục tiếp, vì mọi máy trạm đang tin CA cũ"

@@ -26,6 +26,42 @@ def openssl(args, du_lieu):
     return r.stdout
 
 
+TEN_DNS = re.compile(r"[a-z0-9]([a-z0-9-]*[a-z0-9])?\.onebee\.internal")
+DONG_IP = re.compile(r"      IP:((\d{1,3}\.){3}\d{1,3}/(\d{1,3}\.){3}\d{1,3})")
+DONG_DNS = re.compile(r"      DNS:(.*)")
+
+
+def rang_buoc_nghiem(ext):
+    """Đọc phần nameConstraints trong đầu ra `openssl x509 -ext …` theo cách NGHIÊM: sau tiêu đề chỉ được có đúng dòng "    Permitted:" rồi các dòng
+    "      IP:<ip>/<mask>" hoặc "      DNS:<nhãn>.onebee.internal" — mọi dòng khác (Excluded:, loại tên khác, ký tự lạ) đều bị từ chối.
+    Lý do: openssl in tên DNS nguyên văn kể cả ký tự xuống dòng, nên chứng chỉ có thể GIẢ dòng "Excluded:" bên trong một tên để giấu ràng buộc rộng.
+    Trả về (danh sách "ip/mask", danh sách tên DNS); thoát với lỗi nếu có gì lạ."""
+    if not re.fullmatch(r"[\x20-\x7e\n]*", ext):
+        loi("đầu ra chứng chỉ có ký tự lạ")
+    dong = ext.rstrip("\n").split("\n")
+    if "X509v3 Name Constraints: critical" not in dong:
+        loi("CA không có ràng buộc tên (nameConstraints critical) — từ chối: CA như vậy giả được mọi trang web")
+    phan = dong[dong.index("X509v3 Name Constraints: critical") + 1:]
+    if not phan or phan[0] != "    Permitted:":
+        loi("ràng buộc tên không đúng dạng (cần đúng một mục Permitted, không có Excluded)")
+    ips, dns = [], []
+    for d in phan[1:]:
+        m_ip, m_dns = DONG_IP.fullmatch(d), DONG_DNS.fullmatch(d)
+        if m_ip:
+            ips.append(m_ip.group(1))
+        elif m_dns and TEN_DNS.fullmatch(m_dns.group(1)):
+            dns.append(m_dns.group(1))
+        else:
+            loi(f"ràng buộc tên có mục không thuộc OneBee: {d.strip()!r}")
+    return ips, dns
+
+
+def rang_buoc_tu_pem(file_pem):
+    """Như trên, đọc từ file PEM (dùng cho chính sách trình duyệt — cùng một bộ đọc nghiêm)."""
+    ext = subprocess.run(["openssl", "x509", "-in", file_pem, "-noout", "-ext", "nameConstraints"], capture_output=True, text=True, check=True).stdout
+    return rang_buoc_nghiem(ext)
+
+
 def kiem(b64, van_tay, box_ip):
     try:
         der = base64.b64decode(b64, validate=True)
@@ -40,29 +76,11 @@ def kiem(b64, van_tay, box_ip):
     ext = openssl(["x509", "-inform", "DER", "-noout", "-ext", "basicConstraints,nameConstraints"], der).decode()
     if "CA:TRUE" not in ext:
         loi("không phải chứng chỉ CA")
-    if not re.search(r"X509v3 Name Constraints: critical", ext):
-        loi("CA không có ràng buộc tên (nameConstraints critical) — từ chối: CA như vậy giả được mọi trang web")
-    permitted = []
-    trong_permitted = False
-    dong_ext = ext.splitlines()
-    tu = next(i for i, d in enumerate(dong_ext) if "Name Constraints" in d)
-    for dong in dong_ext[tu + 1:]:
-        s = dong.strip()
-        if s == "Permitted:":
-            trong_permitted = True
-        elif s == "Excluded:":
-            trong_permitted = False   # loại bớt chỉ làm CA hẹp hơn
-        elif trong_permitted and s:
-            permitted.append(s)
-    ips = [p for p in permitted if p.startswith("IP:")]
-    dns = [p for p in permitted if p.startswith("DNS:")]
-    khac = [p for p in permitted if not p.startswith(("IP:", "DNS:"))]
-    if khac:
-        loi(f"CA cho phép loại tên không thuộc OneBee: {khac}")
-    if ips != [f"IP:{box_ip}/255.255.255.255"]:
+    ips, dns = rang_buoc_nghiem(ext)
+    if ips != [f"{box_ip}/255.255.255.255"]:
         loi(f"CA phải chỉ cho phép đúng IP của Box ({box_ip}/32), đang là: {ips}")
-    if not dns or not all(re.fullmatch(r"DNS:[a-z0-9]([a-z0-9-]*[a-z0-9])?\.onebee\.internal", d) for d in dns):
-        loi(f"CA phải chỉ cho phép tên dạng <mã>.onebee.internal, đang là: {dns}")
+    if not dns:
+        loi("CA phải có ràng buộc tên DNS dạng <mã>.onebee.internal")
     r = subprocess.run(["openssl", "x509", "-inform", "DER", "-noout", "-checkend", "0"], input=der, capture_output=True)
     if r.returncode != 0:
         loi("chứng chỉ CA đã hết hạn")

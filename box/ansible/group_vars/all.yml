@@ -115,3 +115,8 @@ onebee_box_hoi_khoa_may: true
 #   (bản cũ không báo tình trạng nếu thiếu khóa).
 # false: n8n không đòi khóa, Box thôi tạo/đẩy khóa. Chỉ đặt false khi MỌI máy đã chạy lại bộ cài desktop bản mới.
 onebee_box_khoa_tinh_trang_chung: true
+
+# Xoay CA (đổi mã đơn vị hoặc IP của Box, hoặc nghi lộ khóa CA): đặt true MỘT LẦN cùng lúc đổi
+# onebee_box_ma_don_vi / onebee_box_dia_chi, chạy bộ cài, rồi đặt lại false.
+# CA cũ được cất ở /etc/onebee-box/secrets/ca.cu-<ngày giờ>; CA mới tự đẩy xuống mọi máy trạm (máy tắt: dong-bo-may khi bật lại).
+onebee_box_xoay_ca: false

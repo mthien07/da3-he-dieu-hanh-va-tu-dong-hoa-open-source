@@ -2,6 +2,14 @@
 # Mã đơn vị, địa chỉ IP của Box và CA riêng (rà soát bảo mật F3, Pha 3). Chạy ĐẦU role box-stack:
 # mọi nơi khác (compose, lệnh onebee-box, quy trình n8n) dùng onebee_box_ip do bước này chốt.
 
+- name: Báo biến cũ onebee_box_address đã đổi tên
+  ansible.builtin.assert:
+    that: onebee_box_address is not defined or onebee_box_address | string | length == 0
+    fail_msg: >-
+      Biến onebee_box_address đã đổi tên thành onebee_box_dia_chi (IP tĩnh của Box) —
+      sửa box/ansible/group_vars/all.yml rồi chạy lại.
+    quiet: true
+
 - name: Kiểm tra mã đơn vị đã khai và hợp lệ
   ansible.builtin.assert:
     that:
@@ -58,11 +66,12 @@
     state: directory
     owner: root
     group: root
-    mode: "0750"
+    mode: "0755"   # cùng mode với main.yml (khác nhau thì mỗi lần chạy đều changed)
 
 - name: Sinh / gia hạn CA riêng của Box (khóa gốc ở thư mục bí mật, không gắn vào container)
   ansible.builtin.command: >-
     /usr/local/lib/onebee-box/onebee-ca.sh {{ onebee_box_secrets }}/ca {{ onebee_box_ma_don_vi }} {{ onebee_box_ip }}
+    {{ '--xoay' if (onebee_box_xoay_ca | bool) else '' }}
   environment:
     ONEBEE_PKI_OUT: "{{ onebee_box_dir }}/portal/pki"
   register: onebee_ca

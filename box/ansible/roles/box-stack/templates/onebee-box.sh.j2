@@ -16,6 +16,7 @@
 #   onebee-box may-chua-nhan-ca    Máy đã cấp mà chưa nhận CA hiện tại (chặn bật HTTPS)
 #   onebee-box go-khoa-hoi-may     Xóa tài khoản/khóa Trợ lý AI theo MÁY (sau khi nhân viên đã dùng khóa riêng; xem onebee_box_hoi_khoa_may)
 #   onebee-box xoay-khoa [--may <tên>|--tat-ca] [--box]   Đổi mật khẩu/khóa (kho HTTP + khóa hoi theo máy; --box: mật khẩu quản trị, biểu mẫu, n8n)
+#   onebee-box gia-han-ca          Gia hạn CA trung gian ngay (còn < 60 ngày) — tự chạy mỗi đêm sao lưu
 #   onebee-box in-ca               In vân tay + thông tin CA riêng của Box (đối chiếu khi cài CA lên thiết bị khác)
 #   onebee-box in-khoa             In các khóa bí mật để cất ngoài Box (thiếu khóa thì bản sao lưu vô dụng)
 #   onebee-box dat-mat-khau-email  Nhập mật khẩu hộp thư gửi (SMTP) cho n8n
@@ -439,10 +440,11 @@ case "${1:-}" in
   in-khoa) cmd_in_khoa ;;
   xoay-khoa) shift; cmd_xoay_khoa "$@" ;;
   in-ca) cmd_in_ca ;;
+  gia-han-ca) gia_han_ca ;;
   go-khoa-hoi-may) cmd_go_khoa_hoi_may ;;
   may-chua-nhan-ca) may_chua_nhan_ca ;;
   dat-mat-khau-email) cmd_dat_mat_khau_email ;;
   email-thu) bao_cao_n8n THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
                && echo "Đã chuyển cho n8n gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
-  *) sed -n '2,22p' "$0" | sed 's/^# //'; exit 1 ;;
+  *) sed -n '2,23p' "$0" | sed 's/^# //'; exit 1 ;;
 esac

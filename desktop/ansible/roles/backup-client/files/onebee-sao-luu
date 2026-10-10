@@ -9,8 +9,10 @@ CONF=/etc/onebee/may-tram.env
 # Chỉ nạp 2 dòng RESTIC_ — đọc từng dòng KHÓA=giá trị, KHÔNG chạy file như mã shell (rà soát bảo mật F7: dòng lạ trong file không thành lệnh).
 # File còn các dòng khác, có thể có ký tự xuống dòng kiểu Windows khi dán.
 CA=/usr/local/share/ca-certificates/onebee-box-ca.crt
-while IFS='=' read -r khoa gia_tri; do
-  gia_tri="${gia_tri%$'\r'}"; gia_tri="${gia_tri#\"}"; gia_tri="${gia_tri%\"}"
+# "|| [[ -n ... ]]": không bỏ mất dòng cuối khi file không kết thúc bằng xuống dòng; tách tại dấu = ĐẦU TIÊN (giá trị có thể chứa =)
+while IFS= read -r dong || [[ -n "${dong}" ]]; do
+  dong="${dong%$'\r'}"; khoa="${dong%%=*}"; gia_tri="${dong#*=}"; [[ "${dong}" == *=* ]] || continue
+  gia_tri="${gia_tri#\"}"; gia_tri="${gia_tri%\"}"
   case "${khoa}" in RESTIC_REPOSITORY | RESTIC_PASSWORD) export "${khoa}=${gia_tri}" ;; *) ;; esac
 done <"${CONF}"
 [[ -n "${RESTIC_REPOSITORY:-}" && -n "${RESTIC_PASSWORD:-}" ]] || { echo "Thiếu RESTIC_REPOSITORY hoặc RESTIC_PASSWORD trong ${CONF}" >&2; exit 1; }

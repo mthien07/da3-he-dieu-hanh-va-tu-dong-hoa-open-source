@@ -4,7 +4,8 @@
 # Chốt chặn: lần BẬT đầu tiên, mọi máy đã cấp phải đã nhận CA (dấu ${SECRETS}/ca-da-dong-bo/<tên> do 'dong-bo-may' ghi) —
 # máy chưa có CA mà Box đóng cổng HTTP thì mất liên lạc. Khi HTTPS đã bật, máy cấp thêm sau đó không chặn nữa
 # (cấu hình in ra từ them-may đã mang sẵn CA + địa chỉ https).
-# Kết quả ghi thành dấu ${SECRETS}/https-da-bat (có trong bản sao lưu): các lệnh onebee-box đọc dấu này để biết gọi http hay https.
+# Dấu ${SECRETS}/https-da-bat (có trong bản sao lưu; các lệnh onebee-box đọc dấu này để biết gọi http hay https) được ghi/xóa SAU KHI
+# dịch vụ đã chuyển xong (https-dau.yml) — bộ cài lỗi giữa chừng thì lần chạy sau vẫn coi là đang chuyển.
 
 - name: Dấu HTTPS đã có từ trước chưa
   ansible.builtin.stat:
@@ -31,23 +32,6 @@
       (hoặc đặt onebee_box_https_bo_qua_chot_chan: true — máy bị bỏ sót sẽ mất kết nối tới Box cho tới khi được đồng bộ).
   when: onebee_box_https | bool and not (onebee_https_hieu_luc | bool)
 
-- name: Ghi dấu HTTPS đã bật
-  ansible.builtin.copy:
-    content: "1\n"
-    dest: "{{ onebee_box_secrets }}/https-da-bat"
-    owner: root
-    group: root
-    mode: "0600"
-  when: onebee_https_hieu_luc | bool
-  register: onebee_https_ghi
-
-- name: Xóa dấu HTTPS (HTTPS tắt hoặc chưa bật được)
-  ansible.builtin.file:
-    path: "{{ onebee_box_secrets }}/https-da-bat"
-    state: absent
-  when: not (onebee_https_hieu_luc | bool)
-  register: onebee_https_xoa
-
 # Gốc địa chỉ cho các bước Ansible gọi dịch vụ từ chính Box (cùng quy tắc với dia_chi_noi_bo trong common.sh)
 - name: Gốc địa chỉ gọi dịch vụ từ Box
   ansible.builtin.set_fact:
@@ -56,4 +40,4 @@
 # Chuyển HTTP ↔ HTTPS: các bước sau (dừng dịch vụ giữ cổng, đẩy cấu hình xuống máy trạm) chỉ chạy khi trạng thái thật sự đổi
 - name: Ghi nhận trạng thái HTTPS có đổi không
   ansible.builtin.set_fact:
-    onebee_https_doi: "{{ onebee_https_ghi is changed or onebee_https_xoa is changed }}"
+    onebee_https_doi: "{{ (onebee_https_hieu_luc | bool) != (onebee_https_dau_cu.stat.exists | bool) }}"

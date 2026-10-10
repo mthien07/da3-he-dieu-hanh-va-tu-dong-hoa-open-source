@@ -1,0 +1,19 @@
+---
+# Ghi / xóa dấu HTTPS SAU KHI các dịch vụ đã chuyển xong (xem https.yml)
+
+- name: Ghi dấu HTTPS đã bật
+  ansible.builtin.copy:
+    content: "1\n"
+    dest: "{{ onebee_box_secrets }}/https-da-bat"
+    owner: root
+    group: root
+    mode: "0600"
+  when: onebee_https_hieu_luc | bool
+  register: onebee_https_ghi
+
+- name: Xóa dấu HTTPS (HTTPS tắt hoặc chưa bật được)
+  ansible.builtin.file:
+    path: "{{ onebee_box_secrets }}/https-da-bat"
+    state: absent
+  when: not (onebee_https_hieu_luc | bool)
+  register: onebee_https_xoa

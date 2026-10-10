@@ -25,7 +25,7 @@ if [[ -s ca.conf ]]; then
   . ./ca.conf
   if [[ "${CA_MA:-}" != "${MA}" || "${CA_IP:-}" != "${IP}" ]]; then
     if [[ "${XOAY}" != --xoay ]]; then
-      die "CA đã tạo cho mã '${CA_MA:-?}' / IP '${CA_IP:-?}', nay khai '${MA}' / '${IP}'. Đổi mã hoặc IP = xoay CA (mọi máy phải nhận CA mới): sudo onebee-box doi-ca" 4
+      die "CA đã tạo cho mã '${CA_MA:-?}' / IP '${CA_IP:-?}', nay khai '${MA}' / '${IP}'. Đổi mã hoặc IP = xoay CA (mọi máy phải nhận CA mới): đặt onebee_box_xoay_ca: true trong group_vars/all.yml, chạy bộ cài, rồi đặt lại false" 4
     fi
     mkdir -p "${DIR}.cu" ; mv root.crt root.key inter.crt inter.key ca.conf "${DIR}.cu/" 2>/dev/null || true
     mv "${DIR}.cu" "${DIR}.cu-$(date +%Y%m%d-%H%M%S)"

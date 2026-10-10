@@ -142,7 +142,8 @@ class OnebeeBoxShell(unittest.TestCase):
         subprocess.run([f"{lib}/onebee-ca.sh", f"{t}/secrets/ca", "kiem-thu", "192.168.1.10"], check=True, capture_output=True)
         for ten, nd in (("onebee-webui.py", WEBUI_GIA),):
             open(f"{lib}/{ten}", "w").write(nd)
-        for ten, nd in (("ssh", SSH_GIA), ("ansible-playbook", ANSIBLE_GIA), ("install", INSTALL_GIA), ("chown", "#!/bin/sh\nexit 0\n")):
+        docker_gia = '#!/bin/sh\necho "docker $*" >> "$ONEBEE_OUT/docker.log"\n'
+        for ten, nd in (("ssh", SSH_GIA), ("ansible-playbook", ANSIBLE_GIA), ("install", INSTALL_GIA), ("chown", "#!/bin/sh\nexit 0\n"), ("docker", docker_gia)):
             open(f"{t}/bin/{ten}", "w").write(nd)
         for f in os.listdir(f"{t}/bin") + [os.path.join("..", "lib", "onebee-webui.py")]:
             os.chmod(os.path.join(t, "bin", f), 0o755)
@@ -351,6 +352,35 @@ class OnebeeBoxShell(unittest.TestCase):
             self.assertFalse(os.path.exists(f"{self.t}/secrets/{f}"), f)                      # để bộ cài (Ansible) sinh lại
         self.assertNotEqual(open(f"{self.t}/secrets/n8n-webhook-key").read(), "wh-cu")
         self.assertTrue(os.path.exists(f"{self.t}/out/bo-cai.log"))                            # đã chạy bộ cài để áp dụng
+
+    def lam_trung_gian_sap_het_han(self):
+        ca = f"{self.t}/secrets/ca"
+        subprocess.run(["openssl", "req", "-new", "-key", f"{ca}/inter.key", "-subj", "/CN=cu", "-out", f"{self.t}/i.csr"], check=True, capture_output=True)
+        open(f"{self.t}/i.ext", "w").write("basicConstraints=critical,CA:TRUE,pathlen:0\nnameConstraints=critical,permitted;IP:192.168.1.10/255.255.255.255,"
+                                           "permitted;DNS:kiem-thu.onebee.internal\n")
+        subprocess.run(["openssl", "x509", "-req", "-in", f"{self.t}/i.csr", "-CA", f"{ca}/root.crt", "-CAkey", f"{ca}/root.key", "-CAcreateserial",
+                        "-days", "10", "-extfile", f"{self.t}/i.ext", "-out", f"{ca}/inter.crt"], check=True, capture_output=True)
+
+    def test_gia_han_ca_chep_trung_gian_moi_den_caddy_va_khoi_dong_lai_khi_https(self):
+        pki = f"{self.t}/box/portal/pki"
+        self.chay("gia-han-ca")                                         # lần đầu: thư mục pki mới → chép
+        self.assertEqual(sorted(os.listdir(pki)), ["inter.crt", "inter.key", "root.crt"])
+        self.lam_trung_gian_sap_het_han()
+        cu = open(f"{pki}/inter.crt").read()
+        os.makedirs(f"{self.t}/data/caddy/data/caddy/certificates")
+        open(f"{self.t}/data/caddy/data/caddy/certificates/la.crt", "w").write("la cu")
+        r = self.chay("gia-han-ca")                                     # HTTP: chỉ chép, không đụng Caddy
+        self.assertIn("đã đổi", r.stdout)
+        self.assertNotEqual(open(f"{pki}/inter.crt").read(), cu)
+        self.assertEqual(open(f"{pki}/inter.crt").read(), open(f"{self.t}/secrets/ca/inter.crt").read())   # Caddy thấy bản mới
+        self.assertFalse(os.path.exists(f"{self.t}/out/docker.log"))
+        self.lam_trung_gian_sap_het_han()
+        open(f"{self.t}/secrets/https-da-bat", "w").write("1\n")
+        self.chay("gia-han-ca")                                         # HTTPS: xóa chứng chỉ lá cũ + khởi động lại cổng
+        self.assertIn("docker restart onebee-portal", open(f"{self.t}/out/docker.log").read())
+        self.assertFalse(os.path.exists(f"{self.t}/data/caddy/data/caddy/certificates"))
+        r = self.chay("gia-han-ca")                                     # còn hạn → không làm gì
+        self.assertEqual(r.stdout.strip(), "")
 
     def test_may_chua_nhan_ca_cho_den_khi_dong_bo_ghi_dau(self):
         self.kv("ketoan-01")

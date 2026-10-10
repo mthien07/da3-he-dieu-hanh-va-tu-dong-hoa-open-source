@@ -19,6 +19,7 @@ import ssl
 import stat
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 CA_ONEBEE = "/usr/local/share/ca-certificates/onebee-box-ca.crt"
@@ -36,7 +37,16 @@ def mo(req, timeout):
             sys.exit("Máy chưa có chứng chỉ CA của OneBee Box. Báo người quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>")
     elif os.path.exists(HTTPS_BAT):
         sys.exit("Máy này đã bật HTTPS nhưng cấu hình còn địa chỉ http:// — KHÔNG gửi. Báo người quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>")
-    return urllib.request.urlopen(req, timeout=timeout, context=ngu_canh)
+    try:
+        return urllib.request.urlopen(req, timeout=timeout, context=ngu_canh)
+    except urllib.error.HTTPError as e:
+        # Box đã chuyển sang HTTPS (308) mà cấu hình máy còn http:// (máy tắt lúc chuyển): theo ĐÚNG MỘT lần, chỉ tới https:// CÙNG máy chủ,
+        # vẫn chỉ tin CA OneBee — nhờ vậy máy không mất liên lạc tới khi quản trị chạy dong-bo-may. Địa chỉ khác máy chủ thì không theo.
+        dich = e.headers.get("Location", "") if e.code in (301, 308) else ""
+        goc, moi = urllib.parse.urlsplit(req.full_url), urllib.parse.urlsplit(dich)
+        if req.full_url.startswith("http://") and moi.scheme == "https" and moi.hostname and moi.hostname == goc.hostname:
+            return mo(urllib.request.Request(dich, data=req.data, headers=dict(req.header_items()), method=req.get_method()), timeout)
+        raise
 
 
 def loi_mang(e):

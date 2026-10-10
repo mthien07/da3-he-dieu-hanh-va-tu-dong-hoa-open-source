@@ -78,6 +78,40 @@ class KiemCa(unittest.TestCase):
         self.assertEqual(chay(KIEM_CA, b64, vt, "192.168.1.10").returncode, 1)
 
 
+class DocRangBuocNghiem(unittest.TestCase):
+    """openssl in tên DNS nguyên văn kể cả xuống dòng → chứng chỉ có thể GIẢ dòng "Excluded:" trong một tên để giấu "DNS:com" rộng (PoC của rà soát Opus)."""
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("kiem_ca", KIEM_CA)
+        cls.m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.m)
+
+    TIEU_DE = "X509v3 Basic Constraints: critical\n    CA:TRUE, pathlen:1\nX509v3 Name Constraints: critical\n"
+
+    def doc(self, *dong):
+        return self.m.rang_buoc_nghiem(self.TIEU_DE + "\n".join(dong) + "\n")
+
+    def test_dung_dang(self):
+        self.assertEqual(self.doc("    Permitted:", "      IP:10.0.0.1/255.255.255.255", "      DNS:anphu.onebee.internal"),
+                         (["10.0.0.1/255.255.255.255"], ["anphu.onebee.internal"]))
+
+    def test_gia_dong_excluded_de_giau_dns_com_bi_tu_choi(self):
+        for dong in (("    Permitted:", "      IP:10.0.0.1/255.255.255.255", "      DNS:a.onebee.internal", " Excluded:", "      DNS:com"),
+                     ("    Permitted:", "      DNS:a.onebee.internal", "    Excluded:", "      DNS:com"),     # mục Excluded thật cũng không nhận
+                     ("    Permitted:", "      DNS:com"),
+                     ("    Permitted:", "      DNS:a.onebee.internal", "      email:x@y"),
+                     ("    Permitted:", "      DNS:onebee.internal"),
+                     ("      DNS:a.onebee.internal",)):
+            with self.assertRaises(SystemExit, msg=str(dong)):
+                self.doc(*dong)
+
+    def test_ky_tu_la_bi_tu_choi(self):
+        with self.assertRaises(SystemExit):
+            self.m.rang_buoc_nghiem(self.TIEU_DE + "    Permitted:\r\n      DNS:a.onebee.internal\x00\n")
+
+
 @unittest.skipUnless(shutil.which("openssl"), "cần openssl")
 class ChinhSachTrinhDuyet(unittest.TestCase):
     def setUp(self):
