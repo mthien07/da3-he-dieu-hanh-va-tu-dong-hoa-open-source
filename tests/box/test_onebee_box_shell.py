@@ -206,6 +206,11 @@ class OnebeeBoxShell(unittest.TestCase):
         self.bao_cao(ten, ip)
 
     # ---- kiểm thử ----
+    def docker_log(self):
+        """Các lệnh docker (giả) đã gọi tới giờ, để so trước/sau một lệnh onebee-box."""
+        f = f"{self.t}/out/docker.log"
+        return open(f).read() if os.path.exists(f) else ""
+
     def test_ma_nguon_shell_hop_le(self):
         for f in ("lib/common.sh", "lib/sao-luu.sh", "bin/onebee-box"):
             r = subprocess.run(["bash", "-n", f"{self.t}/{f}"], capture_output=True, text=True)
@@ -313,9 +318,12 @@ class OnebeeBoxShell(unittest.TestCase):
         http_cu = open(f"{self.t}/secrets/may-ketoan-01-http").read()
         htp_cu = open(f"{self.t}/data/restic/.htpasswd").read()
         repo_cu = open(f"{self.t}/secrets/may-ketoan-01-repo").read()
+        docker_truoc = self.docker_log()
         r = self.chay("xoay-khoa", "--may", "ketoan-01", "--dong-y")
         self.assertNotEqual(open(f"{self.t}/secrets/may-ketoan-01-http").read(), http_cu)
         self.assertNotEqual(open(f"{self.t}/data/restic/.htpasswd").read(), htp_cu)           # htpasswd cập nhật theo mật khẩu mới
+        # rest-server chỉ tự đọc lại .htpasswd ≤30 giây/lần → phải SIGHUP để mật khẩu cũ hết hiệu lực NGAY (lỗi bắt được khi chạy A4 trên Docker thật)
+        self.assertIn("docker kill -s HUP onebee-rest-server", self.docker_log()[len(docker_truoc):])
         self.assertEqual(open(f"{self.t}/secrets/may-ketoan-01-hoi").read(), "sk-moi-ketoan-01")
         self.assertEqual(open(f"{self.t}/secrets/may-ketoan-01-repo").read(), repo_cu)       # RESTIC_PASSWORD KHÔNG xoay
         self.assertIn("xoay-khoa ketoan-01", open(f"{self.t}/out/webui.log").read())
@@ -472,9 +480,11 @@ class OnebeeBoxShell(unittest.TestCase):
         self.cap_may("ketoan-01", "10.1.1.5")
         self.chay("cap-nhat-may", "ketoan-01")
         http_cu = open(f"{self.t}/secrets/may-ketoan-01-http").read()
+        docker_truoc = self.docker_log()
         r = self.chay("thu-hoi-may", "ketoan-01", "--dong-y")
         self.assertIn("Đã thu hồi", r.stdout)
         self.assertNotIn("ketoan-01:", open(f"{self.t}/data/restic/.htpasswd").read())    # hết quyền vào kho HTTP
+        self.assertIn("docker kill -s HUP onebee-rest-server", self.docker_log()[len(docker_truoc):])   # … ngay, không chờ ≤30 giây
         self.assertFalse(os.path.exists(f"{self.t}/data/may-da-cap/ketoan-01"))            # n8n ngừng nhận báo cáo
         self.assertFalse(os.path.exists(f"{self.t}/data/tinh-trang-may/ketoan-01.json"))
         self.assertFalse(self.da_ghim("ketoan-01"))

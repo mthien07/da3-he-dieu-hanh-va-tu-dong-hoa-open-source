@@ -183,6 +183,7 @@ cmd_khoi_phuc_toan_bo() {
     [[ -s "${SECRETS}/may-${ten}-http" ]] || continue
     htpasswd -B -i "${DATA}/restic/.htpasswd" "${ten}" <"${SECRETS}/may-${ten}-http" 2>/dev/null
   done < <(may_da_cap)
+  nap_lai_kho_http   # rest-server của bản cài lại có thể đang chạy với file cũ
   dong_bo_ten_may >/dev/null   # chỗ nhận báo cáo tình trạng của n8n dựng lại từ bí mật vừa khôi phục
   compose up -d >/dev/null
   xoa_tai_khoan_may_da_thu_hoi
