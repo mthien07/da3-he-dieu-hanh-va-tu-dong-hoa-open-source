@@ -123,6 +123,9 @@ Mã nguồn repo: **MIT** ([LICENSE](LICENSE)). Thành phần giữ giấy phép
 
 ## 📞 Liên hệ
 
+**Tác giả dự án: Dương Minh Thiện**
+- 📱 0777 794 089
+
 **Hợp tác xã OneBee**
 - 📍 45 đường số 6, KDC Thái Dương, Phường Long An, Tây Ninh
 - 📱 0385 944 909
