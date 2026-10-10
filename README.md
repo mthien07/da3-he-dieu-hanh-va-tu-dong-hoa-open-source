@@ -92,7 +92,7 @@ cd onebee && sudo ./desktop/onebee-install.sh
   unit test Box 100 bài + Desktop 39 bài + AI 17 bài; lint với ansible-core 2.19 và **2.16** (bản trên Ubuntu 24.04);
   Desktop trong container Linux Mint 22.3 (5 kịch bản, 83 PASS); **Box đầy đủ trên Docker Desktop** với model sản phẩm `gemma4:e2b-it-qat`
   (cài 2 lần, AI, n8n qua email, sao lưu, máy trạm, quản lý tập trung, tường lửa, hỏng ổ → khôi phục, bật/tắt HTTPS, xoay khóa, khởi động lại) —
-  mọi bước đạt khi chạy nối tiếp sau các bản sửa; kết quả lần chạy lại từ đầu ghi trong phiếu kiểm thử.
+  chạy lại từ đầu sau các bản sửa: **122 PASS / 0 FAIL**.
   Lần chạy này tìm và sửa 2 lỗi sản phẩm + 2 lỗi trong bộ kiểm thử.
 - ✅ Model AI chọn bằng bộ chấm 40 câu tiếng Việt (98%): [ADR 0003](docs/adr/0003-chon-model-ai-gemma.md), [reports/ai/](reports/ai/).
 - ⏳ **Chưa cài trên máy thật tại đơn vị nào** (phiên Cinnamon thật, phần cứng, LAN thật, tốc độ AI) → [danh sách thử](docs/huong-dan/thu-nghiem-tren-may-ao.md); đạt thì phát hành 1.0.0.
