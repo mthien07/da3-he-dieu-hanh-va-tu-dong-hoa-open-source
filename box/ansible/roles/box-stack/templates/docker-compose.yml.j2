@@ -56,8 +56,8 @@ services:
       # Rà soát bảo mật 10/10: Box không dùng Functions/Tools (mã Python do quản trị thêm chạy trong container) → tắt hẳn,
       # để lộ phiên quản trị cũng không thành chạy mã trên máy chủ. Trợ lý đã đặt builtin_tools=False (onebee-webui.py)
       ENABLE_PLUGINS: "false"
-      # Quản trị không đọc/xuất được chat của nhân viên; nhân viên không chia sẻ chat cho nhau; không chia sẻ lên cộng đồng
-      # (các cài đặt lưu trong CSDL — Box đã cài được chỉnh qua API trong onebee-webui.py)
+      # Quản trị không đọc/xuất được chat của nhân viên (2 biến đầu chỉ đọc từ môi trường); nhân viên không chia sẻ chat cho nhau;
+      # không chia sẻ lên cộng đồng; phiên 30 ngày. 3 cài đặt sau lưu trong CSDL → Box đã cài được chỉnh qua API (onebee-webui.py)
       ENABLE_ADMIN_CHAT_ACCESS: "false"
       ENABLE_ADMIN_EXPORT: "false"
       USER_PERMISSIONS_CHAT_SHARE: "false"

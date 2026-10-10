@@ -52,8 +52,10 @@ Quay lại Windows: khởi động Clonezilla → `device-image` → **`restored
 5. Tài khoản người dùng: **nhân viên không có quyền sudo**. Giữ 1 tài khoản quản trị máy (có sudo, do quản lý/kỹ thuật dùng) và
    tạo cho từng nhân viên 1 tài khoản **thường** (Cài đặt → Người dùng và nhóm, loại "Tiêu chuẩn"; hoặc `sudo adduser <tên>`).
    Tài khoản mẫu tạo lúc cài Mint mặc định có sudo → **không giao cho nhân viên**; nếu lỡ giao: `sudo deluser <tên> sudo` (làm trên tài khoản quản trị).
-   Bộ cài và báo cáo hằng ngày cảnh báo máy có hơn 1 tài khoản sudo (khai báo tài khoản quản trị trong `onebee_tai_khoan_quan_tri`
-   ở `desktop/ansible/group_vars/all.yml` để cảnh báo chính xác hơn).
+   Cảnh báo ở 2 nơi: **bộ cài Desktop** (khai báo tài khoản quản trị trong `onebee_tai_khoan_quan_tri` ở
+   `desktop/ansible/group_vars/all.yml` để cảnh báo chính xác — tài khoản nào ngoài danh sách) và **Box** (email hằng ngày,
+   `onebee-box may-tram`: cảnh báo khi máy có **hơn 1** tài khoản sudo, không biết danh sách). Đơn vị có 2 người quản trị máy hợp lệ
+   thì cảnh báo ở Box sẽ lặp lại — chỉ để ý khi số tài khoản sudo tăng lên.
 
 ## 4. Phần cứng
 Ghi vào bảng dưới mỗi dòng máy đã cài: wifi, âm thanh, máy in, máy quét có chạy không. Mint dùng được phần lớn máy văn phòng,

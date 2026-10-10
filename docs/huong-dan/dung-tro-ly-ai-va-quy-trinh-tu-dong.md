@@ -8,8 +8,9 @@
   Bộ cài đặt sẵn (và áp lại mỗi lần chạy, kể cả trên Box đã cài): tài khoản quản trị Open WebUI **không xem được chat của nhân viên và
   không xuất được** (tắt `ENABLE_ADMIN_CHAT_ACCESS`, `ENABLE_ADMIN_EXPORT` — đã đối chiếu mã nguồn v0.11.4: chặn xem chat người khác
   qua giao diện/API, xuất toàn bộ chat, tải file CSDL), nhân viên **không chia sẻ chat** cho nhau, không chia sẻ lên cộng đồng, tắt Functions/Tools (mã Python tự thêm), phiên đăng nhập
-  giữ **30 ngày** rồi phải đăng nhập lại. Nên báo trước cho nhân viên đúng phạm vi: đây là chặn trên Open WebUI, **không phải mã hóa** — người có quyền root trên
-  Box vẫn đọc được file dữ liệu (`/srv/onebee/open-webui`) và bản sao lưu của nó; thư mục `/home` trên máy trạm cũng nằm trong bản
+  giữ **30 ngày** rồi phải đăng nhập lại. Nên báo trước cho nhân viên đúng phạm vi: đây là chặn trên Open WebUI, **không phải mã hóa** — quản trị vẫn **đặt lại được mật khẩu**
+  của nhân viên rồi đăng nhập bằng tài khoản đó (đã đối chiếu mã nguồn: `update_user_by_id`; nhân viên sẽ biết vì mật khẩu cũ không còn dùng
+  được), và người có quyền root trên Box vẫn đọc được file dữ liệu (`/srv/onebee/open-webui`) và bản sao lưu của nó; thư mục `/home` trên máy trạm cũng nằm trong bản
   sao lưu mà quản trị Box đọc được (xem "Quyền riêng tư" trong hướng dẫn cài Box).
   Lệnh `hoi` hiện vẫn dùng khóa theo từng **máy** (mục 2); khóa theo từng **nhân viên** là kế hoạch (`docs/security-audit.md`, Pha 4c).
 - Chọn **"Trợ lý OneBee"**: model Gemma chạy trên Box + lời dặn tiếng Việt (không bịa số liệu, hướng dẫn máy OneBee,

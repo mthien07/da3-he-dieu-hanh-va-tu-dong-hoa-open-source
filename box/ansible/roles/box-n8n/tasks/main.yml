@@ -55,8 +55,9 @@
       ansible.builtin.file:
         path: "{{ onebee_box_dir }}/n8n-import/.da-nhap-xong"
         state: absent
-    # n8n 2.42 trở đi kiểm chính sách lúc nhập: mục bị chặn chỉ in "... blocked by policy" mà lệnh vẫn thoát mã 0
-    # [Inference] (đọc mã nguồn) → bắt cả chữ này trong đầu ra, không chỉ mã thoát
+    # n8n 2.42 trở đi kiểm chính sách lúc nhập, mục bị chặn chỉ in dòng thông báo mà lệnh vẫn thoát bình thường (đọc mã nguồn
+    # n8n@2.42.6: thông tin đăng nhập "... blocked by policy", quy trình "Skipped workflow ... content-import policy violation(s)")
+    # → bắt cả các chữ này trong đầu ra, không chỉ mã thoát. Box mặc định không có chính sách nào
     - name: Nhập thông tin đăng nhập
       ansible.builtin.command: docker exec onebee-n8n n8n import:credentials --input=/import/credentials.json
       register: onebee_n8n_nhap_tk
@@ -67,7 +68,9 @@
       loop: "{{ onebee_n8n_workflows }}"
       register: onebee_n8n_nhap_qt
       changed_when: true
-      failed_when: onebee_n8n_nhap_qt.rc != 0 or ((onebee_n8n_nhap_qt.stdout ~ onebee_n8n_nhap_qt.stderr) is search('blocked by policy'))
+      failed_when: >-
+        onebee_n8n_nhap_qt.rc != 0 or
+        ((onebee_n8n_nhap_qt.stdout ~ onebee_n8n_nhap_qt.stderr) is search('blocked by policy|content-import policy violation'))
     - name: Kích hoạt quy trình
       ansible.builtin.command: "docker exec onebee-n8n n8n publish:workflow --id={{ item.id }}"
       loop: "{{ onebee_n8n_workflows }}"
