@@ -132,7 +132,9 @@ compose() { docker compose --project-directory "${BOX_DIR}" "$@"; }
 # Bắt rest-server đọc lại .htpasswd NGAY sau mỗi lần sửa (cấp/thu hồi/xoay mật khẩu kho HTTP).
 # Tự nó chỉ kiểm file tối đa 30 giây/lần và nhớ mật khẩu đã đúng → trong khoảng đó mật khẩu cũ/máy đã thu hồi vẫn vào được kho.
 # SIGHUP = rest-server tự nạp lại file + xóa bộ nhớ đệm (rest-server 0.14, htpasswd.go). Dịch vụ chưa chạy thì bỏ qua (lúc khởi động sẽ đọc file mới).
-nap_lai_kho_http() { docker kill -s HUP onebee-rest-server >/dev/null 2>&1 || true; }
+# Gửi bằng 'docker exec … kill -HUP 1', KHÔNG dùng 'docker kill -s HUP': Docker (29.x) coi mọi 'docker kill' là dừng tay
+# (HasBeenManuallyStopped) → khởi động lại Box thì kho sao lưu KHÔNG tự chạy lại dù restart: unless-stopped (bắt được khi chạy A4).
+nap_lai_kho_http() { docker exec onebee-rest-server kill -HUP 1 >/dev/null 2>&1 || true; }
 
 # Gọi công cụ quản lý Open WebUI (tạo Trợ lý OneBee, cấp khóa API cho máy trạm)
 webui() {

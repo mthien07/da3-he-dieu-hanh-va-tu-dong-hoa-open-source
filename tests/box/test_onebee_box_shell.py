@@ -322,8 +322,10 @@ class OnebeeBoxShell(unittest.TestCase):
         r = self.chay("xoay-khoa", "--may", "ketoan-01", "--dong-y")
         self.assertNotEqual(open(f"{self.t}/secrets/may-ketoan-01-http").read(), http_cu)
         self.assertNotEqual(open(f"{self.t}/data/restic/.htpasswd").read(), htp_cu)           # htpasswd cập nhật theo mật khẩu mới
-        # rest-server chỉ tự đọc lại .htpasswd ≤30 giây/lần → phải SIGHUP để mật khẩu cũ hết hiệu lực NGAY (lỗi bắt được khi chạy A4 trên Docker thật)
-        self.assertIn("docker kill -s HUP onebee-rest-server", self.docker_log()[len(docker_truoc):])
+        # rest-server chỉ tự đọc lại .htpasswd ≤30 giây/lần → phải SIGHUP để mật khẩu cũ hết hiệu lực NGAY (lỗi bắt được khi chạy A4 trên Docker thật);
+        # gửi qua docker exec, không 'docker kill' (Docker coi là dừng tay → Box khởi động lại thì kho sao lưu không tự chạy)
+        self.assertNotIn("docker kill", self.docker_log())
+        self.assertIn("docker exec onebee-rest-server kill -HUP 1", self.docker_log()[len(docker_truoc):])
         self.assertEqual(open(f"{self.t}/secrets/may-ketoan-01-hoi").read(), "sk-moi-ketoan-01")
         self.assertEqual(open(f"{self.t}/secrets/may-ketoan-01-repo").read(), repo_cu)       # RESTIC_PASSWORD KHÔNG xoay
         self.assertIn("xoay-khoa ketoan-01", open(f"{self.t}/out/webui.log").read())
@@ -484,7 +486,7 @@ class OnebeeBoxShell(unittest.TestCase):
         r = self.chay("thu-hoi-may", "ketoan-01", "--dong-y")
         self.assertIn("Đã thu hồi", r.stdout)
         self.assertNotIn("ketoan-01:", open(f"{self.t}/data/restic/.htpasswd").read())    # hết quyền vào kho HTTP
-        self.assertIn("docker kill -s HUP onebee-rest-server", self.docker_log()[len(docker_truoc):])   # … ngay, không chờ ≤30 giây
+        self.assertIn("docker exec onebee-rest-server kill -HUP 1", self.docker_log()[len(docker_truoc):])   # … ngay, không chờ ≤30 giây
         self.assertFalse(os.path.exists(f"{self.t}/data/may-da-cap/ketoan-01"))            # n8n ngừng nhận báo cáo
         self.assertFalse(os.path.exists(f"{self.t}/data/tinh-trang-may/ketoan-01.json"))
         self.assertFalse(self.da_ghim("ketoan-01"))
