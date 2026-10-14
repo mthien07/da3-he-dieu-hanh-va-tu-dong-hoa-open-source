@@ -276,7 +276,8 @@ chay_playbook_chon() {
   while read -r t; do
     [[ -z "${t}" ]] || warn "Bỏ qua ${t}: máy chưa báo tình trạng hợp lệ trong 2 giờ qua (máy tắt? chưa chạy bộ cài mới có ký báo cáo? chưa biết địa chỉ)"
   done <"${TEN_BO_QUA}"
-  [[ -n "${VAO_DUOC[*]:-}" ]] || die "Không có máy nào để làm"
+  # Không die: xoay-khoa gọi tới đây SAU khi đã đổi mật khẩu trên Box — còn phải nhắc quản trị đồng bộ lại từng máy
+  [[ -n "${VAO_DUOC[*]:-}" ]] || { warn "Không có máy nào để làm"; return 1; }
   # Nhật ký chứa tên máy, địa chỉ → chỉ root đọc; mọi task đụng mật khẩu đều có no_log trong playbook
   install -d -m 0700 /var/log/onebee-box
   log="/var/log/onebee-box/${ten_log}-$(date +%Y%m%d-%H%M%S).log"
@@ -284,7 +285,7 @@ chay_playbook_chon() {
   set +e
   ANSIBLE_SSH_ARGS="-o UserKnownHostsFile=${SSH_DIR}/known_hosts -o StrictHostKeyChecking=yes -o UpdateHostKeys=no -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -o ControlMaster=auto -o ControlPersist=60s" \
   ANSIBLE_ROLES_PATH="${LIB}/roles" ANSIBLE_PYTHON_INTERPRETER=/usr/bin/python3 ANSIBLE_RETRY_FILES_ENABLED=False ANSIBLE_NOCOLOR=1 ANSIBLE_LOCAL_TEMP=/root/.ansible/tmp \
-    ansible-playbook -i "${inv}" -u onebee-quantri --private-key "${SSH_DIR}/quan-tri" "$@" "${LIB}/${playbook}" 2>&1 | tee -a "${log}"
+    ansible-playbook -i "${inv}" -u onebee-quantri --private-key "${SSH_DIR}/quan-tri" "$@" "${LIB}/${playbook}" 9>&- 2>&1 | tee -a "${log}"
   st=${PIPESTATUS[0]}
   set -e
   [[ ${st} -eq 0 ]] || warn "Có máy chưa xong (máy tắt, mất mạng hoặc lỗi) — xem ${log}. Máy đã cài lại hệ điều hành (báo HOST IDENTIFICATION HAS CHANGED / khóa SSH không khớp): sudo onebee-box ghim-lai-may <tên-máy> rồi chạy lại"
@@ -367,8 +368,8 @@ xoay_khoa_box() {
 }
 
 cmd_xoay_khoa() {
-  local box=0 muc="" a tra_loi t bo_cai
-  local -a ds=()
+  local box=0 muc="" a tra_loi t bo_cai ly_do
+  local -a ds=() doi_may=()
   while [[ $# -gt 0 ]]; do
     a="$1"; shift
     case "${a}" in
@@ -387,12 +388,13 @@ cmd_xoay_khoa() {
     [[ "${tra_loi}" == "xoay khoa" ]] || die "Đã hủy"
   fi
   for t in "${ds[@]}"; do xoay_khoa_may "${t}"; done
+  doi_may=("${ds[@]}")
   if [[ ${box} -eq 1 ]]; then
     xoay_khoa_box
     bo_cai="$(cat "${LIB}/duong-dan-bo-cai" 2>/dev/null || true)"
     if [[ -x "${bo_cai}" ]]; then
       echo "Chạy bộ cài để áp dụng (.env, thông tin đăng nhập n8n)..."
-      "${bo_cai}" || die "Bộ cài chưa xong — chạy lại NGAY: sudo ${bo_cai} (Box đang ở trạng thái nửa chừng)"
+      "${bo_cai}" 9>&- || die "Bộ cài chưa xong — chạy lại NGAY: sudo ${bo_cai} (Box đang ở trạng thái nửa chừng)"
       # Khóa gửi tình trạng dùng chung vừa được bộ cài sinh lại → MỌI máy cần khóa mới (thiếu thì báo tình trạng bị 403)
       if [[ "${TINH_TRANG_KHOA_CHUNG}" == true && -n "$(may_da_cap)" ]]; then chon_may --tat-ca; ds=("${CHON_MAY[@]}"); fi
     else
@@ -402,8 +404,14 @@ cmd_xoay_khoa() {
   fi
   if [[ -n "${ds[*]:-}" ]]; then
     echo "Đẩy cấu hình mới xuống máy..."
-    CHON_MAY=("${ds[@]}")
-    cmd_dong_bo_may_da_chon || warn "Có máy chưa nhận được mật khẩu mới (tắt/mất mạng): bật máy lên rồi chạy: sudo onebee-box dong-bo-may <tên-máy>"
+    CHON_MAY=("${ds[@]}"); VAO_DUOC=()
+    cmd_dong_bo_may_da_chon || true   # máy không vào được: nhắc riêng từng máy ngay dưới
+    for t in "${ds[@]}"; do
+      trong_mang "${t}" "${VAO_DUOC[@]}" && continue
+      ly_do="khóa gửi tình trạng đã đổi trên Box"
+      ! trong_mang "${t}" "${doi_may[@]}" || ly_do="mật khẩu kho đã đổi trên Box"
+      warn "Máy trạm ${t} hiện đang tắt (hoặc không vào được) — ${ly_do}. Khi máy bật lại, quản trị viên cần chạy: sudo onebee-box dong-bo-may ${t}"
+    done
   fi
   echo "Xong. In lại khóa để cất: sudo onebee-box in-khoa. Nhân viên đổi mật khẩu Trợ lý AI đã từng gõ qua HTTP (hướng dẫn trong buổi đào tạo)."
 }
@@ -425,8 +433,8 @@ cmd_dat_mat_khau_email() {
   echo "Đã lưu. Chạy lại bộ cài OneBee Box để n8n dùng mật khẩu mới, rồi: sudo onebee-box email-thu"
 }
 
-# Không cho 2 lệnh sao lưu chạy chồng nhau (lịch tự động + chạy tay)
-with_lock() { exec 9>/run/onebee-box.lock; flock -n 9 || die "Đang có lệnh sao lưu khác chạy — thử lại sau"; "$@"; }
+# Không cho 2 lệnh sao lưu / xoay khóa chạy chồng nhau (lịch tự động + chạy tay)
+with_lock() { exec 9>/run/onebee-box.lock; flock -n 9 || die "Đang có lệnh sao lưu / xoay khóa khác chạy — thử lại sau"; "$@"; }
 
 case "${1:-}" in
   trang-thai) cmd_trang_thai ;;
@@ -444,7 +452,7 @@ case "${1:-}" in
   khoi-phuc-thu) with_lock cmd_khoi_phuc_thu ;;
   khoi-phuc-toan-bo) shift; with_lock cmd_khoi_phuc_toan_bo "$@" ;;
   in-khoa) cmd_in_khoa ;;
-  xoay-khoa) shift; cmd_xoay_khoa "$@" ;;
+  xoay-khoa) shift; with_lock cmd_xoay_khoa "$@" ;;
   in-ca) cmd_in_ca ;;
   gia-han-ca) gia_han_ca ;;
   go-khoa-hoi-may) cmd_go_khoa_hoi_may ;;
