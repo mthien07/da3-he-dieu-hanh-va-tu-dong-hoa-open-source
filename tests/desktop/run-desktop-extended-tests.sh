@@ -25,7 +25,7 @@ if [ -f /usr/local/share/ca-certificates/onebee-test-extra.crt ]; then
 fi
 rm -rf /tmp/onebee; cp -r /onebee /tmp/onebee; T=/tmp/onebee/tests/desktop'
 # Thành phần có sẵn trên Mint Cinnamon cài thật (image container rút gọn không có)
-MINT_DESKTOP_PARTS='apt-get update -q >/dev/null; apt-get install -y -q mintupdate mint-artwork cinnamon-desktop-data libglib2.0-bin >/dev/null'
+MINT_DESKTOP_PARTS='apt-get update -q >/dev/null; apt-get install -y -q mintupdate mint-artwork cinnamon-desktop-data cinnamon-common nemo-data libglib2.0-bin >/dev/null'
 # Công cụ chỉ dùng để kiểm thử (cài SAU OneBee để không che lỗi thiếu gói của bộ cài)
 TEST_TOOLS='apt-get install -y -q python3-uno poppler-utils hunspell xvfb xdotool dbus-x11 python3-gi gir1.2-gtk-3.0 vncsnapshot >/dev/null
 useradd -m -s /bin/bash nhanvien'
