@@ -62,6 +62,11 @@ onebee_box_ssh_chi_khoa: true
 onebee_box_ai_model: gemma4:e2b-it-qat
 onebee_box_ai_models: ["{{ onebee_box_ai_model }}"]   # model tải sẵn khi cài
 onebee_box_admin_email: quantri@onebee.lan             # tài khoản quản trị Trợ lý AI (mật khẩu: onebee-box in-khoa)
+# Origin được phép dùng Trợ lý AI NGOÀI hai địa chỉ mặc định (http(s)://<IP Box>:3000 và http(s)://box.<mã>.onebee.internal:3000).
+# Mở Trợ lý AI bằng tên/IP khác (tên DNS của router, IP Tailscale trần, đường hầm SSH http://localhost:3000) thì chat thời gian thực
+# (WebSocket) bị chặn mà không báo lỗi. Khai đầy đủ giao thức + tên + cổng, không có đường dẫn, vd ["http://onebee-box.lan:3000"].
+# Áp dụng cho cả chế độ HTTP lẫn HTTPS (HTTPS thì ghi https://...). Để trống: chỉ hai địa chỉ mặc định. Không dùng "*".
+onebee_box_cors_them: []
 
 # Chỉ cho các dải mạng nội bộ vào thư mục chung
 onebee_box_samba_hosts_allow: "127. 10. 172.16.0.0/12 192.168."

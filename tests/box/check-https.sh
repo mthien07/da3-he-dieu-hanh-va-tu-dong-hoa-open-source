@@ -54,9 +54,21 @@ box "pw=\$(cat /etc/onebee-box/secrets/webui-admin-password)
   res=\$(curl -si -m 10 https://${IP}:3000/api/config -H 'Origin: https://ke-la.example') || { echo 'FAIL  Không gọi được /api/config qua HTTPS'; exit 1; }
   grep -q '^HTTP/[0-9.]* 200' <<<\"\${res}\" || { echo 'FAIL  /api/config qua HTTPS không trả 200'; head -5 <<<\"\${res}\"; exit 1; }
   grep -qi '^access-control-allow-origin: https://ke-la.example' <<<\"\${res}\" && { echo 'FAIL  Origin lạ được CORS cho phép'; exit 1; }
+  # Chiều ngược lại: Origin hợp lệ phải được CORS cho phép và bắt tay WebSocket (chat) phải qua; Origin lạ không được 101
+  ok=\$(curl -si -m 10 https://${IP}:3000/api/config -H 'Origin: https://${IP}:3000' | tr -d '\r') || { echo 'FAIL  Không gọi được /api/config với Origin hợp lệ'; exit 1; }
+  grep -q '^HTTP/[0-9.]* 200' <<<\"\${ok}\" || { echo 'FAIL  /api/config với Origin hợp lệ không trả 200'; head -5 <<<\"\${ok}\"; exit 1; }
+  grep -qixF 'access-control-allow-origin: https://${IP}:3000' <<<\"\${ok}\" || { echo 'FAIL  Origin hợp lệ https://IP:3000 không được CORS cho phép'; echo \"\${ok}\" | head -20; exit 1; }
+  # curl không tự ngắt khi được 101 → -m 3 rồi bỏ mã thoát (|| true); chỉ đọc dòng trạng thái đầu
+  ws_hop_le=\$(curl -si -m 3 --http1.1 -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
+    -H 'Origin: https://${IP}:3000' 'https://${IP}:3000/ws/socket.io/?EIO=4&transport=websocket' 2>/dev/null || true)
+  ws_la=\$(curl -si -m 3 --http1.1 -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
+    -H 'Origin: https://ke-la.example' 'https://${IP}:3000/ws/socket.io/?EIO=4&transport=websocket' 2>/dev/null || true)
+  ma_hop_le=\$(awk 'NR == 1 {print \$2}' <<<\"\${ws_hop_le}\"); ma_la=\$(awk 'NR == 1 {print \$2}' <<<\"\${ws_la}\")
+  [ \"\${ma_hop_le}\" = 101 ] || { echo \"FAIL  WebSocket với Origin hợp lệ không được nhận (mã: \${ma_hop_le:-không phản hồi})\"; exit 1; }
+  grep -Eq '^[0-9]{3}\$' <<<\"\${ma_la}\" && [ \"\${ma_la}\" != 101 ] || { echo \"FAIL  WebSocket với Origin lạ không bị từ chối (mã: \${ma_la:-không phản hồi})\"; exit 1; }
   curl -si -m 10 https://${IP}:5678/form/onebee-ho-tro -u nhanvien:\"\$(cat /etc/onebee-box/secrets/bieu-mau-nhanvien)\" | grep -i '^content-security-policy:' | grep -qi sandbox \
     || { echo 'FAIL  Biểu mẫu n8n mất CSP sandbox khi đi qua Caddy'; exit 1; }
-  echo 'PASS  Cookie đăng nhập Open WebUI có Secure; Origin lạ không được CORS; biểu mẫu n8n vẫn có CSP sandbox'
+  echo 'PASS  Cookie đăng nhập Open WebUI có Secure; Origin lạ không được CORS, Origin hợp lệ được CORS + WebSocket (101), Origin lạ bị từ chối WebSocket; biểu mẫu n8n vẫn có CSP sandbox'
   onebee-box dong-bo-tro-ly >/dev/null
   echo 'PASS  onebee-box dong-bo-tro-ly chạy được qua HTTPS (Box tin CA của chính nó)'"
 

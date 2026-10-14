@@ -5,6 +5,21 @@
 - name: Mã đơn vị, địa chỉ IP và CA riêng của Box
   ansible.builtin.include_tasks: ca.yml
 
+# Mỗi Origin thêm phải dạng http(s)://tên[:cổng], không đường dẫn/khoảng trắng/";" ("*" bị loại) — ";" là dấu ngăn của CORS_ALLOW_ORIGIN
+- name: Kiểm tra onebee_box_cors_them (danh sách Origin Trợ lý AI khai thêm)
+  ansible.builtin.assert:
+    that:
+      - onebee_box_cors_them is sequence
+      - onebee_box_cors_them is not string
+      - >-
+        onebee_box_cors_them | map('string')
+        | select('match', '^https?://[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:[0-9]{1,5})?$') | list | length
+        == onebee_box_cors_them | length
+    fail_msg: >-
+      onebee_box_cors_them trong box/ansible/group_vars/all.yml phải là danh sách Origin dạng http://tên:cổng hoặc https://tên:cổng
+      (không đường dẫn, không dấu "/" ở cuối, không "*"), vd ["http://onebee-box.lan:3000"].
+    quiet: true
+
 - name: Tạo thư mục cài đặt và dữ liệu
   ansible.builtin.file:
     path: "{{ item.path }}"
