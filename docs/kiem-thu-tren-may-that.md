@@ -213,7 +213,7 @@ Chụp snapshot VM trước mỗi nhóm.
   `/etc/onebee-box/secrets/samba-onebee`), PowerShell `Get-SmbConnection | Select ServerName,ShareName,Dialect,Encrypted`; Mint: Nemo `smb://<IP>/chung`, chép 1 GB vào/ra;
   Box: `sudo smbstatus`; thử hạ cấp: `smbclient //<IP>/chung -U onebee -m SMB2` và `-m NT1`. LAN có IPv6 toàn cầu: Windows `Test-NetConnection <IPv6 toàn cầu của Box> -Port 445`.
   (c) `SMB3_11` + `required`; Windows `Dialect 3.1.1 Encrypted True`; `smbstatus` cột Encryption có `AES-…`, Protocol `SMB3_11`; SMB2/NT1 bị từ chối. Máy quét cũ: ghi model,
-  thử lại với `onebee_box_samba_smb3: false`. LAN có IPv6 toàn cầu (N7): `Test-NetConnection` qua IPv6 **thất bại ngay** (không treo ~20 giây); mở bằng **tên** `\\onebee-box` không chậm.
+  thử lại với `onebee_box_samba_smb3: false`. LAN có IPv6 toàn cầu (N7): `Test-NetConnection` qua IPv6 **thất bại ngay** (không treo tới hết giờ chờ); mở bằng **tên** `\\onebee-box` không chậm.
   (d) `samba/tasks/main.yml` (blockinfile `[global]`), `onebee-tuong-lua` (IPv6 chỉ fe80/fc00; ngoài đó REJECT).
 - [ ] **B16. Khôi phục từ bản sao lưu chụp TRƯỚC khi bật HTTPS** (5.0, chưa làm) — (b) sao lưu ở HTTP → bật HTTPS → giả lập hỏng ổ (E1) → khôi phục bằng bản cũ.
   (c) Box về HTTP, bộ cài lần 2 tự `dong-bo-may` đẩy `BOX_HTTPS=0`; máy trạm có dấu `https-bat` được gỡ dấu, sao lưu lại được. (d) `onebee-box-sao-luu.sh.j2:172` (xóa dấu trước restore), `box-fleet/tasks/main.yml:75`.
@@ -432,7 +432,7 @@ Ký hiệu: **XÁC NHẬN** = thấy rõ trong code (đã chạy thử nếu ghi
 - **N6 — XÁC NHẬN rồi sửa** (`7fbc274`): mã nguồn Tailscale 1.104.1 (`util/linuxfw/iptables_runner.go`) chèn `-j ts-input`/`ts-forward` ở vị trí 1 mỗi lần khởi động,
   `ts-input` có `-i tailscale0 -j ACCEPT`. Kernel thật, tailscale0 giả + giả lập tailscaled khởi động lại sau tường lửa: bản cũ để máy tailnet lạ vào `:445` (HTTP 200),
   bản mới chặn. Sửa: lọc kết nối mới từ tailscale0 ở mangle/PREROUTING; unit `After=tailscaled.service`. Còn kiểm với tailscaled thật ở B14.
-- **N7 — sửa** (`7fbc274`): IPv6 tới SSH/Samba ngoài mạng nội bộ → REJECT (tcp-reset / icmp6-port-unreachable). Đo trên kernel thật: bản cũ treo 10,02 giây, bản mới
-  bị từ chối sau 0,01 giây. Còn kiểm với Windows thật ở B15.
+- **N7 — sửa** (`7fbc274`): IPv6 tới SSH/Samba ngoài mạng nội bộ → REJECT (tcp-reset / icmp6-port-unreachable). Thử trên kernel thật (curl có giới hạn thời gian): bản cũ treo tới
+  hết giờ chờ, bản mới bị từ chối ngay. Còn kiểm với Windows thật ở B15.
 - **N10:** đồng bộ `cai-dat-onebee-box.md` (12 dòng liệt kê đủ, mã đơn vị bắt buộc / IP chỉ cảnh báo, gia hạn CA, Tailscale ở mangle, IPv6), `quan-ly-may-tram.md` (`dong-bo-may`
   tự chạy task desktop; `xoay-khoa` theo N8/N9), chú thích `onebee-box.sh.j2` và `group_vars/all.yml` (bỏ tham chiếu lệnh `doi-ca`), ADR 0005, `security-audit.md` (lệnh đã có / chưa có / không làm).
