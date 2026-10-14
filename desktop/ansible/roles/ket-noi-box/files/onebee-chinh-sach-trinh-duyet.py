@@ -4,7 +4,8 @@ Cách dùng: onebee-chinh-sach-trinh-duyet.py cai <file-pem-CA> [--https <IP-Box
  - Firefox: chính sách Certificates.Install ghi vào /etc/firefox/policies/policies.json. File ở /etc THAY THẾ file
    /usr/lib/firefox/distribution/policies.json của gói → trộn nội dung gói vào rồi mới thêm mục OneBee; khi gỡ, trả về đúng nội dung gói
    (hoặc xóa file nếu gói không có). Firefox KHÔNG tự gỡ chứng chỉ đã nạp khi bỏ chính sách → 'go' gỡ thêm khỏi từng hồ sơ bằng certutil (cố gắng hết sức).
-   Xoay CA (vân tay khác lần cài trước): 'cai' gỡ CA cũ khỏi từng hồ sơ theo vân tay — CA mới cùng mã đơn vị trùng tên CA cũ.
+   Xoay CA: mỗi lần 'cai' dọn khỏi từng hồ sơ mọi chứng chỉ cùng tên CA hiện tại nhưng KHÁC vân tay CA hiện tại (CA mới cùng mã đơn vị trùng
+   tên CA cũ) — không dựa vào dấu "lần cài trước", nên lần gỡ sót vì lỗi tạm (thiếu certutil, đĩa chưa gắn…) tự lành ở lần sau, và xoay nhiều lần liên tiếp không để sót CA nào.
  - Có --https <IP>: Firefox và Chromium/Chrome mở sẵn Box bằng https:// (trang chủ + dấu trang do quản trị đặt), để người dùng không gõ tay
    http:// (HSTS vô tác dụng với địa chỉ IP). KHÔNG bật DisableSecurityBypass / HTTPS-Only: máy in, thiết bị LAN dùng chứng chỉ tự ký vẫn phải
    mở được. Tập huấn: cảnh báo chứng chỉ ở địa chỉ Box = dấu hiệu bị tấn công, không bấm qua.
@@ -26,7 +27,6 @@ FIREFOX_ETC = GOC + "/etc/firefox/policies/policies.json"
 FIREFOX_GOI = GOC + "/usr/lib/firefox/distribution/policies.json"
 CHROME_FILES = [GOC + "/etc/chromium/policies/managed/onebee-box.json", GOC + "/etc/opt/chrome/policies/managed/onebee-box.json"]
 TEN_CHUNG_CHI = re.compile(r"^(OneBee Box .+? Root CA)\s+[A-Za-z,]*$")
-DAU_VAN_TAY = GOC + "/var/lib/onebee/ket-noi-box"   # vân tay CA đã cài lần trước (role ket-noi-box ghi SAU mỗi lần cai)
 HO_SO_FIREFOX = [GOC + "/home/*/.mozilla/firefox/*/cert9.db", GOC + "/root/.mozilla/firefox/*/cert9.db",
                  GOC + "/home/*/snap/firefox/common/.mozilla/firefox/*/cert9.db"]
 
@@ -102,19 +102,15 @@ def cai(file_pem, ip_https=None):
         if ip_https:
             chinh_sach.update(HomepageLocation=f"https://{ip_https}/", ManagedBookmarks=dau_trang(ip_https))
         doi |= ghi_neu_doi(p, chinh_sach)
+    ten, vt = ten_ca(file_pem), van_tay(open(file_pem, encoding="ascii").read())
+    n = 0
     try:
-        van_tay_cu = open(DAU_VAN_TAY, encoding="ascii").read().strip().lower()
+        n = go_ca_khac_khoi_ho_so_firefox(ten, vt)
     except FileNotFoundError:
-        van_tay_cu = ""   # lần đầu cài: chưa có CA cũ nào để gỡ
-    if van_tay_cu and van_tay_cu not in van_tay(open(file_pem, encoding="ascii").read()):
-        n = 0
-        try:
-            n = go_ca_cu_khoi_ho_so_firefox(van_tay_cu)
-        except FileNotFoundError:
-            print("CẢNH BÁO: chưa có certutil (gói libnss3-tools) — không gỡ được CA cũ khỏi hồ sơ Firefox", file=sys.stderr)
-        if n:
-            doi = True
-            print(f"Đã gỡ {n} chứng chỉ OneBee mang vân tay CA cũ khỏi hồ sơ Firefox")
+        print("CẢNH BÁO: chưa có certutil (gói libnss3-tools) — không gỡ được CA cũ khỏi hồ sơ Firefox", file=sys.stderr)
+    if n:
+        doi = True
+        print(f"Đã gỡ {n} chứng chỉ OneBee mang vân tay CA cũ khỏi hồ sơ Firefox")
     return doi
 
 
@@ -145,19 +141,36 @@ def go_khoi_ho_so_firefox():
     return dem
 
 
-def go_ca_cu_khoi_ho_so_firefox(van_tay_cu):
-    """Gỡ khỏi mọi hồ sơ các chứng chỉ OneBee mang vân tay CA cũ. certutil chỉ xóa theo TÊN, mà CA mới cùng mã đơn vị trùng tên CA cũ
-    (và -D có thể xóa bản mới trước) → xóa lặp tới khi tên đó hết bản mang vân tay cũ. CA mới lỡ bị xóa theo thì chính sách
-    Certificates.Install nạp lại khi Firefox mở."""
+def van_tay_theo_ten(thu_muc, ten):
+    """Vân tay của mọi chứng chỉ mang tên `ten` trong hồ sơ (certutil -L -n ... -a in hết các bản cùng tên)."""
+    pem = subprocess.run(["certutil", "-L", "-d", thu_muc, "-n", ten, "-a"], capture_output=True, text=True).stdout
+    return van_tay(pem)
+
+
+def ten_ca(file_pem):
+    """Tên chứng chỉ trong cert9.db = CN của CA ('OneBee Box <mã> Root CA'); không đọc được CN đúng dạng → None (không gỡ gì, tránh xóa nhầm)."""
+    r = subprocess.run(["openssl", "x509", "-in", file_pem, "-noout", "-subject", "-nameopt", "RFC2253"], capture_output=True, text=True, check=True)
+    m = re.search(r"(?:^subject=|,)CN=([^,]+)", r.stdout.strip())
+    return m.group(1) if m and re.fullmatch(r"OneBee Box .+? Root CA", m.group(1)) else None
+
+
+def go_ca_khac_khoi_ho_so_firefox(ten_hien_tai, van_tay_hien_tai):
+    """Gỡ khỏi mọi hồ sơ các chứng chỉ mang tên CA hiện tại nhưng vân tay KHÁC CA hiện tại; tên khác (CA của đơn vị khác trong hồ sơ kỹ thuật viên)
+    giữ nguyên. certutil chỉ xóa theo TÊN và có thể xóa bản mới trước → xóa lặp, liệt kê lại sau mỗi lần, tới khi tên đó hết bản lạ. CA hiện tại
+    lỡ bị xóa theo thì chính sách Certificates.Install nạp lại khi Firefox mở. Trả số chứng chỉ KHÁC CA hiện tại đã gỡ (không đếm CA hiện tại)."""
+    if not ten_hien_tai:
+        return 0
     dem = 0
     for thu_muc, ds_ten in ho_so_firefox():
-        for ten in ds_ten:
-            for _ in range(20):   # chặn vòng lặp vô hạn nếu certutil báo xóa được mà không xóa
-                pem = subprocess.run(["certutil", "-L", "-d", thu_muc, "-n", ten, "-a"], capture_output=True, text=True).stdout
-                if van_tay_cu not in van_tay(pem) or \
-                        subprocess.run(["certutil", "-D", "-n", ten, "-d", thu_muc], capture_output=True).returncode != 0:
-                    break
-                dem += 1
+        if ten_hien_tai not in ds_ten:
+            continue
+        la = [v for v in van_tay_theo_ten(thu_muc, ten_hien_tai) if v not in van_tay_hien_tai]
+        dau = len(la)
+        for _ in range(20):   # chặn vòng lặp vô hạn nếu certutil báo xóa được mà không xóa
+            if not la or subprocess.run(["certutil", "-D", "-n", ten_hien_tai, "-d", thu_muc], capture_output=True).returncode != 0:
+                break
+            la = [v for v in van_tay_theo_ten(thu_muc, ten_hien_tai) if v not in van_tay_hien_tai]
+        dem += dau - len(la)
     return dem
 
 
