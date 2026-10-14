@@ -1,7 +1,8 @@
 # Quản lý bởi OneBee OS (box/ansible/roles/box-firewall)
 [Unit]
 Description=Tường lửa OneBee Box (chỉ mạng LAN cho phép vào dịch vụ của Box)
-After=docker.service network-online.target
+# tailscaled: khởi động cùng lúc thì dựng sau nó (bộ lọc Tailscale nằm ở mangle nên đúng cả khi tailscaled khởi động lại sau)
+After=docker.service network-online.target tailscaled.service
 Wants=network-online.target
 # Docker khởi động lại → dựng lại quy tắc
 PartOf=docker.service

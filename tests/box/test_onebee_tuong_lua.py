@@ -11,11 +11,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(HERE, "../../box/ansible/roles/box-firewall/files/onebee-tuong-lua")
 
 IPT_GIA = r'''#!/bin/bash
-# iptables giả: nhớ trạng thái trong thư mục $ONEBEE_FW (một file mỗi chuỗi, mỗi dòng một quy tắc dạng "-A chuỗi …")
+# iptables giả: nhớ trạng thái trong thư mục $ONEBEE_FW (một file mỗi chuỗi, mỗi dòng một quy tắc dạng "-A chuỗi …");
+# bảng khác filter (-t mangle) nằm trong thư mục con cùng tên
 d="$ONEBEE_FW/$(basename "$0")"; mkdir -p "$d"
 echo "$0 $*" >> "$ONEBEE_FW/lenh.log"
+if [ "$1" = -t ]; then [ "$2" = filter ] || d="$d/$2"; mkdir -p "$d"; shift 2; fi
 case "$1" in
-  -S) if [ -n "${2:-}" ]; then [ -f "$d/$2" ] || exit 1; cat "$d/$2"; else cat "$d"/* 2>/dev/null || true; fi ;;
+  -S) if [ -n "${2:-}" ]; then [ -f "$d/$2" ] || exit 1; cat "$d/$2"; else find "$d" -maxdepth 1 -type f -exec cat {} + 2>/dev/null || true; fi ;;
   -N) [ -f "$d/$2" ] && exit 1; : > "$d/$2" ;;
   -F) : > "$d/$2" ;;
   -X) rm -f "$d/$2" ;;
@@ -50,8 +52,8 @@ class TuongLua(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         return r
 
-    def chuoi(self, ten, ipt="iptables"):
-        p = f"{self.t}/fw/{ipt}/{ten}"
+    def chuoi(self, ten, ipt="iptables", bang=""):
+        p = f"{self.t}/fw/{ipt}/{bang + '/' if bang else ''}{ten}"
         return open(p).read().splitlines() if os.path.exists(p) else None
 
     def test_loc_moi_cong_mang_tru_lo_docker_br(self):
@@ -89,11 +91,45 @@ class TuongLua(unittest.TestCase):
         self.assertEqual(truoc, {t: self.chuoi(t) for t in truoc})
 
     def test_tat_go_sach(self):
-        self.chay()
+        self.chay(conf='TAILSCALE_CHO_PHEP="100.64.1.2"\n')
         self.chay("tat")
         self.assertEqual(self.chuoi("INPUT"), [])
         self.assertEqual(self.chuoi("DOCKER-USER"), [])
         self.assertIsNone(self.chuoi("ONEBEE-LAN-BOX"))
+        for ipt in ("iptables", "ip6tables"):
+            self.assertEqual(self.chuoi("PREROUTING", ipt, "mangle"), [])
+            self.assertIsNone(self.chuoi("ONEBEE-TAILSCALE", ipt, "mangle"))
+
+    def test_tailscale_loc_o_mangle_khong_phu_thuoc_thu_tu_voi_tailscaled(self):
+        """tailscaled (1.104, util/linuxfw) chèn -j ts-input / ts-forward vào VỊ TRÍ 1 của INPUT/FORWARD mỗi lần khởi động, và ts-input ACCEPT mọi gói
+        từ tailscale0 → nếu chỉ lọc ở filter thì tailscaled khởi động sau tường lửa là máy tailnet bất kỳ vào được Box. Lọc kết nối MỚI từ tailscale0
+        ở mangle/PREROUTING (chạy trước mọi chuỗi filter; tailscaled chỉ thêm ở đây quy tắc CONNMARK không chặn/không nhận gói)."""
+        self.chay(conf='TAILSCALE_CHO_PHEP="100.64.1.2,fd7a:115c:a1e0::1"\n')
+        self.assertEqual(self.chuoi("PREROUTING", bang="mangle"),
+                         ["-A PREROUTING -i tailscale0 -m conntrack --ctstate NEW -j ONEBEE-TAILSCALE"])
+        self.assertEqual(self.chuoi("ONEBEE-TAILSCALE", bang="mangle"),
+                         ["-A ONEBEE-TAILSCALE -s 100.64.1.2 -j RETURN", "-A ONEBEE-TAILSCALE -j DROP"])
+        self.assertEqual(self.chuoi("ONEBEE-TAILSCALE", "ip6tables", "mangle"),
+                         ["-A ONEBEE-TAILSCALE -s fd7a:115c:a1e0::1 -j RETURN", "-A ONEBEE-TAILSCALE -j DROP"])
+        self.chay(conf='TAILSCALE_CHO_PHEP="100.64.1.2,fd7a:115c:a1e0::1"\n')                # chạy lại không nhân đôi
+        self.assertEqual(len(self.chuoi("PREROUTING", bang="mangle")), 1)
+        self.chay()                                                                            # chưa khai: chặn hết kết nối mới qua Tailscale
+        self.assertEqual(self.chuoi("ONEBEE-TAILSCALE", bang="mangle"), ["-A ONEBEE-TAILSCALE -j DROP"])
+
+    def test_dich_vu_chay_sau_tailscaled(self):
+        unit = open(os.path.join(os.path.dirname(SCRIPT), "onebee-tuong-lua.service"), encoding="utf-8").read()
+        after = [l for l in unit.splitlines() if l.startswith("After=")]
+        self.assertTrue(after and "tailscaled.service" in after[0], after)
+
+    def test_ipv6_ssh_samba_ngoai_mang_noi_bo_bi_reject_ngay_khong_drop(self):
+        """Mạng có IPv6 toàn cầu: Windows mở \\onebee-box bằng IPv6 trước; DROP thì treo tới khi hết thời gian chờ rồi mới lùi IPv4 → REJECT ngay."""
+        self.chay()
+        v6 = self.chuoi("ONEBEE-LAN-BOX", "ip6tables")
+        self.assertEqual(v6[-2:], ["-A ONEBEE-LAN-BOX -p tcp -j REJECT --reject-with tcp-reset",
+                                   "-A ONEBEE-LAN-BOX -j REJECT --reject-with icmp6-port-unreachable"])
+        self.assertIn("-A ONEBEE-LAN-BOX -i enp3s0 -s fe80::/10 -j RETURN", v6)                # mạng nội bộ IPv6 vẫn vào được
+        self.assertEqual(self.chuoi("ONEBEE-LAN-BOX")[-1], "-A ONEBEE-LAN-BOX -j DROP")          # IPv4 giữ DROP
+        self.assertEqual(self.chuoi("ONEBEE-LAN-DOCKER", "ip6tables")[-1], "-A ONEBEE-LAN-DOCKER -j DROP")
 
 
 if __name__ == "__main__":
