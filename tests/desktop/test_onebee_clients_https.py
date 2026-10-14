@@ -101,6 +101,9 @@ class KhachHttps(unittest.TestCase):
         import inspect
         for ten in ("mo", "loi_mang"):
             self.assertEqual(inspect.getsource(getattr(HOI, ten)), inspect.getsource(getattr(BAO, ten)), ten)
+        # Lớp chặn tự chuyển hướng mà mo() dùng (getsource không đọc được lớp của module nạp thẳng từ file → so phương thức + mô tả)
+        a, b = HOI.KhongTuChuyenHuong, BAO.KhongTuChuyenHuong
+        self.assertEqual((inspect.getsource(a.redirect_request), a.__doc__), (inspect.getsource(b.redirect_request), b.__doc__))
 
     def test_ca_that_nối_duoc_ca_la_bi_chan_voi_thong_bao_ro(self):
         for m in (HOI, BAO):
