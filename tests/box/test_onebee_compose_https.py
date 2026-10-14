@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Kiểm thử docker-compose.yml.j2 ở hai chế độ HTTP / HTTPS (không cần Docker): chỉ Caddy công bố cổng khi HTTPS,
-cấu hình ứng dụng đổi đúng (n8n sau proxy, cookie Secure, CORS), chế độ HTTP giữ nguyên như trước. Chạy: python3 -m unittest"""
+cấu hình ứng dụng đổi đúng (n8n sau proxy, cookie Secure, CORS), chế độ HTTP giữ nguyên cổng như trước và vẫn giới hạn CORS.
+Chạy: python3 -m unittest"""
 import os
 import unittest
 
@@ -70,6 +71,20 @@ class ComposeHaiCheDo(unittest.TestCase):
         w = s["open-webui"]["environment"]
         self.assertEqual((w["WEBUI_SESSION_COOKIE_SECURE"], w["WEBUI_AUTH_COOKIE_SECURE"]), ("true", "true"))
         self.assertEqual(w["CORS_ALLOW_ORIGIN"], "https://192.168.1.10:3000;https://box.anphu.onebee.internal:3000")
+
+    def test_cors_o_che_do_http_duoc_gioi_han(self):
+        # Thiếu biến này thì Open WebUI phản chiếu mọi Origin kèm allow-credentials → trang web lạ đọc được API bằng phiên đăng nhập
+        w = ve(False)["open-webui"]["environment"]
+        self.assertIn("CORS_ALLOW_ORIGIN", w)
+        self.assertRegex(w["CORS_ALLOW_ORIGIN"], r"^http://\d{1,3}(\.\d{1,3}){3}:3000$")
+        self.assertEqual(w["CORS_ALLOW_ORIGIN"], "http://192.168.1.10:3000")
+
+    def test_cors_o_che_do_https_van_dung_nhu_cu(self):
+        cors = ve(True)["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"]
+        for nguon in cors.split(";"):
+            self.assertTrue(nguon.startswith("https://"), nguon)
+        self.assertIn(".onebee.internal:3000", cors)
+        self.assertNotIn("http://", cors)
 
     def test_ca_gui_den_cac_cong_cu_cung_mot_nguon(self):
         # image không đổi giữa hai chế độ → chuyển HTTP ↔ HTTPS không phải tải lại gì

@@ -50,8 +50,10 @@ box "pw=\$(cat /etc/onebee-box/secrets/webui-admin-password)
   hdr=\$(curl -si -m 20 -X POST https://${IP}:3000/api/v1/auths/signin -H 'Content-Type: application/json' \
     -d \"{\\\"email\\\":\\\"quantri@onebee.lan\\\",\\\"password\\\":\\\"\${pw}\\\"}\")
   grep -i '^set-cookie:' <<<\"\${hdr}\" | grep -qi 'secure' || { echo 'FAIL  Cookie đăng nhập Open WebUI thiếu cờ Secure'; echo \"\${hdr}\" | head -20; exit 1; }
-  ! curl -si -m 10 https://${IP}:3000/api/config -H 'Origin: https://ke-la.example' | grep -qi 'access-control-allow-origin: https://ke-la.example' \
-    || { echo 'FAIL  Origin lạ được CORS cho phép'; exit 1; }
+  # Gọi được API trước rồi mới kiểm header (dạng cũ \"! curl | grep\" đạt giả khi curl lỗi/timeout/TLS hỏng)
+  res=\$(curl -si -m 10 https://${IP}:3000/api/config -H 'Origin: https://ke-la.example') || { echo 'FAIL  Không gọi được /api/config qua HTTPS'; exit 1; }
+  grep -q '^HTTP/[0-9.]* 200' <<<\"\${res}\" || { echo 'FAIL  /api/config qua HTTPS không trả 200'; head -5 <<<\"\${res}\"; exit 1; }
+  grep -qi '^access-control-allow-origin: https://ke-la.example' <<<\"\${res}\" && { echo 'FAIL  Origin lạ được CORS cho phép'; exit 1; }
   curl -si -m 10 https://${IP}:5678/form/onebee-ho-tro -u nhanvien:\"\$(cat /etc/onebee-box/secrets/bieu-mau-nhanvien)\" | grep -i '^content-security-policy:' | grep -qi sandbox \
     || { echo 'FAIL  Biểu mẫu n8n mất CSP sandbox khi đi qua Caddy'; exit 1; }
   echo 'PASS  Cookie đăng nhập Open WebUI có Secure; Origin lạ không được CORS; biểu mẫu n8n vẫn có CSP sandbox'

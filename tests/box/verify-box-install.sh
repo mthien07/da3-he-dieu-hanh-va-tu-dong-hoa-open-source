@@ -25,6 +25,9 @@ s.on(\"connect\", () => s.emit(\"needSetup\", (need) => { if (need) process.exit
 setTimeout(() => process.exit(4), 20000);' && exit 0; done; exit 1"
 check "Giám sát mở ra LAN chỉ sau khi đã có tài khoản quản trị" bash -c \
   "[ -s /etc/onebee-box/secrets/uptime-kuma-da-co-quan-tri ] && ss -Htln | awk '{print \$4}' | grep -qx '0.0.0.0:3001'"
+check "Open WebUI :3000 không cho Origin lạ đọc API kèm cookie (CORS giới hạn cả ở chế độ HTTP)" bash -c \
+  "r=\$(curl -si -m 10 http://127.0.0.1:3000/api/config -H 'Origin: https://ke-la.example') && grep -q '^HTTP/[0-9.]* 200' <<<\"\$r\" \
+   && ! grep -qi '^access-control-allow-origin: https://ke-la.example' <<<\"\$r\""
 check "Kho sao lưu :8000 đòi mật khẩu (401)" code_in http://127.0.0.1:8000/ 401
 check "Trang giới thiệu gửi kèm tiêu đề bảo mật (chống nhúng khung, không lộ tên máy chủ web)" bash -c \
   "h=\$(curl -sI -m 10 http://127.0.0.1/); grep -qi '^x-frame-options: DENY' <<<\"\$h\" && ! grep -qi '^server:' <<<\"\$h\""
