@@ -66,15 +66,17 @@ sudo onebee-box xoay-khoa --may ketoan-01  # đổi mật khẩu kho HTTP + khó
 sudo onebee-box thu-hoi-may ketoan-01      # mất máy, nhân viên nghỉ, nghi bị giả mạo (hỏi xác nhận; --dong-y để bỏ hỏi)
 ```
 `xoay-khoa` dùng khi nghi lộ khóa, sau khi bật HTTPS (mật khẩu đã đi qua mạng dạng rõ vẫn còn hiệu lực), hoặc định kỳ. `--may/--tat-ca` đổi mật khẩu kho HTTP
-(htpasswd) + khóa `hoi` theo máy rồi chạy `dong-bo-may`; máy tắt thì mất quyền sao lưu tới khi bật lên và `dong-bo-may <tên>`. `--box` đổi mật khẩu quản trị Trợ lý AI và giám sát
+(htpasswd) + khóa `hoi` theo máy rồi chạy `dong-bo-may`; máy tắt thì mất quyền sao lưu tới khi bật lên và `dong-bo-may <tên>` — lệnh vẫn chạy hết và in cảnh báo
+riêng cho từng máy chưa nhận ("Máy trạm <tên> hiện đang tắt … cần chạy: sudo onebee-box dong-bo-may <tên>"). `--box` đổi mật khẩu quản trị Trợ lý AI và giám sát
 (trong dịch vụ), mật khẩu chủ n8n, mật khẩu biểu mẫu `nhanvien`/`kythuat`, khóa webhook n8n, `WEBUI_SECRET_KEY` (mọi phiên Open WebUI phải đăng nhập lại) rồi **chạy lại bộ cài ngay**
-để áp dụng — ghi lại mật khẩu mới bằng `sudo onebee-box in-khoa`. **Không xoay** `RESTIC_PASSWORD` (chưa từng đi qua mạng; đổi là mất bản sao lưu cũ) và `N8N_ENCRYPTION_KEY`
+để áp dụng — ghi lại mật khẩu mới bằng `sudo onebee-box in-khoa`. Khi khóa gửi tình trạng dùng chung còn bật, `--box` đổi cả khóa này và **tự đẩy xuống mọi máy**
+(như `dong-bo-may --tat-ca`) ngay sau bộ cài. `xoay-khoa` không chạy chồng với sao lưu (đang sao lưu thì báo "thử lại sau"). **Không xoay** `RESTIC_PASSWORD` (chưa từng đi qua mạng; đổi là mất bản sao lưu cũ) và `N8N_ENCRYPTION_KEY`
 (đổi là mất thông tin đăng nhập đã lưu trong n8n). Khóa gửi tình trạng dùng chung chỉ còn là bộ lọc rác: khi mọi máy đã chạy bản desktop mới, đặt `onebee_box_khoa_tinh_trang_chung: false`
 (n8n thôi đòi khóa, Box thôi đẩy `TINH_TRANG_KEY`; credential cũ còn nằm trong n8n, xóa tay trên giao diện nếu muốn).
 
 `dong-bo-may` dùng khi đổi khóa/URL: cấu hình dựng từ đúng nguồn của `them-may`, thiếu khóa nào của máy thì bỏ qua máy đó (không đẩy file
-thiếu). File cũ trên máy giữ lại bản `.~`. Lệnh chỉ cập nhật file cấu hình và kiểm báo cáo chạy được; các file sinh từ cấu hình
-(`/etc/onebee-hoi.conf`, mục menu) do bộ cài desktop tạo lại — chạy lại bộ cài trên máy nếu đổi dòng `HOI_*`.
+thiếu). File cũ trên máy giữ lại bản `.~`. Sau khi ghi file cấu hình, lệnh chạy lại trên máy đúng các task của bộ cài desktop (`ket-noi-box`: CA + trình duyệt;
+`cau-hinh-hoi`: `/etc/onebee-hoi.conf`; `muc-menu`) rồi kiểm báo cáo chạy được — **không cần** chạy lại bộ cài desktop bằng tay.
 
 `thu-hoi-may` gỡ: tài khoản kho sao lưu HTTP, tài khoản + khóa Trợ lý AI (`hoi`) của máy, khóa SSH đã ghim, chỗ nhận báo cáo tình trạng; máy
 biến khỏi bảng tình trạng, báo cáo và danh sách cập nhật. **Giữ** kho sao lưu và mật khẩu kho của máy (khôi phục dữ liệu, dọn bản cũ).

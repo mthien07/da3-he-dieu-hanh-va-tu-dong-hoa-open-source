@@ -1,6 +1,15 @@
 # Nhật ký thay đổi
 
 ## [Chưa phát hành]
+### Sửa lỗi sau kiểm thử thật (14/10/2026, chi tiết: `docs/kiem-thu-tren-may-that.md` mục "Đợt sửa 14/10/2026")
+- **Open WebUI chế độ HTTP chặn Origin lạ:** `CORS_ALLOW_ORIGIN` = IP Box + `box.<mã>.onebee.internal` (cổng 3000) cả khi chưa bật HTTPS — trước đây phản chiếu mọi Origin
+  kèm `allow-credentials`. Test `check-https.sh` không còn đạt giả khi curl lỗi.
+- **Tường lửa:** kết nối mới qua Tailscale bị lọc ở bảng `mangle`, đúng cả khi tailscaled khởi động lại sau tường lửa (trước đây máy tailnet bất kỳ có thể vào Box);
+  IPv6 ngoài mạng nội bộ tới SSH/Samba bị từ chối ngay thay vì im lặng (Windows không còn treo khi mở `\\onebee-box`).
+- **Gia hạn CA trung gian** chạy mỗi đêm cả khi chưa gắn ổ sao lưu.
+- **`xoay-khoa`:** `--box` tự đẩy khóa tình trạng mới xuống mọi máy; máy đang tắt chỉ bị cảnh báo kèm lệnh cần chạy (không dừng giữa chừng); không chạy chồng với sao lưu.
+- **`hoi`:** không tự theo chuyển hướng 308 bằng CA công cộng — vẫn chỉ tin CA của Box.
+- **Máy trạm — xoay CA:** gỡ CA cũ khỏi hồ sơ Firefox theo vân tay.
 ### Bảo mật (rà soát 10/10/2026 — Pha 1, xem `docs/security-audit.md`)
 - **n8n 2.40.7 → 2.42.6** (dòng 2.40 đã ngừng nhận bản vá; bản mới vá cả 14 advisory ngày 30/9). Mọi image dịch vụ ghim **tag + digest**
   (`@sha256`, bản đa kiến trúc). Mỗi lần đổi image n8n, bộ cài tự dừng n8n và chép dữ liệu sang `/srv/onebee/n8n.truoc-<phiên bản cũ>`

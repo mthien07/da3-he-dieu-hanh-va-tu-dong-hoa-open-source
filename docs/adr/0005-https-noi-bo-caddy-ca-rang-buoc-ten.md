@@ -13,7 +13,7 @@ tuyệt đối (Wi-Fi, máy nhân viên, thiết bị IoT). Không có tên mi�
    Mỗi khách một mã khác nhau → CA khách A không giả được tên của khách B. Đã kiểm: openssl, Python ssl, curl từ chối chuỗi thật gốc→trung gian→lá
    cho tên ngoài ràng buộc (`tests/box/test_onebee_ca.py`).
 2. **Khóa gốc không nằm trong container nào**: `/etc/onebee-box/secrets/ca/` (0700, có trong bản sao lưu Box mã hóa). Caddy chỉ nhận chứng chỉ gốc +
-   chứng chỉ/khóa trung gian (`portal/pki`). Caddy 2.11.4 chạy được với gốc không kèm khóa (đã chạy thật). Trung gian tự gia hạn khi còn < 60 ngày (lúc sao lưu đêm).
+   chứng chỉ/khóa trung gian (`portal/pki`). Caddy 2.11.4 chạy được với gốc không kèm khóa (đã chạy thật). Trung gian tự gia hạn khi còn < 60 ngày (lúc sao lưu đêm; bước gia hạn chạy trước khi kiểm ổ sao lưu nên vẫn chạy khi chưa gắn ổ).
 3. **Caddy là dịch vụ duy nhất công bố cổng** khi bật HTTPS: 443 (trang giới thiệu), 3000/5678/3001/8000 (giữ số cổng, URL chỉ đổi `http`→`https`),
    80 (chỉ chứng chỉ gốc + trang hướng dẫn, không hiện vân tay). Open WebUI, n8n, Uptime Kuma, rest-server mất `ports:`. `default_sni <IP>` vì máy nối bằng IP
    không gửi SNI; `http_redirect` trả 308 cho `http://` tới cổng TLS; chỉ HTTP/1.1 + HTTP/2.

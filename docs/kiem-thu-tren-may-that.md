@@ -28,7 +28,8 @@ Hai môi trường — ghi rõ để không lẫn:
 | A3 mở rộng | cloud | `810e847` | 5 kịch bản (guards, mint, unikey, systemd, ubuntu): **83 PASS / 0 FAIL** |
 | A4.1 | Mac | `810e847` → `9a8b950` | Chạy với model sản phẩm `gemma4:e2b-it-qat`. Lần 1 FAIL ở lỗi test T1 → sửa, **chạy tiếp từ "LẦN 2" trên container giữ lại**; FAIL ở N11 → sửa → FAIL ở N12 (do bản sửa N11) → sửa → `TẤT CẢ BƯỚC KIỂM THỬ BOX ĐẠT`. Lần chạy **runner gốc từ đầu** ở `9a8b950`: xem dòng cuối mục này |
 
-Lỗi tìm được và đã sửa trong lần chạy này (chi tiết ở mục "Đã sửa sau khi lập phiếu này"): **N11, N12** (sản phẩm), **T1, T2** (script test). Lỗi mới còn mở: **N13**.
+Lỗi tìm được và đã sửa trong lần chạy này (chi tiết ở mục "Đã sửa sau khi lập phiếu này"): **N11, N12** (sản phẩm), **T1, T2** (script test). Lỗi mới khi đó: **N13**
+— đã sửa ngày 14/10 cùng N2, N4–N10 (xem cùng mục; các bản sửa này **chưa** chạy lại runner Box đầy đủ).
 Kiểm thêm tay trên Box test (Mac): `n8n --version` = `2.42.6`; log n8n không có `blocked by policy|content-import|X-Forwarded`;
 portal `[ALL] [CAP_NET_BIND_SERVICE] [no-new-privileges:true]`, rest-server `ro=true drop=[ALL]`, mọi dịch vụ `no-new-privileges`; máy thu hồi `kho-02` không còn trong `.htpasswd`.
 
@@ -125,22 +126,22 @@ xoay khóa máy trạm (N11, T2 — dòng "Máy trạm nhận mật khẩu + kh�
   - [x] `check-xoay-khoa.sh` (toàn bộ): mật khẩu kho cũ 401, khóa hoi cũ hết hạn, máy nhận khóa mới; `--box`: quản trị Open WebUI/n8n mới đăng nhập được, cũ bị từ chối, biểu mẫu, `email-thu`.
 - [ ] **A4.3 Rủi ro trong chính script test** (FAIL ở đây có thể là lỗi của test, không phải sản phẩm):
   - *10–11/10 (Mac):* `check-https.sh:55` (CSP trang GET biểu mẫu) **đạt** — n8n có gửi CSP `sandbox` ở trang GET. Gặp thêm 2 lỗi test ngoài danh sách dưới: **T1, T2** (đã sửa).
-    `check-https.sh:53` (CORS) vẫn có thể đạt giả nếu curl lỗi — chưa sửa; xem N13.
+    `check-https.sh:53` (CORS) có thể đạt giả nếu curl lỗi — đã sửa 14/10 (N13, `16057f5`): kiểm mã 200 trước rồi mới kiểm header.
   - `check-https.sh:55` đòi CSP `sandbox` ở trang **GET biểu mẫu** `onebee-ho-tro`; Pha 1 mới đối chiếu mã nguồn cho trang **kết quả** (completion). FAIL → kiểm bằng tay
     `curl -si -u nhanvien:<mk> https://<IP>:5678/form/onebee-ho-tro | grep -i content-security` trên Box: nếu n8n vốn không gửi CSP ở trang GET thì sửa test, không phải Caddy.
-  - `check-https.sh:53` dạng `! curl | grep -q` dưới `pipefail`: curl chết SIGPIPE → `!` thành đúng → bài **đạt giả** (chỉ che lỗi, không báo sai).
+  - ~~`check-https.sh:53` dạng `! curl | grep -q` dưới `pipefail`: curl chết SIGPIPE → `!` thành đúng → bài **đạt giả**~~ — đã sửa (N13, `16057f5`).
     `check-https.sh:73`, `check-quan-ly-tap-trung.sh:44` có `| grep -q`/`| head` sau pipefail — nguy cơ mã 141 như commit `3061a08` (đầu ra nhỏ nên thấp).
   - `check-https.sh:70` FAIL nếu `policies.json` của gói Firefox (được trộn vào `/etc/firefox/policies/policies.json`) có sẵn URL `http://` — container Mint không có Firefox nên không lộ ra; trên Mint thật xem C1.
   - `check-https.sh:12` lấy IP bằng `ip route get 1.1.1.1`, còn bộ cài dùng `ansible_default_ipv4` (`ca.yml:26`) — trong container trùng nhau; lệch thì mọi bài TLS FAIL.
-  - `check-xoay-khoa.sh:35-51` chạy `--box` khi khóa tình trạng chung còn bật nhưng **không** chạy `dong-bo-may --tat-ca` sau đó → từ bước này máy trạm báo tình trạng bị 403
-    (không bước nào sau kiểm nên không FAIL; đừng chạy lại `check-quan-ly-tap-trung.sh` trên container đó).
+  - `check-xoay-khoa.sh:35-51` chạy `--box` khi khóa tình trạng chung còn bật: trước `bbd628b` (N8) lệnh **không** tự đẩy khóa mới → máy trạm báo tình trạng bị 403.
+    Từ `bbd628b`, `xoay-khoa --box` tự `dong-bo-may` mọi máy sau bộ cài — lần chạy runner tới phải thấy máy trạm vẫn báo tình trạng được.
   - Bước "KHỞI ĐỘNG LẠI BOX" cuối runner gọi `http://127.0.0.1:3000` — cần `check-https.sh` đã tắt HTTPS xong; FAIL giữa chừng ở check-https làm hỏng cả các bước sau.
 
 ---
 
 ## B. Box thật / VM Ubuntu Server 24.04 (ansible-core 2.16 của Ubuntu)
 (a) chung: VM `box` Ubuntu 24.04 (4 CPU, 8–12 GB RAM, 60 GB + ổ 20 GB làm ổ sao lưu), VM `ketoan-01` Mint 22.x, mạng **Bridged**; theo `docs/huong-dan/thu-nghiem-tren-may-ao.md`
-(lưu ý file đó chưa nói phải khai mã đơn vị và còn ghi "9 dòng" — xem cuối file). Chụp snapshot VM trước mỗi nhóm.
+Chụp snapshot VM trước mỗi nhóm.
 
 - [ ] **B1. Cài lần đầu** — (b) `sudo ./box/onebee-box-install.sh` khi `onebee_box_ma_don_vi: ""` → dừng; rồi `sed -i 's/^onebee_box_ma_don_vi: .*/onebee_box_ma_don_vi: thu-vm/' box/ansible/group_vars/all.yml`,
   chạy lại. (c) lần 1 dừng ở assert "Chưa khai onebee_box_ma_don_vi"; lần 2 xong, có `CẢNH BÁO: chưa khai onebee_box_dia_chi` khi để trống IP; `sudo onebee-box in-ca` in vân tay;
@@ -202,17 +203,18 @@ xoay khóa máy trạm (N11, T2 — dòng "Máy trạm nhận mật khẩu + kh�
   sudo systemctl restart docker && sleep 20 && sudo iptables -S DOCKER-USER | head -3   # quy tắc tự dựng lại (PartOf=docker)
   ```
   (c) `-j ONEBEE-LAN-DOCKER`/`ONEBEE-LAN-BOX` đứng **đầu** DOCKER-USER/INPUT; LAN vào được, ngoài bị chặn; Box tự gọi `https://<IP>:3000` vẫn được.
-  (d) `box-firewall/files/onebee-tuong-lua:44-61`, `onebee-tuong-lua.service` (chỉ `After=docker.service`).
+  (d) `box-firewall/files/onebee-tuong-lua` (hàm `dung`), `onebee-tuong-lua.service` (`After=docker.service … tailscaled.service`, `PartOf=docker.service`).
 - [ ] **B14. Tailscale thật** — (a) Box + laptop kỹ thuật cùng tailnet. (b) `onebee_box_tailscale_cho_phep: []` → từ laptop `nc -vz <100.x Box> 22` và `:3000`; khai IP laptop → chạy bộ cài → thử lại;
-  rồi `sudo systemctl restart tailscaled; sudo iptables -S INPUT | head -4; sudo iptables -S FORWARD | head -4`; thử từ 1 thiết bị tailnet khác.
-  (c) trống: bị chặn + bộ cài cảnh báo; khai: chỉ laptop đó vào được; **sau khi restart tailscaled, quy tắc OneBee vẫn đứng trước `ts-input`/`ts-forward`** hoặc thiết bị lạ vẫn bị chặn.
+  rồi `sudo systemctl restart tailscaled; sudo iptables -S INPUT | head -4; sudo iptables -t mangle -S PREROUTING; sudo iptables -t mangle -S ONEBEE-TAILSCALE`; thử từ 1 thiết bị tailnet khác.
+  (c) trống: bị chặn + bộ cài cảnh báo; khai: chỉ laptop đó vào được; **sau khi restart tailscaled**, `-j ts-input` có thể đứng đầu INPUT (bình thường) nhưng mangle/PREROUTING vẫn có
+  `-i tailscale0 … -j ONEBEE-TAILSCALE` và thiết bị lạ **vẫn bị chặn** (đã kiểm trên kernel thật với tailscale0 giả, chưa với tailscaled thật — xem N6).
   (d) thứ tự chuỗi (xem "Nghi ngờ lỗi" N6); `box-firewall/tasks/main.yml` (cảnh báo tailscale0).
 - [ ] **B15. Samba SMB 3.1.1 + mã hóa (F8)** — (b) Box: `testparm -s 2>/dev/null | grep -E 'server min protocol|smb encrypt'`; Windows 10: `\\<IP>\chung` (user `onebee`, mật khẩu
   `/etc/onebee-box/secrets/samba-onebee`), PowerShell `Get-SmbConnection | Select ServerName,ShareName,Dialect,Encrypted`; Mint: Nemo `smb://<IP>/chung`, chép 1 GB vào/ra;
-  Box: `sudo smbstatus`; thử hạ cấp: `smbclient //<IP>/chung -U onebee -m SMB2` và `-m NT1`.
+  Box: `sudo smbstatus`; thử hạ cấp: `smbclient //<IP>/chung -U onebee -m SMB2` và `-m NT1`. LAN có IPv6 toàn cầu: Windows `Test-NetConnection <IPv6 toàn cầu của Box> -Port 445`.
   (c) `SMB3_11` + `required`; Windows `Dialect 3.1.1 Encrypted True`; `smbstatus` cột Encryption có `AES-…`, Protocol `SMB3_11`; SMB2/NT1 bị từ chối. Máy quét cũ: ghi model,
-  thử lại với `onebee_box_samba_smb3: false`. LAN có IPv6 toàn cầu: mở bằng **tên** `\\onebee-box` có chậm không (N7).
-  (d) `samba/tasks/main.yml` (blockinfile `[global]`), `onebee-tuong-lua:82-86` (IPv6 chỉ fe80/fc00).
+  thử lại với `onebee_box_samba_smb3: false`. LAN có IPv6 toàn cầu (N7): `Test-NetConnection` qua IPv6 **thất bại ngay** (không treo ~20 giây); mở bằng **tên** `\\onebee-box` không chậm.
+  (d) `samba/tasks/main.yml` (blockinfile `[global]`), `onebee-tuong-lua` (IPv6 chỉ fe80/fc00; ngoài đó REJECT).
 - [ ] **B16. Khôi phục từ bản sao lưu chụp TRƯỚC khi bật HTTPS** (5.0, chưa làm) — (b) sao lưu ở HTTP → bật HTTPS → giả lập hỏng ổ (E1) → khôi phục bằng bản cũ.
   (c) Box về HTTP, bộ cài lần 2 tự `dong-bo-may` đẩy `BOX_HTTPS=0`; máy trạm có dấu `https-bat` được gỡ dấu, sao lưu lại được. (d) `onebee-box-sao-luu.sh.j2:172` (xóa dấu trước restore), `box-fleet/tasks/main.yml:75`.
 
@@ -417,3 +419,20 @@ Ký hiệu: **XÁC NHẬN** = thấy rõ trong code (đã chạy thử nếu ghi
 - **N1:** `onebee-ca.sh --xoay` nay luôn xoay (kể cả khi mã/IP không đổi) — có test `test_xoay_khi_ma_va_ip_khong_doi_van_xoay_de_ung_pho_lo_khoa`.
 - **N3:** role `ket-noi-box` cài `libnss3-tools` (có `certutil`).
 - **N10 (một phần):** hướng dẫn nói 12 dòng cấu hình và nhắc khai `onebee_box_ma_don_vi`/`onebee_box_dia_chi` trước khi cài. Phần còn lại (N2, N4–N9, lệnh `doi-ca`/`doi-khoa-quan-tri` chưa có) vẫn mở.
+
+**Đợt sửa 14/10/2026** (kế hoạch `plans/261014-1445-va-loi-va-hoan-thien-v1/`; mỗi lỗi có test hồi quy FAIL trước khi sửa, PASS sau khi sửa; test chạy trong container
+`ubuntu:24.04` như CI). **Chưa** chạy lại runner Box đầy đủ / máy thật cho các bản sửa này.
+- **N13** (`16057f5`, `949f439`): `CORS_ALLOW_ORIGIN` đặt cả ở chế độ HTTP (`http://<IP>:3000` và `http://box.<mã>.onebee.internal:3000`); `check-https.sh` kiểm mã 200
+  trước khi kiểm header; `verify-box-install.sh` thêm bước kiểm CORS ở chế độ HTTP.
+- **N4** (`ae356da`): gia hạn CA trung gian chạy đầu `cmd_sao_luu`, trước khi kiểm ổ/kho sao lưu.
+- **N8** (`bbd628b`): `xoay-khoa --box` (khóa tình trạng chung còn bật) tự đẩy cấu hình mới xuống mọi máy sau bộ cài.
+- **N9** (`79502e9`): máy không vào được → cảnh báo riêng từng máy kèm lệnh `dong-bo-may <tên>`, lệnh không dừng giữa chừng; `xoay-khoa` chạy qua `with_lock`.
+- **N5** (`a5401dd`): `mo()` (trong `hoi` và `onebee-bao-tinh-trang`) không để urllib tự theo 301/308; chỉ nhánh kiểm chặt (cùng máy chủ, chỉ CA OneBee) được theo.
+- **N2** (`95643e3`): `onebee-chinh-sach-trinh-duyet.py cai` gỡ CA cũ khỏi `cert9.db` mọi hồ sơ Firefox khi vân tay đổi (so với `/var/lib/onebee/ket-noi-box`).
+- **N6 — XÁC NHẬN rồi sửa** (`7fbc274`): mã nguồn Tailscale 1.104.1 (`util/linuxfw/iptables_runner.go`) chèn `-j ts-input`/`ts-forward` ở vị trí 1 mỗi lần khởi động,
+  `ts-input` có `-i tailscale0 -j ACCEPT`. Kernel thật, tailscale0 giả + giả lập tailscaled khởi động lại sau tường lửa: bản cũ để máy tailnet lạ vào `:445` (HTTP 200),
+  bản mới chặn. Sửa: lọc kết nối mới từ tailscale0 ở mangle/PREROUTING; unit `After=tailscaled.service`. Còn kiểm với tailscaled thật ở B14.
+- **N7 — sửa** (`7fbc274`): IPv6 tới SSH/Samba ngoài mạng nội bộ → REJECT (tcp-reset / icmp6-port-unreachable). Đo trên kernel thật: bản cũ treo 10,02 giây, bản mới
+  bị từ chối sau 0,01 giây. Còn kiểm với Windows thật ở B15.
+- **N10:** đồng bộ `cai-dat-onebee-box.md` (12 dòng liệt kê đủ, mã đơn vị bắt buộc / IP chỉ cảnh báo, gia hạn CA, Tailscale ở mangle, IPv6), `quan-ly-may-tram.md` (`dong-bo-may`
+  tự chạy task desktop; `xoay-khoa` theo N8/N9), chú thích `onebee-box.sh.j2` và `group_vars/all.yml` (bỏ tham chiếu lệnh `doi-ca`), ADR 0005, `security-audit.md` (lệnh đã có / chưa có / không làm).
