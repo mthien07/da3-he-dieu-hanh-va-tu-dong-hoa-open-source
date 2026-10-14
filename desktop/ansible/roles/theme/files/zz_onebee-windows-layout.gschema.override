@@ -1,0 +1,32 @@
+# Quản lý bởi OneBee OS — bố cục desktop quen thuộc như Windows.
+# Tên zz_ để nạp SAU mint-artwork.gschema.override và 10_cinnamon.gschema.override (file nạp sau thắng).
+# Schema/khóa không có trên máy (ví dụ không cài Nemo) bị glib-compile-schemas bỏ qua, không làm hỏng việc biên dịch.
+
+# Nút thu nhỏ / phóng to / đóng ở góc phải thanh tiêu đề (Mint đã mặc định như vậy, đặt lại cho chắc)
+[org.cinnamon.desktop.wm.preferences]
+button-layout=':minimize,maximize,close'
+
+# Win+D: hiện màn hình nền
+[org.cinnamon.desktop.keybindings.wm]
+show-desktop=['<Super>d']
+
+# Win+E: mở thư mục cá nhân (Nemo); Win+L: khóa màn hình. Giữ nguyên phím cũ của Mint (XF86..., Ctrl+Alt+L).
+[org.cinnamon.desktop.keybindings.media-keys]
+home=['<Super>e', 'XF86Explorer']
+screensaver=['<Control><Alt>l', 'XF86ScreenSaver', '<Super>l']
+
+# Super+L mặc định của Cinnamon là bảng gỡ lỗi Looking Glass (công cụ cho lập trình viên) — nhường phím cho khóa màn hình.
+# Kỹ thuật vẫn mở được bằng Alt+F2 rồi gõ lg.
+[org.cinnamon.desktop.keybindings]
+looking-glass-keybinding=@as []
+
+# Màn hình nền có Máy tính / Thùng rác / Thư mục cá nhân như Windows
+[org.nemo.desktop]
+computer-icon-visible=true
+trash-icon-visible=true
+home-icon-visible=true
+
+# Nút menu bắt đầu (biểu tượng lưới ứng dụng; đổi sang logo OneBee khi có tệp biểu tượng) và ứng dụng ghim sẵn ở menu
+[org.cinnamon]
+app-menu-icon-name='view-app-grid-symbolic'
+favorite-apps=['firefox.desktop', 'libreoffice-writer.desktop', 'libreoffice-calc.desktop', 'libreoffice-impress.desktop', 'nemo.desktop', 'onebee-tro-ly-ai.desktop', 'cinnamon-settings.desktop']

@@ -7,6 +7,9 @@
 | Đổi gõ tiếng Việt ⇄ tiếng Anh | **Super + Space** (Super = phím có logo Windows) |
 | Gõ Telex | aa=â, aw=ă, ee=ê, oo=ô, ow=ơ, uw=ư, dd=đ · s=sắc, f=huyền, r=hỏi, x=ngã, j=nặng · z=xóa dấu |
 | Mở menu ứng dụng | Phím **Super** (hoặc bấm nút góc trái dưới) |
+| Mở thư mục cá nhân (như "Máy tính này") | **Super + E** |
+| Hiện màn hình nền / quay lại | **Super + D** |
+| Khóa màn hình khi rời máy | **Super + L** (hoặc Ctrl + Alt + L) |
 | Chuyển giữa các cửa sổ | **Alt + Tab** |
 | Sao chép / Dán / Cắt / Hoàn tác | Ctrl + C / Ctrl + V / Ctrl + X / Ctrl + Z (như Windows) |
 | Lưu / Lưu thành file khác / In | Ctrl + S / Ctrl + Shift + S / Ctrl + P |
