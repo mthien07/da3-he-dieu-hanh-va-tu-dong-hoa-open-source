@@ -17,9 +17,10 @@ fi
 docker run --rm ${extra_ca[@]+"${extra_ca[@]}"} -v "${REPO_ROOT}:/onebee:ro" "${IMAGE}" bash -euo pipefail -c '
   export DEBIAN_FRONTEND=noninteractive
   if [ -f /usr/local/share/ca-certificates/onebee-test-extra.crt ]; then update-ca-certificates >/dev/null; fi
-  # Mô phỏng thành phần có sẵn trên bản Mint Cinnamon cài đặt thật (image container rút gọn không có)
+  # Mô phỏng thành phần có sẵn trên bản Mint Cinnamon cài đặt thật (image container rút gọn không có);
+  # nemo-data + cinnamon-common mang schema org.nemo/org.cinnamon và applet thanh tác vụ/menu để kiểm bố cục kiểu Windows
   apt-get update -q >/dev/null
-  apt-get install -y -q mintupdate mint-artwork cinnamon-desktop-data libglib2.0-bin >/dev/null
+  apt-get install -y -q mintupdate mint-artwork cinnamon-desktop-data cinnamon-common nemo-data libglib2.0-bin >/dev/null
 
   cp -r /onebee /tmp/onebee
   echo "===== LẦN 1: cài đặt ====="
