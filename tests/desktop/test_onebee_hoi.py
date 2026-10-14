@@ -234,6 +234,27 @@ class HoiTungNhanVien(unittest.TestCase):
         self.assertNotIn("GET /api/models", OpenWebuiGia.nhat_ky)                               # khóa không tới được máy chủ
         self.assertFalse(os.path.exists(f))
 
+    def test_dan_khoa_qua_308_scheme_viet_hoa_khong_bo_qua_ghim_ca(self):
+        """Location 'HTTPS://…': urlsplit hạ chữ thường scheme nên vẫn theo — lần mở sau phải ghim CA OneBee như https:// thường."""
+        OpenWebuiGia.khoa_hop_le["sk-tu-tao"] = "binh@onebee.lan"
+        self.dat_conf(self.http_308)
+        self.addCleanup(setattr, ChuyenHuongSangHttps, "dich", self.https)
+        ChuyenHuongSangHttps.dich = self.https.replace("https://", "HTTPS://")
+        with mock.patch.dict(os.environ, {"SSL_CERT_FILE": f"{self.t}/ca/root.crt"}):
+            ma, _, err, f = self.hoi("--dan-khoa", dau_vao=("sk-tu-tao",), ca=f"{self.t}/ca-khac/root.crt")
+        self.assertNotEqual(ma, 0)
+        self.assertNotIn("GET /api/models", OpenWebuiGia.nhat_ky)
+        self.assertFalse(os.path.exists(f))
+
+    def test_url_cau_hinh_viet_hoa_van_ghim_ca(self):
+        OpenWebuiGia.khoa_hop_le["sk-tu-tao"] = "binh@onebee.lan"
+        self.dat_conf(self.https.replace("https://", "HTTPS://"))
+        with mock.patch.dict(os.environ, {"SSL_CERT_FILE": f"{self.t}/ca/root.crt"}):
+            ma, _, err, f = self.hoi("--dan-khoa", dau_vao=("sk-tu-tao",), ca=f"{self.t}/ca-khac/root.crt")
+        self.assertNotEqual(ma, 0)
+        self.assertNotIn("GET /api/models", OpenWebuiGia.nhat_ky)
+        self.assertFalse(os.path.exists(f))
+
     def test_dan_khoa_qua_308_toi_box_that_van_theo_mot_lan(self):
         OpenWebuiGia.khoa_hop_le["sk-tu-tao"] = "binh@onebee.lan"
         self.dat_conf(self.http_308)
