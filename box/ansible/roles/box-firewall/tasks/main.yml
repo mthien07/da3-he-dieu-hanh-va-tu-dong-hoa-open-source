@@ -28,6 +28,12 @@
     - {src: onebee-tuong-lua.service, dest: /etc/systemd/system/onebee-tuong-lua.service, mode: "0644"}
   register: onebee_tuong_lua_files
 
+# Bản cũ bật kèm Docker (WantedBy=docker.service); systemctl enable không tự gỡ liên kết cũ khi đổi [Install]
+- name: Gỡ liên kết bật tường lửa kèm Docker của bản cũ
+  ansible.builtin.file:
+    path: /etc/systemd/system/docker.service.wants/onebee-tuong-lua.service
+    state: absent
+
 - name: Kiểm tra Box có nối Tailscale không
   ansible.builtin.stat:
     path: /sys/class/net/tailscale0
