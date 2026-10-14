@@ -358,8 +358,8 @@ xoay_khoa_box() {
   moi="$(ngau_nhien 24)"
   (umask 077; printf '%s' "${moi}" >"${SECRETS}/n8n-owner-password"
    htpasswd -niBC 10 onebee <<<"${moi}" | cut -d: -f2 | tr -d '\n' >"${SECRETS}/n8n-owner-hash")
-  # Khóa gửi tình trạng dùng chung (nếu còn dùng): bộ cài sinh lại; PHẢI đẩy xuống máy bằng dong-bo-may --tat-ca ngay sau đó
-  [[ "${TINH_TRANG_KHOA_CHUNG}" != true ]] || { rm -f "${SECRETS}/tinh-trang-key"; echo "LƯU Ý: sau bộ cài, chạy: sudo onebee-box dong-bo-may --tat-ca (khóa gửi tình trạng đã đổi)"; }
+  # Khóa gửi tình trạng dùng chung (nếu còn dùng): bộ cài sinh lại; cmd_xoay_khoa đẩy xuống mọi máy ngay sau bộ cài
+  [[ "${TINH_TRANG_KHOA_CHUNG}" != true ]] || rm -f "${SECRETS}/tinh-trang-key"
   rm -f "${SECRETS}/webui-secret-key" "${SECRETS}/bieu-mau-nhanvien" "${SECRETS}/bieu-mau-kythuat" "${SECRETS}/n8n-webhook-key"
   # Bộ cài (Ansible lookup password) sinh lại các file vừa xóa; n8n-webhook-key cần có NGAY cho bao_cao_n8n ở lần chạy sau
   secret n8n-webhook-key >/dev/null
@@ -393,8 +393,11 @@ cmd_xoay_khoa() {
     if [[ -x "${bo_cai}" ]]; then
       echo "Chạy bộ cài để áp dụng (.env, thông tin đăng nhập n8n)..."
       "${bo_cai}" || die "Bộ cài chưa xong — chạy lại NGAY: sudo ${bo_cai} (Box đang ở trạng thái nửa chừng)"
+      # Khóa gửi tình trạng dùng chung vừa được bộ cài sinh lại → MỌI máy cần khóa mới (thiếu thì báo tình trạng bị 403)
+      if [[ "${TINH_TRANG_KHOA_CHUNG}" == true && -n "$(may_da_cap)" ]]; then chon_may --tat-ca; ds=("${CHON_MAY[@]}"); fi
     else
       warn "KHÔNG tìm thấy bộ cài — chạy NGAY bộ cài OneBee Box (sudo ./box/onebee-box-install.sh) để áp dụng; trước đó n8n/biểu mẫu/báo cáo sao lưu có thể lỗi"
+      [[ "${TINH_TRANG_KHOA_CHUNG}" != true ]] || echo "LƯU Ý: sau bộ cài, chạy: sudo onebee-box dong-bo-may --tat-ca (khóa gửi tình trạng đã đổi)"
     fi
   fi
   if [[ -n "${ds[*]:-}" ]]; then
