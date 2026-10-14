@@ -4,6 +4,7 @@ Cách dùng: onebee-chinh-sach-trinh-duyet.py cai <file-pem-CA> [--https <IP-Box
  - Firefox: chính sách Certificates.Install ghi vào /etc/firefox/policies/policies.json. File ở /etc THAY THẾ file
    /usr/lib/firefox/distribution/policies.json của gói → trộn nội dung gói vào rồi mới thêm mục OneBee; khi gỡ, trả về đúng nội dung gói
    (hoặc xóa file nếu gói không có). Firefox KHÔNG tự gỡ chứng chỉ đã nạp khi bỏ chính sách → 'go' gỡ thêm khỏi từng hồ sơ bằng certutil (cố gắng hết sức).
+   Xoay CA (vân tay khác lần cài trước): 'cai' gỡ CA cũ khỏi từng hồ sơ theo vân tay — CA mới cùng mã đơn vị trùng tên CA cũ.
  - Có --https <IP>: Firefox và Chromium/Chrome mở sẵn Box bằng https:// (trang chủ + dấu trang do quản trị đặt), để người dùng không gõ tay
    http:// (HSTS vô tác dụng với địa chỉ IP). KHÔNG bật DisableSecurityBypass / HTTPS-Only: máy in, thiết bị LAN dùng chứng chỉ tự ký vẫn phải
    mở được. Tập huấn: cảnh báo chứng chỉ ở địa chỉ Box = dấu hiệu bị tấn công, không bấm qua.
@@ -11,6 +12,7 @@ Cách dùng: onebee-chinh-sach-trinh-duyet.py cai <file-pem-CA> [--https <IP-Box
 Biến ONEBEE_GOC: tiền tố thư mục gốc (để kiểm thử); mặc định rỗng."""
 import base64
 import glob
+import hashlib
 import importlib.util
 import json
 import os
@@ -24,6 +26,9 @@ FIREFOX_ETC = GOC + "/etc/firefox/policies/policies.json"
 FIREFOX_GOI = GOC + "/usr/lib/firefox/distribution/policies.json"
 CHROME_FILES = [GOC + "/etc/chromium/policies/managed/onebee-box.json", GOC + "/etc/opt/chrome/policies/managed/onebee-box.json"]
 TEN_CHUNG_CHI = re.compile(r"^(OneBee Box .+? Root CA)\s+[A-Za-z,]*$")
+DAU_VAN_TAY = GOC + "/var/lib/onebee/ket-noi-box"   # vân tay CA đã cài lần trước (role ket-noi-box ghi SAU mỗi lần cai)
+HO_SO_FIREFOX = [GOC + "/home/*/.mozilla/firefox/*/cert9.db", GOC + "/root/.mozilla/firefox/*/cert9.db",
+                 GOC + "/home/*/snap/firefox/common/.mozilla/firefox/*/cert9.db"]
 
 
 def doc_json(p):
@@ -97,22 +102,62 @@ def cai(file_pem, ip_https=None):
         if ip_https:
             chinh_sach.update(HomepageLocation=f"https://{ip_https}/", ManagedBookmarks=dau_trang(ip_https))
         doi |= ghi_neu_doi(p, chinh_sach)
+    try:
+        van_tay_cu = open(DAU_VAN_TAY, encoding="ascii").read().strip().lower()
+    except FileNotFoundError:
+        van_tay_cu = ""   # lần đầu cài: chưa có CA cũ nào để gỡ
+    if van_tay_cu and van_tay_cu not in van_tay(open(file_pem, encoding="ascii").read()):
+        n = 0
+        try:
+            n = go_ca_cu_khoi_ho_so_firefox(van_tay_cu)
+        except FileNotFoundError:
+            print("CẢNH BÁO: chưa có certutil (gói libnss3-tools) — không gỡ được CA cũ khỏi hồ sơ Firefox", file=sys.stderr)
+        if n:
+            doi = True
+            print(f"Đã gỡ {n} chứng chỉ OneBee mang vân tay CA cũ khỏi hồ sơ Firefox")
     return doi
+
+
+def van_tay(pem):
+    """Vân tay SHA-256 (hex thường) của từng chứng chỉ trong chuỗi PEM."""
+    return [hashlib.sha256(base64.b64decode(k)).hexdigest()
+            for k in re.findall(r"-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----", pem, re.S)]
+
+
+def ho_so_firefox():
+    """(thư mục certutil, các tên 'OneBee Box … Root CA' trong đó) của mọi hồ sơ Firefox; thiếu certutil → FileNotFoundError."""
+    for db in sorted(set(sum((glob.glob(m) for m in HO_SO_FIREFOX), []))):
+        thu_muc = "sql:" + os.path.dirname(db)
+        r = subprocess.run(["certutil", "-L", "-d", thu_muc], capture_output=True, text=True)
+        ten = [m.group(1) for m in (TEN_CHUNG_CHI.match(d.strip()) for d in r.stdout.splitlines()) if m]
+        yield thu_muc, list(dict.fromkeys(ten))   # nhiều chứng chỉ cùng tên thì certutil -L in tên nhiều lần
 
 
 def go_khoi_ho_so_firefox():
     """Xóa chứng chỉ 'OneBee Box … Root CA' khỏi cert9.db của mọi hồ sơ (cố gắng hết sức: cần certutil)."""
     dem = 0
-    mau = [GOC + "/home/*/.mozilla/firefox/*/cert9.db", GOC + "/root/.mozilla/firefox/*/cert9.db",
-           GOC + "/home/*/snap/firefox/common/.mozilla/firefox/*/cert9.db"]
-    for pattern in mau:
-        for db in glob.glob(pattern):
-            thu_muc = "sql:" + os.path.dirname(db)
-            r = subprocess.run(["certutil", "-L", "-d", thu_muc], capture_output=True, text=True)
-            for dong in r.stdout.splitlines():
-                m = TEN_CHUNG_CHI.match(dong.strip())
-                if m and subprocess.run(["certutil", "-D", "-n", m.group(1), "-d", thu_muc], capture_output=True).returncode == 0:
-                    dem += 1
+    for thu_muc, ds_ten in ho_so_firefox():
+        for ten in ds_ten:
+            for _ in range(20):   # mọi bản cùng tên; có giới hạn để không lặp vô hạn
+                if subprocess.run(["certutil", "-D", "-n", ten, "-d", thu_muc], capture_output=True).returncode != 0:
+                    break
+                dem += 1
+    return dem
+
+
+def go_ca_cu_khoi_ho_so_firefox(van_tay_cu):
+    """Gỡ khỏi mọi hồ sơ các chứng chỉ OneBee mang vân tay CA cũ. certutil chỉ xóa theo TÊN, mà CA mới cùng mã đơn vị trùng tên CA cũ
+    (và -D có thể xóa bản mới trước) → xóa lặp tới khi tên đó hết bản mang vân tay cũ. CA mới lỡ bị xóa theo thì chính sách
+    Certificates.Install nạp lại khi Firefox mở."""
+    dem = 0
+    for thu_muc, ds_ten in ho_so_firefox():
+        for ten in ds_ten:
+            for _ in range(20):   # chặn vòng lặp vô hạn nếu certutil báo xóa được mà không xóa
+                pem = subprocess.run(["certutil", "-L", "-d", thu_muc, "-n", ten, "-a"], capture_output=True, text=True).stdout
+                if van_tay_cu not in van_tay(pem) or \
+                        subprocess.run(["certutil", "-D", "-n", ten, "-d", thu_muc], capture_output=True).returncode != 0:
+                    break
+                dem += 1
     return dem
 
 

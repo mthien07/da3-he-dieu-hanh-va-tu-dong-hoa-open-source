@@ -39,7 +39,7 @@ jobs:
           echo "ONEBEE_TEST_CADDY=/tmp/caddy" >> "$GITHUB_ENV"
       - name: Kiểm thử đơn vị (Python) + mẫu Jinja đọc được
         run: |
-          sudo apt-get install -y -q apache2-utils openssh-client   # test lệnh shell của onebee-box dùng htpasswd, ssh-keygen thật
+          sudo apt-get install -y -q apache2-utils openssh-client libnss3-tools   # htpasswd, ssh-keygen thật; certutil (hồ sơ Firefox)
           python3 -m unittest discover -s tests/box -p 'test_*.py'
           python3 -m unittest discover -s tests/desktop -p 'test_*.py'
           python3 -m unittest tests/ai/test_scoring_and_report.py

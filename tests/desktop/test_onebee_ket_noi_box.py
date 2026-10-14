@@ -5,6 +5,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -175,6 +176,61 @@ class ChinhSachTrinhDuyet(unittest.TestCase):
         self.assertEqual(nd["Certificates"]["Install"], ["/etc/khac.crt", "/usr/local/share/ca-certificates/onebee-box-ca.crt"])
         self.td("go")
         self.assertEqual(json.load(open(self.ff)), goi)                               # trả đúng nội dung gói, không còn mục OneBee
+
+    def ho_so_firefox(self, duong_dan, *chung_chi):
+        """Hồ sơ Firefox giả (cert9.db thật, tạo bằng certutil) đã nạp sẵn các chứng chỉ (tên, file PEM)."""
+        hs = f"{self.g}/goc/{duong_dan}"
+        os.makedirs(hs)
+        self.assertEqual(chay("certutil", "-N", "-d", f"sql:{hs}", "--empty-password").returncode, 0)
+        for ten, pem in chung_chi:
+            r = chay("certutil", "-A", "-n", ten, "-t", "C,,", "-i", pem, "-d", f"sql:{hs}")
+            self.assertEqual(r.returncode, 0, r.stderr)
+        return hs
+
+    def van_tay_trong_ho_so(self, hs):
+        """{tên: [vân tay SHA-256 của từng chứng chỉ mang tên đó]}"""
+        kq = {}
+        for dong in chay("certutil", "-L", "-d", f"sql:{hs}").stdout.splitlines()[4:]:
+            ten = re.sub(r"\s+[A-Za-z]*,[A-Za-z]*,[A-Za-z]*\s*$", "", dong)
+            if ten and ten not in kq:
+                pem = chay("certutil", "-L", "-d", f"sql:{hs}", "-n", ten, "-a").stdout
+                kq[ten] = sorted(hashlib.sha256(base64.b64decode(k)).hexdigest()
+                                 for k in re.findall(r"-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----", pem, re.S))
+        return kq
+
+    @unittest.skipUnless(shutil.which("certutil"), "cần certutil (libnss3-tools)")
+    def test_xoay_ca_go_ca_cu_khoi_ho_so_firefox_theo_van_tay(self):
+        """Xoay CA (nghi lộ khóa) mà mã đơn vị giữ nguyên: CA mới trùng tên CA cũ; Firefox không tự gỡ CA đã nạp vào cert9.db → vẫn tin CA cũ."""
+        chay(TAO_CA, f"{self.g}/ca-cu", "anphu", "192.168.1.10")
+        _, vt_cu = der_b64(f"{self.g}/ca-cu/root.crt")
+        _, vt_moi = der_b64(self.pem)
+        ten = "OneBee Box anphu Root CA"
+        chay("openssl", "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1", "-nodes", "-keyout", f"{self.g}/in.key",
+             "-subj", "/CN=May in van phong", "-days", "30", "-out", f"{self.g}/may-in.crt")
+        hs1 = self.ho_so_firefox("home/nv/.mozilla/firefox/abc.default-release", (ten, f"{self.g}/ca-cu/root.crt"),
+                                 ("May in van phong", f"{self.g}/may-in.crt"))
+        hs2 = self.ho_so_firefox("root/.mozilla/firefox/xyz.default", (ten, f"{self.g}/ca-cu/root.crt"))
+        dau = f"{self.g}/goc/var/lib/onebee/ket-noi-box"           # vân tay CA đã cài lần trước (role ghi sau mỗi lần cài)
+        os.makedirs(os.path.dirname(dau))
+        open(dau, "w").write(vt_cu + "\n")
+        ra = self.td("cai", self.pem)
+        self.assertTrue(ra.endswith("đã đổi"), ra)
+        for hs in (hs1, hs2):
+            self.assertNotIn(vt_cu, sum(self.van_tay_trong_ho_so(hs).values(), []), hs)
+        self.assertIn("May in van phong", self.van_tay_trong_ho_so(hs1))                    # chứng chỉ khác giữ nguyên
+        # Firefox mở lại: chính sách nạp CA mới (cùng tên). Role ghi vân tay mới → chạy lại không gỡ nhầm CA mới
+        self.assertEqual(chay("certutil", "-A", "-n", ten, "-t", "C,,", "-i", self.pem, "-d", f"sql:{hs1}").returncode, 0)
+        open(dau, "w").write(vt_moi + "\n")
+        self.assertEqual(self.td("cai", self.pem), "không đổi")
+        self.assertEqual(self.van_tay_trong_ho_so(hs1)[ten], [vt_moi])
+        self.assertTrue(self.td("go").endswith("đã đổi"))                                     # bỏ CA: gỡ mọi bản OneBee, giữ chứng chỉ khác
+        self.assertEqual(list(self.van_tay_trong_ho_so(hs1)), ["May in van phong"])
+
+    @unittest.skipUnless(shutil.which("certutil"), "cần certutil (libnss3-tools)")
+    def test_lan_dau_cai_khong_dung_ho_so_firefox(self):
+        hs = self.ho_so_firefox("home/nv/.mozilla/firefox/abc.default-release", ("OneBee Box anphu Root CA", self.pem))
+        self.assertEqual(self.td("cai", self.pem), "đã đổi")                               # chưa có dấu vân tay cũ → không gỡ gì
+        self.assertIn("OneBee Box anphu Root CA", self.van_tay_trong_ho_so(hs))
 
     def test_go_khi_chua_cai_gi_khong_loi_va_khong_dung_file_la(self):
         self.dat_goi({"policies": {"X": 1}})
