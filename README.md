@@ -90,9 +90,9 @@ cd onebee && sudo ./desktop/onebee-install.sh
   giám sát, HTTPS nội bộ (CA riêng của Box), xoay khóa, **khôi phục toàn bộ Box khi hỏng ổ**; giao diện quen thuộc như Windows
   (thanh tác vụ ghim sẵn ứng dụng, Win+E/D/L, LibreOffice dạng Ribbon).
 - ✅ Nghiệm thu tự động trong container ngày 14–15/10/2026 ([báo cáo](reports/nghiem-thu-v1-docker.md)):
-  **Box đầy đủ 126 PASS / 0 FAIL** với model sản phẩm `gemma4:e2b-it-qat` (cài 2 lần, AI, n8n qua email, sao lưu, máy trạm, quản lý tập trung,
-  tường lửa, hỏng ổ → khôi phục, bật/tắt HTTPS, xoay khóa, khởi động lại); **Desktop trong container Linux Mint 22.3 71 PASS / 0 FAIL**;
-  cả hai bộ cài chạy lần 2 `changed=0 failed=0`. Unit test Box 118 + Desktop 62 + AI 17 bài; lint sạch.
+  **Box đầy đủ 127 PASS / 0 FAIL** với model sản phẩm `gemma4:e2b-it-qat` (cài 2 lần, AI, n8n qua email, sao lưu, máy trạm, quản lý tập trung,
+  tường lửa (cả khi dừng/bật lại Docker), hỏng ổ → khôi phục, bật/tắt HTTPS, xoay khóa, khởi động lại); **Desktop trong container Linux Mint 22.3 71 PASS / 0 FAIL**;
+  cả hai bộ cài chạy lần 2 `changed=0 failed=0`. Unit test Box 119 + Desktop 62 + AI 17 bài; lint sạch.
 - ✅ Model AI chọn bằng bộ chấm 40 câu tiếng Việt (98%): [ADR 0003](docs/adr/0003-chon-model-ai-gemma.md), [reports/ai/](reports/ai/).
 - ⏳ **Chưa cài trên máy thật tại đơn vị nào** (phiên Cinnamon thật, phần cứng, LAN thật, Windows mở thư mục chung, tốc độ AI) →
   [phiếu kiểm thử máy thật](docs/kiem-thu-tren-may-that.md), [danh sách thử](docs/huong-dan/thu-nghiem-tren-may-ao.md).

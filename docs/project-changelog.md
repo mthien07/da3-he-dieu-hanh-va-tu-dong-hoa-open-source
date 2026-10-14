@@ -1,6 +1,6 @@
 # Nhật ký thay đổi
 
-## [1.0.0] — 14/10/2026 — Bản phát hành chính thức đầu tiên
+## [1.0.0] — 15/10/2026 — Bản phát hành chính thức đầu tiên
 Bản đủ tính năng cho một đơn vị, gồm mọi thay đổi từ 1.0.0-rc.1 (các mục dưới đây). Đã nghiệm thu tự động trong container
 (`reports/nghiem-thu-v1-docker.md`); **chưa cài trên máy thật tại đơn vị nào** — phiếu `docs/kiem-thu-tren-may-that.md` nhóm B–E còn mở,
 chưa có số đo tốc độ AI trên máy thật.
