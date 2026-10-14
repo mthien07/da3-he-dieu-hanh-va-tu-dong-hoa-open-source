@@ -93,6 +93,13 @@ CA_ONEBEE = "/usr/local/share/ca-certificates/onebee-box-ca.crt"
 HTTPS_BAT = "/var/lib/onebee/https-bat"   # dấu bền: Box đã báo bật HTTPS cho máy này (chỉ cờ BOX_HTTPS=0 do Box đẩy mới xóa)
 
 
+class KhongTuChuyenHuong(urllib.request.HTTPRedirectHandler):
+    """urllib tự theo 301/308 của GET; sang https:// nó dùng kho CA của hệ điều hành (CA công cộng), bỏ qua ghim CA OneBee.
+    Tắt hẳn: mọi chuyển hướng thành HTTPError để mo() tự quyết (chỉ https:// cùng máy chủ, vẫn chỉ tin CA OneBee)."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def mo(req, timeout):
     """urlopen có ghim CA: https:// chỉ tin CA riêng của OneBee Box (không tin CA công cộng); http:// bị từ chối khi máy đã bật HTTPS
     (kẻ chen giữa mạng LAN không hạ cấp được kết nối về HTTP để đọc mật khẩu/khóa)."""
@@ -105,7 +112,7 @@ def mo(req, timeout):
     elif os.path.exists(HTTPS_BAT):
         sys.exit("Máy này đã bật HTTPS nhưng cấu hình còn địa chỉ http:// — KHÔNG gửi. Báo người quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>")
     try:
-        return urllib.request.urlopen(req, timeout=timeout, context=ngu_canh)
+        return urllib.request.build_opener(KhongTuChuyenHuong, urllib.request.HTTPSHandler(context=ngu_canh)).open(req, timeout=timeout)
     except urllib.error.HTTPError as e:
         # Box đã chuyển sang HTTPS (308) mà cấu hình máy còn http:// (máy tắt lúc chuyển): theo ĐÚNG MỘT lần, chỉ tới https:// CÙNG máy chủ,
         # vẫn chỉ tin CA OneBee — nhờ vậy máy không mất liên lạc tới khi quản trị chạy dong-bo-may. Địa chỉ khác máy chủ thì không theo.

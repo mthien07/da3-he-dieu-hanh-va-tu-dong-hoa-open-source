@@ -86,6 +86,20 @@ class OpenWebuiGia(BaseHTTPRequestHandler):
         self._gui(404)
 
 
+class ChuyenHuongSangHttps(BaseHTTPRequestHandler):
+    """Máy chủ http:// trả 308 sang https:// cùng máy chủ (như Caddy khi Box đã bật HTTPS)."""
+    dich = ""
+
+    def log_message(self, *a):
+        pass
+
+    def do_GET(self):
+        self.send_response(308)
+        self.send_header("Location", ChuyenHuongSangHttps.dich + self.path)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+
 @unittest.skipUnless(shutil.which("openssl"), "cần openssl")
 class HoiTungNhanVien(unittest.TestCase):
     @classmethod
@@ -111,10 +125,16 @@ class HoiTungNhanVien(unittest.TestCase):
         threading.Thread(target=sv2.serve_forever, daemon=True).start()
         cls.sv2 = sv2
         cls.http = f"http://127.0.0.1:{sv2.server_port}"
+        ChuyenHuongSangHttps.dich = cls.https
+        sv3 = HTTPServer(("127.0.0.1", 0), ChuyenHuongSangHttps)
+        threading.Thread(target=sv3.serve_forever, daemon=True).start()
+        cls.sv3 = sv3
+        cls.http_308 = f"http://127.0.0.1:{sv3.server_port}"
+        subprocess.run([TAO_CA, f"{t}/ca-khac", "khac", "127.0.0.1"], check=True, capture_output=True)   # CA không phải của Box này
 
     @classmethod
     def tearDownClass(cls):
-        for sv in (cls.sv, cls.sv2):
+        for sv in (cls.sv, cls.sv2, cls.sv3):
             sv.shutdown()
             sv.server_close()
         cls.tmp.cleanup()
@@ -129,10 +149,10 @@ class HoiTungNhanVien(unittest.TestCase):
         with open(self.conf, "w") as f:
             f.write(f"HOI_URL={url}\n" + (f"HOI_API_KEY={khoa_may}\n" if khoa_may else "") + "HOI_MODEL=onebee-tro-ly\n")
 
-    def hoi(self, *args, dau_vao=(), home=None, https_bat=False):
+    def hoi(self, *args, dau_vao=(), home=None, https_bat=False, ca=None):
         """Chạy main() của hoi với CA/dấu/home giả; dau_vao: các chuỗi trả về cho input()/getpass()."""
         m = nap_hoi()
-        m.CONF, m.CA_ONEBEE = self.conf, f"{self.t}/ca/root.crt"
+        m.CONF, m.CA_ONEBEE = self.conf, ca or f"{self.t}/ca/root.crt"
         dau = f"{self.t}/https-bat"
         if https_bat:
             open(dau, "w").write("1\n")
@@ -201,6 +221,25 @@ class HoiTungNhanVien(unittest.TestCase):
         self.assertEqual(ma, 0)
         self.assertEqual(open(f).read().strip(), "sk-tu-tao")
         self.assertEqual(stat.S_IMODE(os.stat(f).st_mode), 0o600)
+
+    def test_dan_khoa_qua_308_khong_bo_qua_ghim_ca(self):
+        """GET /api/models: urllib tự theo 308 sang https:// bằng kho CA của hệ điều hành (không phải CA OneBee) và gửi kèm khóa.
+        Giả lập: kho hệ điều hành tin chứng chỉ của máy chủ (SSL_CERT_FILE), còn CA OneBee ghim trên máy là CA khác → phải từ chối."""
+        OpenWebuiGia.khoa_hop_le["sk-tu-tao"] = "binh@onebee.lan"
+        self.dat_conf(self.http_308)
+        with mock.patch.dict(os.environ, {"SSL_CERT_FILE": f"{self.t}/ca/root.crt"}):
+            ma, _, err, f = self.hoi("--dan-khoa", dau_vao=("sk-tu-tao",), ca=f"{self.t}/ca-khac/root.crt")
+        self.assertNotEqual(ma, 0)
+        self.assertIn("KHÔNG HỢP LỆ", err)
+        self.assertNotIn("GET /api/models", OpenWebuiGia.nhat_ky)                               # khóa không tới được máy chủ
+        self.assertFalse(os.path.exists(f))
+
+    def test_dan_khoa_qua_308_toi_box_that_van_theo_mot_lan(self):
+        OpenWebuiGia.khoa_hop_le["sk-tu-tao"] = "binh@onebee.lan"
+        self.dat_conf(self.http_308)
+        ma, _, err, f = self.hoi("--dan-khoa", dau_vao=("sk-tu-tao",))
+        self.assertEqual(ma, 0, err)
+        self.assertEqual(open(f).read().strip(), "sk-tu-tao")
 
     def test_hai_tai_khoan_linux_hai_khoa_khac_nhau(self):
         home_b = tempfile.mkdtemp(dir=self.t)
