@@ -68,16 +68,17 @@ dung() {
       "${ipt}" -A "${c}" -j DROP
     fi
   done
-  # Kết nối mới qua tailscale0: chỉ địa chỉ khai báo (máy kỹ thuật), mọi cổng — chặn trước cả ts-input/ts-forward của tailscaled
-  "${ipt}" -t mangle -N "${C_TS}"
-  for net in ${ts//,/ }; do "${ipt}" -t mangle -A "${C_TS}" -s "${net}" -j RETURN; done
-  "${ipt}" -t mangle -A "${C_TS}" -j DROP
-  "${ipt}" -t mangle -I PREROUTING 1 -i tailscale0 -m conntrack --ctstate NEW -j "${C_TS}"
   # Docker tạo DOCKER-USER khi khởi động; tạo trước cũng được (Docker dùng lại)
   "${ipt}" -N DOCKER-USER 2>/dev/null || true
   "${ipt}" -I DOCKER-USER 1 -m conntrack --ctstate NEW -j "${C_DOCKER}"
   "${ipt}" -I INPUT 1 -p tcp -m multiport --dports "${CONG_TREN_BOX}" -m conntrack --ctstate NEW -j "${C_BOX}"
   "${ipt}" -I INPUT 1 -p udp -m multiport --dports "${CONG_UDP_TREN_BOX}" -m conntrack --ctstate NEW -j "${C_BOX}"
+  # Dựng SAU các bước nhảy trên: mangle lỗi (set -e dừng ở đây) thì LAN vẫn được lọc, không mở toang.
+  # Kết nối mới qua tailscale0: chỉ địa chỉ khai báo (máy kỹ thuật), mọi cổng — chặn trước cả ts-input/ts-forward của tailscaled
+  "${ipt}" -t mangle -N "${C_TS}"
+  for net in ${ts//,/ }; do "${ipt}" -t mangle -A "${C_TS}" -s "${net}" -j RETURN; done
+  "${ipt}" -t mangle -A "${C_TS}" -j DROP
+  "${ipt}" -t mangle -I PREROUTING 1 -i tailscale0 -m conntrack --ctstate NEW -j "${C_TS}"
 }
 
 # Tách danh sách địa chỉ theo họ: $1 = 4|6, $2 = danh sách (cách nhau dấu phẩy) → in lại, cách nhau dấu phẩy (v6 = có dấu ':')

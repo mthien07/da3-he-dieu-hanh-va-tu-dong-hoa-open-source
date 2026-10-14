@@ -16,6 +16,8 @@ IPT_GIA = r'''#!/bin/bash
 d="$ONEBEE_FW/$(basename "$0")"; mkdir -p "$d"
 echo "$0 $*" >> "$ONEBEE_FW/lenh.log"
 if [ "$1" = -t ]; then [ "$2" = filter ] || d="$d/$2"; mkdir -p "$d"; shift 2; fi
+# ONEBEE_FW_MANGLE_LOI=1: bảng mangle không dùng được (thiếu mô-đun, LXC, iptables-nft lệch)
+[ -n "${ONEBEE_FW_MANGLE_LOI:-}" ] && [ "${d##*/}" = mangle ] && exit 2
 case "$1" in
   -S) if [ -n "${2:-}" ]; then [ -f "$d/$2" ] || exit 1; cat "$d/$2"; else find "$d" -maxdepth 1 -type f -exec cat {} + 2>/dev/null || true; fi ;;
   -N) [ -f "$d/$2" ] && exit 1; : > "$d/$2" ;;
@@ -68,6 +70,14 @@ class TuongLua(unittest.TestCase):
             for x in self.chuoi(ten):
                 self.assertNotIn("-i ", x, x)
         self.assertEqual(sum("ONEBEE-LAN-BOX" in x for x in self.chuoi("INPUT")), 2)         # TCP + UDP
+        self.assertEqual(sum("ONEBEE-LAN-DOCKER" in x for x in self.chuoi("DOCKER-USER")), 1)
+
+    def test_mangle_loi_thi_van_chan_lan_khong_mo_toang(self):
+        """bat gỡ hết quy tắc cũ rồi mới dựng: lỗi ở mangle trước khi chèn bước nhảy INPUT/DOCKER-USER = SSH/Samba/dịch vụ mở cho mọi mạng."""
+        open(f"{self.t}/tuong-lua.conf", "w").write("")
+        r = subprocess.run(["bash", SCRIPT, "bat"], capture_output=True, text=True, env=dict(self.env, ONEBEE_FW_MANGLE_LOI="1"))
+        self.assertNotEqual(r.returncode, 0)                                                # báo lỗi (unit thất bại, quản trị thấy)
+        self.assertEqual(sum("ONEBEE-LAN-BOX" in x for x in self.chuoi("INPUT")), 2)
         self.assertEqual(sum("ONEBEE-LAN-DOCKER" in x for x in self.chuoi("DOCKER-USER")), 1)
 
     def test_tailscale_chi_dia_chi_khai_bao_va_tach_ho_ipv4_ipv6(self):
