@@ -5,6 +5,10 @@
 # và INPUT (dịch vụ trên Box). Chỉ xét kết nối MỚI từ bên ngoài; Box gọi ra ngoài, trả lời, gọi nội bộ không bị ảnh hưởng.
 # Phạm vi (rà soát bảo mật F5): MỌI cổng mạng trừ lo, docker*, br-* (mạng Docker). Qua cổng mạng chính chỉ mạng LAN cho phép;
 # qua tailscale0 chỉ các địa chỉ trong TAILSCALE_CHO_PHEP (máy kỹ thuật); cổng mạng khác (card phụ, wg0, tun0…) bị chặn hết.
+# Tailscale: tailscaled chèn -j ts-input / ts-forward vào ĐẦU INPUT/FORWARD mỗi lần khởi động và ts-input ACCEPT mọi gói từ tailscale0
+# (util/linuxfw, bản 1.104) → lọc ở filter thì thứ tự khởi động quyết định. Nên kết nối MỚI từ tailscale0 bị lọc ở mangle/PREROUTING
+# (chạy trước mọi chuỗi filter; tailscaled chỉ thêm ở đó quy tắc CONNMARK không chặn/không nhận gói) — đúng bất kể ai khởi động trước.
+# IPv6: SSH/Samba ngoài mạng nội bộ bị REJECT (không DROP) để Windows lùi về IPv4 ngay, không treo chờ hết giờ.
 # Cách dùng: onebee-tuong-lua [bat|tat|xem]   (bat: dựng lại từ đầu, chạy nhiều lần không sao)
 set -euo pipefail
 
@@ -18,6 +22,7 @@ CONG_UDP_TREN_BOX="137,138"  # UDP: Samba tìm máy trong mạng (NetBIOS)
 
 C_DOCKER=ONEBEE-LAN-DOCKER
 C_BOX=ONEBEE-LAN-BOX
+C_TS=ONEBEE-TAILSCALE   # bảng mangle
 
 cong_mang() { ip -4 route show default | awk '{print $5; exit}'; }
 
@@ -33,10 +38,15 @@ tat() {
     while "${ipt}" -S INPUT | grep -q -- "-j ${C_BOX}"; do
       "${ipt}" -S INPUT | grep -- "-j ${C_BOX}" | head -1 | sed 's/^-A/-D/' | xargs "${ipt}"
     done
+    while "${ipt}" -t mangle -S PREROUTING 2>/dev/null | grep -q -- "-j ${C_TS}"; do
+      "${ipt}" -t mangle -S PREROUTING | grep -- "-j ${C_TS}" | head -1 | sed 's/^-A/-t mangle -D/' | xargs "${ipt}"
+    done
     for c in "${C_DOCKER}" "${C_BOX}"; do
       "${ipt}" -F "${c}" 2>/dev/null || true
       "${ipt}" -X "${c}" 2>/dev/null || true
     done
+    "${ipt}" -t mangle -F "${C_TS}" 2>/dev/null || true
+    "${ipt}" -t mangle -X "${C_TS}" 2>/dev/null || true
   done
 }
 
@@ -51,8 +61,18 @@ dung() {
     "${ipt}" -A "${c}" -i 'br-+' -j RETURN
     for net in ${mang//,/ }; do "${ipt}" -A "${c}" -i "${ifc}" -s "${net}" -j RETURN; done
     for net in ${ts//,/ }; do "${ipt}" -A "${c}" -i tailscale0 -s "${net}" -j RETURN; done
-    "${ipt}" -A "${c}" -j DROP
+    if [[ "${ipt}" == ip6tables && "${c}" == "${C_BOX}" ]]; then
+      "${ipt}" -A "${c}" -p tcp -j REJECT --reject-with tcp-reset
+      "${ipt}" -A "${c}" -j REJECT --reject-with icmp6-port-unreachable
+    else
+      "${ipt}" -A "${c}" -j DROP
+    fi
   done
+  # Kết nối mới qua tailscale0: chỉ địa chỉ khai báo (máy kỹ thuật), mọi cổng — chặn trước cả ts-input/ts-forward của tailscaled
+  "${ipt}" -t mangle -N "${C_TS}"
+  for net in ${ts//,/ }; do "${ipt}" -t mangle -A "${C_TS}" -s "${net}" -j RETURN; done
+  "${ipt}" -t mangle -A "${C_TS}" -j DROP
+  "${ipt}" -t mangle -I PREROUTING 1 -i tailscale0 -m conntrack --ctstate NEW -j "${C_TS}"
   # Docker tạo DOCKER-USER khi khởi động; tạo trước cũng được (Docker dùng lại)
   "${ipt}" -N DOCKER-USER 2>/dev/null || true
   "${ipt}" -I DOCKER-USER 1 -m conntrack --ctstate NEW -j "${C_DOCKER}"
@@ -79,7 +99,7 @@ bat() {
   [[ -n "${mang}" ]] || { echo "Không xác định được mạng LAN của ${ifc}" >&2; exit 1; }
   tat
   dung iptables "${ifc}" "${mang}" "$(loc_ho 4 "${TAILSCALE_CHO_PHEP}")"
-  # IPv6: các cổng Docker chỉ mở IPv4 (docker-compose.yml) → chỉ cần giữ SSH/Samba trong mạng nội bộ
+  # IPv6: các cổng Docker chỉ mở IPv4 (docker-compose.yml) → chỉ cần giữ SSH/Samba trong mạng nội bộ (ngoài mạng nội bộ: REJECT)
   if command -v ip6tables >/dev/null && ip6tables -S >/dev/null 2>&1; then
     mang6="fe80::/10,fc00::/7"
     dung ip6tables "${ifc}" "${mang6}" "$(loc_ho 6 "${TAILSCALE_CHO_PHEP}")"
@@ -88,7 +108,7 @@ bat() {
 }
 
 xem() {
-  iptables -S "${C_DOCKER}" 2>/dev/null && iptables -S "${C_BOX}" || echo "Tường lửa OneBee đang tắt"
+  iptables -S "${C_DOCKER}" 2>/dev/null && iptables -S "${C_BOX}" && iptables -t mangle -S "${C_TS}" || echo "Tường lửa OneBee đang tắt"
 }
 
 case "${1:-bat}" in
