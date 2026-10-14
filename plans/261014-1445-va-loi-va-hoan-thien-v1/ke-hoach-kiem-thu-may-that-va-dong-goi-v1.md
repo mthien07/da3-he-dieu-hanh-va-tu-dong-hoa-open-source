@@ -21,10 +21,10 @@ Nguồn: [reports/nghiem-thu-v1-docker.md](../../reports/nghiem-thu-v1-docker.md
 | **Bản vá N8 & N9 (Xoay khóa & khóa file)** | Docker Runner + unit test | **ĐẠT** | Runner: khóa cũ bị từ chối, máy trạm nhận khóa mới; unit test: nhắc đúng máy chưa nhận, khóa sau xác nhận |
 | **Bản vá N5 (Chặn redirect CA công cộng, ghim CA khi `HTTPS://` viết hoa)** | Unit test | **ĐẠT** | Runner kiểm máy trạm qua HTTPS chỉ tin CA của Box |
 | **Bản vá N2 (Dọn CA cũ khỏi cert9.db)** | Unit test (NSS thật) | **ĐẠT** | Gỡ theo vân tay CA hiện tại, tự lành |
-| **Bản vá N6 & N7 (Tailscale & IPv6 REJECT, mangle lỗi không mở toang)** | Docker Runner + unit test | **ĐẠT** | Runner: chỉ LAN vào được, cổng chỉ IPv4; Tailscale thật và Windows (B15) chưa kiểm |
+| **Bản vá N6 & N7 (Tailscale & IPv6 REJECT, mangle lỗi không mở toang)** | Docker Runner + unit test | **ĐẠT** | Runner: chỉ LAN vào được, cổng chỉ IPv4, dừng/bật Docker vẫn giữ tường lửa (`8874345`); Tailscale thật và Windows (B15) chưa kiểm |
 | **Bản vá N10 (Đồng bộ tài liệu docs/)** | Kho mã nguồn | **ĐẠT** | `5240e99`, `b819317`, `b13d00d` |
 | **Nghiệm thu Desktop Mint 22.3** | Container Mint 22.3 + `cinnamon-common`/`nemo-data` | **ĐẠT 71/71** | `119ec76`: lần 1 `changed=41 failed=0`, lần 2 `changed=0 failed=0`; chưa kiểm phiên Cinnamon thật |
-| **Nghiệm thu Box Runner toàn diện** | Container Ubuntu 24.04 + systemd | **ĐẠT 126/126** | `b13d00d`: 6 container (Caddy, Ollama, Open WebUI, n8n, Uptime Kuma, rest-server), 9 quy trình n8n, sao lưu/khôi phục, HTTPS, xoay khóa |
+| **Nghiệm thu Box Runner toàn diện** | Container Ubuntu 24.04 + systemd | **ĐẠT 127/127** | `8874345`: 6 container (Caddy, Ollama, Open WebUI, n8n, Uptime Kuma, rest-server), 9 quy trình n8n, sao lưu/khôi phục, HTTPS, xoay khóa |
 ---
 
 ## II. Kế hoạch Kiểm thử trên Phần cứng Thực tế (Real Hardware Test Plan)

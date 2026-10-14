@@ -2,7 +2,7 @@
 
 **Phạm vi:** dải commit `c341bed..ed4b03b` (16057f5 → 8328dbf: CORS HTTP, gia hạn CA, xoay-khoa, `hoi` + 308, gỡ CA Firefox, tường lửa mangle/IPv6, apt) + quét toàn repo (`box/`, `desktop/`, `scripts/`, `.github/`).
 **Cách làm:** skill `differential-review` (rủi ro theo diff, kịch bản tấn công cụ thể) + `ak:security` (bí mật, phụ thuộc, mẫu mã nguy hiểm), 3 agent review đọc mã + 1 agent kiểm thử; mọi phát hiện được kiểm lại bằng đọc mã hoặc chạy thật trước khi ghi.
-**Kết luận:** không có lỗi Critical/High trong mã. 1 lỗi vượt ghim CA, 1 lỗi tường lửa mở toang khi mangle lỗi và 4 lỗi tính đúng/vận hành — đã sửa theo TDD. Mục 10 (vòng đời tường lửa gắn Docker, có từ trước) đã sửa theo quyết định của chủ dự án. Còn mở: mục 11 (ghi chú tài liệu). Nghiệm thu Docker trên mã cuối đạt (Box `b13d00d` 126/126, Desktop `119ec76` 71/71 — `reports/nghiem-thu-v1-docker.md`).
+**Kết luận:** không có lỗi Critical/High trong mã. 1 lỗi vượt ghim CA, 1 lỗi tường lửa mở toang khi mangle lỗi và 4 lỗi tính đúng/vận hành — đã sửa theo TDD. Mục 10 (vòng đời tường lửa gắn Docker, có từ trước) đã sửa theo quyết định của chủ dự án. Còn mở: mục 11 (ghi chú tài liệu). Nghiệm thu Docker trên mã cuối đạt (Box `8874345` 127/127 gồm bước dừng/bật Docker, Desktop `119ec76` 71/71 — `reports/nghiem-thu-v1-docker.md`).
 
 ## Tóm tắt
 

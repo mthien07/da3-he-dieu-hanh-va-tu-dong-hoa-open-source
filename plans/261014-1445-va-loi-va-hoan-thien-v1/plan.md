@@ -75,7 +75,7 @@ Kế hoạch này tập trung giải quyết toàn bộ các vấn đề còn m�
 - **Lũy nghiệm:** Thêm `changed_when: false` cho task `Cập nhật danh mục gói` ở cả box-base và desktop base (`8328dbf`).
 
 ### Giai đoạn 4: Nghiệm thu Docker, Kiểm thử máy thật & Đóng gói v1.0.0 — [ĐANG TIẾN HÀNH]
-- Nghiệm thu Docker (14–15/10/2026, [reports/nghiem-thu-v1-docker.md](../../reports/nghiem-thu-v1-docker.md)): Box `b13d00d` 126 PASS / 0 FAIL (lượt 8; lượt 6–7 dừng vì Docker Hub ngắt kết nối); Desktop Mint 22.3 `119ec76` 71 PASS / 0 FAIL; cả hai lần 2 `changed=0 failed=0`. Chưa kiểm trên máy thật.
+- Nghiệm thu Docker (14–15/10/2026, [reports/nghiem-thu-v1-docker.md](../../reports/nghiem-thu-v1-docker.md)): Box `8874345` 127 PASS / 0 FAIL (lượt 13; trước đó `b13d00d` đạt 126/126 ở lượt 8, rồi sửa vòng đời tường lửa gắn Docker; các lượt 6–7, 9–12 dừng vì Docker Hub ngắt kết nối); Desktop Mint 22.3 `119ec76` 71 PASS / 0 FAIL; cả hai lần 2 `changed=0 failed=0`. Chưa kiểm trên máy thật.
 - Kế hoạch kiểm thử máy thật: Chi tiết xem tại [ke-hoach-kiem-thu-may-that-va-dong-goi-v1.md](ke-hoach-kiem-thu-may-that-va-dong-goi-v1.md).
 - Đóng gói phát hành: phiên bản `1.0.0` trong `group_vars`, changelog `[1.0.0]`, README đã cập nhật; gắn tag `v1.0.0` (workflow `phat-hanh.yml` tạo GitHub Release) **chờ chủ dự án xác nhận**.
 
