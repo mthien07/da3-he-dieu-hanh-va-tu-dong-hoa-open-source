@@ -71,13 +71,13 @@ Kế hoạch này tập trung giải quyết toàn bộ các vấn đề còn m�
 
 ### Giai đoạn 3: Khảo sát & xử lý lỗi mạng (N6, N7) & Chuẩn hóa tài liệu (N10) — [ĐÃ HOÀN TẤT]
 - **N6 & N7:** Lọc kết nối `tailscale0` ở bảng `mangle/PREROUTING`; chuyển từ chối IPv6 sang `REJECT` (`tcp-reset`, `icmp6-port-unreachable`).
-- **N10:** Đồng bộ toàn bộ 8 file tài liệu trong `docs/` (chuẩn 12 dòng, biến bắt buộc, lệnh thực tế).
+- **N10:** Đồng bộ 6 file tài liệu trong `docs/` + 2 file mã liên quan (`5240e99`; 12 dòng cấu hình máy trạm, biến bắt buộc, lệnh thực tế).
 - **Lũy nghiệm:** Thêm `changed_when: false` cho task `Cập nhật danh mục gói` ở cả box-base và desktop base (`8328dbf`).
 
 ### Giai đoạn 4: Nghiệm thu Docker, Kiểm thử máy thật & Đóng gói v1.0.0 — [ĐANG TIẾN HÀNH]
-- Nghiệm thu Docker: Desktop Mint 22.3 (100% ĐẠT), Box Runner (100% ĐẠT).
+- Nghiệm thu Docker (14–15/10/2026, [reports/nghiem-thu-v1-docker.md](../../reports/nghiem-thu-v1-docker.md)): Box `b13d00d` 126 PASS / 0 FAIL (lượt 8; lượt 6–7 dừng vì Docker Hub ngắt kết nối); Desktop Mint 22.3 `119ec76` 71 PASS / 0 FAIL; cả hai lần 2 `changed=0 failed=0`. Chưa kiểm trên máy thật.
 - Kế hoạch kiểm thử máy thật: Chi tiết xem tại [ke-hoach-kiem-thu-may-that-va-dong-goi-v1.md](ke-hoach-kiem-thu-may-that-va-dong-goi-v1.md).
-- Đóng gói phát hành: Tạo thẻ tag `v1.0.0`, cập nhật CHANGELOG và công bố GitHub Release.
+- Đóng gói phát hành: phiên bản `1.0.0` trong `group_vars`, changelog `[1.0.0]`, README đã cập nhật; gắn tag `v1.0.0` (workflow `phat-hanh.yml` tạo GitHub Release) **chờ chủ dự án xác nhận**.
 
 ---
 
