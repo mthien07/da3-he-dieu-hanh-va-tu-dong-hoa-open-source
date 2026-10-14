@@ -95,6 +95,10 @@ services:
       WEBUI_SESSION_COOKIE_SECURE: "true"
       WEBUI_AUTH_COOKIE_SECURE: "true"
       CORS_ALLOW_ORIGIN: "https://{{ onebee_box_ip }}:{{ onebee_box_ports.open_webui }};https://box.{{ onebee_box_ma_don_vi }}.onebee.internal:{{ onebee_box_ports.open_webui }}"
+{% else %}
+      # HTTP nội bộ: chỉ cho phép WebUI tự gọi chính nó, chặn trang web lạ gửi request kèm cookie/credentials
+      # (không đặt thì Open WebUI phản chiếu mọi Origin kèm allow-credentials)
+      CORS_ALLOW_ORIGIN: "http://{{ onebee_box_ip }}:{{ onebee_box_ports.open_webui }}"
 {% endif %}
       OFFLINE_MODE: "true"
       SCARF_NO_ANALYTICS: "true"
