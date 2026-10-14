@@ -130,7 +130,9 @@ class OnebeeBoxShell(unittest.TestCase):
 
         def sua(txt):  # đường dẫn cố định của máy thật → thư mục tạm; bỏ kiểm quyền root
             # /var/log/onebee-box: nhật ký dong-bo-may/cap-nhat-may — không có quyền ghi khi CI chạy không phải root (và không nên ghi bừa vào máy chạy test)
+            # /run/onebee-box.lock: khóa chống chạy chồng (with_lock) — CI không phải root nên không ghi được /run
             return (txt.replace("/usr/local/lib/onebee-box", lib).replace("/var/log/onebee-box", f"{t}/log")
+                    .replace("/run/onebee-box.lock", f"{t}/onebee-box.lock")
                     .replace("[[ ${EUID} -eq 0 ]] ||", "[[ 1 -eq 1 ]] ||"))
         files = {"common.sh": "onebee-box-common.sh.j2", "sao-luu.sh": "onebee-box-sao-luu.sh.j2"}
         for dst, src in files.items():
@@ -393,6 +395,20 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertFalse(os.path.exists(f"{self.t}/data/caddy/data/caddy/certificates"))
         r = self.chay("gia-han-ca")                                     # còn hạn → không làm gì
         self.assertEqual(r.stdout.strip(), "")
+
+    def test_sao_luu_chua_gan_o_van_gia_han_ca(self):
+        """Chưa gắn ổ sao lưu thì sao lưu dừng — nhưng gia hạn CA trung gian phải chạy trước đó, kẻo hết hạn là HTTPS sập."""
+        self.chay("gia-han-ca")
+        self.lam_trung_gian_sap_het_han()
+        cu = open(f"{self.t}/secrets/ca/inter.crt").read()
+        open(f"{self.t}/bin/mountpoint", "w").write("#!/bin/sh\nexit 1\n")                     # ổ sao lưu chưa gắn
+        os.chmod(f"{self.t}/bin/mountpoint", 0o755)
+        r = self.chay("sao-luu", kiem=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Chưa gắn ổ sao lưu", r.stdout + r.stderr)
+        moi = open(f"{self.t}/secrets/ca/inter.crt").read()
+        self.assertNotEqual(moi, cu)
+        self.assertEqual(open(f"{self.t}/box/portal/pki/inter.crt").read(), moi)                # Caddy thấy bản mới
 
     def test_may_chua_nhan_ca_cho_den_khi_dong_bo_ghi_dau(self):
         self.kv("ketoan-01")
