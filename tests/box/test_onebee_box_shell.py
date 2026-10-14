@@ -367,6 +367,38 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertNotEqual(open(f"{self.t}/secrets/n8n-webhook-key").read(), "wh-cu")
         self.assertTrue(os.path.exists(f"{self.t}/out/bo-cai.log"))                            # đã chạy bộ cài để áp dụng
 
+    def bo_cai_gia(self):
+        """Bộ cài giả: như Ansible thật, sinh lại khóa gửi tình trạng dùng chung mà xoay-khoa --box vừa xóa."""
+        bo_cai = f"{self.t}/bo-cai.sh"
+        open(bo_cai, "w").write(f"#!/bin/sh\necho chay > {self.t}/out/bo-cai.log\n"
+                                f"[ -s {self.t}/secrets/tinh-trang-key ] || echo khoa-tinh-trang-moi > {self.t}/secrets/tinh-trang-key\n")
+        os.chmod(bo_cai, 0o755)
+        open(f"{self.t}/lib/duong-dan-bo-cai", "w").write(bo_cai + "\n")
+
+    def test_xoay_khoa_box_tu_day_khoa_tinh_trang_moi_xuong_moi_may(self):
+        """Khóa gửi tình trạng dùng chung đổi mà máy trạm không nhận → máy báo tình trạng bị 403 tới khi quản trị nhớ chạy dong-bo-may."""
+        self.cap_may("ketoan-01", "10.1.1.5")
+        self.cap_may("kho-02", "10.1.1.6")
+        self.bo_cai_gia()
+        r = self.chay("xoay-khoa", "--box", "--dong-y")
+        goi = self.ansible_goi()
+        self.assertEqual(len(goi), 1, r.stdout + r.stderr)                                      # một lần đẩy cho mọi máy
+        d = f"{self.t}/out/{goi[0]}"
+        self.assertIn("dong-bo-may-tram.yml", open(f"{d}/args").read())
+        self.assertEqual(sorted(os.listdir(f"{d}/cau-hinh")), ["ketoan-01.env", "kho-02.env"])
+        for f in os.listdir(f"{d}/cau-hinh"):
+            self.assertIn("TINH_TRANG_KEY=khoa-tinh-trang-moi", open(f"{d}/cau-hinh/{f}").read())
+        self.assertNotIn("LƯU Ý: sau bộ cài", r.stdout)                                       # đã tự làm, không bắt quản trị nhớ
+
+    def test_xoay_khoa_box_khi_tat_khoa_tinh_trang_chung_thi_khong_day_xuong_may(self):
+        self.cap_may("ketoan-01", "10.1.1.5")
+        p = f"{self.t}/lib/common.sh"
+        s = open(p, encoding="utf-8").read()
+        open(p, "w", encoding="utf-8").write(s.replace('TINH_TRANG_KHOA_CHUNG="true"', 'TINH_TRANG_KHOA_CHUNG="false"'))
+        self.bo_cai_gia()
+        self.chay("xoay-khoa", "--box", "--dong-y")
+        self.assertEqual(self.ansible_goi(), [])
+
     def lam_trung_gian_sap_het_han(self):
         ca = f"{self.t}/secrets/ca"
         subprocess.run(["openssl", "req", "-new", "-key", f"{ca}/inter.key", "-subj", "/CN=cu", "-out", f"{self.t}/i.csr"], check=True, capture_output=True)
