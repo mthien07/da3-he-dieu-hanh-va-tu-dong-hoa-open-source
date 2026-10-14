@@ -12,18 +12,19 @@
 
 ## I. Tổng kết Nghiệm thu Môi trường Giả lập (Docker Acceptance)
 
+Nguồn: [reports/nghiem-thu-v1-docker.md](../../reports/nghiem-thu-v1-docker.md) (cập nhật 15/10/2026; bảng cũ ghi "Docker Runner ĐẠT" cho cả bản vá chỉ có unit test — đã sửa).
+
 | Hạng mục kiểm thử | Môi trường | Kết quả nghiệm thu | Ghi chú kỹ thuật |
 | :--- | :---: | :---: | :--- |
-| **Bản vá N13 (CORS HTTP)** | Docker Runner | **ĐẠT** | Cho phép IP LAN và `box.<mã>.onebee.internal:3000` |
-| **Bản vá N4 (Gia hạn CA trước backup)** | Docker Runner | **ĐẠT** | Gia hạn CA trước khi kiểm tra gắn ổ sao lưu ngoài |
-| **Bản vá N8 & N9 (Xoay khóa & Khóa file)** | Docker Runner | **ĐẠT** | Đồng bộ khóa sang trạm online, bọc `with_lock` |
-| **Bản vá N5 (Chặn redirect CA công cộng)** | Docker Runner | **ĐẠT** | `urllib` chỉ tin chứng chỉ nội bộ OneBee CA |
-| **Bản vá N2 (Dọn CA cũ khỏi cert9.db)** | Docker Runner | **ĐẠT** | Tìm và xóa chứng chỉ cũ qua SHA-256 fingerprint |
-| **Bản vá N6 & N7 (Tailscale & IPv6 REJECT)** | Docker Runner | **ĐẠT** | Lọc ở `mangle/PREROUTING`, REJECT IPv6 tức thì |
-| **Bản vá N10 (Đồng bộ tài liệu docs/)** | Kho mã nguồn | **ĐẠT** | Chuẩn 12 dòng, biến bắt buộc, lệnh thực tế |
-| **Nghiệm thu Desktop Mint 22.3** | Container Mint 22.3 | **100% ĐẠT** | Lần 1 `changed=36`, Lần 2 `changed=0 failed=0`, Office chuẩn |
-| **Nghiệm thu Box Runner toàn diện** | Container Ubuntu 24.04 | **100% ĐẠT** | 5 container backend + Caddy portal + Uptime Kuma + 9 n8n workflows |
-
+| **Bản vá N13 (CORS HTTP) + Origin thêm/WebSocket** | Docker Runner + unit test | **ĐẠT** | Origin lạ bị chặn (API + WebSocket), Origin hợp lệ được CORS + WebSocket `101`; biến `onebee_box_cors_them` |
+| **Bản vá N4 (Gia hạn CA trước backup)** | Unit test | **ĐẠT** | Runner không giả lập CA sắp hết hạn |
+| **Bản vá N8 & N9 (Xoay khóa & khóa file)** | Docker Runner + unit test | **ĐẠT** | Runner: khóa cũ bị từ chối, máy trạm nhận khóa mới; unit test: nhắc đúng máy chưa nhận, khóa sau xác nhận |
+| **Bản vá N5 (Chặn redirect CA công cộng, ghim CA khi `HTTPS://` viết hoa)** | Unit test | **ĐẠT** | Runner kiểm máy trạm qua HTTPS chỉ tin CA của Box |
+| **Bản vá N2 (Dọn CA cũ khỏi cert9.db)** | Unit test (NSS thật) | **ĐẠT** | Gỡ theo vân tay CA hiện tại, tự lành |
+| **Bản vá N6 & N7 (Tailscale & IPv6 REJECT, mangle lỗi không mở toang)** | Docker Runner + unit test | **ĐẠT** | Runner: chỉ LAN vào được, cổng chỉ IPv4; Tailscale thật và Windows (B15) chưa kiểm |
+| **Bản vá N10 (Đồng bộ tài liệu docs/)** | Kho mã nguồn | **ĐẠT** | `5240e99`, `b819317`, `b13d00d` |
+| **Nghiệm thu Desktop Mint 22.3** | Container Mint 22.3 + `cinnamon-common`/`nemo-data` | **ĐẠT 71/71** | `119ec76`: lần 1 `changed=41 failed=0`, lần 2 `changed=0 failed=0`; chưa kiểm phiên Cinnamon thật |
+| **Nghiệm thu Box Runner toàn diện** | Container Ubuntu 24.04 + systemd | **ĐẠT 126/126** | `b13d00d`: 6 container (Caddy, Ollama, Open WebUI, n8n, Uptime Kuma, rest-server), 9 quy trình n8n, sao lưu/khôi phục, HTTPS, xoay khóa |
 ---
 
 ## II. Kế hoạch Kiểm thử trên Phần cứng Thực tế (Real Hardware Test Plan)
@@ -35,26 +36,26 @@ Sau khi hoàn tất nghiệm thu container, các kịch bản sau sẽ được 
 - **Hệ điều hành nền:** Ubuntu Server 24.04 LTS (cài mới hoàn toàn từ USB).
 - **Các bước thực hiện:**
   1. Cấu hình IP tĩnh hoặc IP DHCP cố định trên router (`onebee_box_dia_chi`).
-  2. Sao chép mã nguồn repo hoặc tải gói cài đặt `onebee-box-install.sh`.
-  3. Chạy cài đặt Lần 1: Xác nhận toàn bộ 5 container backend khởi động, Caddy portal lắng nghe cổng 80/443.
+  2. Sao chép mã nguồn repo hoặc tải gói cài đặt, chạy `box/onebee-box-install.sh`.
+  3. Chạy cài đặt Lần 1: Xác nhận đủ 6 container (Caddy `portal`, Ollama, Open WebUI, n8n, Uptime Kuma, rest-server) khởi động; Caddy lắng nghe cổng 80 (thêm 443 khi `onebee_box_https: true`).
   4. Chạy cài đặt Lần 2: Xác nhận tuyệt đối `changed=0 failed=0`.
   5. **Đo đạc hiệu năng AI thực tế:**
      - Mô hình: `gemma4:e2b-it-qat` chạy trên Ollama.
-     - Dùng script `tests/do-dac/do-may.py` hoặc công cụ benchmark đo tốc độ sinh từ (token/giây), mức RAM chiếm dụng lúc rảnh và khi có tải.
+     - Dùng `tests/ai/cham-diem-model.py --may-box-that` (thư viện `tests/ai/onebee_ai_eval/`) đo tốc độ sinh từ (token/giây), thời gian chờ chữ đầu, RAM. `tests/do-dac/do-may.py` chỉ đo máy trạm trước/sau, không đo AI.
      - Lưu kết quả đo đạc thực tế vào `reports/ai/do-dac-box-that.md`.
 
 ### Kịch bản H2: Kiểm thử OneBee Desktop trên máy trạm văn phòng vật lý
 - **Thiết bị:** Laptop hoặc PC văn phòng (tối thiểu 8 GB RAM, bàn phím tiếng Việt).
 - **Hệ điều hành nền:** Linux Mint 22.x (giao diện Cinnamon).
 - **Các bước thực hiện:**
-  1. Chạy bộ cài `onebee-desktop-install.sh` kết nối tới IP máy Box thật.
+  1. Chạy bộ cài `desktop/onebee-install.sh` kết nối tới IP máy Box thật.
   2. Kiểm tra bộ gõ tiếng Việt IBus Bamboo:
      - Gõ tiếng Việt kiểu Telex/VNI trong LibreOffice Writer, Calc, Impress.
      - Lưu file và kiểm tra định dạng mặc định `.docx`, `.xlsx`, `.pptx`.
      - Gõ tiếng Việt trong thanh địa chỉ và ô tìm kiếm của Firefox.
   3. Kiểm tra bảo mật trình duyệt Firefox:
-     - Mở Firefox, vào trang quản trị Box: Xác nhận ổ khóa xanh / chứng chỉ tin cậy không cảnh báo lỗi.
-     - Kiểm tra chứng chỉ: Đúng Issuer là `OneBee CA - <ma_don_vi>`.
+     - (Chỉ khi Box bật `onebee_box_https: true`) Mở Firefox, vào trang quản trị Box: Xác nhận ổ khóa / chứng chỉ tin cậy không cảnh báo lỗi.
+     - Kiểm tra chứng chỉ: Issuer là `OneBee Box <mã> Intermediate CA`, chuỗi lên `OneBee Box <mã> Root CA`.
   4. Kiểm tra các tiện ích người dùng:
      - Chạy lệnh CLI `hoi "Xin chào"` từ terminal.
      - Chạy lệnh `onebee-bao-tinh-trang` xác nhận gửi thông tin máy lên n8n của Box thành công.
@@ -63,7 +64,7 @@ Sau khi hoàn tất nghiệm thu container, các kịch bản sau sẽ được 
 - **Máy trạm Windows 10/11:**
   1. Mở File Explorer, kết nối `\\<IP-Box>\chung`: Xác nhận đăng nhập thành công qua giao thức SMB 3.1.1 có mã hóa.
   2. Tải chứng chỉ `http://<IP-Box>/onebee-ca.crt` về máy Windows, nhập vào kho "Trusted Root Certification Authorities".
-  3. Mở Edge/Chrome vào `https://<IP-Box>:3000`: Xác nhận truy cập an toàn không báo lỗi SSL.
+  3. (Chỉ khi Box bật `onebee_box_https: true`) Mở Edge/Chrome vào `https://<IP-Box>:3000`: Xác nhận truy cập an toàn không báo lỗi SSL.
 - **Máy in & Scan mạng LAN:**
   1. Xác nhận các luồng in mạng (cổng 9100/IPP 631) trong LAN không bị tường lửa Box làm ảnh hưởng.
 
