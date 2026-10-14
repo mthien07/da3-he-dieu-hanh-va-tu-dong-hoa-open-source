@@ -23,11 +23,13 @@ OneBee Box là 1 máy chủ đặt tại đơn vị, trong mạng LAN. Dịch v�
   tường lửa không phân biệt được — nên tách Wi-Fi khách ra mạng riêng trên router.
   Tường lửa lọc **mọi cổng mạng** trừ `lo` và mạng Docker: qua cổng mạng chính chỉ mạng LAN cho phép; card mạng phụ, `wg0`, `tun0` bị chặn hết;
   qua **Tailscale** chỉ máy kỹ thuật khai trong `onebee_box_tailscale_cho_phep` (vd `["100.64.1.2"]`) vào được web/SSH/thư mục chung — để trống là chặn hết kết nối Tailscale
-  (bộ cài cảnh báo nếu Box đang nối Tailscale mà chưa khai). Nên đặt thêm ACL phía Tailscale: `tag:kythuat` → Box tcp 22, 80, 443, 3000, 5678, 3001; thiết bị khác trong tailnet không vào được Box.
+  (bộ cài cảnh báo nếu Box đang nối Tailscale mà chưa khai). Kết nối mới qua Tailscale bị lọc ở bảng `mangle` (trước các quy tắc tailscaled tự chèn), nên vẫn đúng khi
+  tailscaled khởi động lại. Nên đặt thêm ACL phía Tailscale làm lớp thứ hai: `tag:kythuat` → Box tcp 22, 80, 443, 3000, 5678, 3001; thiết bị khác trong tailnet không vào được Box.
+  IPv6: SSH/thư mục chung chỉ nhận mạng nội bộ IPv6 (`fe80::/10`, `fc00::/7`); địa chỉ IPv6 toàn cầu bị **từ chối ngay** (không im lặng) để máy Windows lùi về IPv4 tức thì.
   Đổi dải IP của mạng LAN (thay router): khởi động lại Box hoặc chạy `sudo systemctl restart onebee-tuong-lua` để tường lửa nhận dải mới.
 
 ## 2. Cài đặt
-**Trước khi chạy bộ cài**, mở `box/ansible/group_vars/all.yml` và khai 2 giá trị (bộ cài dừng và báo rõ nếu thiếu):
+**Trước khi chạy bộ cài**, mở `box/ansible/group_vars/all.yml` và khai 2 giá trị (thiếu **mã đơn vị** thì bộ cài dừng và báo rõ; thiếu IP thì bộ cài lấy IP hiện có và cảnh báo):
 - `onebee_box_ma_don_vi`: **viết tắt tên khách hàng** (chữ thường không dấu, số, gạch giữa; ví dụ `anphu`). Mã nằm trong chứng chỉ CA riêng của Box
   (chỉ cho phép tên `<mã>.onebee.internal`), nên mỗi khách một mã khác nhau.
 - `onebee_box_dia_chi`: **IP tĩnh của Box** (cùng giá trị bạn đặt "giữ IP cố định" trên router hoặc netplan). Để trống thì bộ cài lấy IP hiện có
@@ -58,7 +60,8 @@ Mật khẩu và khóa đang đi qua LAN dạng rõ ở chế độ HTTP. Bật 
 6. Kỹ thuật vào Box qua Tailscale: thêm dòng `/etc/hosts` `<IP Tailscale của Box> box.<mã đơn vị>.onebee.internal`, mở `https://box.<mã đơn vị>.onebee.internal:3000` (mở bằng IP 100.x trần không dùng được).
    Mỗi khách dùng **một hồ sơ Firefox riêng** (CA của khách A chỉ cấp cho tên của khách A, nhưng các khách hay trùng dải `192.168.1.x`).
 7. Hoàn tác: `onebee_box_https: false` → chạy lại bộ cài (máy trạm tự nhận cờ `BOX_HTTPS=0`, về HTTP).
-Hết hạn CA trung gian (1 năm) được gia hạn tự động mỗi đêm sao lưu; `sudo onebee-box trang-thai` hiện số ngày còn lại.
+Hết hạn CA trung gian (1 năm) được gia hạn tự động mỗi đêm khi lệnh sao lưu 23:00 chạy — bước gia hạn chạy trước khi kiểm ổ sao lưu, nên vẫn chạy cả khi chưa gắn ổ;
+`sudo onebee-box trang-thai` hiện số ngày còn lại.
 
 ### Thư mục chung (Samba): chỉ SMB 3.1.1 + mã hóa
 Từ bản này thư mục chung bắt buộc **SMB 3.1.1 và mã hóa** (`server min protocol = SMB3_11`, `server smb encrypt = required`): giữ nguyên nội dung khi đi qua LAN, chống hạ cấp.
@@ -88,7 +91,8 @@ Trên Box:
 ```bash
 sudo onebee-box them-may ketoan-01
 ```
-Dán các dòng in ra (12 dòng (gồm `BOX_CA`, `BOX_CA_VAN_TAY`, `BOX_HTTPS`): `MAY_TRAM`, `BOX_IP`, `RESTIC_…`, `HOI_…`, `TINH_TRANG_…`, `QUAN_TRI_SSH_KEY`) vào máy trạm tại
+Dán các dòng in ra (12 dòng: `MAY_TRAM`, `BOX_IP`, `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`, `HOI_URL`, `HOI_API_KEY`, `TINH_TRANG_URL`, `TINH_TRANG_KEY`,
+`QUAN_TRI_SSH_KEY`, `BOX_CA`, `BOX_CA_VAN_TAY`, `BOX_HTTPS`; không có `HOI_API_KEY`/`TINH_TRANG_KEY` khi đã tắt 2 biến chuyển tiếp) vào máy trạm tại
 `/etc/onebee/may-tram.env`, rồi chạy lại `sudo ./desktop/onebee-install.sh` trên máy trạm. Máy trạm sẽ:
 - tự sao lưu `/home` lúc 12:00 hằng ngày (máy tắt thì chạy bù khi bật); sao lưu ngay: `sudo onebee-sao-luu`;
 - dùng được lệnh `hoi` (Trợ lý AI chưa chạy lúc cấp thì thiếu 2 dòng `HOI_…` — chạy lại lệnh sau);

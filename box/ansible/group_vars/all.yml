@@ -25,7 +25,7 @@ onebee_box_images:
 onebee_box_ma_don_vi: ""
 
 # Địa chỉ IPv4 TĨNH của Box trong LAN — nên khai (hoặc đặt "giữ IP cố định" cho Box trên router). Trống: lấy IP cổng ra mạng chính
-# và cảnh báo. Nằm trong chứng chỉ CA; đổi IP = xoay CA (onebee-box doi-ca) và đồng bộ lại mọi máy trạm.
+# và cảnh báo. Nằm trong chứng chỉ CA; đổi IP = xoay CA (onebee_box_xoay_ca bên dưới) và đồng bộ lại mọi máy trạm.
 onebee_box_dia_chi: ""
 
 # Kỹ thuật vào Box qua Tailscale bằng tên box.<mã đơn vị>.onebee.internal (máy kỹ thuật thêm dòng /etc/hosts trỏ tới IP Tailscale của Box).

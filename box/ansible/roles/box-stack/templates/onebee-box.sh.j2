@@ -299,8 +299,8 @@ cmd_cap_nhat_may() {
 
 # Đẩy lại cấu hình (/etc/onebee/may-tram.env) từ Box xuống máy trạm — dùng khi đổi khóa/URL; nguồn cấu hình duy nhất là in_cau_hinh_may.
 # Chỉ đẩy tới máy đã chứng minh được; thiếu bí mật nào của máy thì bỏ qua máy đó (không đẩy file thiếu). File cũ được giữ lại .~ trên máy.
-# Chỉ cập nhật FILE cấu hình và kiểm báo cáo chạy được; các file sinh từ cấu hình (/etc/onebee-hoi.conf, mục menu…) do bộ cài desktop
-# tạo lại — chạy lại bộ cài trên máy sau khi đổi hoi/URL (từ Pha 3 Box sẽ tự làm bước này).
+# Sau khi ghi file, playbook dong-bo-may-tram.yml chạy lại trên máy đúng các task của bộ cài desktop (ket-noi-box: CA + trình duyệt,
+# cau-hinh-hoi: /etc/onebee-hoi.conf, muc-menu) rồi kiểm báo cáo chạy được — không cần chạy lại bộ cài desktop bằng tay.
 cmd_dong_bo_may() {
   if [[ "${1:-}" == --tat-ca && -z "$(may_da_cap)" ]]; then echo "Chưa cấp máy trạm nào — không có gì để đồng bộ."; return 0; fi
   chon_may "${1:-}" || die "Cách dùng: sudo onebee-box dong-bo-may <tên-máy-đã-cấp> | --tat-ca"

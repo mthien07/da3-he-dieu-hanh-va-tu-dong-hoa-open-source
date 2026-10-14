@@ -39,7 +39,10 @@ Quy ước:
 | QĐ15 | Thư mục chung chỉ có máy **Windows 10 và Linux** dùng | Pha 5 (F8) |
 | QĐ16 | Giữ tính năng chạy mã (pyodide, chạy trong trình duyệt) của Open WebUI | — |
 
-**Trạng thái (10/10/2026):** chủ dự án đã duyệt **Pha 1**; code Pha 1 đã làm trên nhánh `claude/confident-gauss-ntiwuc` (xem mục 5.2 — "Trạng thái triển khai"). Pha 2–5 vẫn là kế hoạch, chờ duyệt từng pha.
+**Trạng thái (14/10/2026):** Pha 1–5 đã triển khai và gộp vào `main` (PR #1); lỗi tìm thấy khi kiểm thử thật và bản sửa ghi ở `docs/kiem-thu-tren-may-that.md`.
+Lệnh **đã có** trong `onebee-box` liệt kê ở đầu `box/ansible/roles/box-stack/templates/onebee-box.sh.j2` (gồm `xoay-khoa`, `gia-han-ca`, `in-ca`, `may-chua-nhan-ca`, `go-khoa-hoi-may`).
+**Chưa có** (chỉ là kế hoạch): `doi-khoa-quan-tri` (xoay khóa SSH quản trị). **Không làm**: lệnh `doi-ca` — xoay CA bằng biến `onebee_box_xoay_ca: true` rồi chạy bộ cài.
+(Trạng thái ngày 10/10/2026 dưới đây giữ nguyên để đối chiếu: khi đó mới duyệt Pha 1, code trên nhánh `claude/confident-gauss-ntiwuc`.)
 
 ## 1. Tóm tắt (bản 2)
 
@@ -466,7 +469,8 @@ Ansible thật, `thu-hoi-may` kèm Open WebUI thật.
 Firefox, Chromium/Chrome; gỡ sạch), `dong-bo-may` chạy lại task desktop, khôi phục giữ CA cũ, Caddy gắn thư mục + `/data` `/config`.
 Khác thiết kế: (1) **chưa** làm site `box.<mã>.onebee.internal` cho Tailscale và hồ sơ Firefox riêng từng khách — thuộc Pha 4 (cần Caddy TLS);
 (2) cờ `BOX_HTTPS` / dấu `https-da-bat` / từ chối `http://` — Pha 4; (3) policy `SecurityDevices`/p11-kit cho Firefox **không** dùng, chỉ
-`Certificates.Install` + `certutil -D` (chưa kiểm trên Mint thật); (4) `doi-ca` (xoay CA) mới có cơ chế `onebee-ca.sh --xoay`, lệnh `onebee-box doi-ca` ở Pha 5.
+`Certificates.Install` + `certutil -D` (chưa kiểm trên Mint thật); (4) `doi-ca` (xoay CA) mới có cơ chế `onebee-ca.sh --xoay`, lệnh `onebee-box doi-ca` ở Pha 5
+(về sau: **không làm lệnh `doi-ca`**, xoay CA bằng biến `onebee_box_xoay_ca`).
 Đã kiểm trong container làm việc: Caddy 2.11.4 (bản thật tải về) **nhận chứng chỉ gốc không kèm khóa gốc + trung gian có khóa**, cấp được chứng chỉ cho
 IP và tên, client curl/openssl nối đúng; chuỗi gốc→trung gian→lá cho `www.google.com`, IP khác, tên khách khác bị **openssl, Python ssl và curl từ chối**
 (lỗi 47 permitted subtree violation); đúng IP/tên thì qua. Role `ket-noi-box` và cả `dong-bo-may-tram.yml` chạy thật bằng ansible-core 2.19 (cài, chạy lại
@@ -595,7 +599,7 @@ Làm sau Pha 4, vì `hoi --dang-nhap` gửi mật khẩu → cần HTTPS. Có th
 Đã làm: `xoay-khoa` (máy + `--box`), `doi-mat-khau-quan-tri`/`xoay-khoa` trong `onebee-webui.py`, `KUMA_PASS_MOI`, `hoi --dang-nhap/--dan-khoa/--dang-xuat` (khóa riêng 0600, từ chối http cho đăng nhập),
 `go-khoa-hoi-may`, `onebee_box_hoi_khoa_may`, `onebee_box_khoa_tinh_trang_chung`. Khác thiết kế: (1) khóa máy `hoi` và khóa tình trạng chung **chưa bị bỏ mặc định** (hai biến chuyển tiếp, mặc định `true`) vì máy chạy bản
 desktop cũ sẽ ngừng báo tình trạng/hỏi AI nếu bỏ ngay; (2) credential `onebeeTram000001` không xóa khỏi CSDL n8n (n8n không có lệnh xóa credential trong CLI mà tôi kiểm được; chỉ ngừng dùng và ngừng nhập khi `false`);
-(3) `--box` không xoay Samba/restic-box/khóa SSH quản trị (`doi-khoa-quan-tri`, `doi-ca` thuộc Pha 5); (4) cửa sổ không nhất quán ngắn giữa lúc đổi bí mật và lúc bộ cài chạy xong — lệnh tự chạy bộ cài ngay.
+(3) `--box` không xoay Samba/restic-box/khóa SSH quản trị (`doi-khoa-quan-tri` **chưa có**; xoay CA bằng biến `onebee_box_xoay_ca`, không có lệnh `doi-ca`); (4) cửa sổ không nhất quán ngắn giữa lúc đổi bí mật và lúc bộ cài chạy xong — lệnh tự chạy bộ cài ngay.
 Đã kiểm trong container làm việc: test shell (htpasswd thật, Open WebUI giả) cho `xoay-khoa`/`go-khoa-hoi-may`/tắt khóa chung/tắt khóa hoi; test API mock Open WebUI cho `xoay_khoa`, `doi_mat_khau_quan_tri`; 10 test `hoi` qua TLS thật (đăng nhập, không lưu mật khẩu, 2 tài khoản Linux 2 khóa, thu hồi, chuyển tiếp);
 mẫu n8n hai chế độ; playbook `dong-bo-may-tram.yml` bằng ansible-core 2.19 (có/không `HOI_API_KEY`). **Chưa kiểm** (cần Docker/Box thật): `tests/box/check-xoay-khoa.sh`; Open WebUI v0.11.4 thật nhận `update/password` và `api_key` (đã đối chiếu mã nguồn
 `routers/auths.py`, chưa chạy); Uptime Kuma 2.5.5 `changePassword` (đã đối chiếu `server.js`); n8n 2.42.6 áp mật khẩu chủ mới khi khởi động lại (`N8N_INSTANCE_OWNER_MANAGED_BY_ENV`); hệ quả của đổi `WEBUI_SECRET_KEY`
@@ -610,7 +614,7 @@ mẫu n8n hai chế độ; playbook `dong-bo-may-tram.yml` bằng ansible-core 2
 | F11 | `no-new-privileges` mọi container; rest-server `cap_drop: [ALL]` + `read_only`; cân nhắc image Uptime Kuma `-rootless` |
 | F13, F6 | Ký tag/bản phát hành (minisign/cosign); ghim GitHub Actions theo SHA; Renovate (regex manager cho `group_vars/all.yml`); lịch ghim lại n8n mỗi 1–2 tuần |
 | S3, S4 | Thêm `\r` vào regex, `trim()` thống nhất (dùng `_csv-js.j2` cho quy trình 04), lọc `[\r\n]` khỏi tiêu đề email |
-| Khác | Quét image rest-server; nâng Ollama 0.40.x có kế hoạch (tải lại model nếu lùi); thử tắt thêm mô-đun n8n không dùng; `onebee-box doi-ca` (xoay CA), `doi-khoa-quan-tri` (xoay khóa SSH quản trị) |
+| Khác | Quét image rest-server; nâng Ollama 0.40.x có kế hoạch (tải lại model nếu lùi); thử tắt thêm mô-đun n8n không dùng; `doi-khoa-quan-tri` (xoay khóa SSH quản trị — **chưa có**). Xoay CA: biến `onebee_box_xoay_ca` (không làm lệnh `doi-ca`) |
 
 #### Trạng thái triển khai Pha 5 (10/10/2026)
 **Đã làm:** F5 tường lửa lọc mọi cổng mạng trừ `lo`/`docker*`/`br-*` (LAN chỉ qua cổng mạng chính; `tailscale0` chỉ địa chỉ trong `onebee_box_tailscale_cho_phep`; bộ cài cảnh báo khi Box nối Tailscale mà chưa khai), IPv4 + IPv6;
@@ -632,7 +636,9 @@ Kiểm soát bù thật của F4:
   - Pha 4–5: khóa container.
   - Pha 2: ghim khóa SSH có chứng minh.
 - **Truy vết:** log `cap-nhat-may`/`dong-bo-may`/`xoay-khoa` (0700, 90 ngày). Hướng dẫn xem `journalctl _COMM=sudo`, `/var/log/auth.log` của `onebee-quantri` trên máy trạm.
-- **Quy trình khi nghi Box bị chiếm:** `doi-khoa-quan-tri` → `doi-ca` → `xoay-khoa --tat-ca` → đổi mật khẩu kho. Có test gỡ CA khỏi Firefox (xem 5.4).
+- **Quy trình khi nghi Box bị chiếm:** xoay khóa SSH quản trị (lệnh `doi-khoa-quan-tri` **chưa có** — hiện phải làm tay) → xoay CA (`onebee_box_xoay_ca: true`
+  rồi chạy bộ cài; không có lệnh `doi-ca`) → `xoay-khoa --tat-ca --box` → đổi mật khẩu kho. Máy trạm gỡ CA cũ khỏi hồ sơ Firefox theo vân tay (test trong
+  `tests/desktop/test_onebee_ket_noi_box.py`).
 - **Minh bạch:** ADR 0004 + mục riêng tư trong `cai-dat-onebee-box.md` ghi rõ Box có root trên máy trạm, đọc được bản sao lưu, đẩy được cấu hình và CA. Giữ ít người có quyền quản trị Box.
 
 **Không** tính là kiểm soát bù F4 (bản đầu ghi nhầm):
