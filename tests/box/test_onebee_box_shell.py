@@ -399,6 +399,31 @@ class OnebeeBoxShell(unittest.TestCase):
         self.chay("xoay-khoa", "--box", "--dong-y")
         self.assertEqual(self.ansible_goi(), [])
 
+    def test_xoay_khoa_may_dang_tat_chi_canh_bao_khong_vo_lenh(self):
+        """Máy tắt: mật khẩu kho đã đổi trên Box nhưng chưa đẩy được → trước đây die "Không có máy nào để làm", mất lời nhắc dong-bo-may."""
+        self.cap_may("ketoan-01", "10.1.1.5")
+        http_cu = open(f"{self.t}/secrets/may-ketoan-01-http").read()
+        del self.sim["10.1.1.5"]                                                                # máy tắt: SSH timeout
+        self.dat_sim()
+        r = self.chay("xoay-khoa", "--may", "ketoan-01", "--dong-y", kiem=False)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotEqual(open(f"{self.t}/secrets/may-ketoan-01-http").read(), http_cu)
+        self.assertIn("Máy trạm ketoan-01 hiện đang tắt", r.stderr)
+        self.assertIn("sudo onebee-box dong-bo-may ketoan-01", r.stderr)
+        self.assertIn("Xong.", r.stdout)
+        self.assertEqual(os.listdir(f"{self.t}/tmp"), [])
+
+    def test_xoay_khoa_khong_chay_chong_voi_sao_luu(self):
+        import fcntl
+        self.cap_may("ketoan-01", "10.1.1.5")
+        http_cu = open(f"{self.t}/secrets/may-ketoan-01-http").read()
+        with open(f"{self.t}/onebee-box.lock", "w") as khoa:                                    # sao lưu đêm đang giữ khóa
+            fcntl.flock(khoa, fcntl.LOCK_EX)
+            r = self.chay("xoay-khoa", "--may", "ketoan-01", "--dong-y", kiem=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Đang có lệnh", r.stderr)
+        self.assertEqual(open(f"{self.t}/secrets/may-ketoan-01-http").read(), http_cu)          # chưa đổi gì
+
     def lam_trung_gian_sap_het_han(self):
         ca = f"{self.t}/secrets/ca"
         subprocess.run(["openssl", "req", "-new", "-key", f"{ca}/inter.key", "-subj", "/CN=cu", "-out", f"{self.t}/i.csr"], check=True, capture_output=True)
