@@ -30,6 +30,8 @@ chưa có số đo tốc độ AI trên máy thật.
 - **Tường lửa:** kết nối mới qua Tailscale bị lọc ở bảng `mangle`, đúng cả khi tailscaled khởi động lại sau tường lửa (trước đây máy tailnet bất kỳ có thể vào Box);
   IPv6 ngoài mạng nội bộ tới SSH/Samba bị từ chối ngay thay vì im lặng, để máy khách lùi về IPv4 thay vì chờ hết giờ (chưa kiểm trên Windows thật — phiếu B15).
   Quy tắc `mangle` dựng sau cùng: máy thiếu mô-đun `mangle` thì bộ cài báo lỗi nhưng mạng nội bộ vẫn được lọc, không mở toang SSH/Samba.
+  Dịch vụ `onebee-tuong-lua` dựng **trước** Docker và không còn gắn vòng đời với Docker: trước đây dừng/nâng cấp Docker gỡ luôn quy tắc SSH/Samba/Tailscale
+  tới khi Docker chạy lại. Docker dùng lại chuỗi `DOCKER-USER` có sẵn và giữ quy tắc trong đó nên container lên là đã bị lọc.
 - **Gia hạn CA trung gian** chạy mỗi đêm cả khi chưa gắn ổ sao lưu.
 - **`xoay-khoa`:** `--box` tự đẩy khóa tình trạng mới xuống mọi máy; máy đang tắt, máy thiếu bí mật hoặc máy bị lỗi khi đẩy cấu hình đều được nhắc
   đúng lý do kèm lệnh `dong-bo-may <máy>` (không dừng giữa chừng); không chạy chồng với sao lưu, và chỉ giữ khóa sau bước xác nhận (để treo ở dấu nhắc
