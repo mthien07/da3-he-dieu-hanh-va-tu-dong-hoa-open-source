@@ -64,9 +64,9 @@ if [[ -f /usr/share/glib-2.0/schemas/org.cinnamon.desktop.background.gschema.xml
   check "Win+R mở hộp thoại Chạy lệnh (vẫn giữ Alt+F2)" bash -c \
     "export GSETTINGS_BACKEND=memory; v=\$(gsettings get org.cinnamon.desktop.keybindings.wm panel-run-dialog); \
      [[ \$v == *\"'<Super>r'\"* && \$v == *\"'<Alt>F2'\"* ]]"
-  check "Win+Shift+S chụp màn hình chọn vùng (vẫn giữ Shift+Print)" bash -c \
-    "export GSETTINGS_BACKEND=memory; v=\$(gsettings get org.cinnamon.desktop.keybindings.media-keys area-screenshot); \
-     [[ \$v == *\"'<Super><Shift>s'\"* && \$v == *\"'<Shift>Print'\"* ]]"
+  check "Win+Shift+S chụp vùng vào clipboard (vẫn giữ Ctrl+Shift+Print)" bash -c \
+    "export GSETTINGS_BACKEND=memory; v=\$(gsettings get org.cinnamon.desktop.keybindings.media-keys area-screenshot-clip); \
+     [[ \$v == *\"'<Super><Shift>s'\"* && \$v == *\"'<Control><Shift>Print'\"* ]]"
   check "Bộ biểu tượng thư mục vàng Mint-Y-Sand (có cài + đặt mặc định)" bash -c \
     "test -d /usr/share/icons/Mint-Y-Sand && GSETTINGS_BACKEND=memory gsettings get org.cinnamon.desktop.interface icon-theme | grep -qx \"'Mint-Y-Sand'\""
   check "Ctrl+Shift+Esc mở Quản lý tác vụ (phím tùy chỉnh mặc định trong dconf hệ thống)" bash -c \
