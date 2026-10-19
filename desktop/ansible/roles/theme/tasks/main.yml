@@ -52,16 +52,18 @@
   when: onebee_cinnamon_schema.stat.exists
   notify: Biên dịch lại gsettings schema
 
-# Bộ biểu tượng thư mục vàng (Mint-Y-Sand), Quản lý tác vụ cho Ctrl+Shift+Esc, dconf để đặt phím tùy chỉnh mặc định
+# Bộ biểu tượng thư mục vàng (Mint-Y-Sand), Quản lý tác vụ cho Ctrl+Shift+Esc, công cụ chụp màn hình cho Win+Shift+S,
+# dconf để đặt phím tùy chỉnh mặc định
 - name: Cài bộ biểu tượng Mint-Y, Quản lý tác vụ và công cụ dconf
   ansible.builtin.apt:
-    name: [mint-y-icons, gnome-system-monitor, dconf-cli]
+    name: [mint-y-icons, gnome-system-monitor, gnome-screenshot, dconf-cli]
     state: present
   when: onebee_cinnamon_schema.stat.exists
 
 # Ctrl+Shift+Esc → Quản lý tác vụ: phím tùy chỉnh của Cinnamon nằm ở schema "relocatable" (đường dẫn riêng) nên override gschema
 # không đặt được → đặt làm MẶC ĐỊNH cho mọi người dùng bằng CSDL dconf hệ thống "local" (người dùng vẫn đổi/xóa được trong Cài đặt).
-# Tên có chữ "custom": Cinnamon chỉ gỡ đúng phím tùy chỉnh có chữ này khi danh sách đổi (js/ui/keybindings.js).
+# Tên phải đúng dạng customN: trang Bàn phím của Cài đặt đọc số sau chữ "custom" (KeybindingTable.py, int(...)) — tên khác làm trang lỗi.
+# Người dùng thêm phím tùy chỉnh mới thì Cài đặt chọn số kế tiếp (custom1...), custom0 vẫn lấy từ CSDL hệ thống.
 - name: Tạo thư mục cấu hình dconf hệ thống
   ansible.builtin.file:
     path: "{{ item }}"
@@ -96,9 +98,9 @@
     content: |
       # Quản lý bởi OneBee OS (desktop/ansible/roles/theme)
       [org/cinnamon/desktop/keybindings]
-      custom-list=['custom-onebee-tac-vu']
+      custom-list=['custom0']
 
-      [org/cinnamon/desktop/keybindings/custom-keybindings/custom-onebee-tac-vu]
+      [org/cinnamon/desktop/keybindings/custom-keybindings/custom0]
       name='Quản lý tác vụ (Task Manager)'
       command='gnome-system-monitor'
       binding=['<Primary><Shift>Escape']
