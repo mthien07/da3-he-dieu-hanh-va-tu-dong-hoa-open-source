@@ -11,12 +11,12 @@ button-layout=':minimize,maximize,close'
 show-desktop=['<Super>d']
 panel-run-dialog=['<Alt>F2', '<Super>r']
 
-# Win+E: mở thư mục cá nhân (Nemo); Win+L: khóa màn hình; Win+Shift+S: chụp màn hình chọn vùng.
-# Giữ nguyên phím cũ của Mint (XF86..., Ctrl+Alt+L, Shift+Print). Ctrl+Shift+Esc (Quản lý tác vụ) là phím tùy chỉnh — xem dconf trong tasks.
+# Win+E: mở thư mục cá nhân (Nemo); Win+L: khóa màn hình; Win+Shift+S: chụp vùng màn hình VÀO CLIPBOARD như Windows (dán bằng Ctrl+V).
+# Giữ nguyên phím cũ của Mint (XF86..., Ctrl+Alt+L, Ctrl+Shift+Print; Shift+Print vẫn chụp vùng ra file). Ctrl+Shift+Esc (Quản lý tác vụ) là phím tùy chỉnh — xem dconf trong tasks.
 [org.cinnamon.desktop.keybindings.media-keys]
 home=['<Super>e', 'XF86Explorer']
 screensaver=['<Control><Alt>l', 'XF86ScreenSaver', '<Super>l']
-area-screenshot=['<Super><Shift>s', '<Shift>Print']
+area-screenshot-clip=['<Super><Shift>s', '<Control><Shift>Print']
 
 # Super+L mặc định của Cinnamon là bảng gỡ lỗi Looking Glass (công cụ cho lập trình viên) — nhường phím cho khóa màn hình.
 # Kỹ thuật vẫn mở được bằng Alt+F2 rồi gõ lg.
