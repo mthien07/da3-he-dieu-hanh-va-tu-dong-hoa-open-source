@@ -18,7 +18,7 @@
 | Xuất PDF (Writer, Calc) | Nút **PDF** trên thanh công cụ |
 | Kiểm tra chính tả | **F7** |
 | Chụp màn hình | Phím **Print Screen** |
-| Chụp một vùng màn hình (như Snipping Tool) | **Super + Shift + S** (hoặc Shift + Print Screen) → kéo chuột chọn vùng |
+| Chụp một vùng màn hình vào clipboard (như Snipping Tool) | **Super + Shift + S** → kéo chuột chọn vùng → dán bằng **Ctrl + V** (Shift + Print Screen: chụp vùng lưu thành file) |
 | Mở cửa sổ dòng lệnh (kỹ thuật hướng dẫn) | Ctrl + Alt + T |
 
 | Cần giúp | Làm gì |
