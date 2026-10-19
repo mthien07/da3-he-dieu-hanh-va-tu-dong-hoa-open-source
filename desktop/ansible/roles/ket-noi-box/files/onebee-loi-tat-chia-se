@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# onebee-loi-tat-chia-se — chạy khi người dùng đăng nhập (/etc/xdg/autostart): đặt lối tắt "Chia sẻ nội bộ (OneBee Box)" lên
+# màn hình nền như ổ mạng trên Windows. Lối tắt gốc do role ket-noi-box sinh từ BOX_IP (/usr/share/applications/onebee-chia-se-noi-bo.desktop).
+# Chỉ đặt MỘT lần cho mỗi người: người dùng xóa lối tắt thì lần sau không đặt lại (dấu ở ~/.config/onebee/).
+# Box đổi IP: lối tắt đã đặt (do OneBee đặt, chưa bị sửa tay) được cập nhật theo bản gốc mới.
+set -euo pipefail
+
+GOC="${ONEBEE_LOI_TAT_GOC:-/usr/share/applications/onebee-chia-se-noi-bo.desktop}"
+TEN=onebee-chia-se-noi-bo.desktop
+[[ -r "${GOC}" ]] || exit 0                       # máy chưa nối Box
+
+dau="${XDG_CONFIG_HOME:-${HOME}/.config}/onebee/loi-tat-chia-se-da-dat"
+man_hinh="$(xdg-user-dir DESKTOP 2>/dev/null || true)"
+[[ -n "${man_hinh}" && "${man_hinh}" != "${HOME}" ]] || man_hinh="${HOME}/Desktop"
+dich="${man_hinh}/${TEN}"
+
+if [[ -e "${dau}" ]]; then
+  # Đã đặt trước đây: chỉ làm mới khi lối tắt còn và vẫn là bản của OneBee (khác nội dung gốc = Box đổi IP)
+  if ! [[ -f "${dich}" ]] || ! grep -qx 'X-OneBee=1' "${dich}" || cmp -s "${GOC}" "${dich}"; then exit 0; fi
+fi
+
+mkdir -p "${man_hinh}" "$(dirname "${dau}")"
+install -m 0755 "${GOC}" "${dich}"               # Nemo chỉ chạy lối tắt có quyền chạy và được đánh dấu tin cậy
+gio set "${dich}" metadata::trusted true 2>/dev/null || true
+touch "${dau}"
