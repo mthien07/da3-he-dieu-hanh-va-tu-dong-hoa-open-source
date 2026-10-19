@@ -22,11 +22,11 @@ RIBBON_XCD = os.path.join(ROLES, "office/files/onebee-office-ribbon.xcd")
 
 # Chỉ những khóa này được phép có trong override: schema:khóa -> kiểu GVariant (đã đối chiếu với gói cinnamon-desktop-data,
 # cinnamon, nemo trên Mint 22.x; khóa thêm 19/10/2026 đối chiếu mã nguồn nhánh master.mint22 của cinnamon, cinnamon-desktop, nemo:
-# panel-run-dialog, area-screenshot, app-menu-label, icon-theme, org.nemo.preferences — click-policy là enum, giả lập bằng "s"). Khóa sai tên/sai schema bị glib-compile-schemas bỏ qua lặng lẽ → phải bắt ở đây.
+# panel-run-dialog, area-screenshot-clip, app-menu-label, icon-theme, org.nemo.preferences — click-policy là enum, giả lập bằng "s"). Khóa sai tên/sai schema bị glib-compile-schemas bỏ qua lặng lẽ → phải bắt ở đây.
 ALLOWLIST = {
     "org.cinnamon.desktop.wm.preferences": {"button-layout": "s"},
     "org.cinnamon.desktop.keybindings.wm": {"show-desktop": "as", "panel-run-dialog": "as"},
-    "org.cinnamon.desktop.keybindings.media-keys": {"home": "as", "screensaver": "as", "area-screenshot": "as"},
+    "org.cinnamon.desktop.keybindings.media-keys": {"home": "as", "screensaver": "as", "area-screenshot-clip": "as"},
     "org.cinnamon.desktop.keybindings": {"looking-glass-keybinding": "as"},
     "org.nemo.desktop": {"computer-icon-visible": "b", "trash-icon-visible": "b", "home-icon-visible": "b"},
     "org.cinnamon": {"app-menu-icon-name": "s", "app-menu-label": "s", "favorite-apps": "as"},
@@ -68,9 +68,11 @@ class FileOverrideGsettings(unittest.TestCase):
         run = cp["org.cinnamon.desktop.keybindings.wm"]["panel-run-dialog"]
         self.assertIn("'<Super>r'", run)
         self.assertIn("'<Alt>F2'", run)
-        chup = cp["org.cinnamon.desktop.keybindings.media-keys"]["area-screenshot"]
+        # Win+Shift+S chụp vùng vào clipboard như Windows (gnome-screenshot --area --clipboard), giữ Ctrl+Shift+Print của Mint
+        chup = cp["org.cinnamon.desktop.keybindings.media-keys"]["area-screenshot-clip"]
         self.assertIn("'<Super><Shift>s'", chup)
-        self.assertIn("'<Shift>Print'", chup)
+        self.assertIn("'<Control><Shift>Print'", chup)
+        self.assertNotIn("area-screenshot", cp["org.cinnamon.desktop.keybindings.media-keys"])  # Shift+Print giữ mặc định (ra file)
 
     def test_menu_bat_dau_logo_va_chu_bieu_tuong_vang_nemo(self):
         cp = doc_override()
@@ -89,7 +91,7 @@ class FileOverrideGsettings(unittest.TestCase):
         dung = {}
         # Mọi phím trong override + phím tùy chỉnh Ctrl+Shift+Esc (dconf); thêm phím mặc định Cinnamon dễ đụng (master.mint22)
         phim_goc = {"<Control><Alt>Escape": "restart-cinnamon", "<Shift><Super>space": "switch-input-source-backward",
-                    "<Control><Shift>Print": "area-screenshot-clip", "Print": "screenshot"}
+                    "<Shift>Print": "area-screenshot", "Print": "screenshot"}
         dung = dict(phim_goc)
         nguon = [(s, k) for s in ALLOWLIST if "keybindings" in s for k in ALLOWLIST[s]]
         for schema, khoa in nguon:
