@@ -1,5 +1,14 @@
 # Nhật ký thay đổi
 
+## [Chưa phát hành] — Sau 1.0.0
+### Thêm
+- `scripts/mo-truy-cap-tu-xa.sh` (`--tat` để tắt): cầu nối **tạm** để kỹ thuật vào cài tiếp một máy mới cài hệ điều hành ở nơi khác mạng —
+  Tailscale SSH và chia sẻ màn hình GNOME (RDP, mật khẩu ngẫu nhiên chỉ root đọc). Chỉ Ubuntu 24.04 / Mint 22 (nền noble), amd64.
+  Không thay `onebee-ho-tro` (ADR 0004); tắt khi bàn giao máy.
+- Hướng dẫn `docs/huong-dan/truy-cap-tu-xa-khi-cai-may.md`, nối từ `quan-ly-may-tram.md`, `huong-dan-cai-dat-tu-a-den-z.md` và README.
+- Phiếu `docs/kiem-thu-tren-may-that.md` mục E2 kiểm cầu nối trên máy thật. Test tự động `tests/desktop/test_mo_truy_cap_tu_xa.py` dùng lệnh giả;
+  **chưa chạy trên máy thật**.
+
 ## [1.0.0] — 15/10/2026 — Bản phát hành chính thức đầu tiên
 Bản đủ tính năng cho một đơn vị, gồm mọi thay đổi từ 1.0.0-rc.1 (các mục dưới đây). Đã nghiệm thu tự động trong container
 (`reports/nghiem-thu-v1-docker.md`); **chưa cài trên máy thật tại đơn vị nào** — phiếu `docs/kiem-thu-tren-may-that.md` nhóm B–E còn mở,

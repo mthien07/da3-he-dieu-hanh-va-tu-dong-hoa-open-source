@@ -249,6 +249,10 @@ Box tự sao lưu toàn bộ dữ liệu của nó **mỗi đêm 23:00** ra mộ
 
 ## Phần 5. Cài Linux Mint cho máy trạm
 
+> Máy đặt ở nơi khác mạng (kỹ thuật không ngồi cạnh) và vừa cài xong hệ điều hành? Người tại máy chạy một script để kỹ thuật vào cài tiếp từ xa:
+> [truy-cap-tu-xa-khi-cai-may.md](truy-cap-tu-xa-khi-cai-may.md). Đây là cầu nối **tạm** khi cài, tắt khi bàn giao; khác với hỗ trợ từ xa
+> `onebee-ho-tro` (người dùng bấm Cho phép mỗi lần) sau khi đã cài OneBee.
+
 1. Cắm USB Linux Mint, khởi động từ USB (như Phần 2 bước 1) → chọn **Start Linux Mint** → trên màn hình nền bấm **Install Linux Mint**.
 2. Làm theo trình cài:
    - Ngôn ngữ **Tiếng Việt**.
