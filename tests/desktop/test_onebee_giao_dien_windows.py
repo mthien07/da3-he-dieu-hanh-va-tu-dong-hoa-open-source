@@ -12,6 +12,7 @@ import unittest
 import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+THEME_FILES = os.path.join(HERE, "../../desktop/ansible/roles/theme/files")
 ROLES = os.path.join(HERE, "../../desktop/ansible/roles")
 OVERRIDE = os.path.join(ROLES, "theme/files/zz_onebee-windows-layout.gschema.override")
 PIN_JSON = os.path.join(ROLES, "theme/files/grouped-window-list-settings-override.json")
@@ -20,14 +21,17 @@ THEME_TASKS = os.path.join(ROLES, "theme/tasks/main.yml")
 RIBBON_XCD = os.path.join(ROLES, "office/files/onebee-office-ribbon.xcd")
 
 # Chỉ những khóa này được phép có trong override: schema:khóa -> kiểu GVariant (đã đối chiếu với gói cinnamon-desktop-data,
-# cinnamon, nemo trên Mint 22.x). Khóa sai tên/sai schema bị glib-compile-schemas bỏ qua lặng lẽ → phải bắt ở đây.
+# cinnamon, nemo trên Mint 22.x; khóa thêm 19/10/2026 đối chiếu mã nguồn nhánh master.mint22 của cinnamon, cinnamon-desktop, nemo:
+# panel-run-dialog, area-screenshot, app-menu-label, icon-theme, org.nemo.preferences — click-policy là enum, giả lập bằng "s"). Khóa sai tên/sai schema bị glib-compile-schemas bỏ qua lặng lẽ → phải bắt ở đây.
 ALLOWLIST = {
     "org.cinnamon.desktop.wm.preferences": {"button-layout": "s"},
-    "org.cinnamon.desktop.keybindings.wm": {"show-desktop": "as"},
-    "org.cinnamon.desktop.keybindings.media-keys": {"home": "as", "screensaver": "as"},
+    "org.cinnamon.desktop.keybindings.wm": {"show-desktop": "as", "panel-run-dialog": "as"},
+    "org.cinnamon.desktop.keybindings.media-keys": {"home": "as", "screensaver": "as", "area-screenshot": "as"},
     "org.cinnamon.desktop.keybindings": {"looking-glass-keybinding": "as"},
     "org.nemo.desktop": {"computer-icon-visible": "b", "trash-icon-visible": "b", "home-icon-visible": "b"},
-    "org.cinnamon": {"app-menu-icon-name": "s", "favorite-apps": "as"},
+    "org.cinnamon": {"app-menu-icon-name": "s", "app-menu-label": "s", "favorite-apps": "as"},
+    "org.cinnamon.desktop.interface": {"icon-theme": "s"},
+    "org.nemo.preferences": {"show-hidden-files": "b", "click-policy": "s"},
 }
 APPS_VAN_PHONG = {"firefox.desktop", "libreoffice-writer.desktop", "libreoffice-calc.desktop",
                   "libreoffice-impress.desktop", "nemo.desktop", "onebee-tro-ly-ai.desktop"}
@@ -59,6 +63,23 @@ class FileOverrideGsettings(unittest.TestCase):
         for icon in ("computer", "trash", "home"):
             self.assertEqual(cp["org.nemo.desktop"][f"{icon}-icon-visible"], "true")
 
+    def test_phim_windows_bo_sung_va_giu_phim_cu_cua_mint(self):
+        cp = doc_override()
+        run = cp["org.cinnamon.desktop.keybindings.wm"]["panel-run-dialog"]
+        self.assertIn("'<Super>r'", run)
+        self.assertIn("'<Alt>F2'", run)
+        chup = cp["org.cinnamon.desktop.keybindings.media-keys"]["area-screenshot"]
+        self.assertIn("'<Super><Shift>s'", chup)
+        self.assertIn("'<Shift>Print'", chup)
+
+    def test_menu_bat_dau_logo_va_chu_bieu_tuong_vang_nemo(self):
+        cp = doc_override()
+        self.assertEqual(cp["org.cinnamon"]["app-menu-icon-name"], "'onebee-logo'")
+        self.assertEqual(cp["org.cinnamon"]["app-menu-label"], "'Bắt đầu'")
+        self.assertEqual(cp["org.cinnamon.desktop.interface"]["icon-theme"], "'Mint-Y-Sand'")
+        self.assertEqual(cp["org.nemo.preferences"]["show-hidden-files"], "false")
+        self.assertEqual(cp["org.nemo.preferences"]["click-policy"], "'double'")
+
     def test_win_l_nhuong_tu_looking_glass(self):
         # Super+L mặc định của Cinnamon là Looking Glass: nếu không tháo, hai chức năng tranh cùng một phím
         self.assertEqual(doc_override()["org.cinnamon.desktop.keybindings"]["looking-glass-keybinding"], "@as []")
@@ -66,13 +87,19 @@ class FileOverrideGsettings(unittest.TestCase):
     def test_phim_tat_khong_trung_nhau(self):
         cp = doc_override()
         dung = {}
-        for schema, khoa in (("org.cinnamon.desktop.keybindings.wm", "show-desktop"),
-                             ("org.cinnamon.desktop.keybindings.media-keys", "home"),
-                             ("org.cinnamon.desktop.keybindings.media-keys", "screensaver"),
-                             ("org.cinnamon.desktop.keybindings", "looking-glass-keybinding")):
+        # Mọi phím trong override + phím tùy chỉnh Ctrl+Shift+Esc (dconf); thêm phím mặc định Cinnamon dễ đụng (master.mint22)
+        phim_goc = {"<Control><Alt>Escape": "restart-cinnamon", "<Shift><Super>space": "switch-input-source-backward",
+                    "<Control><Shift>Print": "area-screenshot-clip", "Print": "screenshot"}
+        dung = dict(phim_goc)
+        nguon = [(s, k) for s in ALLOWLIST if "keybindings" in s for k in ALLOWLIST[s]]
+        for schema, khoa in nguon:
             for phim in re.findall(r"'([^']+)'", cp[schema][khoa]):
                 self.assertNotIn(phim, dung, f"{phim} gán cho cả {dung.get(phim)} và {schema}.{khoa}")
                 dung[phim] = f"{schema}.{khoa}"
+        with open(THEME_TASKS, encoding="utf-8") as f:
+            tac_vu = re.search(r"binding=\[(.*)\]", f.read()).group(1)
+        for phim in re.findall(r"'([^']+)'", tac_vu.replace("<Primary>", "<Control>")):
+            self.assertNotIn(phim, dung, f"{phim} (Quản lý tác vụ) trùng {dung.get(phim)}")
 
     def test_ghim_menu_bat_dau_la_ung_dung_van_phong(self):
         ghim = set(re.findall(r"'([^']+\.desktop)'", doc_override()["org.cinnamon"]["favorite-apps"]))
@@ -100,7 +127,9 @@ class GhimThanhTacVu(unittest.TestCase):
         with open(PIN_JSON, encoding="utf-8") as f:
             data = json.load(f)
         # override-props: chỉ thay thuộc tính nêu ra, giữ nguyên kiểu/mô tả của khóa gốc trong applet
-        self.assertEqual(list(data), ["pinned-apps"])
+        self.assertEqual(list(data), ["pinned-apps", "show-thumbnails", "enable-hover-peek"])
+        for khoa in ("show-thumbnails", "enable-hover-peek"):  # xem trước cửa sổ khi rê chuột như Windows
+            self.assertEqual(data[khoa], {"override-props": True, "default": True})
         self.assertIs(data["pinned-apps"]["override-props"], True)
         self.assertEqual(set(data["pinned-apps"]["default"]), APPS_VAN_PHONG)
 
@@ -115,6 +144,31 @@ class GhimThanhTacVu(unittest.TestCase):
             tasks = f.read()
         self.assertIn("/usr/share/applications/onebee-tro-ly-ai.desktop", tasks)
         self.assertIn("Exec=onebee-mo-tro-ly-ai", tasks)
+
+
+class LogoVaPhimTacVu(unittest.TestCase):
+    def test_role_cai_logo_svg_va_png_48(self):
+        with open(THEME_TASKS, encoding="utf-8") as f:
+            tasks = f.read()
+        ET.parse(os.path.join(THEME_FILES, "onebee-logo.svg"))  # SVG hợp lệ
+        with open(os.path.join(THEME_FILES, "onebee-logo-48.png"), "rb") as f:
+            dau = f.read(24)
+        self.assertEqual(dau[:8], b"\x89PNG\r\n\x1a\n")
+        self.assertEqual((int.from_bytes(dau[16:20], "big"), int.from_bytes(dau[20:24], "big")), (48, 48))
+        self.assertIn("hicolor/{{ item.thu_muc }}/apps", tasks)
+        self.assertIn("gtk-update-icon-cache", tasks)
+        self.assertIn("Icon=onebee-logo", tasks)
+
+    def test_ctrl_shift_esc_qua_dconf_he_thong(self):
+        with open(THEME_TASKS, encoding="utf-8") as f:
+            tasks = f.read()
+        self.assertIn("custom-list=['custom-onebee-tac-vu']", tasks)
+        # Cinnamon chỉ gỡ phím tùy chỉnh có chữ "custom" trong tên (js/ui/keybindings.js)
+        self.assertIn("[org/cinnamon/desktop/keybindings/custom-keybindings/custom-onebee-tac-vu]", tasks)
+        self.assertIn("command='gnome-system-monitor'", tasks)
+        self.assertIn("binding=['<Primary><Shift>Escape']", tasks)
+        self.assertIn("system-db:local", tasks)
+        self.assertIn("dconf update", tasks)
 
 
 class LenhMoTroLyAi(unittest.TestCase):

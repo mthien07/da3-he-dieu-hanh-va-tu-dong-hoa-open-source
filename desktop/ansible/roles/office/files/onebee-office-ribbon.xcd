@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- OneBee OS: LibreOffice mở mặc định với thanh công cụ dạng tab (Tabbed Notebookbar) giống Ribbon của Microsoft Office.
-     Người dùng vẫn đổi lại được ở Xem → Giao diện người dùng. -->
+<!-- OneBee OS: LibreOffice mở mặc định với thanh công cụ dạng tab (Tabbed Notebookbar) giống Ribbon của Microsoft Office,
+     và bộ biểu tượng Colibre (kiểu giống Microsoft Office, không phải biểu tượng gốc của Microsoft).
+     Người dùng vẫn đổi lại được: Xem → Giao diện người dùng (Ribbon), Công cụ → Tùy chọn → LibreOffice → Xem → Kiểu biểu tượng. -->
 <oor:data xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:oor="http://openoffice.org/2001/registry">
   <!-- Phải nạp SAU main/writer/calc/impress.xcd, nếu không giá trị mặc định "Default" của chúng sẽ đè lên -->
   <dependency file="main"/>
@@ -24,6 +25,15 @@
           <value>Tabbed</value>
         </prop>
       </node>
+    </node>
+  </oor:component-data>
+  <!-- Bộ biểu tượng Colibre (gói libreoffice-style-colibre). Mặc định của LibreOffice là "auto" (tự chọn theo môi trường desktop);
+       đặt tường minh để cố định Colibre. Nếu bộ này không cài, LibreOffice tự rơi về bộ biểu tượng khác đang có. -->
+  <oor:component-data oor:name="Common" oor:package="org.openoffice.Office">
+    <node oor:name="Misc">
+      <prop oor:name="SymbolStyle" oor:op="fuse">
+        <value>colibre</value>
+      </prop>
     </node>
   </oor:component-data>
 </oor:data>
