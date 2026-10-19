@@ -6,14 +6,17 @@
 [org.cinnamon.desktop.wm.preferences]
 button-layout=':minimize,maximize,close'
 
-# Win+D: hiện màn hình nền
+# Win+D: hiện màn hình nền; Win+R: hộp thoại Chạy lệnh (Run) — giữ Alt+F2 của Mint
 [org.cinnamon.desktop.keybindings.wm]
 show-desktop=['<Super>d']
+panel-run-dialog=['<Alt>F2', '<Super>r']
 
-# Win+E: mở thư mục cá nhân (Nemo); Win+L: khóa màn hình. Giữ nguyên phím cũ của Mint (XF86..., Ctrl+Alt+L).
+# Win+E: mở thư mục cá nhân (Nemo); Win+L: khóa màn hình; Win+Shift+S: chụp màn hình chọn vùng.
+# Giữ nguyên phím cũ của Mint (XF86..., Ctrl+Alt+L, Shift+Print). Ctrl+Shift+Esc (Quản lý tác vụ) là phím tùy chỉnh — xem dconf trong tasks.
 [org.cinnamon.desktop.keybindings.media-keys]
 home=['<Super>e', 'XF86Explorer']
 screensaver=['<Control><Alt>l', 'XF86ScreenSaver', '<Super>l']
+area-screenshot=['<Super><Shift>s', '<Shift>Print']
 
 # Super+L mặc định của Cinnamon là bảng gỡ lỗi Looking Glass (công cụ cho lập trình viên) — nhường phím cho khóa màn hình.
 # Kỹ thuật vẫn mở được bằng Alt+F2 rồi gõ lg.
@@ -26,7 +29,18 @@ computer-icon-visible=true
 trash-icon-visible=true
 home-icon-visible=true
 
-# Nút menu bắt đầu (biểu tượng lưới ứng dụng; đổi sang logo OneBee khi có tệp biểu tượng) và ứng dụng ghim sẵn ở menu
+# Nút menu bắt đầu: logo OneBee (biểu tượng onebee-logo do role cài) + chữ "Bắt đầu"; ứng dụng ghim sẵn ở menu.
+# Applet menu dùng 2 khóa này khi người dùng chưa tự chọn biểu tượng riêng (menu-custom=false, mặc định).
 [org.cinnamon]
-app-menu-icon-name='view-app-grid-symbolic'
+app-menu-icon-name='onebee-logo'
+app-menu-label='Bắt đầu'
 favorite-apps=['firefox.desktop', 'libreoffice-writer.desktop', 'libreoffice-calc.desktop', 'libreoffice-impress.desktop', 'nemo.desktop', 'onebee-tro-ly-ai.desktop', 'cinnamon-settings.desktop']
+
+# Biểu tượng: thư mục màu vàng cát giống Windows (Mint-Y-Sand có sẵn trong gói mint-y-icons)
+[org.cinnamon.desktop.interface]
+icon-theme='Mint-Y-Sand'
+
+# Nemo (File Explorer): không hiện file ẩn, nhấp đúp để mở như Windows (đặt lại cho chắc, Mint đã mặc định như vậy)
+[org.nemo.preferences]
+show-hidden-files=false
+click-policy='double'

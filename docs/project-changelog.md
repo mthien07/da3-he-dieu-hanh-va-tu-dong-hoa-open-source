@@ -6,6 +6,10 @@
   Tailscale SSH và chia sẻ màn hình GNOME (RDP, mật khẩu ngẫu nhiên chỉ root đọc). Chỉ Ubuntu 24.04 / Mint 22 (nền noble), amd64.
   Không thay `onebee-ho-tro` (ADR 0004); tắt khi bàn giao máy.
 - Hướng dẫn `docs/huong-dan/truy-cap-tu-xa-khi-cai-may.md`, nối từ `quan-ly-may-tram.md`, `huong-dan-cai-dat-tu-a-den-z.md` và README.
+- Giao diện quen như Windows (máy trạm Cinnamon): nút **Bắt đầu** dùng logo OneBee (`onebee-logo`, SVG + PNG 48px); Trợ lý AI dùng logo;
+  bộ biểu tượng thư mục vàng Mint-Y-Sand; phím **Win+R** (Chạy lệnh), **Win+Shift+S** (chụp vùng), **Ctrl+Shift+Esc** (Quản lý tác vụ, qua dconf
+  hệ thống); Nemo ẩn file ẩn, nhấp đúp; thanh tác vụ xem trước cửa sổ khi rê chuột; lối tắt **Chia sẻ nội bộ (OneBee Box)** trên màn hình nền
+  (`smb://<IP Box>/chung`, đặt lúc đăng nhập); LibreOffice bộ biểu tượng **Colibre** (kiểu giống Microsoft Office).
 - Phiếu `docs/kiem-thu-tren-may-that.md` mục E2 kiểm cầu nối trên máy thật. Test tự động `tests/desktop/test_mo_truy_cap_tu_xa.py` dùng lệnh giả;
   **chưa chạy trên máy thật**.
 

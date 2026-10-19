@@ -61,6 +61,23 @@ if [[ -f /usr/share/glib-2.0/schemas/org.cinnamon.desktop.background.gschema.xml
   check "Win+L khóa màn hình (vẫn giữ Ctrl+Alt+L)" bash -c \
     "export GSETTINGS_BACKEND=memory; v=\$(gsettings get org.cinnamon.desktop.keybindings.media-keys screensaver); \
      [[ \$v == *'<Super>l'* && \$v == *'<Control><Alt>l'* ]]"
+  check "Win+R mở hộp thoại Chạy lệnh (vẫn giữ Alt+F2)" bash -c \
+    "export GSETTINGS_BACKEND=memory; v=\$(gsettings get org.cinnamon.desktop.keybindings.wm panel-run-dialog); \
+     [[ \$v == *\"'<Super>r'\"* && \$v == *\"'<Alt>F2'\"* ]]"
+  check "Win+Shift+S chụp màn hình chọn vùng (vẫn giữ Shift+Print)" bash -c \
+    "export GSETTINGS_BACKEND=memory; v=\$(gsettings get org.cinnamon.desktop.keybindings.media-keys area-screenshot); \
+     [[ \$v == *\"'<Super><Shift>s'\"* && \$v == *\"'<Shift>Print'\"* ]]"
+  check "Bộ biểu tượng thư mục vàng Mint-Y-Sand (có cài + đặt mặc định)" bash -c \
+    "test -d /usr/share/icons/Mint-Y-Sand && GSETTINGS_BACKEND=memory gsettings get org.cinnamon.desktop.interface icon-theme | grep -qx \"'Mint-Y-Sand'\""
+  check "Ctrl+Shift+Esc mở Quản lý tác vụ (phím tùy chỉnh mặc định trong dconf hệ thống)" bash -c \
+    "command -v gnome-system-monitor && dconf read /org/cinnamon/desktop/keybindings/custom-list | grep -qF "'custom0'" \
+     && dconf read /org/cinnamon/desktop/keybindings/custom-keybindings/custom0/command | grep -qF gnome-system-monitor \
+     && dconf read /org/cinnamon/desktop/keybindings/custom-keybindings/custom0/binding | grep -qF '<Primary><Shift>Escape'"
+  if has_schema org.nemo.preferences; then
+    check "Nemo: ẩn file ẩn, nhấp đúp để mở" bash -c \
+      "export GSETTINGS_BACKEND=memory; [ \"\$(gsettings get org.nemo.preferences show-hidden-files)\" = false ] \
+       && [ \"\$(gsettings get org.nemo.preferences click-policy)\" = \"'double'\" ]"
+  fi
   check "Win+L không còn là phím bảng gỡ lỗi Looking Glass" bash -c \
     "[ \"\$(GSETTINGS_BACKEND=memory gsettings get org.cinnamon.desktop.keybindings looking-glass-keybinding)\" = '@as []' ]"
   if has_schema org.nemo.desktop; then
@@ -72,7 +89,8 @@ if [[ -f /usr/share/glib-2.0/schemas/org.cinnamon.desktop.background.gschema.xml
     check "Bảng điều khiển ở đáy màn hình, cao 40px" bash -c \
       "export GSETTINGS_BACKEND=memory; gsettings get org.cinnamon panels-enabled | grep -qF ':bottom' \
        && gsettings get org.cinnamon panels-height | grep -qF '1:40'"
-    check "Menu bắt đầu có biểu tượng lưới ứng dụng (không còn logo Mint)" gs_has org.cinnamon app-menu-icon-name view-app-grid-symbolic
+    check "Nút menu Bắt đầu dùng logo OneBee" gs_has org.cinnamon app-menu-icon-name "'onebee-logo'"
+    check "Nút menu có chữ \"Bắt đầu\"" gs_has org.cinnamon app-menu-label "'Bắt đầu'"
     for app in firefox libreoffice-writer libreoffice-calc libreoffice-impress nemo onebee-tro-ly-ai cinnamon-settings; do
       check "Menu bắt đầu ghim sẵn ${app}" gs_has org.cinnamon favorite-apps "'${app}.desktop'"
     done
@@ -80,12 +98,20 @@ if [[ -f /usr/share/glib-2.0/schemas/org.cinnamon.desktop.background.gschema.xml
 fi
 check "Có lệnh mở Trợ lý AI + mục menu Trợ lý AI OneBee" bash -c \
   "test -x /usr/local/bin/onebee-mo-tro-ly-ai && grep -q '^Exec=onebee-mo-tro-ly-ai$' /usr/share/applications/onebee-tro-ly-ai.desktop"
+check "Logo OneBee là biểu tượng hệ thống onebee-logo (SVG + PNG 48px, đã làm mới bộ đệm)" bash -c \
+  "test -s /usr/share/icons/hicolor/scalable/apps/onebee-logo.svg && test -s /usr/share/icons/hicolor/48x48/apps/onebee-logo.png \
+   && test /usr/share/icons/hicolor/icon-theme.cache -nt /usr/share/icons/hicolor/48x48/apps/onebee-logo.png"
+check "Trợ lý AI dùng biểu tượng logo OneBee" grep -qx 'Icon=onebee-logo' /usr/share/applications/onebee-tro-ly-ai.desktop
+check "Có lệnh đặt lối tắt Chia sẻ nội bộ (OneBee Box) khi đăng nhập" bash -c \
+  "test -x /usr/local/lib/onebee/onebee-loi-tat-chia-se && grep -qx 'Exec=/usr/local/lib/onebee/onebee-loi-tat-chia-se' /etc/xdg/autostart/onebee-loi-tat-chia-se.desktop"
 if [[ -d /usr/share/cinnamon/applets/grouped-window-list@cinnamon.org ]]; then
   override=/usr/share/cinnamon/applets/grouped-window-list@cinnamon.org/settings-override.json
   check "Thanh tác vụ có file ghim sẵn ứng dụng (JSON hợp lệ)" python3 -m json.tool "${override}"
   for app in nemo firefox libreoffice-writer libreoffice-calc libreoffice-impress onebee-tro-ly-ai; do
     check "Thanh tác vụ ghim sẵn ${app}" grep -qF "\"${app}.desktop\"" "${override}"
   done
+  check "Thanh tác vụ: xem trước cửa sổ thu nhỏ khi rê chuột" python3 -c \
+    "import json,sys; d=json.load(open(sys.argv[1])); assert d['show-thumbnails']['default'] is True and d['enable-hover-peek']['default'] is True" "${override}"
 fi
 if [[ -f /usr/share/cinnamon/applets/menu@cinnamon.org/settings-schema.json ]]; then
   check "Phím Super mở menu bắt đầu (applet menu mặc định)" \

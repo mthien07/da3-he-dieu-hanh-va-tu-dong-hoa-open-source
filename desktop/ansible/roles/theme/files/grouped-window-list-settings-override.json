@@ -9,5 +9,13 @@
       "libreoffice-impress.desktop",
       "onebee-tro-ly-ai.desktop"
     ]
+  },
+  "show-thumbnails": {
+    "override-props": true,
+    "default": true
+  },
+  "enable-hover-peek": {
+    "override-props": true,
+    "default": true
   }
 }
