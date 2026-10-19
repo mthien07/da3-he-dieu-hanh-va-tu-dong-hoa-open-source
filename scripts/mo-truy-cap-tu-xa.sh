@@ -75,8 +75,9 @@ os_release_file="${ONEBEE_TEST_OS_RELEASE:-/etc/os-release}"
 # shellcheck disable=SC1091,SC1090
 . "${os_release_file}"
 codename="${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}"
-[[ "${ID:-}" == ubuntu || " ${ID_LIKE:-} " == *" ubuntu "* ]] && [[ "${codename}" == noble ]] \
-  || die "Chỉ hỗ trợ Ubuntu 24.04 / Linux Mint 22 (nền noble). Máy này: ${PRETTY_NAME:-không rõ}"
+if ! [[ ( "${ID:-}" == ubuntu || " ${ID_LIKE:-} " == *" ubuntu "* ) && "${codename}" == noble ]]; then
+  die "Chỉ hỗ trợ Ubuntu 24.04 / Linux Mint 22 (nền noble). Máy này: ${PRETTY_NAME:-không rõ}"
+fi
 [[ "$(dpkg --print-architecture)" == amd64 ]] || die "Chỉ hỗ trợ máy 64-bit (amd64)"
 
 export DEBIAN_FRONTEND=noninteractive
