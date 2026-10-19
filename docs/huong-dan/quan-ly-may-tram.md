@@ -97,6 +97,10 @@ Chỉ nhận kết nối từ mạng nội bộ (10.x, 172.16–31.x, 192.168.x)
 cài Tailscale trên máy kỹ thuật và máy trạm (cùng mạng Tailscale). Kết nối VNC không mã hóa → **ngoài LAN chỉ dùng qua Tailscale**.
 Người dùng không có menu (ví dụ đang ở màn hình dòng lệnh): `onebee-ho-tro --khong-hoi` (in địa chỉ + mã ra màn hình).
 
+Khác với trên: máy **mới cài hệ điều hành ở nơi khác mạng, chưa có OneBee** thì chưa có `onebee-ho-tro`. Khi đó kỹ thuật vào tạm bằng
+Tailscale SSH + chia sẻ màn hình GNOME, theo [truy-cap-tu-xa-khi-cai-may.md](truy-cap-tu-xa-khi-cai-may.md). Đó là cầu nối **tạm**,
+tắt (`--tat`) khi bàn giao máy; hỗ trợ lâu dài vẫn là `onebee-ho-tro` ở trên (ADR 0004).
+
 ## Giới hạn
 - Chưa thử trên máy thật (đã kiểm trong container: báo tình trạng, cập nhật qua SSH giữa 2 container, VNC giả lập).
 - Phiên Wayland chưa hỗ trợ hỗ trợ từ xa (Mint 22 mặc định X11).

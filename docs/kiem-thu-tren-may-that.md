@@ -333,6 +333,26 @@ Chụp snapshot VM trước mỗi nhóm.
 
 ---
 
+## E2. Cầu nối truy cập từ xa khi cài máy (máy thật ở xa, chưa cài OneBee)
+Nhật ký:
+- 19/10/2026: máy Dell đầu tiên lên hệ điều hành tại đơn vị (anh Tuấn), chưa cài OneBee.
+
+(a) máy thật vừa cài Ubuntu 24.04 (GNOME) hoặc Linux Mint 22, chỉ có wifi, khác mạng với kỹ thuật; người tại máy đã đăng nhập; laptop kỹ thuật có tài khoản Tailscale và Remmina (Linux) hoặc Windows App (macOS/Windows).
+Hướng dẫn: [truy-cap-tu-xa-khi-cai-may.md](huong-dan/truy-cap-tu-xa-khi-cai-may.md). Test tự động của script dùng lệnh giả, **chưa chạy trên máy thật** (`tests/desktop/test_mo_truy_cap_tu_xa.py`).
+
+- [ ] **E2.1. Bật cầu nối và nối Tailscale** — (b) người tại máy: `sudo bash mo-truy-cap-tu-xa.sh`; kỹ thuật mở link `login.tailscale.com/a/...` bằng tài khoản Tailscale của mình.
+  (c) máy hiện trong tailnet của kỹ thuật; script in "ĐÃ MỞ TRUY CẬP TỪ XA" kèm tên máy + IP Tailscale, **không** in mật khẩu. (d) `scripts/mo-truy-cap-tu-xa.sh` (bước cài Tailscale, `tailscale up --ssh`).
+- [ ] **E2.2. `tailscale ssh`** — (b) laptop kỹ thuật: `tailscale ssh root@<tên máy>`, rồi `sudo cat /root/onebee-truy-cap-tu-xa.txt`.
+  (c) vào được không cần khóa SSH hay mật khẩu máy; file mật khẩu RDP có và chỉ root đọc được. (d) chính sách `ssh` trong ACL của tailnet kỹ thuật; máy không phải GNOME thì không có file này.
+- [ ] **E2.3. RDP từ Remmina / Windows App** — (b) mở `<IP Tailscale>:3389`, tài khoản `onebee`, mật khẩu từ file trên; chấp nhận chứng chỉ tự ký `CN=onebee-<tên máy>` lần đầu.
+  (c) thấy và điều khiển được phiên GNOME đang đăng nhập; ghi rõ client nào đã thử (Remmina hay Windows App). (d) `grdctl rdp status` trong phiên của người dùng; phiên Wayland/X11; tường lửa máy.
+- [ ] **E2.4. Không ai ngồi máy vẫn vào được** — (b) người tại máy rời máy, đợi quá thời gian tự khóa màn hình/tắt màn hình thường ngày (vài phút), rồi kỹ thuật RDP lại.
+  (c) màn hình không khóa, không ngủ, vẫn vào được và vẫn điều khiển được. (d) `gsettings` `lock-enabled`, `idle-delay`, `sleep-inactive-ac-type` do script đặt; laptop chạy pin thì ghi lại có ngủ không.
+- [ ] **E2.5. `--tat` cắt được kết nối** — (b) `sudo bash mo-truy-cap-tu-xa.sh --tat` (chạy trên máy hoặc qua SSH, làm cuối cùng); sau đó kỹ thuật thử lại `tailscale ssh` và RDP.
+  (c) cả hai bị từ chối/hết thời gian chờ; máy rời tailnet; `/root/onebee-truy-cap-tu-xa.txt` mất; khóa màn hình và chế độ ngủ trở về như cũ. (d) `tat()` trong `scripts/mo-truy-cap-tu-xa.sh`; xóa máy khỏi trang quản trị Tailscale nếu vẫn còn hiện.
+
+---
+
 ## F. Việc CHƯA làm (có lý do) và rủi ro còn lại
 - [ ] Đã đọc và chấp nhận danh sách dưới đây (nguồn: "Trạng thái triển khai" Pha 1–5).
 

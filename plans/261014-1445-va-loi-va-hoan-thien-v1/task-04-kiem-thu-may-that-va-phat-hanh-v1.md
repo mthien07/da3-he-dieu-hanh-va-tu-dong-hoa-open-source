@@ -63,4 +63,4 @@
 ## 4. Tiêu chuẩn hoàn thành
 - [ ] Tất cả các bài kiểm tra nhóm B, C, D, E trong phiếu kiểm thử đạt yêu cầu.
 - [ ] Báo cáo đo đạc thực tế được lưu trữ đầy đủ trong `reports/`.
-- [ ] Thẻ tag `v1.0.0` được tạo và phát hành công khai trên GitHub.
+- [x] Thẻ tag `v1.0.0` được tạo và phát hành công khai trên GitHub (15/10/2026, giờ Việt Nam).
