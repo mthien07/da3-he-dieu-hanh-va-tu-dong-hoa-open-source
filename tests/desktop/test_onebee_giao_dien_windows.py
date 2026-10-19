@@ -162,9 +162,11 @@ class LogoVaPhimTacVu(unittest.TestCase):
     def test_ctrl_shift_esc_qua_dconf_he_thong(self):
         with open(THEME_TASKS, encoding="utf-8") as f:
             tasks = f.read()
-        self.assertIn("custom-list=['custom-onebee-tac-vu']", tasks)
-        # Cinnamon chỉ gỡ phím tùy chỉnh có chữ "custom" trong tên (js/ui/keybindings.js)
-        self.assertIn("[org/cinnamon/desktop/keybindings/custom-keybindings/custom-onebee-tac-vu]", tasks)
+        # Tên phải đúng dạng customN: trang Bàn phím của Cài đặt Cinnamon làm int(entry.replace("custom", ""))
+        ten = re.search(r"custom-list=\['([^']+)'\]", tasks).group(1)
+        self.assertRegex(ten, r"^custom[0-9]+$")
+        int(ten.replace("custom", ""))
+        self.assertIn(f"[org/cinnamon/desktop/keybindings/custom-keybindings/{ten}]", tasks)
         self.assertIn("command='gnome-system-monitor'", tasks)
         self.assertIn("binding=['<Primary><Shift>Escape']", tasks)
         self.assertIn("system-db:local", tasks)

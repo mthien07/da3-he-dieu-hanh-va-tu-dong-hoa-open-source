@@ -70,9 +70,9 @@ if [[ -f /usr/share/glib-2.0/schemas/org.cinnamon.desktop.background.gschema.xml
   check "Bộ biểu tượng thư mục vàng Mint-Y-Sand (có cài + đặt mặc định)" bash -c \
     "test -d /usr/share/icons/Mint-Y-Sand && GSETTINGS_BACKEND=memory gsettings get org.cinnamon.desktop.interface icon-theme | grep -qx \"'Mint-Y-Sand'\""
   check "Ctrl+Shift+Esc mở Quản lý tác vụ (phím tùy chỉnh mặc định trong dconf hệ thống)" bash -c \
-    "command -v gnome-system-monitor && dconf read /org/cinnamon/desktop/keybindings/custom-list | grep -qF custom-onebee-tac-vu \
-     && dconf read /org/cinnamon/desktop/keybindings/custom-keybindings/custom-onebee-tac-vu/command | grep -qF gnome-system-monitor \
-     && dconf read /org/cinnamon/desktop/keybindings/custom-keybindings/custom-onebee-tac-vu/binding | grep -qF '<Primary><Shift>Escape'"
+    "command -v gnome-system-monitor && dconf read /org/cinnamon/desktop/keybindings/custom-list | grep -qF "'custom0'" \
+     && dconf read /org/cinnamon/desktop/keybindings/custom-keybindings/custom0/command | grep -qF gnome-system-monitor \
+     && dconf read /org/cinnamon/desktop/keybindings/custom-keybindings/custom0/binding | grep -qF '<Primary><Shift>Escape'"
   if has_schema org.nemo.preferences; then
     check "Nemo: ẩn file ẩn, nhấp đúp để mở" bash -c \
       "export GSETTINGS_BACKEND=memory; [ \"\$(gsettings get org.nemo.preferences show-hidden-files)\" = false ] \
