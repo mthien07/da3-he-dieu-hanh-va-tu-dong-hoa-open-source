@@ -22,6 +22,7 @@ Các bài unit mới: `test_onebee_ca.py` (CA, ràng buộc tên bằng openssl/
 `tests/desktop/test_mo_truy_cap_tu_xa.py` kiểm `scripts/mo-truy-cap-tu-xa.sh` (bật/tắt Tailscale SSH và chia sẻ màn hình GNOME) bằng lệnh giả (`tailscale`, `grdctl`, `gsettings`…); **chưa chạy trên máy thật** — phiếu `docs/kiem-thu-tren-may-that.md` mục E2.
 `tests/box/check-https.sh` (Docker lồng, chạy trong `run-box-test-in-systemd-container.sh`): chốt chặn, bật/tắt HTTPS, cổng, TLS, 308, cookie Secure, CORS, CSP n8n, máy trạm qua HTTPS.
 `tests/desktop/check-exe-handler.sh`: kiểm tra bộ trợ lý bắt file Windows `.exe` / `.msi` (onebee-windows-app-helper), đăng ký MIME handler hệ thống và nhận diện gợi ý ứng dụng thay thế (Zalo, Chrome, Unikey, Foxit, VLC, Ultraviewer, WINE/máy ảo).
+`tests/box/check-rag-prompts.sh` và `tests/box/test_onebee_rag_prompts.py`: kiểm tra kho mẫu prompt hành chính NĐ 30/2020/NĐ-CP (Tờ trình, Biên bản, Hợp đồng HTX, Báo cáo) và bộ tri thức RAG Open WebUI.
 
 ## Chưa kiểm được bằng container (phải thử máy ảo / máy thật)
 - Phiên đăng nhập Cinnamon thật: thanh bộ gõ, hình nền hiển thị, phím tắt đổi bộ gõ (Super + Space) có đụng phím của Cinnamon không.
