@@ -1,6 +1,14 @@
 # Nhật ký thay đổi
 
 ## [Chưa phát hành] — Sau 1.0.0
+### Tự chẩn đoán (22/10/2026)
+- **`sudo onebee-box chan-doan [--json]`**: 1 lệnh kiểm 7 hạng mục — mạng (router, Internet qua 1.1.1.1/8.8.8.8, Tailscale), tài nguyên (ổ `/` + dữ liệu,
+  RAM trống, tải CPU), 6 container (chạy + healthcheck), Trợ lý AI (prompt thử tới Ollama cổng 11434 trong mạng Docker, đo thời gian),
+  Samba (smbd + tài khoản thư mục chung ghi được), bản sao lưu Box mới nhất (đọc kho restic, không khóa kho), CA gốc/trung gian và chứng chỉ HTTPS
+  đang phục vụ. Bảng màu [OK]/[CẢNH BÁO]/[LỖI] kèm gợi ý tiếng Việt, kết luận chung; `--json` cho n8n/trang chủ. Mã thoát 0/1/2. Chỉ đọc.
+- **`onebee-chan-doan`** trên máy trạm (nhân viên chạy không cần sudo): router, Box, cổng dịch vụ trên Box, sao lưu của máy, ổ `/home`.
+- Test: `tests/box/check-diagnosis.sh`, `tests/desktop/check-chan-doan-may-tram.sh` (chạy trong CI).
+
 ### Thêm
 - `scripts/mo-truy-cap-tu-xa.sh` (`--tat` để tắt): cầu nối **tạm** để kỹ thuật vào cài tiếp một máy mới cài hệ điều hành ở nơi khác mạng —
   Tailscale SSH và chia sẻ màn hình GNOME (RDP, mật khẩu ngẫu nhiên chỉ root đọc). Chỉ Ubuntu 24.04 / Mint 22 (nền noble), amd64.
@@ -12,30 +20,6 @@
   (`smb://<IP Box>/chung`, đặt lúc đăng nhập); LibreOffice bộ biểu tượng **Colibre** (kiểu giống Microsoft Office).
 - Phiếu `docs/kiem-thu-tren-may-that.md` mục E2 kiểm cầu nối trên máy thật. Test tự động `tests/desktop/test_mo_truy_cap_tu_xa.py` dùng lệnh giả;
   **chưa chạy trên máy thật**.
-
-## [1.0.0] — 15/10/2026 — Bản phát hành chính thức đầu tiên
-Bản đủ tính năng cho một đơn vị, gồm mọi thay đổi từ 1.0.0-rc.1 (các mục dưới đây). Đã nghiệm thu tự động trong container
-(`reports/nghiem-thu-v1-docker.md`); **chưa cài trên máy thật tại đơn vị nào** — phiếu `docs/kiem-thu-tren-may-that.md` nhóm B–E còn mở,
-chưa có số đo tốc độ AI trên máy thật.
-### Tính năng chính
-- **OneBee OS Desktop** (Linux Mint 22.x): gõ Telex (IBus + Bamboo), LibreOffice lưu mặc định .docx/.xlsx/.pptx, font thay thế, tự cập nhật,
-  tự sao lưu lên Box, lệnh `hoi` hỏi Trợ lý AI, báo tình trạng máy, báo cần hỗ trợ, hỗ trợ từ xa có đồng ý.
-- **OneBee Box** (Ubuntu Server 24.04): Trợ lý AI chạy tại chỗ (Ollama + Open WebUI, `gemma4:e2b-it-qat`), n8n gửi email (báo cáo sao lưu, nhắc hạn,
-  đơn hàng, tóm tắt PDF, sổ hỗ trợ), giám sát Uptime Kuma, thư mục chung Samba (SMB 3.1.1 bắt buộc mã hóa), sao lưu 2 tầng bằng restic
-  (rest-server chỉ-thêm → ổ ngoài) và khôi phục toàn bộ khi hỏng ổ, tường lửa chỉ mở cho LAN.
-- **Quản lý tập trung**: `onebee-box them-may`, `may-tram`, `cap-nhat-may`, `dong-bo-may`, `xoay-khoa`, `bao-cao-tuan`; HTTPS nội bộ bằng CA riêng
-  có ràng buộc tên (tùy chọn `onebee_box_https`).
-### Giao diện quen thuộc như Windows (Desktop)
-- Nút thu nhỏ/phóng to/đóng bên phải; Win+E mở thư mục cá nhân, Win+D hiện màn hình nền, Win+L khóa màn hình (Super+L không còn mở bảng gỡ lỗi
-  Looking Glass, kỹ thuật mở bằng Alt+F2 → `lg`); màn hình nền có Máy tính, Thùng rác, Thư mục cá nhân.
-- Ghim sẵn Nemo, Firefox, Writer, Calc, Impress, **Trợ lý AI OneBee** (mở giao diện web của Trợ lý trên Box) ở thanh tác vụ và menu bắt đầu.
-- LibreOffice mở mặc định giao diện dạng tab (Ribbon) cho Writer, Calc, Impress; vẫn lưu mặc định .docx/.xlsx/.pptx.
-- Đều là giá trị mặc định: tài khoản đã tự đổi trước khi cài giữ lựa chọn cũ. Đã kiểm giá trị cấu hình trong container Mint 22.3 có gói
-  `cinnamon-common` + `nemo-data` thật; **chưa kiểm trong phiên Cinnamon thật** (hiển thị nút menu, ghim thanh tác vụ, Ribbon, bấm phím thật).
-### Sửa lũy nghiệm bộ cài
-- Bước "Cập nhật danh mục gói" (Box và Desktop) không còn báo `changed` khi danh mục cũ hơn 1 giờ — lần cài đầu kéo dài hơn 1 giờ (tải image chậm)
-  từng làm lần chạy lại báo `changed=1`. Làm mới danh mục không đổi trạng thái hệ thống.
-### Sửa lỗi tìm được khi kiểm thử Docker và rà soát mã (14/10/2026, chi tiết: `docs/kiem-thu-tren-may-that.md` mục "Đợt sửa 14/10/2026")
 - **Open WebUI chế độ HTTP chặn Origin lạ:** `CORS_ALLOW_ORIGIN` = IP Box + `box.<mã>.onebee.internal` (cổng 3000) cả khi chưa bật HTTPS — trước đây phản chiếu mọi Origin
   kèm `allow-credentials`. Test `check-https.sh` không còn đạt giả khi curl lỗi. Danh sách này áp cho cả kết nối thời gian thực (WebSocket) của chat:
   mở Trợ lý bằng địa chỉ khác (tên do router cấp, IP Tailscale, `localhost` qua đường hầm SSH) phải khai thêm vào biến mới `onebee_box_cors_them`

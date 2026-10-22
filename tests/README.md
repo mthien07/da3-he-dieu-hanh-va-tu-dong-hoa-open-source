@@ -19,6 +19,7 @@ Các bài unit mới: `test_onebee_ca.py` (CA, ràng buộc tên bằng openssl/
 `test_onebee_mdns_dashboard.py` (avahi `onebee.local`, trang chủ Dashboard, số liệu tình trạng, Caddy thật cổng 80 với Host `onebee.local`),
 `tests/desktop/test_onebee_ket_noi_box.py`, `test_onebee_clients_https.py`, `test_onebee_hoi.py` (máy chủ TLS thật). Tích hợp (Docker lồng, chưa chạy ở nơi viết): `check-https.sh`, `check-xoay-khoa.sh`, các sửa trong `verify-box-install.sh`/`check-khoi-phuc-toan-bo.sh`/`run-box-test-in-systemd-container.sh`.
 `tests/box/check-mdns-dashboard.sh` (chạy trên Box, trong `run-box-test-in-systemd-container.sh`): avahi chạy, `onebee.local` phân giải ra IP cổng mạng chính (không IPv6), quảng bá `_http._tcp` cổng 80, `http://onebee.local` có trang chủ, số liệu tình trạng mới.
+`tests/box/check-mdns-dashboard.sh` (chạy trên Box, trong `run-box-test-in-systemd-container.sh`): avahi chạy, `onebee.local` phân giải ra IP cổng mạng chính (không IPv6), quảng bá `_http._tcp` cổng 80, `http://onebee.local` có trang chủ, số liệu tình trạng mới.
 `tests/desktop/test_mo_truy_cap_tu_xa.py` kiểm `scripts/mo-truy-cap-tu-xa.sh` (bật/tắt Tailscale SSH và chia sẻ màn hình GNOME) bằng lệnh giả (`tailscale`, `grdctl`, `gsettings`…); **chưa chạy trên máy thật** — phiếu `docs/kiem-thu-tren-may-that.md` mục E2.
 `tests/box/check-https.sh` (Docker lồng, chạy trong `run-box-test-in-systemd-container.sh`): chốt chặn, bật/tắt HTTPS, cổng, TLS, 308, cookie Secure, CORS, CSP n8n, máy trạm qua HTTPS.
 
