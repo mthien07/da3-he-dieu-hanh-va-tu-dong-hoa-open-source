@@ -10,6 +10,8 @@
 #   onebee-box ghim-lai-may <ten-may>            Máy cài lại hệ điều hành: bỏ khóa SSH đã ghim để ghim lại
 #   onebee-box bao-cao-tuan [YYYY-MM-DD]   Nhật ký tuần: yêu cầu hỗ trợ, khảo sát, tình trạng máy (Markdown)
 #   onebee-box dong-bo-tro-ly      Tạo/cập nhật "Trợ lý OneBee" (model Gemma + lời dặn tiếng Việt) trong Open WebUI
+#   onebee-box dong-bo-prompts     Nạp lại kho mẫu prompt hành chính chuẩn (NĐ 30, Luật HTX)
+#   onebee-box dong-bo-tri-thuc    Cập nhật bộ tri thức cơ sở RAG (Thư viện Pháp lý HTX)
 #   onebee-box khoi-tao            Tạo kho sao lưu Box trên ổ ngoài (làm 1 lần sau khi gắn ổ)
 #   onebee-box sao-luu             Sao lưu Box ra ổ ngoài + dọn bản cũ (tự chạy 23:00 hằng ngày)
 #   onebee-box khoi-phuc-thu       Thử khôi phục 1 file từ bản sao lưu Box (kiểm tra sao lưu dùng được)
@@ -459,6 +461,8 @@ case "${1:-}" in
   ghim-lai-may) shift; cmd_ghim_lai_may "$@" ;;
   dong-bo-ten-may) dong_bo_ten_may ;;
   dong-bo-tro-ly) webui dong-bo-tro-ly ;;
+  dong-bo-prompts) webui dong-bo-prompts ;;
+  dong-bo-tri-thuc) webui dong-bo-tri-thuc ;;
   khoi-tao) with_lock cmd_khoi_tao ;;
   sao-luu) with_lock cmd_sao_luu_co_bao_cao ;;
   khoi-phuc-thu) with_lock cmd_khoi_phuc_thu ;;
@@ -472,5 +476,5 @@ case "${1:-}" in
   dat-mat-khau-email) cmd_dat_mat_khau_email ;;
   email-thu) bao_cao_n8n THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
                && echo "Đã chuyển cho n8n gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
-  *) sed -n '2,24p' "$0" | sed 's/^# //'; exit 1 ;;
+  *) sed -n '2,26p' "$0" | sed 's/^# //'; exit 1 ;;
 esac
