@@ -72,6 +72,8 @@ box '/root/onebee-test/box/onebee-box-install.sh > /tmp/run2.log 2>&1
 
 echo "===== KIỂM TRA DỊCH VỤ ====="
 box 'apt-get install -y -q smbclient python3 >/dev/null 2>&1; /root/onebee-test/tests/box/verify-box-install.sh'
+echo "===== TÊN onebee.local (mDNS) + TRANG CHỦ DASHBOARD ====="
+box '/root/onebee-test/tests/box/check-mdns-dashboard.sh'
 echo "===== SSH VÀO BOX CHỈ BẰNG KHÓA ====="
 box 'for i in 1 2 3; do apt-get update -q >/dev/null 2>&1 && apt-get install -y -q openssh-server >/dev/null 2>&1 && break; sleep 15; done
      systemctl enable --now ssh.socket >/dev/null 2>&1 || systemctl enable --now ssh >/dev/null 2>&1

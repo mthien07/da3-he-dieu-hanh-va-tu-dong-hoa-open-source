@@ -56,6 +56,43 @@
     group: root
     mode: "0644"
 
+# Tên <onebee_box_ten_mdns>.local trong LAN (mDNS): router cấp lại IP khác thì người dùng vẫn vào Box bằng tên, không cần nhớ IP.
+# Gói mDNS đi multicast trong 1 mạng LAN (không qua router); tailscale0 không có multicast và kết nối mới qua đó đã bị tường lửa chặn.
+- name: Kiểm tra tên mDNS của Box hợp lệ
+  ansible.builtin.assert:
+    that: onebee_box_ten_mdns is match('^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$')
+    fail_msg: "onebee_box_ten_mdns phải là chữ thường không dấu, số, gạch giữa (vd onebee) — hiện là \"{{ onebee_box_ten_mdns }}\""
+    quiet: true
+
+- name: Cài avahi (mDNS)
+  ansible.builtin.apt:
+    name: [avahi-daemon, avahi-utils]
+    state: present
+
+# Không biết cổng mạng chính (chưa có đường ra mặc định) thì avahi quảng bá trên mọi cổng có multicast
+- name: Chọn cổng mạng quảng bá tên Box
+  ansible.builtin.set_fact:
+    onebee_mdns_cong_mang: "{{ ansible_default_ipv4.interface | default('') }}"
+
+- name: Cấu hình avahi và quảng bá trang chủ Box (cổng {{ onebee_box_ports.portal }})
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - {src: avahi-daemon.conf.j2, dest: /etc/avahi/avahi-daemon.conf}
+    - {src: avahi-http.service.j2, dest: /etc/avahi/services/http.service}
+  register: onebee_avahi_conf
+
+# avahi tự đọc lại thư mục services/, còn avahi-daemon.conf chỉ đọc lúc khởi động → khởi động lại khi cấu hình đổi
+- name: Bật avahi cùng máy (khởi động lại khi cấu hình đổi)
+  ansible.builtin.systemd_service:
+    name: avahi-daemon.service
+    enabled: true
+    state: "{{ 'restarted' if onebee_avahi_conf.results[0].changed else 'started' }}"
+
 # SSH vào Box: Box giữ khóa vào được mọi máy trạm → chỉ cho đăng nhập bằng khóa, không cho root.
 # Chỉ bật khi đã có khóa SSH của tài khoản quản trị (trong /home) — chưa có thì giữ mật khẩu + cảnh báo, tránh tự khóa mình ở ngoài.
 - name: Kiểm tra máy có máy chủ SSH
