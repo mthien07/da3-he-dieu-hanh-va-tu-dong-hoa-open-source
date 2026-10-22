@@ -28,8 +28,8 @@ body:
     id: phien-ban
     attributes:
       label: Phiên bản hoặc commit
-      description: "Bản phát hành (vd v1.0.0-rc.1) hoặc kết quả `git rev-parse --short HEAD`"
-      placeholder: "v1.0.0-rc.1 / 9a8b950"
+      description: "Bản phát hành (vd v1.0.0) hoặc kết quả `git rev-parse --short HEAD`"
+      placeholder: "v1.0.0 / 9a8b950"
     validations:
       required: true
   - type: dropdown

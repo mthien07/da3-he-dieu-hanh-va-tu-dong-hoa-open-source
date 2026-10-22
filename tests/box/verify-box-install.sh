@@ -4,6 +4,26 @@ set -uo pipefail
 fails=0
 check() { local d="$1"; shift; if "$@" >/dev/null 2>&1; then printf 'PASS  %s\n' "$d"; else printf 'FAIL  %s\n' "$d"; fails=$((fails + 1)); fi; }
 http_code() { curl -s -o /dev/null -w '%{http_code}' -m 10 "$1"; }
+# IP của Box (cùng cách check-https.sh lấy) — Origin hợp lệ của Open WebUI ở chế độ HTTP là http://<IP>:3000
+BOX_IP="$(ip -4 route get 1.1.1.1 | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}')"
+# In giá trị access-control-allow-origin Open WebUI trả cho Origin $1 (rỗng nếu không có); lỗi nếu không gọi được API hoặc không 200
+cors_tra_ve() {
+  local r; r="$(curl -si -m 10 http://127.0.0.1:3000/api/config -H "Origin: $1" | tr -d '\r')" || return 1
+  grep -q '^HTTP/[0-9.]* 200' <<<"${r}" || return 1
+  grep -i '^access-control-allow-origin:' <<<"${r}" | head -1 | sed 's/^[^:]*: *//' || true
+}
+# Bắt tay WebSocket Socket.IO (chat thời gian thực) với Origin $1, in mã trạng thái HTTP: 101 = nhận, 403 = Origin bị chặn.
+# curl không tự ngắt khi được 101 → -m 3 rồi bỏ mã thoát; "|| true" giữ nguyên kết quả cho set -o pipefail
+ws_ma_tra_ve() {
+  local r
+  r="$(curl -si -m 3 --http1.1 -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' \
+       -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' -H "Origin: $1" \
+       'http://127.0.0.1:3000/ws/socket.io/?EIO=4&transport=websocket' 2>/dev/null || true)"
+  awk 'NR == 1 {print $2}' <<<"${r}"
+}
+cors_nguon_hop_le_duoc_chap_nhan() { [[ -n "${BOX_IP}" && "$(cors_tra_ve "http://${BOX_IP}:3000")" == "http://${BOX_IP}:3000" ]]; }
+ws_nguon_hop_le_duoc_nhan() { [[ -n "${BOX_IP}" && "$(ws_ma_tra_ve "http://${BOX_IP}:3000")" == 101 ]]; }
+ws_nguon_la_bi_chan() { local c; c="$(ws_ma_tra_ve 'https://ke-la.example')"; [[ "${c}" =~ ^[0-9]{3}$ && "${c}" != 101 ]]; }
 code_in() { local c; c="$(http_code "$1")"; shift; for want in "$@"; do [[ "${c}" == "${want}" ]] && return 0; done; return 1; }
 
 check "Có file phiên bản Box" grep -q '^ONEBEE_EDITION=box$' /etc/onebee-release
@@ -28,6 +48,9 @@ check "Giám sát mở ra LAN chỉ sau khi đã có tài khoản quản trị" 
 check "Open WebUI :3000 không cho Origin lạ đọc API kèm cookie (CORS giới hạn cả ở chế độ HTTP)" bash -c \
   "r=\$(curl -si -m 10 http://127.0.0.1:3000/api/config -H 'Origin: https://ke-la.example') && grep -q '^HTTP/[0-9.]* 200' <<<\"\$r\" \
    && ! grep -qi '^access-control-allow-origin: https://ke-la.example' <<<\"\$r\""
+check "Open WebUI :3000 cho Origin hợp lệ (http://<IP Box>:3000) đọc API: access-control-allow-origin trả đúng Origin đó" cors_nguon_hop_le_duoc_chap_nhan
+check "Open WebUI :3000 nhận bắt tay WebSocket (chat thời gian thực) từ Origin hợp lệ (101)" ws_nguon_hop_le_duoc_nhan
+check "Open WebUI :3000 từ chối bắt tay WebSocket từ Origin lạ (có phản hồi, không phải 101)" ws_nguon_la_bi_chan
 check "Kho sao lưu :8000 đòi mật khẩu (401)" code_in http://127.0.0.1:8000/ 401
 check "Trang giới thiệu gửi kèm tiêu đề bảo mật (chống nhúng khung, không lộ tên máy chủ web)" bash -c \
   "h=\$(curl -sI -m 10 http://127.0.0.1/); grep -qi '^x-frame-options: DENY' <<<\"\$h\" && ! grep -qi '^server:' <<<\"\$h\""

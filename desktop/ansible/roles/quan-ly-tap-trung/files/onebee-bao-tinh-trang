@@ -104,7 +104,8 @@ def mo(req, timeout):
     """urlopen có ghim CA: https:// chỉ tin CA riêng của OneBee Box (không tin CA công cộng); http:// bị từ chối khi máy đã bật HTTPS
     (kẻ chen giữa mạng LAN không hạ cấp được kết nối về HTTP để đọc mật khẩu/khóa)."""
     ngu_canh = None
-    if req.full_url.startswith("https://"):
+    scheme = urllib.parse.urlsplit(req.full_url).scheme   # urlsplit hạ chữ thường: 'HTTPS://' cũng là https, cũng phải ghim CA
+    if scheme == "https":
         try:
             ngu_canh = ssl.create_default_context(cafile=CA_ONEBEE)
         except (OSError, ssl.SSLError):
@@ -118,8 +119,8 @@ def mo(req, timeout):
         # vẫn chỉ tin CA OneBee — nhờ vậy máy không mất liên lạc tới khi quản trị chạy dong-bo-may. Địa chỉ khác máy chủ thì không theo.
         dich = e.headers.get("Location", "") if e.code in (301, 308) else ""
         goc, moi = urllib.parse.urlsplit(req.full_url), urllib.parse.urlsplit(dich)
-        if req.full_url.startswith("http://") and moi.scheme == "https" and moi.hostname and moi.hostname == goc.hostname:
-            return mo(urllib.request.Request(dich, data=req.data, headers=dict(req.header_items()), method=req.get_method()), timeout)
+        if scheme == "http" and moi.scheme == "https" and moi.hostname and moi.hostname == goc.hostname:
+            return mo(urllib.request.Request(moi.geturl(), data=req.data, headers=dict(req.header_items()), method=req.get_method()), timeout)
         raise
 
 

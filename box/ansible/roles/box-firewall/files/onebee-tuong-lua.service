@@ -2,10 +2,12 @@
 [Unit]
 Description=Tường lửa OneBee Box (chỉ mạng LAN cho phép vào dịch vụ của Box)
 # tailscaled: khởi động cùng lúc thì dựng sau nó (bộ lọc Tailscale nằm ở mangle nên đúng cả khi tailscaled khởi động lại sau)
-After=docker.service network-online.target tailscaled.service
+After=network-online.target tailscaled.service
 Wants=network-online.target
-# Docker khởi động lại → dựng lại quy tắc
-PartOf=docker.service
+# Dựng TRƯỚC Docker và KHÔNG gắn vòng đời với Docker: Docker dùng lại chuỗi DOCKER-USER có sẵn và giữ nguyên quy tắc
+# trong đó khi dừng/khởi động lại (đã kiểm với docker.io 29.1 của Ubuntu 24.04) → container lên là đã bị lọc;
+# dừng/nâng cấp Docker không gỡ quy tắc SSH/Samba/Tailscale.
+Before=docker.service
 
 [Service]
 Type=oneshot
@@ -14,4 +16,4 @@ ExecStart=/usr/local/sbin/onebee-tuong-lua bat
 ExecStop=/usr/local/sbin/onebee-tuong-lua tat
 
 [Install]
-WantedBy=multi-user.target docker.service
+WantedBy=multi-user.target

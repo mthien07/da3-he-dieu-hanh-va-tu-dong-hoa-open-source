@@ -218,13 +218,78 @@ class ChinhSachTrinhDuyet(unittest.TestCase):
         for hs in (hs1, hs2):
             self.assertNotIn(vt_cu, sum(self.van_tay_trong_ho_so(hs).values(), []), hs)
         self.assertIn("May in van phong", self.van_tay_trong_ho_so(hs1))                    # chứng chỉ khác giữ nguyên
-        # Firefox mở lại: chính sách nạp CA mới (cùng tên). Role ghi vân tay mới → chạy lại không gỡ nhầm CA mới
+        # Firefox mở lại: chính sách nạp CA mới (cùng tên) → hồ sơ chỉ còn CA mới; chạy lại không gỡ nhầm nó
         self.assertEqual(chay("certutil", "-A", "-n", ten, "-t", "C,,", "-i", self.pem, "-d", f"sql:{hs1}").returncode, 0)
-        open(dau, "w").write(vt_moi + "\n")
         self.assertEqual(self.td("cai", self.pem), "không đổi")
         self.assertEqual(self.van_tay_trong_ho_so(hs1)[ten], [vt_moi])
         self.assertTrue(self.td("go").endswith("đã đổi"))                                     # bỏ CA: gỡ mọi bản OneBee, giữ chứng chỉ khác
         self.assertEqual(list(self.van_tay_trong_ho_so(hs1)), ["May in van phong"])
+
+    def tao_ca_cung_ma(self, ten_thu_muc, ma="anphu"):
+        """CA thật khác (khóa khác) nhưng cùng mã đơn vị → cùng tên 'OneBee Box <mã> Root CA'; trả (file PEM, vân tay)."""
+        chay(TAO_CA, f"{self.g}/{ten_thu_muc}", ma, "192.168.1.10")
+        pem = f"{self.g}/{ten_thu_muc}/root.crt"
+        return pem, der_b64(pem)[1]
+
+    def them_vao_ho_so(self, hs, ten, pem):
+        r = chay("certutil", "-A", "-n", ten, "-t", "C,,", "-i", pem, "-d", f"sql:{hs}")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    @unittest.skipUnless(shutil.which("certutil"), "cần certutil (libnss3-tools)")
+    def test_ca_cu_con_sot_du_dau_van_tay_da_la_ca_moi_van_bi_go(self):
+        """Lần xoay trước gỡ sót (thiếu certutil, đĩa chưa gắn…) nhưng role đã ghi vân tay CA mới → CA cũ không được ở lại mãi."""
+        ten = "OneBee Box anphu Root CA"
+        cu, vt_cu = self.tao_ca_cung_ma("ca-cu")
+        _, vt_moi = der_b64(self.pem)
+        hs = self.ho_so_firefox("home/nv/.mozilla/firefox/abc.default-release", (ten, cu), (ten, self.pem))
+        self.assertEqual(sorted(self.van_tay_trong_ho_so(hs)[ten]), sorted([vt_cu, vt_moi]))   # tiền đề: hai bản cùng tên cùng tồn tại
+        dau = f"{self.g}/goc/var/lib/onebee/ket-noi-box"
+        os.makedirs(os.path.dirname(dau))
+        open(dau, "w").write(vt_moi + "\n")                                                    # dấu đã là CA mới
+        ra = self.td("cai", self.pem)
+        self.assertIn("Đã gỡ 1 chứng chỉ", ra)                                                 # chỉ đếm bản CA cũ, không đếm CA mới
+        self.assertTrue(ra.endswith("đã đổi"), ra)
+        self.assertNotIn(vt_cu, sum(self.van_tay_trong_ho_so(hs).values(), []))
+        self.assertEqual(self.td("cai", self.pem), "không đổi")                                # chạy lại không đổi (changed=0)
+
+    @unittest.skipUnless(shutil.which("certutil"), "cần certutil (libnss3-tools)")
+    def test_xoay_lien_tiep_ca1_ca2_deu_bi_go_khi_cai_ca3_khong_can_dau(self):
+        """CA1 → CA2 → CA3: dấu chỉ nhớ một vân tay, nên việc gỡ phải theo vân tay CA hiện tại, không theo dấu."""
+        ten = "OneBee Box anphu Root CA"
+        ca1, vt1 = self.tao_ca_cung_ma("ca1")
+        ca2, vt2 = self.tao_ca_cung_ma("ca2")
+        hs = self.ho_so_firefox("home/nv/.mozilla/firefox/abc.default-release", (ten, ca1), (ten, ca2), ("May in van phong", self.pem))
+        self.assertEqual(self.td("cai", self.pem).splitlines()[0], "Đã gỡ 2 chứng chỉ OneBee mang vân tay CA cũ khỏi hồ sơ Firefox")
+        con_lai = sum(self.van_tay_trong_ho_so(hs).values(), [])
+        self.assertNotIn(vt1, con_lai)
+        self.assertNotIn(vt2, con_lai)
+        self.assertIn("May in van phong", self.van_tay_trong_ho_so(hs))
+        self.assertEqual(self.td("cai", self.pem), "không đổi")
+
+    @unittest.skipUnless(shutil.which("certutil"), "cần certutil (libnss3-tools)")
+    def test_dem_chi_tinh_chung_chi_khong_phai_ca_hien_tai(self):
+        ten = "OneBee Box anphu Root CA"
+        cu, vt_cu = self.tao_ca_cung_ma("ca-cu")
+        hs1 = self.ho_so_firefox("home/nv/.mozilla/firefox/a.default", (ten, cu), (ten, self.pem))
+        hs2 = self.ho_so_firefox("home/nv2/.mozilla/firefox/b.default", (ten, cu))
+        hs3 = self.ho_so_firefox("root/.mozilla/firefox/c.default", (ten, self.pem))   # chỉ có CA hiện tại: không gỡ gì
+        ra = self.td("cai", self.pem)
+        self.assertIn("Đã gỡ 2 chứng chỉ", ra)                                          # đúng 2 bản CA cũ (hs1, hs2), không cộng CA mới lỡ bị xóa theo
+        for hs in (hs1, hs2, hs3):
+            self.assertNotIn(vt_cu, sum(self.van_tay_trong_ho_so(hs).values(), []), hs)
+        self.assertEqual(self.van_tay_trong_ho_so(hs3)[ten], [der_b64(self.pem)[1]])
+
+    @unittest.skipUnless(shutil.which("certutil"), "cần certutil (libnss3-tools)")
+    def test_ca_cua_don_vi_khac_trong_ho_so_khong_bi_dong_den(self):
+        """Hồ sơ của kỹ thuật viên có thể nạp CA của đơn vị khác (tên khác) — chỉ dọn CA cũ cùng tên CA hiện tại."""
+        ten, ten_khac = "OneBee Box anphu Root CA", "OneBee Box khac Root CA"
+        cu, vt_cu = self.tao_ca_cung_ma("ca-cu")
+        khac, vt_khac = self.tao_ca_cung_ma("ca-khac", "khac")
+        hs = self.ho_so_firefox("home/nv/.mozilla/firefox/abc.default-release", (ten, cu), (ten_khac, khac))
+        self.td("cai", self.pem)
+        con_lai = self.van_tay_trong_ho_so(hs)
+        self.assertEqual(con_lai.get(ten_khac), [vt_khac])
+        self.assertNotIn(vt_cu, con_lai.get(ten, []))
 
     @unittest.skipUnless(shutil.which("certutil"), "cần certutil (libnss3-tools)")
     def test_lan_dau_cai_khong_dung_ho_so_firefox(self):

@@ -16,6 +16,8 @@ IPT_GIA = r'''#!/bin/bash
 d="$ONEBEE_FW/$(basename "$0")"; mkdir -p "$d"
 echo "$0 $*" >> "$ONEBEE_FW/lenh.log"
 if [ "$1" = -t ]; then [ "$2" = filter ] || d="$d/$2"; mkdir -p "$d"; shift 2; fi
+# ONEBEE_FW_MANGLE_LOI=1: bảng mangle không dùng được (thiếu mô-đun, LXC, iptables-nft lệch)
+[ -n "${ONEBEE_FW_MANGLE_LOI:-}" ] && [ "${d##*/}" = mangle ] && exit 2
 case "$1" in
   -S) if [ -n "${2:-}" ]; then [ -f "$d/$2" ] || exit 1; cat "$d/$2"; else find "$d" -maxdepth 1 -type f -exec cat {} + 2>/dev/null || true; fi ;;
   -N) [ -f "$d/$2" ] && exit 1; : > "$d/$2" ;;
@@ -70,6 +72,14 @@ class TuongLua(unittest.TestCase):
         self.assertEqual(sum("ONEBEE-LAN-BOX" in x for x in self.chuoi("INPUT")), 2)         # TCP + UDP
         self.assertEqual(sum("ONEBEE-LAN-DOCKER" in x for x in self.chuoi("DOCKER-USER")), 1)
 
+    def test_mangle_loi_thi_van_chan_lan_khong_mo_toang(self):
+        """bat gỡ hết quy tắc cũ rồi mới dựng: lỗi ở mangle trước khi chèn bước nhảy INPUT/DOCKER-USER = SSH/Samba/dịch vụ mở cho mọi mạng."""
+        open(f"{self.t}/tuong-lua.conf", "w").write("")
+        r = subprocess.run(["bash", SCRIPT, "bat"], capture_output=True, text=True, env=dict(self.env, ONEBEE_FW_MANGLE_LOI="1"))
+        self.assertNotEqual(r.returncode, 0)                                                # báo lỗi (unit thất bại, quản trị thấy)
+        self.assertEqual(sum("ONEBEE-LAN-BOX" in x for x in self.chuoi("INPUT")), 2)
+        self.assertEqual(sum("ONEBEE-LAN-DOCKER" in x for x in self.chuoi("DOCKER-USER")), 1)
+
     def test_tailscale_chi_dia_chi_khai_bao_va_tach_ho_ipv4_ipv6(self):
         self.chay(conf='TAILSCALE_CHO_PHEP="100.64.1.2,100.64.9.0/24,fd7a:115c:a1e0::1"\n')
         v4 = self.chuoi("ONEBEE-LAN-BOX")
@@ -120,6 +130,18 @@ class TuongLua(unittest.TestCase):
         unit = open(os.path.join(os.path.dirname(SCRIPT), "onebee-tuong-lua.service"), encoding="utf-8").read()
         after = [l for l in unit.splitlines() if l.startswith("After=")]
         self.assertTrue(after and "tailscaled.service" in after[0], after)
+
+    def test_dung_hoac_nang_cap_docker_khong_go_tuong_lua(self):
+        """PartOf=docker.service + ExecStop=tat: dừng/nâng cấp Docker gỡ cả quy tắc SSH/Samba/Tailscale tới khi Docker lên lại.
+        Docker dùng lại chuỗi DOCKER-USER có sẵn và giữ quy tắc trong đó qua mỗi lần khởi động → dựng TRƯỚC Docker, không gắn vòng đời."""
+        unit = open(os.path.join(os.path.dirname(SCRIPT), "onebee-tuong-lua.service"), encoding="utf-8").read()
+        dong = [l.strip() for l in unit.splitlines()]
+        self.assertFalse([l for l in dong if l.startswith(("PartOf=", "BindsTo=", "Requisite="))], dong)
+        self.assertIn("Before=docker.service", dong)
+        self.assertNotIn("docker.service", [l for l in dong if l.startswith("After=")][0])
+        self.assertEqual([l for l in dong if l.startswith("WantedBy=")], ["WantedBy=multi-user.target"])
+        role = open(os.path.join(os.path.dirname(SCRIPT), "../tasks/main.yml"), encoding="utf-8").read()
+        self.assertIn("/etc/systemd/system/docker.service.wants/onebee-tuong-lua.service", role)  # gỡ liên kết của bản cũ
 
     def test_ipv6_ssh_samba_ngoai_mang_noi_bo_bi_reject_ngay_khong_drop(self):
         """Mạng có IPv6 toàn cầu: Windows mở \\onebee-box bằng IPv6 trước; DROP thì treo tới khi hết thời gian chờ rồi mới lùi IPv4 → REJECT ngay."""

@@ -3,6 +3,7 @@
 cấu hình ứng dụng đổi đúng (n8n sau proxy, cookie Secure, CORS), chế độ HTTP giữ nguyên cổng như trước và vẫn giới hạn CORS.
 Chạy: python3 -m unittest"""
 import os
+import re
 import unittest
 
 import jinja2
@@ -11,14 +12,25 @@ import yaml
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "../..")
 TEMPLATE = os.path.join(ROOT, "box/ansible/roles/box-stack/templates/docker-compose.yml.j2")
+TASKS_MAIN = os.path.join(ROOT, "box/ansible/roles/box-stack/tasks/main.yml")
 
 
-def ve(https, kuma="0.0.0.0"):
+def ve(https, kuma="0.0.0.0", cors_them=None):
     v = yaml.safe_load(open(os.path.join(ROOT, "box/ansible/group_vars/all.yml"), encoding="utf-8"))
     v.update(onebee_box_ip="192.168.1.10", onebee_box_ma_don_vi="anphu", onebee_https_hieu_luc=https, onebee_kuma_dia_chi=kuma)
+    if cors_them is not None:
+        v["onebee_box_cors_them"] = cors_them
     env = jinja2.Environment(keep_trailing_newline=True, trim_blocks=True)   # như Ansible
     env.filters["bool"] = bool
     return yaml.safe_load(env.from_string(open(TEMPLATE, encoding="utf-8").read()).render(**v))["services"]
+
+
+def cors_hop_le(cors_them):
+    """Chạy các điều kiện `that` của task kiểm onebee_box_cors_them trong tasks/main.yml (test `match` của Ansible = re.match)."""
+    task = next(t for t in yaml.safe_load(open(TASKS_MAIN, encoding="utf-8")) if "cors_them" in t.get("name", ""))
+    env = jinja2.Environment()
+    env.tests["match"] = lambda gia_tri, mau: re.match(mau, gia_tri) is not None
+    return all(env.compile_expression(dk)(onebee_box_cors_them=cors_them) for dk in task["ansible.builtin.assert"]["that"])
 
 
 class ComposeHaiCheDo(unittest.TestCase):
@@ -89,6 +101,33 @@ class ComposeHaiCheDo(unittest.TestCase):
             self.assertTrue(nguon.startswith("https://"), nguon)
         self.assertIn(".onebee.internal:3000", cors)
         self.assertNotIn("http://", cors)
+
+    def test_cors_them_ghep_vao_sau_hai_nguon_mac_dinh_o_ca_hai_che_do(self):
+        # Mở WebUI bằng tên/IP khác (DNS router, IP Tailscale, đường hầm SSH) thì Origin lệch → WebSocket chat bị chặn 403; quản trị khai thêm Origin ở đây
+        them = ["http://onebee-box.lan:3000", "http://100.64.1.2:3000"]
+        mac_dinh_http = "http://192.168.1.10:3000;http://box.anphu.onebee.internal:3000"
+        mac_dinh_https = "https://192.168.1.10:3000;https://box.anphu.onebee.internal:3000"
+        self.assertEqual(ve(False, cors_them=them)["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"], mac_dinh_http + ";" + ";".join(them))
+        self.assertEqual(ve(True, cors_them=them)["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"], mac_dinh_https + ";" + ";".join(them))
+
+    def test_cors_them_rong_giu_nguyen_gia_tri_cu(self):
+        # Box đã cài không khai biến mới → cấu hình sinh ra phải y hệt trước đây, không thêm dấu ";" thừa
+        self.assertEqual(ve(False, cors_them=[]), ve(False))
+        self.assertEqual(ve(True, cors_them=[]), ve(True))
+        self.assertEqual(ve(False)["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"], "http://192.168.1.10:3000;http://box.anphu.onebee.internal:3000")
+        self.assertEqual(ve(True)["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"], "https://192.168.1.10:3000;https://box.anphu.onebee.internal:3000")
+
+    def test_cors_them_mac_dinh_trong_group_vars_la_danh_sach_rong(self):
+        v = yaml.safe_load(open(os.path.join(ROOT, "box/ansible/group_vars/all.yml"), encoding="utf-8"))
+        self.assertEqual(v["onebee_box_cors_them"], [])
+
+    def test_cors_them_kiem_tra_dinh_dang_origin(self):
+        for tot in ([], ["http://onebee-box.lan:3000"], ["https://192.168.1.50:3000", "http://localhost:3000", "http://may-chu"]):
+            self.assertTrue(cors_hop_le(tot), tot)
+        for xau in (["*"], ["onebee-box.lan:3000"], ["http://onebee-box.lan:3000/"], ["http://onebee-box.lan:3000/duong-dan"],
+                    ["ftp://onebee-box.lan"], ["http://a.lan;http://b.lan"], ["http://a.lan:3000 http://b.lan"], [""], ["http://"],
+                    "http://onebee-box.lan:3000", [3000]):
+            self.assertFalse(cors_hop_le(xau), xau)
 
     def test_ca_gui_den_cac_cong_cu_cung_mot_nguon(self):
         # image không đổi giữa hai chế độ → chuyển HTTP ↔ HTTPS không phải tải lại gì
