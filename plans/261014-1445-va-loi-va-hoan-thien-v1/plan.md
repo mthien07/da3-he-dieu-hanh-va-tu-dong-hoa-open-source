@@ -42,42 +42,43 @@ Kế hoạch này tập trung giải quyết toàn bộ các vấn đề còn m�
 
 | Mã | Hạng mục | Mức độ | Trạng thái kỹ thuật | File chi tiết |
 | :--- | :--- | :---: | :---: | :--- |
-| **N13** | CORS ở chế độ HTTP: chặn Origin lạ, sửa test curl | **Cao** | XÁC NHẬN (chế độ HTTP) | [task-01-n13-cors-che-do-http.md](task-01-n13-cors-che-do-http.md) |
-| **N4** | CA trung gian: đưa gia hạn lên trước kiểm tra ổ sao lưu | **Trung bình** | XÁC NHẬN | [task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md](task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md) |
-| **N5** | `hoi --dan-khoa`: chặn bypass ghim CA khi redirect 308 | **Thấp** | XÁC NHẬN | [task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md](task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md) |
-| **N8** | `xoay-khoa --box`: tự động gọi `dong-bo-may --tat-ca` | **Trung bình** | XÁC NHẬN | [task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md](task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md) |
-| **N9** | `xoay-khoa --may`: xử lý máy trạm đang tắt + lock an toàn | **Thấp** | XÁC NHẬN | [task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md](task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md) |
-| **N2** | Xoay CA: gỡ CA cũ khỏi hồ sơ Firefox theo vân tay | **Trung bình** | XÁC NHẬN | [task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md](task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md) |
-| **N6** | Thứ tự iptables giữa Tailscale và tường lửa OneBee | **Thấp** | NGHI NGỜ (kiểm thực tế) | [task-03-khao-sat-loi-mang-n6-n7-va-tai-lieu-n10.md](task-03-khao-sat-loi-mang-n6-n7-va-tai-lieu-n10.md) |
-| **N7** | IPv6 toàn cầu: tránh treo timeout khi Windows mở Samba | **Thấp** | NGHI NGỜ (kiểm thực tế) | [task-03-khao-sat-loi-mang-n6-n7-va-tai-lieu-n10.md](task-03-khao-sat-loi-mang-n6-n7-va-tai-lieu-n10.md) |
-| **N10** | Đồng bộ tài liệu không khớp code (12 dòng, lệnh quản trị) | **Thấp** | XÁC NHẬN | [task-03-khao-sat-loi-mang-n6-n7-va-tai-lieu-n10.md](task-03-khao-sat-loi-mang-n6-n7-va-tai-lieu-n10.md) |
-| **V1** | Kiểm thử máy thật / VM đơn vị (Nhóm B–E) & Release 1.0.0 | **Cao** | Kế hoạch nghiệm thu | [task-04-kiem-thu-may-that-va-phat-hanh-v1.md](task-04-kiem-thu-may-that-va-phat-hanh-v1.md) |
+| **N13** | CORS ở chế độ HTTP: chặn Origin lạ, sửa test curl | **Cao** | **ĐÃ HOÀN TẤT** (`16057f5`, `949f439`) | [task-01-n13-cors-che-do-http.md](task-01-n13-cors-che-do-http.md) |
+| **N4** | CA trung gian: đưa gia hạn lên trước kiểm tra ổ sao lưu | **Trung bình** | **ĐÃ HOÀN TẤT** (`ae356da`) | [task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md](task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md) |
+| **N5** | `hoi --dan-khoa`: chặn bypass ghim CA khi redirect 308 | **Thấp** | **ĐÃ HOÀN TẤT** (`a5401dd`) | [task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md](task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md) |
+| **N8** | `xoay-khoa --box`: tự động gọi `dong-bo-may --tat-ca` | **Trung bình** | **ĐÃ HOÀN TẤT** (`bbd628b`) | [task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md](task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md) |
+| **N9** | `xoay-khoa --may`: xử lý máy trạm đang tắt + lock an toàn | **Thấp** | **ĐÃ HOÀN TẤT** (`79502e9`) | [task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md](task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md) |
+| **N2** | Xoay CA: gỡ CA cũ khỏi hồ sơ Firefox theo vân tay | **Trung bình** | **ĐÃ HOÀN TẤT** (`95643e3`) | [task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md](task-02-va-loi-xac-nhan-n2-n4-n5-n8-n9.md) |
+| **N6** | Thứ tự iptables giữa Tailscale và tường lửa OneBee | **Thấp** | **ĐÃ HOÀN TẤT** (`7fbc274`) | [task-03-khao-sat-loi-mang-n6-n7-va-tai-lieu-n10.md](task-03-khao-sat-loi-mang-n6-n7-va-tai-lieu-n10.md) |
+| **N7** | IPv6 toàn cầu: tránh treo timeout khi Windows mở Samba | **Thấp** | **ĐÃ HOÀN TẤT** (`7fbc274`) | [task-03-khao-sat-loi-mang-n6-n7-va-tai-lieu-n10.md](task-03-khao-sat-loi-mang-n6-n7-va-tai-lieu-n10.md) |
+| **N10** | Đồng bộ tài liệu không khớp code (12 dòng, lệnh quản trị) | **Thấp** | **ĐÃ HOÀN TẤT** (`5240e99`) | [task-03-khao-sat-loi-mang-n6-n7-va-tai-lieu-n10.md](task-03-khao-sat-loi-mang-n6-n7-va-tai-lieu-n10.md) |
+| **V1** | Kiểm thử máy thật & Quy trình đóng gói phát hành v1.0.0 | **Cao** | **ĐANG TIẾN HÀNH** | [ke-hoach-kiem-thu-may-that-va-dong-goi-v1.md](ke-hoach-kiem-thu-may-that-va-dong-goi-v1.md) |
 
 ---
 
 ## 4. Các giai đoạn triển khai (Milestones)
 
-### Giai đoạn 1: Vá lỗi bảo mật cấp bách N13 (Ưu tiên số 1)
+### Giai đoạn 1: Vá lỗi bảo mật cấp bách N13 — [ĐÃ HOÀN TẤT]
 - Sửa template `docker-compose.yml.j2` đặt `CORS_ALLOW_ORIGIN` ở cả chế độ HTTP.
 - Siết chặt assertion trong `tests/box/check-https.sh:53` để loại bỏ ca đạt giả khi curl lỗi.
 - Viết unit test trong `test_onebee_compose_https.py` kiểm tra sinh cấu hình đúng.
-- Chạy toàn bộ test nhanh để đảm bảo không hồi quy.
 
-### Giai đoạn 2: Xử lý nhóm lỗi mã nguồn đã XÁC NHẬN (N4, N5, N8, N9, N2)
-- **N4:** Tách logic gia hạn CA trung gian trong `onebee-box-sao-luu.sh.j2` chạy độc lập, trước bước `require_backup_disk`.
-- **N5:** Cập nhật hàm `mo()` và `dan_khoa()` trong `desktop/ansible/roles/ai-cli/files/hoi` để vô hiệu hóa redirect ngầm định của `urllib`, buộc qua kiểm tra ghim CA OneBee.
-- **N8:** Trong lệnh `cmd_xoay_khoa` (`onebee-box.sh.j2`), tự động kích hoạt `dong-bo-may --tat-ca` nếu khóa tình trạng dùng chung đang bật.
-- **N9:** Thêm `with_lock` cho `xoay-khoa` và cải thiện thông báo cảnh báo khi máy đích đang offline thay vì `die`.
-- **N2:** Trong `onebee-chinh-sach-trinh-duyet.py`, khi cài đặt CA mới, nếu phát hiện vân tay cũ thì xóa sạch các chứng chỉ cũ trong `cert9.db` của Firefox trước khi import CA mới.
+### Giai đoạn 2: Xử lý nhóm lỗi mã nguồn đã XÁC NHẬN (N4, N5, N8, N9, N2) — [ĐÃ HOÀN TẤT]
+- **N4:** Tách logic gia hạn CA trung gian trong `onebee-box-sao-luu.sh.j2` chạy trước bước kiểm tra ổ gắn ngoài.
+- **N5:** Cập nhật hàm `mo()` và `dan_khoa()` trong `desktop/ansible/roles/ai-cli/files/hoi` chặn redirect theo 308 bằng CA công cộng.
+- **N8:** Trong lệnh `cmd_xoay_khoa` (`onebee-box.sh.j2`), tự động đồng bộ khóa tình trạng mới xuống toàn bộ máy trạm trực tuyến.
+- **N9:** Thêm `with_lock` cho `xoay-khoa` và cảnh báo thân thiện khi máy đích tắt thay vì làm gián đoạn lệnh.
+- **N2:** Trong `onebee-chinh-sach-trinh-duyet.py`, dọn sạch chứng chỉ CA cũ khỏi `cert9.db` của Firefox theo vân tay SHA-256.
 
-### Giai đoạn 3: Khảo sát & xử lý lỗi mạng (N6, N7) & Chuẩn hóa tài liệu (N10)
-- Rà soát `onebee-tuong-lua` và cấu hình systemd unit với `tailscaled`.
-- Đánh giá quy tắc lọc IPv6 cho Samba (xem xét chuyển DROP thành REJECT hoặc cho phép dải LAN).
-- Cập nhật các tài liệu hướng dẫn (`cai-dat-onebee-box.md`, `quan-ly-may-tram.md`, `thu-nghiem-tren-may-ao.md`, `security-audit.md`) khớp 100% với phiên bản code hiện tại.
+### Giai đoạn 3: Khảo sát & xử lý lỗi mạng (N6, N7) & Chuẩn hóa tài liệu (N10) — [ĐÃ HOÀN TẤT]
+- **N6 & N7:** Lọc kết nối `tailscale0` ở bảng `mangle/PREROUTING`; chuyển từ chối IPv6 sang `REJECT` (`tcp-reset`, `icmp6-port-unreachable`).
+- **N10:** Đồng bộ 6 file tài liệu trong `docs/` + 2 file mã liên quan (`5240e99`; 12 dòng cấu hình máy trạm, biến bắt buộc, lệnh thực tế).
+- **Lũy nghiệm:** Thêm `changed_when: false` cho task `Cập nhật danh mục gói` ở cả box-base và desktop base (`8328dbf`).
 
-### Giai đoạn 4: Nghiệm thu thực địa & Đóng gói v1.0.0
-- Thực hiện phiếu kiểm thử trên máy thật / VM theo các nhóm B, C, D, E của `docs/kiem-thu-tren-may-that.md`.
-- Gắn thẻ tag phát hành chính thức `v1.0.0` kèm CHANGELOG đầy đủ.
+### Giai đoạn 4: Nghiệm thu Docker, Kiểm thử máy thật & Đóng gói v1.0.0 — [ĐANG TIẾN HÀNH]
+- Nghiệm thu Docker (14–15/10/2026, [reports/nghiem-thu-v1-docker.md](../../reports/nghiem-thu-v1-docker.md)): Box `8874345` 127 PASS / 0 FAIL (lượt 13; trước đó `b13d00d` đạt 126/126 ở lượt 8, rồi sửa vòng đời tường lửa gắn Docker; các lượt 6–7, 9–12 dừng vì Docker Hub ngắt kết nối); Desktop Mint 22.3 `119ec76` 71 PASS / 0 FAIL; cả hai lần 2 `changed=0 failed=0`. Chưa kiểm trên máy thật.
+- Kế hoạch kiểm thử máy thật: Chi tiết xem tại [ke-hoach-kiem-thu-may-that-va-dong-goi-v1.md](ke-hoach-kiem-thu-may-that-va-dong-goi-v1.md).
+- Máy thật đầu tiên (Dell, 19/10/2026): vào từ xa để cài tiếp, xem [../261019-1537-truy-cap-tu-xa-may-that/plan.md](../261019-1537-truy-cap-tu-xa-may-that/plan.md).
+- Đóng gói phát hành: phiên bản `1.0.0` trong `group_vars`, changelog `[1.0.0]`, README đã cập nhật; tag `v1.0.0` và GitHub Release "OneBee OS 1.0.0" đã phát hành ngày 15/10/2026 (giờ Việt Nam; 14/10 theo UTC).
 
 ---
 

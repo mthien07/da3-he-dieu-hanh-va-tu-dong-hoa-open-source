@@ -1,6 +1,7 @@
 ---
-# Giao diện: hình nền OneBee. Cinnamon của Mint đã có bố cục quen thuộc kiểu Windows
-# (thanh tác vụ dưới, menu bắt đầu) nên v0.1 chỉ đổi hình nền mặc định, không đổi bố cục.
+# Giao diện: hình nền OneBee + bố cục kiểu Windows. Cinnamon của Mint đã có thanh tác vụ dưới (40px), menu bắt đầu mở bằng phím Super,
+# khay hệ thống và nút hiện màn hình nền (cornerbar) ở góc phải nên KHÔNG đổi danh sách applet; chỉ đổi những gì còn thiếu:
+# phím tắt Win+E/D/L, biểu tượng trên màn hình nền, nút menu, ứng dụng ghim sẵn ở menu và thanh tác vụ, Trợ lý AI.
 
 - name: Tạo thư mục hình nền OneBee
   ansible.builtin.file:
@@ -38,3 +39,154 @@
     mode: "0644"
   when: onebee_cinnamon_schema.stat.exists
   notify: Biên dịch lại gsettings schema
+
+# Schema/khóa không có trên máy (ví dụ chưa cài Nemo) bị glib-compile-schemas bỏ qua, không gây lỗi.
+# Tên zz_ để nạp sau mint-artwork và 10_cinnamon. Win+L mặc định là bảng gỡ lỗi Looking Glass nên file đã nhường phím này.
+- name: Đặt bố cục kiểu Windows cho Cinnamon (nút cửa sổ, phím Win+E/D/L/R/Shift+S, biểu tượng, menu Bắt đầu, Nemo)
+  ansible.builtin.copy:
+    src: zz_onebee-windows-layout.gschema.override
+    dest: /usr/share/glib-2.0/schemas/zz_onebee-windows-layout.gschema.override
+    owner: root
+    group: root
+    mode: "0644"
+  when: onebee_cinnamon_schema.stat.exists
+  notify: Biên dịch lại gsettings schema
+
+# Bộ biểu tượng thư mục vàng (Mint-Y-Sand), Quản lý tác vụ cho Ctrl+Shift+Esc, công cụ chụp màn hình cho Win+Shift+S,
+# dconf để đặt phím tùy chỉnh mặc định
+- name: Cài bộ biểu tượng Mint-Y, Quản lý tác vụ và công cụ dconf
+  ansible.builtin.apt:
+    name: [mint-y-icons, gnome-system-monitor, gnome-screenshot, dconf-cli]
+    state: present
+  when: onebee_cinnamon_schema.stat.exists
+
+# Ctrl+Shift+Esc → Quản lý tác vụ: phím tùy chỉnh của Cinnamon nằm ở schema "relocatable" (đường dẫn riêng) nên override gschema
+# không đặt được → đặt làm MẶC ĐỊNH cho mọi người dùng bằng CSDL dconf hệ thống "local" (người dùng vẫn đổi/xóa được trong Cài đặt).
+# Tên phải đúng dạng customN: trang Bàn phím của Cài đặt đọc số sau chữ "custom" (KeybindingTable.py, int(...)) — tên khác làm trang lỗi.
+# Người dùng thêm phím tùy chỉnh mới thì Cài đặt chọn số kế tiếp (custom1...), custom0 vẫn lấy từ CSDL hệ thống.
+- name: Tạo thư mục cấu hình dconf hệ thống
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop: [/etc/dconf/profile, /etc/dconf/db/local.d]
+  when: onebee_cinnamon_schema.stat.exists
+
+- name: Hồ sơ dconf người dùng đọc thêm CSDL hệ thống "local"
+  ansible.builtin.copy:
+    dest: /etc/dconf/profile/user
+    content: |
+      user-db:user
+      system-db:local
+    owner: root
+    group: root
+    mode: "0644"
+    force: false  # máy đã có hồ sơ riêng thì không ghi đè (task sau thêm dòng local nếu thiếu)
+  when: onebee_cinnamon_schema.stat.exists
+
+- name: Hồ sơ dconf có sẵn → thêm CSDL "local" nếu thiếu
+  ansible.builtin.lineinfile:
+    path: /etc/dconf/profile/user
+    line: system-db:local
+  when: onebee_cinnamon_schema.stat.exists
+
+- name: Phím Ctrl+Shift+Esc mở Quản lý tác vụ (mặc định cho mọi người dùng)
+  ansible.builtin.copy:
+    dest: /etc/dconf/db/local.d/50-onebee-phim-tat
+    content: |
+      # Quản lý bởi OneBee OS (desktop/ansible/roles/theme)
+      [org/cinnamon/desktop/keybindings]
+      custom-list=['custom0']
+
+      [org/cinnamon/desktop/keybindings/custom-keybindings/custom0]
+      name='Quản lý tác vụ (Task Manager)'
+      command='gnome-system-monitor'
+      binding=['<Primary><Shift>Escape']
+    owner: root
+    group: root
+    mode: "0644"
+  when: onebee_cinnamon_schema.stat.exists
+  register: onebee_dconf_phim
+
+- name: Biên dịch CSDL dconf hệ thống
+  # noqa: no-handler — chỉ chạy khi vừa đổi file phím tắt
+  ansible.builtin.command: dconf update
+  when: onebee_dconf_phim is changed
+  changed_when: true
+
+# Logo OneBee làm biểu tượng hệ thống "onebee-logo" (nút menu bắt đầu, Trợ lý AI): bản vector + bản 48px cho chỗ không vẽ được SVG
+- name: Tạo thư mục biểu tượng hicolor (máy tối giản có thể chưa có)
+  ansible.builtin.file:
+    path: "/usr/share/icons/hicolor/{{ item }}/apps"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop: [scalable, 48x48]
+
+- name: Cài biểu tượng logo OneBee
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "/usr/share/icons/hicolor/{{ item.thu_muc }}/apps/{{ item.ten }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - {src: onebee-logo.svg, thu_muc: scalable, ten: onebee-logo.svg}
+    - {src: onebee-logo-48.png, thu_muc: 48x48, ten: onebee-logo.png}
+  register: onebee_logo
+
+- name: Cài công cụ làm mới bộ đệm biểu tượng
+  ansible.builtin.apt:
+    name: gtk-update-icon-cache
+    state: present
+
+- name: Làm mới bộ đệm biểu tượng hicolor (để menu thấy logo mới ngay)
+  # noqa: no-handler — chỉ chạy khi vừa chép logo
+  ansible.builtin.command: gtk-update-icon-cache --force --quiet /usr/share/icons/hicolor
+  when: onebee_logo is changed
+  changed_when: true
+
+# Mục menu cho Trợ lý AI: lệnh hoi chỉ chạy trong cửa sổ dòng lệnh nên thanh tác vụ ghim lối mở giao diện web của Trợ lý
+- name: Cài lệnh mở Trợ lý AI OneBee
+  ansible.builtin.copy:
+    src: onebee-mo-tro-ly-ai
+    dest: /usr/local/bin/onebee-mo-tro-ly-ai
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Thêm mục "Trợ lý AI OneBee" vào menu
+  ansible.builtin.copy:
+    dest: /usr/share/applications/onebee-tro-ly-ai.desktop
+    content: |
+      [Desktop Entry]
+      Type=Application
+      Name=Trợ lý AI OneBee
+      Comment=Hỏi Trợ lý AI chạy trên OneBee Box trong mạng nội bộ (AI có thể sai, hãy đọc lại)
+      Exec=onebee-mo-tro-ly-ai
+      Icon=onebee-logo
+      Terminal=false
+      Categories=Utility;
+      Keywords=ai;hoi;tro ly;
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Kiểm tra máy có applet danh sách cửa sổ của Cinnamon không
+  ansible.builtin.stat:
+    path: /usr/share/cinnamon/applets/grouped-window-list@cinnamon.org
+  register: onebee_cinnamon_window_list
+
+# Cinnamon gộp file settings-override.json vào mặc định của applet khi người dùng đăng nhập lần đầu; người dùng đã
+# tự ghim/bỏ ghim thì giữ lựa chọn của họ. File thuộc OneBee nên gói cinnamon nâng cấp không ghi đè.
+- name: Ghim sẵn ứng dụng văn phòng trên thanh tác vụ (Nemo, Firefox, Writer, Calc, Impress, Trợ lý AI)
+  ansible.builtin.copy:
+    src: grouped-window-list-settings-override.json
+    dest: /usr/share/cinnamon/applets/grouped-window-list@cinnamon.org/settings-override.json
+    owner: root
+    group: root
+    mode: "0644"
+  when: onebee_cinnamon_window_list.stat.isdir | default(false)

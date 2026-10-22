@@ -1,0 +1,21 @@
+{
+  "pinned-apps": {
+    "override-props": true,
+    "default": [
+      "nemo.desktop",
+      "firefox.desktop",
+      "libreoffice-writer.desktop",
+      "libreoffice-calc.desktop",
+      "libreoffice-impress.desktop",
+      "onebee-tro-ly-ai.desktop"
+    ]
+  },
+  "show-thumbnails": {
+    "override-props": true,
+    "default": true
+  },
+  "enable-hover-peek": {
+    "override-props": true,
+    "default": true
+  }
+}

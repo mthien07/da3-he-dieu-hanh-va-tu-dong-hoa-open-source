@@ -413,6 +413,36 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertIn("Xong.", r.stdout)
         self.assertEqual(os.listdir(f"{self.t}/tmp"), [])
 
+    def test_xoay_khoa_day_loi_tren_may_dang_bat_van_nhac_dong_bo(self):
+        """Máy vào được SSH nhưng playbook hỏng giữa chừng: máy chưa nhận mật khẩu kho mới (sao lưu sẽ 401) → phải nhắc riêng máy đó."""
+        self.cap_may("ketoan-01", "10.1.1.5")
+        self.env["ONEBEE_ANSIBLE_RC"] = "2"
+        r = self.chay("xoay-khoa", "--may", "ketoan-01", "--dong-y", kiem=False)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Máy trạm ketoan-01 có thể chưa nhận cấu hình mới", r.stderr)
+        self.assertIn("sudo onebee-box dong-bo-may ketoan-01", r.stderr)
+        self.assertIn("Xong.", r.stdout)
+
+    def test_xoay_khoa_khong_dung_duoc_cau_hinh_van_nhac_khong_vo_lenh(self):
+        """Thiếu bí mật của máy (cấp dở): mật khẩu đã đổi trên Box → không được dừng giữa chừng, nhắc đúng nguyên nhân (không phải "đang tắt")."""
+        self.cap_may("ketoan-01", "10.1.1.5")
+        os.unlink(f"{self.t}/secrets/tinh-trang-key")
+        r = self.chay("xoay-khoa", "--may", "ketoan-01", "--dong-y", kiem=False)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Máy trạm ketoan-01 chưa nhận cấu hình mới — không dựng được cấu hình", r.stderr)
+        self.assertNotIn("đang tắt", r.stderr)
+        self.assertIn("Xong.", r.stdout)
+
+    def test_xoay_khoa_chi_giu_khoa_sau_khi_xac_nhan(self):
+        """Dấu nhắc xác nhận để treo không được giữ khóa (sao lưu đêm 23:00 sẽ bị bỏ): hỏi trước, lấy khóa sau."""
+        import fcntl
+        self.cap_may("ketoan-01", "10.1.1.5")
+        with open(f"{self.t}/onebee-box.lock", "w") as khoa:
+            fcntl.flock(khoa, fcntl.LOCK_EX)
+            r = subprocess.run([self.cmd, "xoay-khoa", "--may", "ketoan-01"], capture_output=True, text=True, env=self.env, input="khong\n")
+        self.assertIn("Đã hủy", r.stderr)                                                       # tới được dấu nhắc dù khóa đang bị giữ
+        self.assertNotIn("Đang có lệnh", r.stderr)
+
     def test_xoay_khoa_khong_chay_chong_voi_sao_luu(self):
         import fcntl
         self.cap_may("ketoan-01", "10.1.1.5")

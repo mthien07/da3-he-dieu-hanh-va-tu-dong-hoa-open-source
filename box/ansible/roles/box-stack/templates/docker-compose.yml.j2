@@ -91,14 +91,14 @@ services:
       ENABLE_COMMUNITY_SHARING: "false"
       JWT_EXPIRES_IN: "30d"   # phiên đăng nhập 1 tháng (mặc định của Open WebUI: 4 tuần)
 {% if https %}
-      # HTTPS qua Caddy: cookie chỉ gửi qua HTTPS; CORS đúng địa chỉ thật (lệch thì WebSocket chat hỏng mà không báo lỗi)
+      # HTTPS qua Caddy: cookie chỉ gửi qua HTTPS; CORS đúng địa chỉ thật (lệch thì WebSocket chat hỏng mà không báo lỗi); mở bằng tên/IP khác → khai onebee_box_cors_them
       WEBUI_SESSION_COOKIE_SECURE: "true"
       WEBUI_AUTH_COOKIE_SECURE: "true"
-      CORS_ALLOW_ORIGIN: "https://{{ onebee_box_ip }}:{{ onebee_box_ports.open_webui }};https://box.{{ onebee_box_ma_don_vi }}.onebee.internal:{{ onebee_box_ports.open_webui }}"
+      CORS_ALLOW_ORIGIN: "https://{{ onebee_box_ip }}:{{ onebee_box_ports.open_webui }};https://box.{{ onebee_box_ma_don_vi }}.onebee.internal:{{ onebee_box_ports.open_webui }}{% for nguon in onebee_box_cors_them %};{{ nguon }}{% endfor %}"
 {% else %}
-      # HTTP nội bộ: chỉ cho phép WebUI tự gọi chính nó (IP LAN + tên <mdns>.local trong LAN + tên kỹ thuật qua Tailscale), chặn trang
-      # web lạ gửi request kèm cookie/credentials (không đặt thì Open WebUI phản chiếu mọi Origin kèm allow-credentials)
-      CORS_ALLOW_ORIGIN: "http://{{ onebee_box_ip }}:{{ onebee_box_ports.open_webui }};http://{{ onebee_box_ten_mdns }}.local:{{ onebee_box_ports.open_webui }};http://box.{{ onebee_box_ma_don_vi }}.onebee.internal:{{ onebee_box_ports.open_webui }}"
+      # HTTP nội bộ: chỉ cho phép WebUI tự gọi chính nó (IP LAN + tên <mdns>.local trong LAN + tên kỹ thuật qua Tailscale), chặn trang web lạ gửi request
+      # kèm cookie/credentials (không đặt thì Open WebUI phản chiếu mọi Origin kèm allow-credentials); thêm Origin khác: onebee_box_cors_them
+      CORS_ALLOW_ORIGIN: "http://{{ onebee_box_ip }}:{{ onebee_box_ports.open_webui }};http://{{ onebee_box_ten_mdns }}.local:{{ onebee_box_ports.open_webui }};http://box.{{ onebee_box_ma_don_vi }}.onebee.internal:{{ onebee_box_ports.open_webui }}{% for nguon in onebee_box_cors_them %};{{ nguon }}{% endfor %}"
 {% endif %}
       OFFLINE_MODE: "true"
       SCARF_NO_ANALYTICS: "true"

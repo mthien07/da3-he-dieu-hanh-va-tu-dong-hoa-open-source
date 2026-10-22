@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Mở Trợ lý AI OneBee (giao diện web chạy trên OneBee Box). Địa chỉ lấy từ /etc/onebee-hoi.conf do bộ cài tạo
+# khi máy đã kết nối Box — cùng cấu hình với lệnh `hoi` trong cửa sổ dòng lệnh.
+set -uo pipefail
+
+thong_bao() {
+  if command -v zenity >/dev/null 2>&1 && [[ -n ${DISPLAY:-}${WAYLAND_DISPLAY:-} ]]; then
+    zenity --warning --title="Trợ lý AI OneBee" --text="$1" --width=380 2>/dev/null || true
+  else
+    echo "$1" >&2
+  fi
+}
+
+url="$(sed -n 's/^HOI_URL=//p' /etc/onebee-hoi.conf 2>/dev/null | head -n 1)"
+# Chỉ mở địa chỉ http(s) hợp lệ, không để nội dung lạ trong file cấu hình thành lệnh hay tham số
+if [[ ! ${url} =~ ^https?://[^[:space:]]+$ ]]; then
+  thong_bao "Máy này chưa kết nối OneBee Box nên chưa có Trợ lý AI. Báo người quản trị OneBee để được kết nối."
+  exit 1
+fi
+exec xdg-open "${url}"
