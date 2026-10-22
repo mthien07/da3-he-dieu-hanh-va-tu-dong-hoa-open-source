@@ -1,7 +1,33 @@
 # Nhật ký thay đổi
 
-## [Chưa phát hành] — Sau 1.0.0
-### Tự chẩn đoán (22/10/2026)
+## [1.0.0] — 22/10/2026: Phiên bản Phát hành Thương mại Chính thức
+Phiên bản 1.0.0 chuyển hóa OneBee OS (DA3) thành sản phẩm thương mại hoàn chỉnh, hấp thụ tinh hoa kiến trúc từ các dự án mã nguồn mở hàng đầu thế giới (CasaOS, YunoHost, Zorin OS, Nextcloud, Synology/TrueNAS).
+
+### Tính năng Nổi bật Vượt trội (5 Trụ cột Tinh hoa Nguồn mở):
+1. **Zero-Config LAN Discovery & Web Dashboard (CasaOS/Umbrel):**
+   - Hỗ trợ tên miền nội bộ `http://onebee.local` qua mDNS/Avahi tự động nhận diện trong mạng LAN.
+   - Trang chủ Dashboard cổng 80 trực quan hiển thị trạng thái hệ thống, tài nguyên và lối tắt dịch vụ.
+2. **OneBee Diagnosis — Bộ Tự Chẩn Đoán Lỗi 7 Hạng Mục (YunoHost):**
+   - Lệnh `sudo onebee-box chan-doan [--json]` quét toàn diện: Mạng, Tài nguyên, Docker, AI, Samba, Sao lưu, Chứng chỉ SSL.
+   - Công cụ máy trạm `onebee-chan-doan` cho nhân viên tự kiểm tra kết nối không cần quyền root.
+3. **Windows App Helper & `.exe` Interceptor (Zorin OS):**
+   - Tự động bắt sự kiện mở file cài đặt Windows (`.exe`, `.msi`) trên máy trạm Mint.
+   - Hộp thoại Zenity tiếng Việt gợi ý ứng dụng Linux tương đương (Zalo Web/Native, Chromium, IBus Bamboo, Foxit/Evince, VLC, Hỗ trợ từ xa OneBee).
+4. **Kho Mẫu Prompt Hành chính NĐ 30 & Bộ Tri thức RAG Open WebUI (Nextcloud/Dify):**
+   - 4 mẫu prompt chuẩn: `/to-trinh` (Nghị định 30/2020/NĐ-CP), `/bien-ban` (Họp HTX), `/hop-dong` (Bao tiêu nông sản Luật HTX 2023), `/bao-cao` (Tài chính & quỹ chung không chia).
+   - Danh mục tri thức `Thư viện Pháp lý HTX` hỗ trợ RAG trích dẫn điều khoản luật chính xác.
+5. **Cảnh báo Sự cố Chủ động qua Telegram & n8n (Synology/TrueNAS):**
+   - Gửi cảnh báo tức thời vào điện thoại quản trị viên (`ℹ️ INFO`, `⚠️ WARN`, `🚨 CRIT`) khi sao lưu hoàn tất, ổ đĩa đầy hoặc dịch vụ dừng.
+   - Lệnh quản trị `sudo onebee-box dat-telegram` và `sudo onebee-box canh-bao`.
+   - Workflow n8n `10-canh-bao-su-co` mở rộng kết nối Zalo OA và Email.
+
+### Bộ Đóng Gói Offline & Tài liệu Thương mại Hóa:
+- **Bộ cài Offline 1-Click từ USB:** `scripts/dong-goi-usb-offline.sh` và `scripts/cai-tu-usb-offline.sh` giúp lắp đặt tại vùng sâu vùng xa không cần Internet.
+- **Sổ tay hướng dẫn nhanh 1 trang A4:** `docs/thuong-mai/huong-dan-nhanh-a4-can-bo-htx.md` tóm tắt cách dùng cho xã viên.
+- **Biên bản nghiệm thu bàn giao:** `docs/thuong-mai/bien-ban-nghiem-thu-ban-giao.md` mẫu pháp lý chuẩn cho HTX.
+- **Quy trình thao tác chuẩn (SOP):** `docs/thuong-mai/sop-quy-trinh-trien-khai-thuc-dia.md` hướng dẫn triển khai thực địa từ A-Z.
+
+---
 - **`sudo onebee-box chan-doan [--json]`**: 1 lệnh kiểm 7 hạng mục — mạng (router, Internet qua 1.1.1.1/8.8.8.8, Tailscale), tài nguyên (ổ `/` + dữ liệu,
   RAM trống, tải CPU), 6 container (chạy + healthcheck), Trợ lý AI (prompt thử tới Ollama cổng 11434 trong mạng Docker, đo thời gian),
   Samba (smbd + tài khoản thư mục chung ghi được), bản sao lưu Box mới nhất (đọc kho restic, không khóa kho), CA gốc/trung gian và chứng chỉ HTTPS
