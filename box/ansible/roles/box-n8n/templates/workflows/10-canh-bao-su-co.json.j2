@@ -1,0 +1,85 @@
+{% set js %}
+// n8n Code Node: tiếp nhận cảnh báo từ OneBee Box
+const b = $input.first().json.body || {};
+const mucDo = b.muc_do || 'INFO';
+const tieuDe = b.tieu_de || 'Thông báo hệ thống';
+const noiDung = b.noi_dung || '';
+const donVi = b.don_vi || 'OneBee Box';
+const thoiGian = b.thoi_gian || '';
+
+let icon = 'ℹ️';
+let tieuDeMuc = 'THÔNG BÁO';
+if (mucDo === 'WARN' || mucDo === 'CANH_BAO') {
+  icon = '⚠️';
+  tieuDeMuc = 'CẢNH BÁO';
+} else if (mucDo === 'CRIT' || mucDo === 'KHAN_CAP' || mucDo === 'LOI') {
+  icon = '🚨';
+  tieuDeMuc = 'BÁO ĐỘNG KHẨN';
+}
+
+const telegramText = `${icon} [${tieuDeMuc} — ${donVi}]\n*${tieuDe}*\nThời gian: ${thoiGian}\n\n${noiDung}`;
+const emailSubject = `[${tieuDeMuc}] ${donVi}: ${tieuDe}`;
+
+return [{
+  json: {
+    muc_do: mucDo,
+    tieu_de: tieuDe,
+    telegram_text: telegramText,
+    email_subject: emailSubject,
+    email_text: `${telegramText}\n\nĐược gửi tự động từ OneBee Box.`
+  }
+}];
+{% endset %}
+{
+  "id": "onebeeCanhBao10",
+  "name": "OneBee — Cảnh báo sự cố chủ động (Telegram / Email)",
+  "nodes": [
+    {
+      "id": "cb-1",
+      "name": "Box gửi cảnh báo",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "webhookId": "0e7c1b2a-0000-4000-8000-000000000010",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "onebee-canh-bao",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "onebeeHook000001",
+          "name": "OneBee — khóa webhook của Box"
+        }
+      }
+    },
+    {
+      "id": "cb-2",
+      "name": "Định dạng cảnh báo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0],
+      "parameters": {
+        "jsCode": {{ js | to_json }}
+      }
+    }
+  ],
+  "connections": {
+    "Box gửi cảnh báo": {
+      "main": [
+        [
+          {
+            "node": "Định dạng cảnh báo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "{{ onebee_timezone }}"
+  }
+}
