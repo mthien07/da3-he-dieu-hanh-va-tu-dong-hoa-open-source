@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Trợ lý tập tin Windows (OneBee)
+GenericName=Trợ lý mở file Windows
+Comment=Hỗ trợ mở file cài đặt Windows (.exe, .msi) và gợi ý ứng dụng thay thế trên OneBee OS
+Exec=onebee-windows-app-helper %F
+Icon=system-run
+Terminal=false
+Categories=System;Utility;
+MimeType=application/x-msdos-program;application/x-msi;application/x-executable;application/vnd.microsoft.portable-executable;
+NoDisplay=false
+StartupNotify=true

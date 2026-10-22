@@ -27,7 +27,8 @@ jobs:
         run: pip install -r requirements-dev.txt
       - name: shellcheck
         run: >-
-          shellcheck -e SC2016 desktop/*.sh desktop/ansible/roles/backup-client/files/onebee-sao-luu
+          shellcheck -e SC2016 desktop/*.sh desktop/scripts/onebee-windows-app-helper
+          desktop/ansible/roles/backup-client/files/onebee-sao-luu
           desktop/ansible/roles/ho-tro-tu-xa/files/onebee-ho-tro
           desktop/ansible/roles/quan-ly-tap-trung/files/onebee-chan-doan
           desktop/ansible/roles/ket-noi-box/files/onebee-loi-tat-chia-se
