@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# onebee-chan-doan — máy trạm tự kiểm tra: mạng (router, OneBee Box), dịch vụ trên Box (Trợ lý AI, thư mục chung, nhận sao lưu),
+# sao lưu của máy này (restic, lịch, lần cuối), ổ đĩa. In [OK] / [CẢNH BÁO] / [LỖI] kèm gợi ý — biết lỗi ở dây mạng/router, ở Box hay ở máy.
+# Chỉ đọc, không sửa gì. Nhân viên chạy được không cần sudo (địa chỉ Box lấy từ /etc/onebee-hoi.conf);
+# chạy bằng sudo thì đọc thêm /etc/onebee/may-tram.env (cổng nhận sao lưu của Box). Mã thoát: 0 = mọi mục OK, 1 = có cảnh báo, 2 = có lỗi.
+set -uo pipefail
+CONF="${ONEBEE_CONF:-/etc/onebee/may-tram.env}"
+HOI_CONF="${ONEBEE_HOI_CONF:-/etc/onebee-hoi.conf}"
+SAO_LUU_CUOI="${ONEBEE_VAR:-/var/lib/onebee}/sao-luu-cuoi"   # onebee-sao-luu ghi giây epoch sau mỗi lần sao lưu xong
+NGUONG_SAO_LUU_GIO=26   # sao lưu 12:00 hằng ngày (+ 2 giờ dự phòng)
+N_OK=0 N_CB=0 N_LOI=0
+XANH="" VANG="" DO="" DAM="" TAT=""
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then XANH=$'\e[32m'; VANG=$'\e[33m'; DO=$'\e[31m'; DAM=$'\e[1m'; TAT=$'\e[0m'; fi
+
+# ket_qua <ok|canh_bao|loi> <tên> <chi tiết> [gợi ý]
+ket_qua() {
+  case "$1" in
+    ok) printf '  %s[OK]       %s %s: %s\n' "${XANH}" "${TAT}" "$2" "$3"; N_OK=$((N_OK + 1)); return ;;
+    canh_bao) printf '  %s[CẢNH BÁO] %s %s: %s\n' "${VANG}" "${TAT}" "$2" "$3"; N_CB=$((N_CB + 1)) ;;
+    *) printf '  %s[LỖI]      %s %s: %s\n' "${DO}" "${TAT}" "$2" "$3"; N_LOI=$((N_LOI + 1)) ;;
+  esac
+  [[ -z "${4:-}" ]] || printf '              → %s\n' "$4"
+}
+
+# Giá trị KHÓA trong file KHÓA=giá trị (đọc từng dòng, không chạy file như mã shell); không đọc được file thì rỗng
+doc_khoa() {
+  [[ -r "$1" ]] || return 0
+  sed -n "s/^$2=//p" "$1" | head -n 1 | tr -d '\r"'
+}
+
+# Thời gian trả lời trung bình (ms) khi ping $1; rỗng khi không trả lời
+thoi_gian_ping() { timeout 15 ping -c 3 -W 2 -q "$1" 2>/dev/null | awk -F/ '/^(rtt|round-trip)/ {print $5}' || true; }
+
+# Mở được kết nối TCP tới $1:$2 trong 4 giây không ($1/$2 là tham số của bash con nên để trong nháy đơn)
+# shellcheck disable=SC2016
+cong_mo() { timeout 4 bash -c 'exec 3<>"/dev/tcp/$1/$2"' _ "$1" "$2" 2>/dev/null; }
+
+# "địa-chỉ cổng" từ URL dạng [rest:]giao-thức://[người:mật-khẩu@]địa-chỉ[:cổng][/đường-dẫn]
+dia_chi_cong() {
+  local u="${1#rest:}" cong_mac_dinh="$2" host
+  [[ -n "${u}" ]] || return 0
+  u="${u#*://}"; u="${u%%/*}"; u="${u##*@}"
+  host="${u%%:*}"
+  if [[ "${u}" == *:* ]]; then echo "${host} ${u##*:}"; else echo "${host} ${cong_mac_dinh}"; fi
+}
+
+hoi_url="$(doc_khoa "${HOI_CONF}" HOI_URL)"
+kho="$(doc_khoa "${CONF}" RESTIC_REPOSITORY)"
+box="$(doc_khoa "${CONF}" BOX_IP)"
+read -r ai_host ai_cong <<<"$(dia_chi_cong "${hoi_url}" 3000)"
+ai_cong="${ai_cong:-3000}"
+[[ -n "${box}" ]] || box="${ai_host}"
+sl_cong=8000   # cổng nhận sao lưu mặc định (HTTP và HTTPS cùng cổng)
+[[ -z "${kho}" ]] || read -r _ sl_cong <<<"$(dia_chi_cong "${kho}" 8000)"
+
+echo "${DAM}OneBee — tự chẩn đoán máy $(hostname) lúc $(date '+%H:%M %d/%m/%Y')${TAT}"
+
+echo; echo "${DAM}1. Mạng${TAT}"
+gw="$(ip -4 route show default 2>/dev/null | awk '{print $3; exit}')"
+if [[ -z "${gw}" ]]; then
+  ket_qua loi "Cổng mạng (router)" "Máy chưa có mạng" "Kiểm tra dây mạng (đèn ở cổng mạng) hoặc kết nối Wi-Fi của máy"
+elif ms="$(thoi_gian_ping "${gw}")" && [[ -n "${ms}" ]]; then
+  ket_qua ok "Cổng mạng (router)" "Router ${gw} trả lời sau ${ms} ms"
+else
+  ket_qua loi "Cổng mạng (router)" "Router ${gw} không trả lời" "Kiểm tra dây mạng của máy và router; máy khác cũng mất mạng thì khởi động lại router"
+fi
+box_song=0
+if [[ -z "${box}" ]]; then
+  ket_qua loi "OneBee Box" "Máy chưa được nối với Box (chưa có cấu hình)" \
+    "Báo quản trị: chạy 'sudo onebee-box them-may <tên-máy>' trên Box, dán kết quả vào ${CONF} rồi chạy lại bộ cài"
+elif ms="$(thoi_gian_ping "${box}")" && [[ -n "${ms}" ]]; then
+  ket_qua ok "OneBee Box" "Box ${box} trả lời sau ${ms} ms"
+  box_song=1
+else
+  ket_qua loi "OneBee Box" "Box ${box} không trả lời" \
+    "Box tắt hoặc mất mạng: kiểm tra Box có điện, đèn mạng. Máy khác vào được Box thì lỗi ở máy này; không máy nào vào được thì lỗi ở Box/router"
+fi
+
+echo; echo "${DAM}2. Dịch vụ trên Box${TAT}"
+if [[ ${box_song} -eq 0 ]]; then
+  ket_qua loi "Dịch vụ trên Box" "Không kiểm được (không tới được Box)" "Sửa phần Mạng ở trên trước"
+else
+  for muc in "Trợ lý AI|${ai_cong}" "Thư mục chung (Samba)|445" "Nhận sao lưu|${sl_cong}"; do
+    if cong_mo "${box}" "${muc#*|}"; then ket_qua ok "${muc%|*}" "Box mở cổng ${muc#*|}"
+    else ket_qua loi "${muc%|*}" "Box không mở cổng ${muc#*|}" "Box có thể đang khởi động lại; báo quản trị chạy trên Box: sudo onebee-box chan-doan"; fi
+  done
+fi
+
+echo; echo "${DAM}3. Sao lưu của máy này${TAT}"
+if command -v restic >/dev/null; then ket_qua ok "Phần mềm sao lưu (restic)" "Đã cài"
+else ket_qua loi "Phần mềm sao lưu (restic)" "Chưa cài" "Chạy lại bộ cài OneBee OS: sudo ./desktop/onebee-install.sh"; fi
+if systemctl is-active --quiet onebee-sao-luu.timer; then ket_qua ok "Lịch sao lưu hằng ngày" "Đang bật (12 giờ trưa)"
+else ket_qua loi "Lịch sao lưu hằng ngày" "Chưa bật" "Báo quản trị: dán cấu hình từ Box vào ${CONF} rồi chạy lại bộ cài OneBee OS"; fi
+luc="$(cat "${SAO_LUU_CUOI}" 2>/dev/null)"
+if [[ ! "${luc}" =~ ^[0-9]+$ ]]; then
+  ket_qua loi "Lần sao lưu cuối" "Máy chưa sao lưu lần nào" "Sao lưu ngay: sudo systemctl start onebee-sao-luu; xem lỗi: journalctl -u onebee-sao-luu -n 30"
+else
+  gio=$(( ($(date +%s) - luc) / 3600 ))
+  if (( gio > NGUONG_SAO_LUU_GIO )); then
+    ket_qua canh_bao "Lần sao lưu cuối" "Cách đây ${gio} giờ (quá ${NGUONG_SAO_LUU_GIO} giờ)" \
+      "Máy tắt lúc 12:00 hoặc sao lưu lỗi: sudo systemctl start onebee-sao-luu; xem lỗi: journalctl -u onebee-sao-luu -n 30"
+  else
+    ket_qua ok "Lần sao lưu cuối" "Cách đây ${gio} giờ"
+  fi
+fi
+
+echo; echo "${DAM}4. Ổ đĩa${TAT}"
+pt="$(df -P /home 2>/dev/null | awk 'NR == 2 {sub(/%/, "", $5); print $5}')"
+if [[ ! "${pt}" =~ ^[0-9]+$ ]]; then ket_qua canh_bao "Ổ chứa /home" "Không đọc được dung lượng" "Kiểm tra: df -h /home"
+elif (( pt > 90 )); then ket_qua loi "Ổ chứa /home" "Đã dùng ${pt}% — sắp đầy" "Dọn thùng rác, thư mục Tải về (Downloads); file lớn không cần trên máy thì chép vào thư mục chung trên Box"
+elif (( pt > 80 )); then ket_qua canh_bao "Ổ chứa /home" "Đã dùng ${pt}%" "Dọn thùng rác, thư mục Tải về (Downloads)"
+else ket_qua ok "Ổ chứa /home" "Đã dùng ${pt}%"; fi
+
+echo
+if (( N_LOI > 0 )); then
+  echo "${DAM}KẾT LUẬN: có ${N_LOI} lỗi$( (( N_CB == 0 )) || echo ", ${N_CB} cảnh báo") — làm theo gợi ý (→) ở các dòng [LỖI] trước.${TAT}"
+  echo "Cần hỗ trợ: bấm \"Báo cần hỗ trợ (OneBee)\" trong menu, hoặc gửi kết quả lệnh này cho kỹ thuật."
+  exit 2
+elif (( N_CB > 0 )); then
+  echo "${DAM}KẾT LUẬN: máy vẫn dùng được, có ${N_CB} cảnh báo — xem gợi ý (→) ở các dòng [CẢNH BÁO].${TAT}"
+  exit 1
+fi
+echo "${DAM}KẾT LUẬN: máy và kết nối tới Box bình thường — ${N_OK}/${N_OK} mục đạt.${TAT}"

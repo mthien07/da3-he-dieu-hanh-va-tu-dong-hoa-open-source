@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Kiểm tra THẬT cấu hình LibreOffice (qua UNO) sau khi cài OneBee OS Desktop:
-định dạng lưu mặc định của Writer/Calc/Impress là Microsoft Office và đã tắt cảnh báo định dạng.
+định dạng lưu mặc định của Writer/Calc/Impress là Microsoft Office, đã tắt cảnh báo định dạng
+và giao diện mặc định là Ribbon (Tabbed Notebookbar).
 Cần gói python3-uno. Thoát mã 1 nếu sai."""
 import os
 import subprocess
@@ -55,6 +56,12 @@ def main():
             ok = got == want
             fails += not ok
             print(f"{'PASS' if ok else 'FAIL'}  LibreOffice {factory.split('.')[-1]} lưu mặc định: {got}")
+        for app in ("Writer", "Calc", "Impress"):
+            got = read(provider, f"/org.openoffice.Office.UI.ToolbarMode/Applications/org.openoffice.Office.UI.ToolbarMode:Application['{app}']",
+                       "Active")
+            ok = got == "Tabbed"
+            fails += not ok
+            print(f"{'PASS' if ok else 'FAIL'}  LibreOffice {app} mở mặc định giao diện Ribbon (Tabbed): {got}")
         warn = read(provider, "/org.openoffice.Office.Common/Save/Document", "WarnAlienFormat")
         fails += bool(warn)
         print(f"{'FAIL' if warn else 'PASS'}  LibreOffice tắt cảnh báo khi lưu định dạng Microsoft")

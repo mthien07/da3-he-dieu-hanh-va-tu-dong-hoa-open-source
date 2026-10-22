@@ -213,7 +213,7 @@ Chụp snapshot VM trước mỗi nhóm.
   `/etc/onebee-box/secrets/samba-onebee`), PowerShell `Get-SmbConnection | Select ServerName,ShareName,Dialect,Encrypted`; Mint: Nemo `smb://<IP>/chung`, chép 1 GB vào/ra;
   Box: `sudo smbstatus`; thử hạ cấp: `smbclient //<IP>/chung -U onebee -m SMB2` và `-m NT1`. LAN có IPv6 toàn cầu: Windows `Test-NetConnection <IPv6 toàn cầu của Box> -Port 445`.
   (c) `SMB3_11` + `required`; Windows `Dialect 3.1.1 Encrypted True`; `smbstatus` cột Encryption có `AES-…`, Protocol `SMB3_11`; SMB2/NT1 bị từ chối. Máy quét cũ: ghi model,
-  thử lại với `onebee_box_samba_smb3: false`. LAN có IPv6 toàn cầu (N7): `Test-NetConnection` qua IPv6 **thất bại ngay** (không treo ~20 giây); mở bằng **tên** `\\onebee-box` không chậm.
+  thử lại với `onebee_box_samba_smb3: false`. LAN có IPv6 toàn cầu (N7): `Test-NetConnection` qua IPv6 **thất bại ngay** (không treo tới hết giờ chờ); mở bằng **tên** `\\onebee-box` không chậm.
   (d) `samba/tasks/main.yml` (blockinfile `[global]`), `onebee-tuong-lua` (IPv6 chỉ fe80/fc00; ngoài đó REJECT).
 - [ ] **B16. Khôi phục từ bản sao lưu chụp TRƯỚC khi bật HTTPS** (5.0, chưa làm) — (b) sao lưu ở HTTP → bật HTTPS → giả lập hỏng ổ (E1) → khôi phục bằng bản cũ.
   (c) Box về HTTP, bộ cài lần 2 tự `dong-bo-may` đẩy `BOX_HTTPS=0`; máy trạm có dấu `https-bat` được gỡ dấu, sao lưu lại được. (d) `onebee-box-sao-luu.sh.j2:172` (xóa dấu trước restore), `box-fleet/tasks/main.yml:75`.
@@ -333,6 +333,26 @@ Chụp snapshot VM trước mỗi nhóm.
 
 ---
 
+## E2. Cầu nối truy cập từ xa khi cài máy (máy thật ở xa, chưa cài OneBee)
+Nhật ký:
+- 19/10/2026: máy Dell đầu tiên lên hệ điều hành tại đơn vị (anh Tuấn), chưa cài OneBee.
+
+(a) máy thật vừa cài Ubuntu 24.04 (GNOME) hoặc Linux Mint 22, chỉ có wifi, khác mạng với kỹ thuật; người tại máy đã đăng nhập; laptop kỹ thuật có tài khoản Tailscale và Remmina (Linux) hoặc Windows App (macOS/Windows).
+Hướng dẫn: [truy-cap-tu-xa-khi-cai-may.md](huong-dan/truy-cap-tu-xa-khi-cai-may.md). Test tự động của script dùng lệnh giả, **chưa chạy trên máy thật** (`tests/desktop/test_mo_truy_cap_tu_xa.py`).
+
+- [ ] **E2.1. Bật cầu nối và nối Tailscale** — (b) người tại máy: `sudo bash mo-truy-cap-tu-xa.sh`; kỹ thuật mở link `login.tailscale.com/a/...` bằng tài khoản Tailscale của mình.
+  (c) máy hiện trong tailnet của kỹ thuật; script in "ĐÃ MỞ TRUY CẬP TỪ XA" kèm tên máy + IP Tailscale, **không** in mật khẩu. (d) `scripts/mo-truy-cap-tu-xa.sh` (bước cài Tailscale, `tailscale up --ssh`).
+- [ ] **E2.2. `tailscale ssh`** — (b) laptop kỹ thuật: `tailscale ssh root@<tên máy>`, rồi `sudo cat /root/onebee-truy-cap-tu-xa.txt`.
+  (c) vào được không cần khóa SSH hay mật khẩu máy; file mật khẩu RDP có và chỉ root đọc được. (d) chính sách `ssh` trong ACL của tailnet kỹ thuật; máy không phải GNOME thì không có file này.
+- [ ] **E2.3. RDP từ Remmina / Windows App** — (b) mở `<IP Tailscale>:3389`, tài khoản `onebee`, mật khẩu từ file trên; chấp nhận chứng chỉ tự ký `CN=onebee-<tên máy>` lần đầu.
+  (c) thấy và điều khiển được phiên GNOME đang đăng nhập; ghi rõ client nào đã thử (Remmina hay Windows App). (d) `grdctl rdp status` trong phiên của người dùng; phiên Wayland/X11; tường lửa máy.
+- [ ] **E2.4. Không ai ngồi máy vẫn vào được** — (b) người tại máy rời máy, đợi quá thời gian tự khóa màn hình/tắt màn hình thường ngày (vài phút), rồi kỹ thuật RDP lại.
+  (c) màn hình không khóa, không ngủ, vẫn vào được và vẫn điều khiển được. (d) `gsettings` `lock-enabled`, `idle-delay`, `sleep-inactive-ac-type` do script đặt; laptop chạy pin thì ghi lại có ngủ không.
+- [ ] **E2.5. `--tat` cắt được kết nối** — (b) `sudo bash mo-truy-cap-tu-xa.sh --tat` (chạy trên máy hoặc qua SSH, làm cuối cùng); sau đó kỹ thuật thử lại `tailscale ssh` và RDP.
+  (c) cả hai bị từ chối/hết thời gian chờ; máy rời tailnet; `/root/onebee-truy-cap-tu-xa.txt` mất; khóa màn hình và chế độ ngủ trở về như cũ. (d) `tat()` trong `scripts/mo-truy-cap-tu-xa.sh`; xóa máy khỏi trang quản trị Tailscale nếu vẫn còn hiện.
+
+---
+
 ## F. Việc CHƯA làm (có lý do) và rủi ro còn lại
 - [ ] Đã đọc và chấp nhận danh sách dưới đây (nguồn: "Trạng thái triển khai" Pha 1–5).
 
@@ -432,7 +452,7 @@ Ký hiệu: **XÁC NHẬN** = thấy rõ trong code (đã chạy thử nếu ghi
 - **N6 — XÁC NHẬN rồi sửa** (`7fbc274`): mã nguồn Tailscale 1.104.1 (`util/linuxfw/iptables_runner.go`) chèn `-j ts-input`/`ts-forward` ở vị trí 1 mỗi lần khởi động,
   `ts-input` có `-i tailscale0 -j ACCEPT`. Kernel thật, tailscale0 giả + giả lập tailscaled khởi động lại sau tường lửa: bản cũ để máy tailnet lạ vào `:445` (HTTP 200),
   bản mới chặn. Sửa: lọc kết nối mới từ tailscale0 ở mangle/PREROUTING; unit `After=tailscaled.service`. Còn kiểm với tailscaled thật ở B14.
-- **N7 — sửa** (`7fbc274`): IPv6 tới SSH/Samba ngoài mạng nội bộ → REJECT (tcp-reset / icmp6-port-unreachable). Đo trên kernel thật: bản cũ treo 10,02 giây, bản mới
-  bị từ chối sau 0,01 giây. Còn kiểm với Windows thật ở B15.
+- **N7 — sửa** (`7fbc274`): IPv6 tới SSH/Samba ngoài mạng nội bộ → REJECT (tcp-reset / icmp6-port-unreachable). Thử trên kernel thật (curl có giới hạn thời gian): bản cũ treo tới
+  hết giờ chờ, bản mới bị từ chối ngay. Còn kiểm với Windows thật ở B15.
 - **N10:** đồng bộ `cai-dat-onebee-box.md` (12 dòng liệt kê đủ, mã đơn vị bắt buộc / IP chỉ cảnh báo, gia hạn CA, Tailscale ở mangle, IPv6), `quan-ly-may-tram.md` (`dong-bo-may`
   tự chạy task desktop; `xoay-khoa` theo N8/N9), chú thích `onebee-box.sh.j2` và `group_vars/all.yml` (bỏ tham chiếu lệnh `doi-ca`), ADR 0005, `security-audit.md` (lệnh đã có / chưa có / không làm).

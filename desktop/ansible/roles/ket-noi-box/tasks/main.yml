@@ -76,6 +76,55 @@
     path: /var/lib/onebee/https-bat
   register: onebee_kn_https
 
+# ---- Lối tắt "Chia sẻ nội bộ (OneBee Box)" trên màn hình nền, như ổ mạng trên Windows ----
+# Dùng IP Box (BOX_IP) thay vì tên máy: LAN của đơn vị thường không có DNS nội bộ phân giải được tên Box.
+# Thư mục chung tên "chung" (mặc định onebee_box_samba_share của Box). Chưa nối Box → gỡ lối tắt gốc, lệnh lúc đăng nhập tự bỏ qua.
+- name: Cài lệnh đặt lối tắt thư mục chung lên màn hình nền
+  ansible.builtin.copy:
+    src: onebee-loi-tat-chia-se
+    dest: /usr/local/lib/onebee/onebee-loi-tat-chia-se
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Chạy lệnh đặt lối tắt mỗi lần đăng nhập
+  ansible.builtin.copy:
+    dest: /etc/xdg/autostart/onebee-loi-tat-chia-se.desktop
+    content: |
+      [Desktop Entry]
+      Type=Application
+      Name=OneBee: lối tắt thư mục chung
+      Exec=/usr/local/lib/onebee/onebee-loi-tat-chia-se
+      NoDisplay=true
+      X-GNOME-Autostart-enabled=true
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Lối tắt gốc "Chia sẻ nội bộ (OneBee Box)" (cũng hiện trong menu)
+  ansible.builtin.copy:
+    dest: /usr/share/applications/onebee-chia-se-noi-bo.desktop
+    content: |
+      [Desktop Entry]
+      Type=Application
+      Name=Chia sẻ nội bộ (OneBee Box)
+      Comment=Thư mục chung của đơn vị trên OneBee Box (smb://{{ onebee_kn.BOX_IP }}/chung)
+      Exec=nemo smb://{{ onebee_kn.BOX_IP }}/chung
+      Icon=folder-remote
+      Terminal=false
+      Categories=Office;FileManager;
+      X-OneBee=1
+    owner: root
+    group: root
+    mode: "0644"
+  when: onebee_kn.BOX_IP | default('') is match('^[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+$')
+
+- name: Chưa nối Box → bỏ lối tắt gốc
+  ansible.builtin.file:
+    path: /usr/share/applications/onebee-chia-se-noi-bo.desktop
+    state: absent
+  when: not (onebee_kn.BOX_IP | default('') is match('^[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+$'))
+
 # ---- Có BOX_CA: kiểm thật kỹ rồi mới cài ----
 - name: Cài CA của OneBee Box
   when: onebee_kn.BOX_CA | default('') | length > 0

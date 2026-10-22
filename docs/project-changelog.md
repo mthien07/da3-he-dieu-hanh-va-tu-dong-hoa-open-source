@@ -1,15 +1,42 @@
 # Nhật ký thay đổi
 
-## [Chưa phát hành]
-### Sửa lỗi sau kiểm thử thật (14/10/2026, chi tiết: `docs/kiem-thu-tren-may-that.md` mục "Đợt sửa 14/10/2026")
+## [Chưa phát hành] — Sau 1.0.0
+### Tự chẩn đoán (22/10/2026)
+- **`sudo onebee-box chan-doan [--json]`**: 1 lệnh kiểm 7 hạng mục — mạng (router, Internet qua 1.1.1.1/8.8.8.8, Tailscale), tài nguyên (ổ `/` + dữ liệu,
+  RAM trống, tải CPU), 6 container (chạy + healthcheck), Trợ lý AI (prompt thử tới Ollama cổng 11434 trong mạng Docker, đo thời gian),
+  Samba (smbd + tài khoản thư mục chung ghi được), bản sao lưu Box mới nhất (đọc kho restic, không khóa kho), CA gốc/trung gian và chứng chỉ HTTPS
+  đang phục vụ. Bảng màu [OK]/[CẢNH BÁO]/[LỖI] kèm gợi ý tiếng Việt, kết luận chung; `--json` cho n8n/trang chủ. Mã thoát 0/1/2. Chỉ đọc.
+- **`onebee-chan-doan`** trên máy trạm (nhân viên chạy không cần sudo): router, Box, cổng dịch vụ trên Box, sao lưu của máy, ổ `/home`.
+- Test: `tests/box/check-diagnosis.sh`, `tests/desktop/check-chan-doan-may-tram.sh` (chạy trong CI).
+
+### Thêm
+- `scripts/mo-truy-cap-tu-xa.sh` (`--tat` để tắt): cầu nối **tạm** để kỹ thuật vào cài tiếp một máy mới cài hệ điều hành ở nơi khác mạng —
+  Tailscale SSH và chia sẻ màn hình GNOME (RDP, mật khẩu ngẫu nhiên chỉ root đọc). Chỉ Ubuntu 24.04 / Mint 22 (nền noble), amd64.
+  Không thay `onebee-ho-tro` (ADR 0004); tắt khi bàn giao máy.
+- Hướng dẫn `docs/huong-dan/truy-cap-tu-xa-khi-cai-may.md`, nối từ `quan-ly-may-tram.md`, `huong-dan-cai-dat-tu-a-den-z.md` và README.
+- Giao diện quen như Windows (máy trạm Cinnamon): nút **Bắt đầu** dùng logo OneBee (`onebee-logo`, SVG + PNG 48px); Trợ lý AI dùng logo;
+  bộ biểu tượng thư mục vàng Mint-Y-Sand; phím **Win+R** (Chạy lệnh), **Win+Shift+S** (chụp vùng vào clipboard, dán bằng Ctrl+V), **Ctrl+Shift+Esc** (Quản lý tác vụ, qua dconf
+  hệ thống); Nemo ẩn file ẩn, nhấp đúp; thanh tác vụ xem trước cửa sổ khi rê chuột; lối tắt **Chia sẻ nội bộ (OneBee Box)** trên màn hình nền
+  (`smb://<IP Box>/chung`, đặt lúc đăng nhập); LibreOffice bộ biểu tượng **Colibre** (kiểu giống Microsoft Office).
+- Phiếu `docs/kiem-thu-tren-may-that.md` mục E2 kiểm cầu nối trên máy thật. Test tự động `tests/desktop/test_mo_truy_cap_tu_xa.py` dùng lệnh giả;
+  **chưa chạy trên máy thật**.
 - **Open WebUI chế độ HTTP chặn Origin lạ:** `CORS_ALLOW_ORIGIN` = IP Box + `box.<mã>.onebee.internal` (cổng 3000) cả khi chưa bật HTTPS — trước đây phản chiếu mọi Origin
-  kèm `allow-credentials`. Test `check-https.sh` không còn đạt giả khi curl lỗi.
+  kèm `allow-credentials`. Test `check-https.sh` không còn đạt giả khi curl lỗi. Danh sách này áp cho cả kết nối thời gian thực (WebSocket) của chat:
+  mở Trợ lý bằng địa chỉ khác (tên do router cấp, IP Tailscale, `localhost` qua đường hầm SSH) phải khai thêm vào biến mới `onebee_box_cors_them`
+  (xem `docs/huong-dan/cai-dat-onebee-box.md`); test kiểm cả chiều Origin hợp lệ được nhận.
 - **Tường lửa:** kết nối mới qua Tailscale bị lọc ở bảng `mangle`, đúng cả khi tailscaled khởi động lại sau tường lửa (trước đây máy tailnet bất kỳ có thể vào Box);
-  IPv6 ngoài mạng nội bộ tới SSH/Samba bị từ chối ngay thay vì im lặng (Windows không còn treo khi mở `\\onebee-box`).
+  IPv6 ngoài mạng nội bộ tới SSH/Samba bị từ chối ngay thay vì im lặng, để máy khách lùi về IPv4 thay vì chờ hết giờ (chưa kiểm trên Windows thật — phiếu B15).
+  Quy tắc `mangle` dựng sau cùng: máy thiếu mô-đun `mangle` thì bộ cài báo lỗi nhưng mạng nội bộ vẫn được lọc, không mở toang SSH/Samba.
+  Dịch vụ `onebee-tuong-lua` dựng **trước** Docker và không còn gắn vòng đời với Docker: trước đây dừng/nâng cấp Docker gỡ luôn quy tắc SSH/Samba/Tailscale
+  tới khi Docker chạy lại. Docker dùng lại chuỗi `DOCKER-USER` có sẵn và giữ quy tắc trong đó nên container lên là đã bị lọc.
 - **Gia hạn CA trung gian** chạy mỗi đêm cả khi chưa gắn ổ sao lưu.
-- **`xoay-khoa`:** `--box` tự đẩy khóa tình trạng mới xuống mọi máy; máy đang tắt chỉ bị cảnh báo kèm lệnh cần chạy (không dừng giữa chừng); không chạy chồng với sao lưu.
-- **`hoi`:** không tự theo chuyển hướng 308 bằng CA công cộng — vẫn chỉ tin CA của Box.
-- **Máy trạm — xoay CA:** gỡ CA cũ khỏi hồ sơ Firefox theo vân tay.
+- **`xoay-khoa`:** `--box` tự đẩy khóa tình trạng mới xuống mọi máy; máy đang tắt, máy thiếu bí mật hoặc máy bị lỗi khi đẩy cấu hình đều được nhắc
+  đúng lý do kèm lệnh `dong-bo-may <máy>` (không dừng giữa chừng); không chạy chồng với sao lưu, và chỉ giữ khóa sau bước xác nhận (để treo ở dấu nhắc
+  không chặn sao lưu đêm).
+- **`hoi` và báo tình trạng:** không tự theo chuyển hướng 308 bằng CA công cộng — vẫn chỉ tin CA của Box, kể cả khi địa chỉ viết hoa `HTTPS://`
+  (trước đây địa chỉ viết hoa dùng kho CA của hệ điều hành).
+- **Máy trạm — xoay CA:** gỡ CA OneBee cũ khỏi hồ sơ Firefox theo vân tay CA hiện tại mỗi lần chạy (tự lành nếu lần trước gỡ hụt); không đụng CA khác.
+  Firefox đang mở lúc xoay CA chỉ thôi tin CA cũ sau khi khởi động lại.
 ### Bảo mật (rà soát 10/10/2026 — Pha 1, xem `docs/security-audit.md`)
 - **n8n 2.40.7 → 2.42.6** (dòng 2.40 đã ngừng nhận bản vá; bản mới vá cả 14 advisory ngày 30/9). Mọi image dịch vụ ghim **tag + digest**
   (`@sha256`, bản đa kiến trúc). Mỗi lần đổi image n8n, bộ cài tự dừng n8n và chép dữ liệu sang `/srv/onebee/n8n.truoc-<phiên bản cũ>`

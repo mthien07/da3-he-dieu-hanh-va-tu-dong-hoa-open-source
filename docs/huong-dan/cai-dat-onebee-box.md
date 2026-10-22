@@ -18,6 +18,10 @@ Tên chỉ dùng trong cùng mạng LAN (không qua router sang mạng khác, kh
 Khi đã bật HTTPS, `http://onebee.local` mở trang hướng dẫn cài chứng chỉ (trang chủ ở `https://<ip-box>/`, chứng chỉ không cấp cho tên `.local`).
 Kiểm tra trên Box: `avahi-resolve-host-name -4 onebee.local`, hoặc chạy `sudo tests/box/check-mdns-dashboard.sh`.
 
+**Mở Trợ lý AI đúng địa chỉ:** dùng IP LAN của Box (`http://<ip-box>:3000`; `https://` khi đã bật HTTPS) hoặc, với kỹ thuật qua Tailscale,
+`box.<mã đơn vị>.onebee.internal`. Mở bằng tên/IP khác (tên DNS của router, IP Tailscale trần, đường hầm SSH `localhost`) thì trang vẫn hiện nhưng
+chat thời gian thực bị chặn im lặng. Cần dùng địa chỉ đó thì khai trong `box/ansible/group_vars/all.yml`:
+`onebee_box_cors_them: ["http://onebee-box.lan:3000"]` (đầy đủ giao thức + tên + cổng, không đường dẫn, không `*`) rồi chạy lại bộ cài.
 ## 1. Chuẩn bị
 - Máy 64-bit cài **Ubuntu Server 24.04 LTS**, nối mạng LAN, nên đặt IP cố định (trên router hoặc netplan).
 - Ổ dữ liệu đủ lớn cho thư mục chung + sao lưu máy trạm. **1 ổ ngoài riêng** để Box tự sao lưu.
@@ -32,7 +36,7 @@ Kiểm tra trên Box: `avahi-resolve-host-name -4 onebee.local`, hoặc chạy `
   qua **Tailscale** chỉ máy kỹ thuật khai trong `onebee_box_tailscale_cho_phep` (vd `["100.64.1.2"]`) vào được web/SSH/thư mục chung — để trống là chặn hết kết nối Tailscale
   (bộ cài cảnh báo nếu Box đang nối Tailscale mà chưa khai). Kết nối mới qua Tailscale bị lọc ở bảng `mangle` (trước các quy tắc tailscaled tự chèn), nên vẫn đúng khi
   tailscaled khởi động lại. Nên đặt thêm ACL phía Tailscale làm lớp thứ hai: `tag:kythuat` → Box tcp 22, 80, 443, 3000, 5678, 3001; thiết bị khác trong tailnet không vào được Box.
-  IPv6: SSH/thư mục chung chỉ nhận mạng nội bộ IPv6 (`fe80::/10`, `fc00::/7`); địa chỉ IPv6 toàn cầu bị **từ chối ngay** (không im lặng) để máy Windows lùi về IPv4 tức thì.
+  IPv6: SSH/thư mục chung chỉ nhận mạng nội bộ IPv6 (`fe80::/10`, `fc00::/7`); địa chỉ IPv6 toàn cầu bị **từ chối ngay** (không im lặng) để máy khách lùi về IPv4 ngay thay vì chờ hết giờ (chưa kiểm trên Windows thật — phiếu B15).
   Đổi dải IP của mạng LAN (thay router): khởi động lại Box hoặc chạy `sudo systemctl restart onebee-tuong-lua` để tường lửa nhận dải mới.
 
 ## 2. Cài đặt
@@ -102,7 +106,7 @@ Dán các dòng in ra (12 dòng: `MAY_TRAM`, `BOX_IP`, `RESTIC_REPOSITORY`, `RES
 `QUAN_TRI_SSH_KEY`, `BOX_CA`, `BOX_CA_VAN_TAY`, `BOX_HTTPS`; không có `HOI_API_KEY`/`TINH_TRANG_KEY` khi đã tắt 2 biến chuyển tiếp) vào máy trạm tại
 `/etc/onebee/may-tram.env`, rồi chạy lại `sudo ./desktop/onebee-install.sh` trên máy trạm. Máy trạm sẽ:
 - tự sao lưu `/home` lúc 12:00 hằng ngày (máy tắt thì chạy bù khi bật); sao lưu ngay: `sudo onebee-sao-luu`;
-- dùng được lệnh `hoi` (Trợ lý AI chưa chạy lúc cấp thì thiếu 2 dòng `HOI_…` — chạy lại lệnh sau);
+- dùng được lệnh `hoi` (Trợ lý AI chưa chạy lúc cấp thì thiếu dòng `HOI_API_KEY` — chạy lại lệnh sau);
 - báo tình trạng về Box mỗi giờ và cho Box vào cập nhật qua SSH — xem [quan-ly-may-tram.md](quan-ly-may-tram.md).
 Máy trạm cài bản v0.1 (file `sao-luu.env`) được bộ cài tự đổi tên sang `may-tram.env`.
 
@@ -110,6 +114,7 @@ Máy trạm cài bản v0.1 (file `sao-luu.env`) được bộ cài tự đổi 
 | Lệnh | Việc |
 |---|---|
 | `sudo onebee-box trang-thai` | Dịch vụ đang chạy, dung lượng ổ |
+| `sudo onebee-box chan-doan [--json]` | **Tự chẩn đoán** khi có sự cố: mạng (router < 5 ms, Internet, Tailscale), ổ `/` và dữ liệu (> 80% vàng, > 90% đỏ), RAM trống (< 1,5 GB), tải CPU, 6 container, AI trả lời thử (> 5 giây là chậm), Samba ghi được, bản sao lưu Box (> 26 giờ), CA và chứng chỉ HTTPS (< 15 ngày) — mỗi dòng [OK]/[CẢNH BÁO]/[LỖI] kèm gợi ý sửa. Mã thoát 0/1/2; `--json` cho n8n/trang chủ |
 | `sudo onebee-box them-may <tên>` | Cấp cho máy trạm: sao lưu, khóa Trợ lý AI, quản lý tập trung |
 | `sudo onebee-box may-tram` | Tình trạng các máy trạm (sao lưu, cập nhật, ổ đĩa, liên lạc cuối) |
 | `sudo onebee-box cap-nhat-may <tên>` / `--tat-ca` | Cập nhật phần mềm máy trạm từ Box (lần đầu máy phải chứng minh rồi mới ghim khóa SSH) |
@@ -155,4 +160,4 @@ file dữ liệu — cũng cần nói rõ với đơn vị.
 - Chưa kiểm trên máy thật; đã kiểm tự động trong container "Ubuntu 24.04 + systemd" (xem `tests/box/`).
 - HTTP trong LAN, chưa có TLS nội bộ.
 - Chưa có bản sao ngoài đơn vị (chưa đủ quy tắc 3-2-1).
-- Giám sát chưa theo dõi Samba và chính máy Box (CPU, ổ đĩa) — ổ đĩa Box xem bằng `sudo onebee-box trang-thai`.
+- Giám sát (Uptime Kuma) chưa theo dõi Samba và chính máy Box (CPU, ổ đĩa) — kiểm tra bằng `sudo onebee-box chan-doan` (chưa tự chạy theo lịch, chưa gửi cảnh báo).

@@ -198,6 +198,16 @@ echo "PASS  Máy ngoài mạng cho phép (vd Wi-Fi khách) bị chặn hết: AI
 box 'curl -s -m 10 http://127.0.0.1:3000/health | grep -q true || { echo "FAIL  Box tự gọi dịch vụ của mình bị chặn"; exit 1; }'
 [[ "$(thu_cong)" == "80 3000 3001 8000 445 " ]] || { echo "FAIL  Mở lại tường lửa nhưng máy trạm chưa vào lại được"; exit 1; }
 echo "PASS  Box tự gọi dịch vụ của mình không bị chặn; trả lại danh sách cũ → máy trạm vào lại được"
+# Dừng/nâng cấp Docker không được gỡ tường lửa (trước đây PartOf=docker.service + ExecStop=tat mở SSH/Samba/Tailscale tới khi Docker lên lại)
+box 'systemctl stop docker.socket docker.service
+     systemctl is-active -q onebee-tuong-lua && [ "$(iptables -S INPUT | grep -c ONEBEE-LAN-BOX)" = 2 ] \
+       && iptables -t mangle -S PREROUTING | grep -q ONEBEE-TAILSCALE && iptables -S DOCKER-USER | grep -q ONEBEE-LAN-DOCKER \
+       || { echo "FAIL  Dừng Docker gỡ luôn tường lửa (SSH/Samba/Tailscale/cổng Docker)"; exit 1; }
+     systemctl start docker
+     for _ in $(seq 60); do curl -s -m 5 http://127.0.0.1:3000/health | grep -q true && break; sleep 5; done
+     [ "$(iptables -S DOCKER-USER | grep -c ONEBEE-LAN-DOCKER)" = 1 ] || { echo "FAIL  Docker lên lại: quy tắc DOCKER-USER mất hoặc nhân đôi"; iptables -S DOCKER-USER; exit 1; }'
+[[ "$(thu_cong)" == "80 3000 3001 8000 445 " ]] || { echo "FAIL  Docker lên lại nhưng máy trạm chưa vào lại được"; exit 1; }
+echo "PASS  Dừng Docker vẫn giữ tường lửa SSH/Samba/Tailscale; Docker lên lại dùng tiếp quy tắc DOCKER-USER, máy trạm vào lại được"
 
 echo "===== TẮT TRỢ LÝ AI → LỆNH hoi BÁO LỖI DỄ HIỂU ====="
 box 'compose_dir=/opt/onebee-box; docker compose --project-directory $compose_dir stop open-webui >/dev/null 2>&1'
