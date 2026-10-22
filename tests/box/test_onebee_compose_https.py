@@ -74,12 +74,14 @@ class ComposeHaiCheDo(unittest.TestCase):
 
     def test_cors_o_che_do_http_duoc_gioi_han(self):
         # Thiếu biến này thì Open WebUI phản chiếu mọi Origin kèm allow-credentials → trang web lạ đọc được API bằng phiên đăng nhập
-        # Kỹ thuật vào qua Tailscale bằng tên box.<mã>.onebee.internal → tên này cũng phải có, lệch thì WebSocket chat hỏng
+        # Kỹ thuật vào qua Tailscale bằng tên box.<mã>.onebee.internal, người dùng trong LAN bằng onebee.local (mDNS)
+        # → các tên này cũng phải có, lệch thì WebSocket chat hỏng
         w = ve(False)["open-webui"]["environment"]
         self.assertIn("CORS_ALLOW_ORIGIN", w)
         for nguon in w["CORS_ALLOW_ORIGIN"].split(";"):
             self.assertRegex(nguon, r"^http://[a-z0-9.-]+:3000$")
-        self.assertEqual(w["CORS_ALLOW_ORIGIN"], "http://192.168.1.10:3000;http://box.anphu.onebee.internal:3000")
+        self.assertEqual(w["CORS_ALLOW_ORIGIN"],
+                         "http://192.168.1.10:3000;http://onebee.local:3000;http://box.anphu.onebee.internal:3000")
 
     def test_cors_o_che_do_https_van_dung_nhu_cu(self):
         cors = ve(True)["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"]

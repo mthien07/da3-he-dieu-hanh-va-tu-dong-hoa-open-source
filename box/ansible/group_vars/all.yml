@@ -28,6 +28,13 @@ onebee_box_ma_don_vi: ""
 # và cảnh báo. Nằm trong chứng chỉ CA; đổi IP = xoay CA (onebee_box_xoay_ca bên dưới) và đồng bộ lại mọi máy trạm.
 onebee_box_dia_chi: ""
 
+# Tên đơn vị hiện trên trang chủ Box (vd "HTX Nông nghiệp An Phú"). Để trống: chỉ hiện "OneBee Box".
+onebee_box_ten_don_vi: ""
+
+# Tên Box trong mạng LAN qua mDNS (avahi): máy trong LAN gõ http://<tên>.local thay cho IP — Windows 10+, macOS, iOS, Android,
+# Linux Mint tự nhận. Chữ thường không dấu, số, gạch giữa. LAN có 2 Box trùng tên thì Box sau tự thành <tên>-2.local → đặt tên khác.
+onebee_box_ten_mdns: onebee
+
 # Kỹ thuật vào Box qua Tailscale bằng tên box.<mã đơn vị>.onebee.internal (máy kỹ thuật thêm dòng /etc/hosts trỏ tới IP Tailscale của Box).
 # HTTPS (Pha 4): false = dịch vụ vẫn chạy HTTP như cũ (CA đã tạo, máy trạm nhận CA). Chỉ bật sau khi mọi máy trạm đã đồng bộ CA.
 onebee_box_https: false
@@ -38,7 +45,7 @@ onebee_box_https_bo_qua_chot_chan: false
 
 # Cổng trong mạng LAN (KHÔNG mở các cổng này ra Internet trên router)
 onebee_box_ports:
-  portal: 80  # trang giới thiệu các dịch vụ
+  portal: 80  # trang chủ: tình trạng Box + lối tắt các dịch vụ (http://onebee.local)
   open_webui: 3000  # Trợ lý AI
   n8n: 5678         # Tự động hóa
   uptime_kuma: 3001  # Giám sát

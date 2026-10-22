@@ -1,0 +1,14 @@
+# Quản lý bởi OneBee OS
+[Unit]
+Description=OneBee Box — số liệu tình trạng cho trang chủ
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/onebee-box/onebee-trang-thai-web.py {{ onebee_box_dir }}/portal/site/trang-thai.json {{ onebee_box_data }} /var/lib/onebee-box/sao-luu-lan-cuoi
+Nice=19
+# Chỉ đọc số liệu + hỏi Docker/systemd; chỉ được ghi vào thư mục trang chủ
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+ReadWritePaths={{ onebee_box_dir }}/portal/site
