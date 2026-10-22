@@ -1,0 +1,346 @@
+# shellcheck shell=bash
+# Tự chẩn đoán OneBee Box (quản lý bởi OneBee OS, không sửa tay). Được lệnh onebee-box nạp vào: sudo onebee-box chan-doan [--json]
+# 7 hạng mục: mạng, tài nguyên (ổ đĩa, RAM, CPU), container Docker, Trợ lý AI, thư mục chung (Samba), bản sao lưu, chứng chỉ.
+# Chỉ đọc và thử, không sửa gì (thử ghi thư mục chung bằng 1 file tạm, xóa ngay). Mã thoát: 0 = mọi mục OK, 1 = có cảnh báo, 2 = có lỗi.
+# --json: cùng kết quả dạng JSON (n8n, trang chủ đọc): {ket_luan, dem, hang_muc: [{ma, ten, trang_thai, muc: [{ma, ten, trang_thai, chi_tiet, goi_y}]}]}
+
+CHAN_DOAN_MODEL="{{ onebee_box_ai_model }}"
+CHAN_DOAN_SAMBA_USER="{{ onebee_box_samba_user }}"
+CHAN_DOAN_PROC="${ONEBEE_PROC:-/proc}"
+NGUONG_ROUTER_MS=5           # LAN có dây: router trả lời dưới 5 ms
+NGUONG_O_DIA_VANG=80         # % đã dùng: > 80 cảnh báo, > 90 lỗi
+NGUONG_O_DIA_DO=90
+NGUONG_RAM_TRONG_KB=1572864  # 1,5 GB: ít hơn thì Ollama dễ bị hệ điều hành tắt giữa chừng (hết RAM)
+NGUONG_AI_GIAY=5
+NGUONG_SAO_LUU_GIO=26        # sao lưu chạy 23:00 hằng đêm (+ 2 giờ dự phòng)
+NGUONG_CHUNG_CHI_NGAY=15
+
+CHAN_DOAN_HM_MA=(mang tai_nguyen docker ai samba sao_luu ssl)
+CHAN_DOAN_HM_TEN=("Mạng" "Tài nguyên (ổ đĩa, RAM, CPU)" "Dịch vụ Docker" "Trợ lý AI" "Thư mục chung (Samba)" "Bản sao lưu" "Chứng chỉ bảo mật (SSL)")
+# Container của Box và tên dễ hiểu (cùng thứ tự)
+CHAN_DOAN_CT=(onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server)
+CHAN_DOAN_CT_TEN=("Cổng web" "Bộ chạy model AI" "Giao diện Trợ lý AI" "Tự động hóa" "Giám sát" "Nhận sao lưu máy trạm")
+CHAN_DOAN_KQ=()   # mỗi phần tử: hạng mục, mã, trạng thái, tên, chi tiết, gợi ý — ngăn cách bằng \x1f (không bị gộp ô trống như tab)
+
+# ghi_kq <hạng mục> <mã> <ok|canh_bao|loi> <tên> <chi tiết> [gợi ý]
+ghi_kq() {
+  local -a o=("$@")
+  local i
+  for i in 0 1 2 3 4 5; do o[i]="${o[i]:-}"; o[i]="${o[i]//$'\x1f'/ }"; o[i]="${o[i]//$'\n'/ }"; done
+  CHAN_DOAN_KQ+=("${o[0]}"$'\x1f'"${o[1]}"$'\x1f'"${o[2]}"$'\x1f'"${o[3]}"$'\x1f'"${o[4]}"$'\x1f'"${o[5]}")
+}
+
+# So sánh số thập phân: lon_hon <a> <b> → đúng khi a > b
+lon_hon() { awk -v a="$1" -v b="$2" 'BEGIN {exit !(a + 0 > b + 0)}'; }
+
+# Thời gian trả lời trung bình (ms) khi ping $1 ($2 gói, mặc định 3); rỗng khi không trả lời
+thoi_gian_ping() { timeout 15 ping -c "${2:-3}" -W 2 -q "$1" 2>/dev/null | awk -F/ '/^(rtt|round-trip)/ {print $5}' || true; }
+
+kiem_mang() {
+  local gw ms dns
+  gw="$(ip -4 route show default 2>/dev/null | awk '{print $3; exit}')" || true
+  if [[ -z "${gw}" ]]; then
+    ghi_kq mang gateway loi "Cổng mạng (router)" "Box chưa có đường ra mạng (không có gateway mặc định)" \
+      "Kiểm tra dây mạng của Box, cấu hình mạng (netplan) hoặc DHCP trên router"
+  else
+    ms="$(thoi_gian_ping "${gw}")"
+    if [[ -z "${ms}" ]]; then
+      ghi_kq mang gateway loi "Cổng mạng (router)" "Router ${gw} không trả lời" \
+        "Kiểm tra dây mạng của Box, đèn cổng mạng trên router/switch; khởi động lại router nếu cần"
+    elif ! lon_hon "${NGUONG_ROUTER_MS}" "${ms}"; then
+      ghi_kq mang gateway canh_bao "Cổng mạng (router)" "Router ${gw} trả lời chậm: ${ms} ms (bình thường dưới ${NGUONG_ROUTER_MS} ms)" \
+        "Mạng LAN đang nghẽn hoặc dây/switch có vấn đề: kiểm tra switch, thay dây mạng; không nối Box qua Wi-Fi"
+    else
+      ghi_kq mang gateway ok "Cổng mạng (router)" "Router ${gw} trả lời sau ${ms} ms"
+    fi
+  fi
+  for dns in 1.1.1.1 8.8.8.8; do
+    ms="$(thoi_gian_ping "${dns}" 2)"
+    if [[ -n "${ms}" ]]; then ghi_kq mang internet ok "Internet" "Ra được Internet (${dns} trả lời sau ${ms} ms)"; break; fi
+  done
+  if [[ -z "${ms}" ]]; then
+    ghi_kq mang internet canh_bao "Internet" "Không ping được 1.1.1.1 và 8.8.8.8" \
+      "Box vẫn phục vụ trong LAN, nhưng không cập nhật, không gửi được email và kỹ thuật không hỗ trợ từ xa được: kiểm tra modem/đường truyền nhà mạng"
+  fi
+  if ! command -v tailscale >/dev/null; then
+    ghi_kq mang tailscale ok "Tailscale (hỗ trợ từ xa)" "Không dùng (chưa cài Tailscale)"
+  elif timeout 10 tailscale status >/dev/null 2>&1; then
+    ghi_kq mang tailscale ok "Tailscale (hỗ trợ từ xa)" "Đã nối — kỹ thuật vào hỗ trợ từ xa được"
+  else
+    ghi_kq mang tailscale canh_bao "Tailscale (hỗ trợ từ xa)" "Đã cài nhưng chưa nối — kỹ thuật không vào hỗ trợ từ xa được" \
+      "sudo systemctl restart tailscaled && sudo tailscale up"
+  fi
+}
+
+# kiem_o_dia <mã> <tên> <% đã dùng> <thư mục>
+kiem_o_dia() {
+  local ma="$1" ten="$2" pt="$3" thu_muc="$4"
+  local goi_y="Dọn file không cần trong thư mục chung, xóa model AI không dùng (sudo docker exec onebee-ollama ollama list), hoặc lắp ổ lớn hơn"
+  if [[ ! "${pt}" =~ ^[0-9]+$ ]]; then
+    ghi_kq tai_nguyen "${ma}" canh_bao "${ten}" "Không đọc được dung lượng ${thu_muc}" "Kiểm tra: df -h ${thu_muc}"
+  elif (( pt > NGUONG_O_DIA_DO )); then
+    ghi_kq tai_nguyen "${ma}" loi "${ten}" "Đã dùng ${pt}% (${thu_muc}) — sắp đầy, dịch vụ có thể ngừng ghi dữ liệu" "${goi_y}"
+  elif (( pt > NGUONG_O_DIA_VANG )); then
+    ghi_kq tai_nguyen "${ma}" canh_bao "${ten}" "Đã dùng ${pt}% (${thu_muc}), trên ngưỡng ${NGUONG_O_DIA_VANG}%" "${goi_y}"
+  else
+    ghi_kq tai_nguyen "${ma}" ok "${ten}" "Đã dùng ${pt}% (${thu_muc})"
+  fi
+}
+
+kiem_tai_nguyen() {
+  local pt_goc diem_goc pt_dl diem_dl ram nhan tai
+  read -r pt_goc diem_goc <<<"$(df -P / 2>/dev/null | awk 'NR == 2 {sub(/%/, "", $5); print $5, $6}' || true)"
+  read -r pt_dl diem_dl <<<"$(df -P "${DATA}" 2>/dev/null | awk 'NR == 2 {sub(/%/, "", $5); print $5, $6}' || true)"
+  if [[ -n "${diem_goc}" && "${diem_goc}" == "${diem_dl}" ]]; then
+    kiem_o_dia o_dia_he_thong "Ổ hệ thống (chứa cả dữ liệu)" "${pt_goc}" /
+  else
+    kiem_o_dia o_dia_he_thong "Ổ hệ thống" "${pt_goc}" /
+    kiem_o_dia o_dia_du_lieu "Ổ dữ liệu" "${pt_dl}" "${DATA}"
+  fi
+  ram="$(awk '/^MemAvailable:/ {print $2}' "${CHAN_DOAN_PROC}/meminfo" 2>/dev/null)" || true
+  if [[ ! "${ram}" =~ ^[0-9]+$ ]]; then
+    ghi_kq tai_nguyen ram canh_bao "RAM" "Không đọc được RAM trống" "Kiểm tra: free -h"
+  elif (( ram < NGUONG_RAM_TRONG_KB )); then
+    ghi_kq tai_nguyen ram canh_bao "RAM" "Còn trống $(awk -v k="${ram}" 'BEGIN {printf "%.1f", k / 1048576}') GB (dưới 1,5 GB)" \
+      "Trợ lý AI (Ollama) có thể bị tắt giữa chừng vì thiếu RAM: chờ việc nặng (sao lưu, AI) chạy xong, khởi động lại Box ngoài giờ làm việc, hoặc nâng RAM"
+  else
+    ghi_kq tai_nguyen ram ok "RAM" "Còn trống $(awk -v k="${ram}" 'BEGIN {printf "%.1f", k / 1048576}') GB"
+  fi
+  nhan="$(nproc 2>/dev/null || echo 1)"
+  tai="$(awk '{print $1}' "${CHAN_DOAN_PROC}/loadavg" 2>/dev/null)" || true
+  if [[ -z "${tai}" ]]; then
+    ghi_kq tai_nguyen cpu canh_bao "CPU" "Không đọc được tải CPU" "Kiểm tra: uptime"
+  elif lon_hon "${tai}" "${nhan}"; then
+    ghi_kq tai_nguyen cpu canh_bao "CPU" "Tải 1 phút ${tai} — vượt số nhân CPU (${nhan})" \
+      "Box đang quá tải, thường do Trợ lý AI đang trả lời hoặc sao lưu đang chạy: chờ vài phút rồi chạy lại; kéo dài thì xem: top"
+  else
+    ghi_kq tai_nguyen cpu ok "CPU" "Tải 1 phút ${tai} / ${nhan} nhân"
+  fi
+}
+
+kiem_docker() {
+  local i c ten st he
+  local -A trang=()
+  if ! timeout 20 docker info >/dev/null 2>&1; then
+    ghi_kq docker docker loi "Dịch vụ Docker" "Docker không chạy — Trợ lý AI, n8n, trang chủ, nhận sao lưu máy trạm đều ngừng" \
+      "sudo systemctl restart docker, rồi chạy lại: sudo onebee-box chan-doan"
+    return 0
+  fi
+  ghi_kq docker docker ok "Dịch vụ Docker" "Đang chạy"
+  # "tên trạng-thái sức-khỏe" mỗi dòng; container không có kiểm tra sức khỏe → "-"
+  while read -r c st he; do
+    [[ -z "${c}" ]] || trang["${c}"]="${st} ${he}"
+  done < <(timeout 20 docker inspect "${CHAN_DOAN_CT[@]}" 2>/dev/null | python3 -c '
+import json, sys
+try:
+    ds = json.load(sys.stdin)
+except ValueError:
+    ds = []
+for d in ds:
+    s = d.get("State") or {}
+    print(d.get("Name", "").lstrip("/"), s.get("Status", "?"), (s.get("Health") or {}).get("Status", "-"))' || true)
+  for i in "${!CHAN_DOAN_CT[@]}"; do
+    c="${CHAN_DOAN_CT[i]}"; ten="${CHAN_DOAN_CT_TEN[i]} (${c})"
+    read -r st he <<<"${trang[${c}]:-}"
+    if [[ -z "${st}" ]]; then
+      ghi_kq docker "${c}" loi "${ten}" "Không có container" \
+        "Tạo lại: sudo docker compose --project-directory ${BOX_DIR} up -d (hoặc chạy lại bộ cài OneBee Box)"
+    elif [[ "${st}" != running ]]; then
+      ghi_kq docker "${c}" loi "${ten}" "Không chạy (${st})" \
+        "Chạy lại: sudo docker compose --project-directory ${BOX_DIR} up -d; xem lỗi: sudo docker logs --tail 50 ${c}"
+    elif [[ "${he}" == unhealthy ]]; then
+      ghi_kq docker "${c}" loi "${ten}" "Đang chạy nhưng không khỏe (unhealthy)" \
+        "Xem lỗi: sudo docker logs --tail 50 ${c}; khởi động lại: sudo docker restart ${c}"
+    elif [[ "${he}" == starting ]]; then
+      ghi_kq docker "${c}" canh_bao "${ten}" "Đang khởi động" "Chờ 1–2 phút rồi chạy lại: sudo onebee-box chan-doan"
+    else
+      ghi_kq docker "${c}" ok "${ten}" "Đang chạy$([[ "${he}" == healthy ]] && echo ' (khỏe)')"
+    fi
+  done
+}
+
+# Gửi 1 câu hỏi ngắn tới Ollama (cổng 11434 trong mạng Docker — Ollama không mở cổng ra LAN) qua container Open WebUI, đo thời gian
+kiem_ai() {
+  local yc kq dong ma giay
+  yc="$(printf '{"model": "%s", "prompt": "test", "stream": false, "options": {"num_predict": 8}}' "${CHAN_DOAN_MODEL}")"
+  kq="$(timeout 150 docker exec onebee-open-webui curl -s -m 120 -H 'Content-Type: application/json' -d "${yc}" \
+        -w '\n%{http_code} %{time_total}' http://ollama:11434/api/generate 2>/dev/null)" || true
+  dong="${kq##*$'\n'}"
+  read -r ma giay <<<"${dong}"
+  if [[ -z "${kq}" ]]; then
+    ghi_kq ai ollama loi "Model ${CHAN_DOAN_MODEL}" "Không gọi được Ollama (container Trợ lý AI không chạy?)" \
+      "Xem mục Dịch vụ Docker ở trên; khởi động lại: sudo docker restart onebee-ollama onebee-open-webui"
+  elif [[ "${ma}" == 404 ]]; then
+    ghi_kq ai ollama loi "Model ${CHAN_DOAN_MODEL}" "Ollama chưa có model này" \
+      "Tải model (vài GB): sudo docker exec onebee-ollama ollama pull ${CHAN_DOAN_MODEL}"
+  elif [[ "${ma}" != 200 ]]; then
+    ghi_kq ai ollama loi "Model ${CHAN_DOAN_MODEL}" "Ollama không trả lời trong 120 giây (mã ${ma:-?})" \
+      "Khởi động lại: sudo docker restart onebee-ollama onebee-open-webui; vẫn lỗi thì xem: sudo docker logs --tail 50 onebee-ollama"
+  elif lon_hon "${giay}" "${NGUONG_AI_GIAY}"; then
+    ghi_kq ai ollama canh_bao "Model ${CHAN_DOAN_MODEL}" "Trả lời thử sau ${giay} giây (chậm, quá ${NGUONG_AI_GIAY} giây)" \
+      "Lần đầu sau khi bật Box phải nạp model vào RAM — chạy lại sau 1 phút; vẫn chậm thì Box thiếu RAM/CPU (xem mục Tài nguyên)"
+  else
+    ghi_kq ai ollama ok "Model ${CHAN_DOAN_MODEL}" "Trả lời thử sau ${giay} giây"
+  fi
+}
+
+kiem_samba() {
+  if systemctl is-active --quiet smbd; then
+    ghi_kq samba smbd ok "Dịch vụ Samba (smbd)" "Đang chạy"
+  else
+    ghi_kq samba smbd loi "Dịch vụ Samba (smbd)" "Không chạy — máy trạm không mở được thư mục chung" \
+      "sudo systemctl restart smbd; xem lỗi: sudo journalctl -u smbd -n 30"
+  fi
+  # Ghi thử bằng chính tài khoản Samba (root luôn ghi được nên không thử bằng root). $1/$$ thuộc shell con nên để trong nháy đơn
+  # shellcheck disable=SC2016
+  if [[ ! -d "${SHARE}" ]]; then
+    ghi_kq samba ghi_thu_muc_chung loi "Quyền ghi thư mục chung" "Không có thư mục ${SHARE}" "Chạy lại bộ cài OneBee Box"
+  elif timeout 10 runuser -u "${CHAN_DOAN_SAMBA_USER}" -- sh -c 'f="$1/.onebee-chan-doan-$$"; : >"$f" && rm -f "$f"' _ "${SHARE}" 2>/dev/null; then
+    ghi_kq samba ghi_thu_muc_chung ok "Quyền ghi thư mục chung" "Tài khoản ${CHAN_DOAN_SAMBA_USER} ghi được vào ${SHARE}"
+  else
+    ghi_kq samba ghi_thu_muc_chung loi "Quyền ghi thư mục chung" "Tài khoản ${CHAN_DOAN_SAMBA_USER} không ghi được vào ${SHARE}" \
+      "Sửa quyền: sudo chown root:onebee ${SHARE} && sudo chmod 2770 ${SHARE}; kiểm tra ổ dữ liệu còn trống (mục Tài nguyên)"
+  fi
+}
+
+kiem_sao_luu() {
+  local gio
+  if ! mountpoint -q "${BACKUP_MOUNT}"; then
+    ghi_kq sao_luu o_sao_luu loi "Ổ sao lưu" "Chưa gắn ổ vào ${BACKUP_MOUNT} — sao lưu đêm không chạy" \
+      "Gắn ổ sao lưu ngoài theo hướng dẫn cài Box (mục ổ sao lưu)"
+    ghi_kq sao_luu ban_moi_nhat loi "Bản sao lưu Box mới nhất" "Không đọc được kho (chưa gắn ổ)" "Gắn ổ rồi chạy lại: sudo onebee-box chan-doan"
+    return 0
+  fi
+  ghi_kq sao_luu o_sao_luu ok "Ổ sao lưu" "Đã gắn ${BACKUP_MOUNT}"
+  # Số giờ từ bản mới nhất ("khong-co" khi kho rỗng); --no-lock: không tranh khóa với lần sao lưu đang chạy
+  if [[ -s "${SECRETS}/restic-box" ]]; then
+    gio="$(RESTIC_REPOSITORY="${BACKUP_REPO}" RESTIC_PASSWORD_FILE="${SECRETS}/restic-box" \
+           timeout 120 restic snapshots --no-lock --json --tag onebee-box </dev/null 2>/dev/null | python3 -c '
+import datetime, json, re, sys
+s = json.load(sys.stdin)
+if not s:
+    print("khong-co")
+    sys.exit()
+t = max(datetime.datetime.fromisoformat(re.sub(r"(\.\d{6})\d+", r"\1", x["time"]).replace("Z", "+00:00")) for x in s)
+print(round((datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() / 3600, 1))' 2>/dev/null)" || gio=""
+  fi
+  if [[ -z "${gio:-}" ]]; then
+    ghi_kq sao_luu ban_moi_nhat loi "Bản sao lưu Box mới nhất" "Không mở được kho ${BACKUP_REPO} (chưa tạo kho, sai ổ hoặc thiếu mật khẩu kho)" \
+      "Chưa tạo kho: sudo onebee-box khoi-tao; đã có kho: kiểm tra đúng ổ sao lưu đang gắn"
+  elif [[ "${gio}" == khong-co ]]; then
+    ghi_kq sao_luu ban_moi_nhat loi "Bản sao lưu Box mới nhất" "Kho chưa có bản sao lưu nào" "Sao lưu ngay: sudo onebee-box sao-luu"
+  elif lon_hon "${gio}" "${NGUONG_SAO_LUU_GIO}"; then
+    ghi_kq sao_luu ban_moi_nhat canh_bao "Bản sao lưu Box mới nhất" "Cách đây ${gio} giờ (quá ${NGUONG_SAO_LUU_GIO} giờ — sao lưu đêm có thể đã lỗi)" \
+      "Xem nhật ký: sudo journalctl -u onebee-box-sao-luu -n 50; sao lưu ngay: sudo onebee-box sao-luu"
+  else
+    ghi_kq sao_luu ban_moi_nhat ok "Bản sao lưu Box mới nhất" "Cách đây ${gio} giờ"
+  fi
+}
+
+# kiem_ngay_het <mã> <tên> <số ngày còn, -1 = không có/đã hết hạn> <gợi ý>
+kiem_ngay_het() {
+  local ngay="$3"
+  [[ "${ngay}" =~ ^-?[0-9]+$ ]] || ngay=-1
+  if (( ngay < 0 )); then ghi_kq ssl "$1" loi "$2" "Không có hoặc đã hết hạn" "$4"
+  elif (( ngay < NGUONG_CHUNG_CHI_NGAY )); then ghi_kq ssl "$1" canh_bao "$2" "Còn ${ngay} ngày (dưới ${NGUONG_CHUNG_CHI_NGAY} ngày)" "$4"
+  else ghi_kq ssl "$1" ok "$2" "Còn ${ngay} ngày"; fi
+}
+
+kiem_chung_chi() {
+  local het ngay
+  kiem_ngay_het ca_goc "CA gốc của Box" "$(ca_con_ngay root)" \
+    "Xoay CA: đặt onebee_box_xoay_ca: true trong group_vars, chạy lại bộ cài, rồi: sudo onebee-box dong-bo-may --tat-ca"
+  kiem_ngay_het ca_trung_gian "CA trung gian (cấp chứng chỉ HTTPS)" "$(ca_con_ngay inter)" "Gia hạn ngay: sudo onebee-box gia-han-ca"
+  if ! https_bat; then
+    ghi_kq ssl https ok "Chứng chỉ HTTPS (cổng 443)" "HTTPS chưa bật — Box dùng HTTP trong LAN"
+    return 0
+  fi
+  # Chứng chỉ Caddy đang thật sự phục vụ (Caddy tự cấp lại từ CA trung gian; còn ít ngày = tự gia hạn đang lỗi)
+  het="$(timeout 10 openssl s_client -connect "${BOX_ADDRESS}:443" -noservername </dev/null 2>/dev/null \
+         | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)" || het=""
+  ngay=-1
+  if [[ -n "${het}" ]]; then
+    ngay=$(( ($(date -d "${het}" +%s) - $(date +%s)) / 86400 ))
+    (( ngay >= 0 )) || ngay=-1
+  fi
+  kiem_ngay_het https "Chứng chỉ HTTPS (cổng 443)" "${ngay}" \
+    "Khởi động lại cổng web để Caddy cấp lại: sudo docker restart onebee-portal; xem lỗi: sudo docker logs --tail 50 onebee-portal"
+}
+
+in_bang_chan_doan() {
+  local xanh="" vang="" do_="" dam="" tat="" i dong hm ma tt ten ct gy nhan mau n_ok=0 n_cb=0 n_loi=0
+  if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then xanh=$'\e[32m'; vang=$'\e[33m'; do_=$'\e[31m'; dam=$'\e[1m'; tat=$'\e[0m'; fi
+  echo "${dam}OneBee Box — tự chẩn đoán lúc $(date '+%H:%M %d/%m/%Y')${tat}"
+  for i in "${!CHAN_DOAN_HM_MA[@]}"; do
+    echo
+    echo "${dam}$((i + 1)). ${CHAN_DOAN_HM_TEN[i]}${tat}"
+    for dong in "${CHAN_DOAN_KQ[@]}"; do
+      IFS=$'\x1f' read -r hm ma tt ten ct gy <<<"${dong}"
+      [[ "${hm}" == "${CHAN_DOAN_HM_MA[i]}" ]] || continue
+      case "${tt}" in
+        ok) nhan="[OK]       "; mau="${xanh}"; n_ok=$((n_ok + 1)) ;;
+        canh_bao) nhan="[CẢNH BÁO] "; mau="${vang}"; n_cb=$((n_cb + 1)) ;;
+        *) nhan="[LỖI]      "; mau="${do_}"; n_loi=$((n_loi + 1)) ;;
+      esac
+      printf '  %s%s%s %s: %s\n' "${mau}" "${nhan}" "${tat}" "${ten}" "${ct}"
+      if [[ "${tt}" != ok && -n "${gy}" ]]; then printf '              → %s\n' "${gy}"; fi
+    done
+  done
+  echo
+  if (( n_loi > 0 )); then
+    echo "${dam}KẾT LUẬN: có ${n_loi} lỗi$( (( n_cb == 0 )) || echo ", ${n_cb} cảnh báo") — làm theo gợi ý (→) ở các dòng [LỖI] trước.${tat}"
+    echo "Cần kỹ thuật hỗ trợ: gửi kèm kết quả lệnh  sudo onebee-box chan-doan > chan-doan.txt"
+  elif (( n_cb > 0 )); then
+    echo "${dam}KẾT LUẬN: Box vẫn hoạt động, có ${n_cb} cảnh báo — xem gợi ý (→) ở các dòng [CẢNH BÁO].${tat}"
+  else
+    echo "${dam}KẾT LUẬN: Box hoạt động bình thường — ${n_ok}/${n_ok} mục đạt.${tat}"
+  fi
+}
+
+in_json_chan_doan() {
+  local i
+  local -a hm=()
+  for i in "${!CHAN_DOAN_HM_MA[@]}"; do hm+=("${CHAN_DOAN_HM_MA[i]}" "${CHAN_DOAN_HM_TEN[i]}"); done
+  printf '%s\n' "${CHAN_DOAN_KQ[@]}" | python3 -c '
+import datetime, json, sys
+a = sys.argv[1:]
+hang_muc = [{"ma": m, "ten": t, "trang_thai": "ok", "muc": []} for m, t in zip(a[0::2], a[1::2])]
+theo_ma = dict((h["ma"], h) for h in hang_muc)
+bac = dict(ok=0, canh_bao=1, loi=2)
+dem = dict(ok=0, canh_bao=0, loi=0)
+for dong in sys.stdin.read().splitlines():
+    if not dong:
+        continue
+    hm, ma, tt, ten, ct, gy = (dong.split("\x1f") + [""] * 6)[:6]
+    h = theo_ma[hm]
+    h["muc"].append(dict(ma=ma, ten=ten, trang_thai=tt, chi_tiet=ct, goi_y=gy))
+    dem[tt] += 1
+    if bac[tt] > bac[h["trang_thai"]]:
+        h["trang_thai"] = tt
+ket_luan = "loi" if dem["loi"] else ("canh_bao" if dem["canh_bao"] else "ok")
+print(json.dumps(dict(phien_ban=1, thoi_diem=datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+                      ket_luan=ket_luan, dem=dem, hang_muc=hang_muc), ensure_ascii=False, indent=2))' "${hm[@]}"
+}
+
+cmd_chan_doan() {
+  local json=0 dong tt muc=0
+  case "$*" in
+    "") ;;
+    --json) json=1 ;;
+    *) die "Cách dùng: sudo onebee-box chan-doan [--json]" ;;
+  esac
+  CHAN_DOAN_KQ=()
+  kiem_mang
+  kiem_tai_nguyen
+  kiem_docker
+  kiem_ai
+  kiem_samba
+  kiem_sao_luu
+  kiem_chung_chi
+  if [[ ${json} -eq 1 ]]; then in_json_chan_doan; else in_bang_chan_doan; fi
+  for dong in "${CHAN_DOAN_KQ[@]}"; do
+    IFS=$'\x1f' read -r _ _ tt _ <<<"${dong}"
+    if [[ "${tt}" == loi ]]; then muc=2; elif [[ "${tt}" == canh_bao && ${muc} -eq 0 ]]; then muc=1; fi
+  done
+  return "${muc}"
+}
