@@ -105,7 +105,7 @@ class ComposeHaiCheDo(unittest.TestCase):
     def test_cors_them_ghep_vao_sau_hai_nguon_mac_dinh_o_ca_hai_che_do(self):
         # Mở WebUI bằng tên/IP khác (DNS router, IP Tailscale, đường hầm SSH) thì Origin lệch → WebSocket chat bị chặn 403; quản trị khai thêm Origin ở đây
         them = ["http://onebee-box.lan:3000", "http://100.64.1.2:3000"]
-        mac_dinh_http = "http://192.168.1.10:3000;http://box.anphu.onebee.internal:3000"
+        mac_dinh_http = "http://192.168.1.10:3000;http://onebee.local:3000;http://box.anphu.onebee.internal:3000"
         mac_dinh_https = "https://192.168.1.10:3000;https://box.anphu.onebee.internal:3000"
         self.assertEqual(ve(False, cors_them=them)["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"], mac_dinh_http + ";" + ";".join(them))
         self.assertEqual(ve(True, cors_them=them)["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"], mac_dinh_https + ";" + ";".join(them))
@@ -114,7 +114,7 @@ class ComposeHaiCheDo(unittest.TestCase):
         # Box đã cài không khai biến mới → cấu hình sinh ra phải y hệt trước đây, không thêm dấu ";" thừa
         self.assertEqual(ve(False, cors_them=[]), ve(False))
         self.assertEqual(ve(True, cors_them=[]), ve(True))
-        self.assertEqual(ve(False)["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"], "http://192.168.1.10:3000;http://box.anphu.onebee.internal:3000")
+        self.assertEqual(ve(False)["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"], "http://192.168.1.10:3000;http://onebee.local:3000;http://box.anphu.onebee.internal:3000")
         self.assertEqual(ve(True)["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"], "https://192.168.1.10:3000;https://box.anphu.onebee.internal:3000")
 
     def test_cors_them_mac_dinh_trong_group_vars_la_danh_sach_rong(self):

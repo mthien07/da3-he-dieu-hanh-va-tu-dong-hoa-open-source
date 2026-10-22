@@ -36,6 +36,7 @@ Nhật ký cài đặt nằm ở `/var/log/onebee/`.
 | Trợ lý AI | Lệnh `hoi` (khi có khóa từ Box); mục **Trợ lý AI OneBee** trên thanh tác vụ/menu mở giao diện web của Trợ lý (cần máy đã kết nối Box) |
 | Quản lý từ Box | Báo tình trạng mỗi giờ; Box cập nhật máy qua SSH — xem [quan-ly-may-tram.md](quan-ly-may-tram.md) |
 | Menu OneBee | "Báo cần hỗ trợ (OneBee)" (mở biểu mẫu trên Box), "Cho phép hỗ trợ từ xa (OneBee)" |
+| Trợ lý file Windows | Tự động bắt file `.exe` / `.msi` khi bấm đúp; gợi ý ứng dụng Linux tương đương (Zalo Web, Chromium, IBus Bamboo, PDF Viewer, VLC, hỗ trợ từ xa) hoặc hỗ trợ chạy WINE / máy ảo kế toán |
 
 ## 5. Tùy chỉnh
 Sửa `desktop/ansible/group_vars/all.yml` rồi chạy lại bộ cài (chạy lại nhiều lần an toàn), ví dụ:
