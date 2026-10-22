@@ -21,6 +21,8 @@
 #   onebee-box in-ca               In vân tay + thông tin CA riêng của Box (đối chiếu khi cài CA lên thiết bị khác)
 #   onebee-box in-khoa             In các khóa bí mật để cất ngoài Box (thiếu khóa thì bản sao lưu vô dụng)
 #   onebee-box dat-mat-khau-email  Nhập mật khẩu hộp thư gửi (SMTP) cho n8n
+#   onebee-box dat-telegram        Cấu hình Bot Token và Chat ID nhận tin cảnh báo Telegram
+#   onebee-box canh-bao <MỨC> <TIÊU_ĐỀ> [NỘI_DUNG]  Gửi cảnh báo tức thời qua Telegram & n8n
 #   onebee-box email-thu           Gửi 1 email thử qua n8n (kiểm tra cấu hình email)
 set -euo pipefail
 LIB=/usr/local/lib/onebee-box
@@ -443,6 +445,26 @@ cmd_dat_mat_khau_email() {
   echo "Đã lưu. Chạy lại bộ cài OneBee Box để n8n dùng mật khẩu mới, rồi: sudo onebee-box email-thu"
 }
 
+cmd_dat_telegram() {
+  local token chat_id env_file="${SECRETS}/telegram.env"
+  mkdir -p "${SECRETS}"
+  read -r -p "Nhập Telegram Bot Token (từ @BotFather): " token
+  read -r -p "Nhập Telegram Chat ID (hoặc Group ID nhận tin): " chat_id
+  if [[ -z "${token}" || -z "${chat_id}" ]]; then
+    die "Bot Token và Chat ID không được để trống"
+  fi
+  (
+    umask 077
+    cat >"${env_file}" <<EOF
+TELEGRAM_BOT_TOKEN="${token}"
+TELEGRAM_CHAT_ID="${chat_id}"
+EOF
+  )
+  echo "Đã lưu cấu hình Telegram vào ${env_file}."
+  echo "Gửi thử thông báo kiểm tra kết nối..."
+  /usr/local/bin/onebee-canh-bao INFO "Kiểm tra kết nối Telegram" "OneBee Box đã kết nối thành công với bot Telegram này."
+}
+
 # Không cho 2 lệnh sao lưu / xoay khóa chạy chồng nhau (lịch tự động + chạy tay)
 lay_khoa() { exec 9>/run/onebee-box.lock; flock -n 9 || die "Đang có lệnh sao lưu / xoay khóa khác chạy — thử lại sau"; }
 with_lock() { lay_khoa; "$@"; }
@@ -450,6 +472,8 @@ with_lock() { lay_khoa; "$@"; }
 case "${1:-}" in
   trang-thai) cmd_trang_thai ;;
   chan-doan) shift; cmd_chan_doan "$@" ;;
+  canh-bao) shift; /usr/local/bin/onebee-canh-bao "$@" ;;
+  dat-telegram) cmd_dat_telegram ;;
   them-may) shift; cmd_them_may "$@" ;;
   may-tram) cmd_may_tram ;;
   bao-cao-tuan) shift; cmd_bao_cao_tuan "$@" ;;

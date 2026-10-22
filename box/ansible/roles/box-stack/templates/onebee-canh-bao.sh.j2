@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# onebee-canh-bao — Gửi cảnh báo sự cố chủ động qua Telegram Bot và Webhook n8n
+# Cú pháp:
+#   onebee-canh-bao INFO "Tiêu đề" "Nội dung"
+#   onebee-canh-bao WARN "Tiêu đề" "Nội dung"
+#   onebee-canh-bao CRIT "Tiêu đề" "Nội dung"
+set -euo pipefail
+
+MUC_DO="${1:-INFO}"
+MUC_DO_IN_HOA="$(echo "${MUC_DO}" | tr '[:lower:]' '[:upper:]')"
+TIEU_DE="${2:-Thông báo từ OneBee Box}"
+NOI_DUNG="${3:-}"
+THOI_GIAN="$(date '+%H:%M:%S %d/%m/%Y')"
+TEN_DON_VI="{{ onebee_box_ten_don_vi }}"
+SECRETS="/etc/onebee-box/secrets"
+TELEGRAM_ENV="${SECRETS}/telegram.env"
+
+# Chuẩn hóa mức độ & biểu tượng
+ICON="ℹ️"
+TEN_MUC="THÔNG BÁO"
+case "${MUC_DO_IN_HOA}" in
+  WARN|CANH_BAO)
+    ICON="⚠️"
+    TEN_MUC="CẢNH BÁO"
+    ;;
+  CRIT|KHAN_CAP|LOI)
+    ICON="🚨"
+    TEN_MUC="BÁO ĐỘNG KHẨN"
+    ;;
+  *)
+    ICON="ℹ️"
+    TEN_MUC="THÔNG BÁO"
+    ;;
+esac
+
+# 1. Gửi Telegram nếu đã cấu hình
+if [[ -f "${TELEGRAM_ENV}" ]]; then
+  # shellcheck source=/dev/null
+  . "${TELEGRAM_ENV}"
+  if [[ -n "${TELEGRAM_BOT_TOKEN:-}" && -n "${TELEGRAM_CHAT_ID:-}" ]]; then
+    MSG="${ICON} [${TEN_MUC} — ${TEN_DON_VI}]
+*${TIEU_DE}*
+Thời gian: ${THOI_GIAN}
+
+${NOI_DUNG}"
+
+    curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+      -d "chat_id=${TELEGRAM_CHAT_ID}" \
+      -d "text=${MSG}" \
+      -d "parse_mode=Markdown" >/dev/null 2>&1 || true
+  fi
+fi
+
+# 2. Gửi Webhook nội bộ tới n8n (chuyển tiếp Zalo, Email, ghi log)
+N8N_PORT="{{ onebee_box_ports.n8n }}"
+WEBHOOK_SECRET_FILE="${SECRETS}/n8n-webhook-box"
+WEBHOOK_AUTH_HEADER=""
+if [[ -f "${WEBHOOK_SECRET_FILE}" ]]; then
+  WEBHOOK_AUTH_HEADER="X-OneBee-Box-Token: $(cat "${WEBHOOK_SECRET_FILE}")"
+fi
+
+PAYLOAD=$(cat <<EOF
+{
+  "muc_do": "${MUC_DO_IN_HOA}",
+  "tieu_de": "${TIEU_DE}",
+  "noi_dung": "${NOI_DUNG}",
+  "don_vi": "${TEN_DON_VI}",
+  "thoi_gian": "${THOI_GIAN}"
+}
+EOF
+)
+
+curl -s -m 5 -X POST "http://127.0.0.1:${N8N_PORT}/webhook/onebee-canh-bao" \
+  -H "Content-Type: application/json" \
+  ${WEBHOOK_AUTH_HEADER:+-H "${WEBHOOK_AUTH_HEADER}"} \
+  -d "${PAYLOAD}" >/dev/null 2>&1 || true
+
+echo "Đã gửi cảnh báo [${MUC_DO_IN_HOA}]: ${TIEU_DE}"
