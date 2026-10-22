@@ -33,7 +33,7 @@ jobs:
           desktop/ansible/roles/quan-ly-tap-trung/files/onebee-chan-doan
           desktop/ansible/roles/ket-noi-box/files/onebee-loi-tat-chia-se
           box/ansible/roles/box-firewall/files/onebee-tuong-lua
-          box/*.sh box/ansible/roles/box-stack/files/onebee-ca.sh scripts/mo-truy-cap-tu-xa.sh
+          box/*.sh box/ansible/roles/box-stack/files/onebee-ca.sh scripts/*.sh
           tests/desktop/*.sh tests/desktop/extended/*.sh tests/box/*.sh
       # Test Caddyfile HTTPS chạy Caddy THẬT: lấy đúng binary từ image
       # đã ghim digest trong group_vars (không tải từ nơi khác)
@@ -53,6 +53,7 @@ jobs:
           tests/box/check-diagnosis.sh                         # onebee-box chan-doan (lệnh giả, CA thật)
           tests/box/check-rag-prompts.sh                       # kho prompt hành chính NĐ 30 & RAG
           tests/box/check-alerts.sh                            # cảnh báo Telegram & n8n webhook
+          tests/box/check-offline-bundle.sh                    # kịch bản đóng gói USB offline
           sudo -E env "PATH=${PATH}" tests/desktop/check-chan-doan-may-tram.sh   # onebee-chan-doan (root: mở cổng 445 giả)
       - name: yamllint
         run: yamllint .
