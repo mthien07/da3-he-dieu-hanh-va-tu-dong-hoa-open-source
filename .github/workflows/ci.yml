@@ -27,10 +27,12 @@ jobs:
         run: pip install -r requirements-dev.txt
       - name: shellcheck
         run: >-
-          shellcheck -e SC2016 desktop/*.sh desktop/scripts/onebee-windows-app-helper desktop/ansible/roles/backup-client/files/onebee-sao-luu
+          shellcheck -e SC2016 desktop/*.sh desktop/scripts/onebee-windows-app-helper
+          desktop/ansible/roles/backup-client/files/onebee-sao-luu
           desktop/ansible/roles/ho-tro-tu-xa/files/onebee-ho-tro box/ansible/roles/box-firewall/files/onebee-tuong-lua
           box/*.sh box/ansible/roles/box-stack/files/onebee-ca.sh tests/desktop/*.sh tests/desktop/extended/*.sh tests/box/*.sh
-      # Test Caddyfile HTTPS chạy Caddy THẬT: lấy đúng binary từ image đã ghim digest trong group_vars (không tải từ nơi khác)
+      # Test Caddyfile HTTPS chạy Caddy THẬT: lấy đúng binary từ image
+      # đã ghim digest trong group_vars (không tải từ nơi khác)
       - name: Lấy caddy từ image đã ghim digest
         run: |
           img="$(grep -oP '^  caddy: \K\S+' box/ansible/group_vars/all.yml)"
