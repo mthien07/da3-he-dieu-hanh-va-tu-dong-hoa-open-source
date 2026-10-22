@@ -1,0 +1,5 @@
+{
+  "command": "/bien-ban",
+  "title": "Lập Biên bản cuộc họp HTX",
+  "content": "Hãy giúp tôi lập Biên bản cuộc họp hoàn chỉnh cho Hợp tác xã / Đơn vị.\n\nThông tin cuộc họp:\n- Tên cuộc họp: [Họp Hội đồng quản trị / Đại hội thành viên / Giao ban tuần]\n- Thời gian & Địa điểm: [Ngày giờ, tại phòng họp nào]\n- Thành phần tham dự: [Chủ trì, Thư ký, số lượng thành viên có mặt / vắng mặt]\n- Nội dung thảo luận: [Các vấn đề đã thảo luận trong cuộc họp]\n- Ý kiến phát biểu: [Tóm tắt ý kiến đóng góp chính của các thành viên]\n- Kết quả biểu quyết: [Tán thành bao nhiêu %, không tán thành, ý kiến khác]\n- Kết luận của người chủ trì: [Các nhiệm vụ giao cụ thể, thời hạn hoàn thành]\n\nYêu cầu kết quả:\n1. Bố cục biên bản chuẩn mực, rõ ràng, minh bạch, dễ theo dõi.\n2. Phân tách rõ ràng giữa Diễn biến thảo luận và Kết luận chỉ đạo."
+}
