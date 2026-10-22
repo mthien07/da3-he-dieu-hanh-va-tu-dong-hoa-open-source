@@ -52,6 +52,7 @@ jobs:
           python3 tests/kiem-tra-mau-jinja.py
           tests/box/check-diagnosis.sh                         # onebee-box chan-doan (lệnh giả, CA thật)
           tests/box/check-rag-prompts.sh                       # kho prompt hành chính NĐ 30 & RAG
+          tests/box/check-alerts.sh                            # cảnh báo Telegram & n8n webhook
           sudo -E env "PATH=${PATH}" tests/desktop/check-chan-doan-may-tram.sh   # onebee-chan-doan (root: mở cổng 445 giả)
       - name: yamllint
         run: yamllint .
