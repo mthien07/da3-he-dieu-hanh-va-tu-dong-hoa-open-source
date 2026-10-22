@@ -20,6 +20,7 @@ Các bài unit mới: `test_onebee_ca.py` (CA, ràng buộc tên bằng openssl/
 `tests/desktop/test_onebee_ket_noi_box.py`, `test_onebee_clients_https.py`, `test_onebee_hoi.py` (máy chủ TLS thật). Tích hợp (Docker lồng, chưa chạy ở nơi viết): `check-https.sh`, `check-xoay-khoa.sh`, các sửa trong `verify-box-install.sh`/`check-khoi-phuc-toan-bo.sh`/`run-box-test-in-systemd-container.sh`.
 `tests/box/check-mdns-dashboard.sh` (chạy trên Box, trong `run-box-test-in-systemd-container.sh`): avahi chạy, `onebee.local` phân giải ra IP cổng mạng chính (không IPv6), quảng bá `_http._tcp` cổng 80, `http://onebee.local` có trang chủ, số liệu tình trạng mới.
 `tests/box/check-https.sh` (Docker lồng, chạy trong `run-box-test-in-systemd-container.sh`): chốt chặn, bật/tắt HTTPS, cổng, TLS, 308, cookie Secure, CORS, CSP n8n, máy trạm qua HTTPS.
+`tests/desktop/check-exe-handler.sh`: kiểm tra bộ trợ lý bắt file Windows `.exe` / `.msi` (onebee-windows-app-helper), đăng ký MIME handler hệ thống và nhận diện gợi ý ứng dụng thay thế (Zalo, Chrome, Unikey, Foxit, VLC, Ultraviewer, WINE/máy ảo).
 
 ## Chưa kiểm được bằng container (phải thử máy ảo / máy thật)
 - Phiên đăng nhập Cinnamon thật: thanh bộ gõ, hình nền hiển thị, phím tắt đổi bộ gõ (Super + Space) có đụng phím của Cinnamon không.

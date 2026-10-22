@@ -54,6 +54,40 @@ status=${PIPESTATUS[0]}
 set -e
 
 if [[ ${status} -eq 0 ]]; then
+  # 6. Cài đặt Trợ lý tập tin Windows (.exe, .msi) và đăng ký MIME handler
+  log "Cài đặt Trợ lý tập tin Windows (onebee-windows-app-helper)..."
+  install -d /usr/local/bin /usr/share/applications /etc/xdg
+  install -m 0755 "${SCRIPT_DIR}/scripts/onebee-windows-app-helper" /usr/local/bin/onebee-windows-app-helper
+  install -m 0644 "${SCRIPT_DIR}/assets/onebee-exe-handler.desktop" /usr/share/applications/onebee-exe-handler.desktop
+
+  if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications || true
+  fi
+
+  mime_types=(
+    application/x-msdos-program
+    application/x-msi
+    application/x-executable
+    application/vnd.microsoft.portable-executable
+  )
+
+  for mime in "${mime_types[@]}"; do
+    if command -v xdg-mime >/dev/null 2>&1; then
+      xdg-mime default onebee-exe-handler.desktop "${mime}" 2>/dev/null || true
+    fi
+  done
+
+  mime_conf="/etc/xdg/mimeapps.list"
+  touch "${mime_conf}"
+  if ! grep -q '\[Default Applications\]' "${mime_conf}"; then
+    printf '[Default Applications]\n' >> "${mime_conf}"
+  fi
+  for mime in "${mime_types[@]}"; do
+    if ! grep -q "^${mime}=" "${mime_conf}"; then
+      printf '%s=onebee-exe-handler.desktop\n' "${mime}" >> "${mime_conf}"
+    fi
+  done
+
   log "Hoàn tất. Hãy khởi động lại máy để áp dụng ngôn ngữ, bộ gõ tiếng Việt và giao diện."
 else
   die "Cài đặt chưa xong (mã lỗi ${status}). Gửi file ${LOG_FILE} cho kỹ thuật OneBee."
