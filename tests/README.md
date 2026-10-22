@@ -19,6 +19,10 @@ Các bài unit mới: `test_onebee_ca.py` (CA, ràng buộc tên bằng openssl/
 `test_onebee_mdns_dashboard.py` (avahi `onebee.local`, trang chủ Dashboard, số liệu tình trạng, Caddy thật cổng 80 với Host `onebee.local`),
 `tests/desktop/test_onebee_ket_noi_box.py`, `test_onebee_clients_https.py`, `test_onebee_hoi.py` (máy chủ TLS thật). Tích hợp (Docker lồng, chưa chạy ở nơi viết): `check-https.sh`, `check-xoay-khoa.sh`, các sửa trong `verify-box-install.sh`/`check-khoi-phuc-toan-bo.sh`/`run-box-test-in-systemd-container.sh`.
 `tests/box/check-mdns-dashboard.sh` (chạy trên Box, trong `run-box-test-in-systemd-container.sh`): avahi chạy, `onebee.local` phân giải ra IP cổng mạng chính (không IPv6), quảng bá `_http._tcp` cổng 80, `http://onebee.local` có trang chủ, số liệu tình trạng mới.
+`tests/box/check-diagnosis.sh` (vài giây, chạy được trên máy có bash 4 + python3 jinja2/pyyaml + openssl; CI chạy): `onebee-box chan-doan` dựng từ mẫu, lệnh giả
+(docker, ping, restic, systemctl…), CA thật — mọi thứ khỏe thì toàn OK/mã 0; tắt đúng 1 thứ (container n8n, smbd, router, model AI, ổ sao lưu, CA…) thì đúng mục đó
+báo cảnh báo/lỗi kèm gợi ý; JSON đủ 7 hạng mục. Chạy bằng root thì kiểm thêm chứng chỉ HTTPS thật ở cổng 443.
+`sudo tests/desktop/check-chan-doan-may-tram.sh` (vài giây, cần root để mở cổng 445 giả): `onebee-chan-doan` trên máy trạm với Box giả ở 127.0.0.1.
 `tests/box/check-https.sh` (Docker lồng, chạy trong `run-box-test-in-systemd-container.sh`): chốt chặn, bật/tắt HTTPS, cổng, TLS, 308, cookie Secure, CORS, CSP n8n, máy trạm qua HTTPS.
 
 ## Chưa kiểm được bằng container (phải thử máy ảo / máy thật)

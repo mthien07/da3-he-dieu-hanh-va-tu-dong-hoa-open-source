@@ -1,6 +1,13 @@
 # Nhật ký thay đổi
 
 ## [Chưa phát hành]
+### Tự chẩn đoán (22/10/2026)
+- **`sudo onebee-box chan-doan [--json]`**: 1 lệnh kiểm 7 hạng mục — mạng (router, Internet qua 1.1.1.1/8.8.8.8, Tailscale), tài nguyên (ổ `/` + dữ liệu,
+  RAM trống, tải CPU), 6 container (chạy + healthcheck), Trợ lý AI (prompt thử tới Ollama cổng 11434 trong mạng Docker, đo thời gian),
+  Samba (smbd + tài khoản thư mục chung ghi được), bản sao lưu Box mới nhất (đọc kho restic, không khóa kho), CA gốc/trung gian và chứng chỉ HTTPS
+  đang phục vụ. Bảng màu [OK]/[CẢNH BÁO]/[LỖI] kèm gợi ý tiếng Việt, kết luận chung; `--json` cho n8n/trang chủ. Mã thoát 0/1/2. Chỉ đọc.
+- **`onebee-chan-doan`** trên máy trạm (nhân viên chạy không cần sudo): router, Box, cổng dịch vụ trên Box, sao lưu của máy, ổ `/home`.
+- Test: `tests/box/check-diagnosis.sh`, `tests/desktop/check-chan-doan-may-tram.sh` (chạy trong CI).
 ### Sửa lỗi sau kiểm thử thật (14/10/2026, chi tiết: `docs/kiem-thu-tren-may-that.md` mục "Đợt sửa 14/10/2026")
 - **Open WebUI chế độ HTTP chặn Origin lạ:** `CORS_ALLOW_ORIGIN` = IP Box + `box.<mã>.onebee.internal` (cổng 3000) cả khi chưa bật HTTPS — trước đây phản chiếu mọi Origin
   kèm `allow-credentials`. Test `check-https.sh` không còn đạt giả khi curl lỗi.

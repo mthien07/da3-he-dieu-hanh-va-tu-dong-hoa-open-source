@@ -28,7 +28,8 @@ jobs:
       - name: shellcheck
         run: >-
           shellcheck -e SC2016 desktop/*.sh desktop/ansible/roles/backup-client/files/onebee-sao-luu
-          desktop/ansible/roles/ho-tro-tu-xa/files/onebee-ho-tro box/ansible/roles/box-firewall/files/onebee-tuong-lua
+          desktop/ansible/roles/ho-tro-tu-xa/files/onebee-ho-tro desktop/ansible/roles/quan-ly-tap-trung/files/onebee-chan-doan
+          box/ansible/roles/box-firewall/files/onebee-tuong-lua
           box/*.sh box/ansible/roles/box-stack/files/onebee-ca.sh tests/desktop/*.sh tests/desktop/extended/*.sh tests/box/*.sh
       # Test Caddyfile HTTPS chạy Caddy THẬT: lấy đúng binary từ image đã ghim digest trong group_vars (không tải từ nơi khác)
       - name: Lấy caddy từ image đã ghim digest
@@ -44,6 +45,8 @@ jobs:
           python3 -m unittest discover -s tests/desktop -p 'test_*.py'
           python3 -m unittest tests/ai/test_scoring_and_report.py
           python3 tests/kiem-tra-mau-jinja.py
+          tests/box/check-diagnosis.sh                         # onebee-box chan-doan (lệnh giả, CA thật)
+          sudo -E env "PATH=${PATH}" tests/desktop/check-chan-doan-may-tram.sh   # onebee-chan-doan (root: mở cổng 445 giả)
       - name: yamllint
         run: yamllint .
       - name: ansible-lint (Desktop)

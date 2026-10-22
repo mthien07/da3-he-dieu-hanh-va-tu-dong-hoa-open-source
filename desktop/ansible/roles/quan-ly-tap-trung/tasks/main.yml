@@ -15,6 +15,15 @@
     group: root
     mode: "0750"
 
+# Nhân viên tự chạy được (không cần sudo): mạng, Box, dịch vụ trên Box, sao lưu của máy, ổ đĩa
+- name: Cài lệnh tự chẩn đoán máy trạm (onebee-chan-doan)
+  ansible.builtin.copy:
+    src: onebee-chan-doan
+    dest: /usr/local/bin/onebee-chan-doan
+    owner: root
+    group: root
+    mode: "0755"
+
 - name: Bật báo tình trạng mỗi giờ
   when: onebee_may_tram.TINH_TRANG_URL | default('') | length > 0
   block:

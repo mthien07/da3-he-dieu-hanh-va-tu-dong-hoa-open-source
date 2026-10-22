@@ -60,6 +60,7 @@ check "Có lệnh sao lưu onebee-sao-luu + restic" bash -c "test -x /usr/local/
 check "Thư mục cấu hình /etc/onebee chỉ root vào (700)" bash -c "[ \"\$(stat -c %a /etc/onebee)\" = 700 ]"
 check "Có lệnh hỏi Trợ lý AI (hoi)" test -x /usr/local/bin/hoi
 check "Có lệnh báo tình trạng về Box" test -x /usr/local/sbin/onebee-bao-tinh-trang
+check "Có lệnh tự chẩn đoán máy trạm (onebee-chan-doan)" test -x /usr/local/bin/onebee-chan-doan
 check "Có hỗ trợ từ xa (onebee-ho-tro + x11vnc + mục menu)" bash -c \
   "test -x /usr/local/bin/onebee-ho-tro && command -v x11vnc && test -f /usr/share/applications/onebee-ho-tro.desktop"
 
