@@ -101,6 +101,13 @@ Khác với trên: máy **mới cài hệ điều hành ở nơi khác mạng, c
 Tailscale SSH + chia sẻ màn hình GNOME, theo [truy-cap-tu-xa-khi-cai-may.md](truy-cap-tu-xa-khi-cai-may.md). Đó là cầu nối **tạm**,
 tắt (`--tat`) khi bàn giao máy; hỗ trợ lâu dài vẫn là `onebee-ho-tro` ở trên (ADR 0004).
 
+## 4. Máy trạm tự chẩn đoán
+Nhân viên báo "không vào được Trợ lý AI / thư mục chung": trên máy đó mở cửa sổ dòng lệnh, gõ `onebee-chan-doan` (không cần sudo).
+Lệnh kiểm: router, Box có trả lời không, Box có mở cổng Trợ lý AI / thư mục chung (445) / nhận sao lưu, restic + lịch sao lưu + lần sao lưu cuối
+(> 26 giờ là cảnh báo), ổ `/home` — mỗi dòng [OK]/[CẢNH BÁO]/[LỖI] kèm gợi ý. Router không trả lời → lỗi ở dây mạng/router; router trả lời mà
+Box không → lỗi ở Box (kiểm thêm từ máy khác); Box trả lời mà cổng đóng → chạy `sudo onebee-box chan-doan` trên Box.
+Chạy bằng `sudo` thì đọc thêm cổng nhận sao lưu từ `/etc/onebee/may-tram.env`. Mã thoát: 0 = ổn, 1 = có cảnh báo, 2 = có lỗi.
+
 ## Giới hạn
 - Chưa thử trên máy thật (đã kiểm trong container: báo tình trạng, cập nhật qua SSH giữa 2 container, VNC giả lập).
 - Phiên Wayland chưa hỗ trợ hỗ trợ từ xa (Mint 22 mặc định X11).

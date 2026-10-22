@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # onebee-box — lệnh quản trị OneBee Box (quản lý bởi OneBee OS, không sửa tay)
 #   onebee-box trang-thai          Xem dịch vụ đang chạy, dung lượng ổ
+#   onebee-box chan-doan [--json]  Tự chẩn đoán 7 hạng mục (mạng, tài nguyên, Docker, AI, Samba, sao lưu, chứng chỉ) + gợi ý cách sửa
 #   onebee-box them-may <ten-may>  Cấp tài khoản sao lưu, khóa Trợ lý AI, quản lý cho 1 máy trạm; in cấu hình dán vào máy trạm
 #   onebee-box may-tram            Tình trạng các máy trạm: sao lưu, cập nhật, ổ đĩa, lần liên lạc cuối
 #   onebee-box cap-nhat-may <ten-may>|--tat-ca   Cập nhật phần mềm máy trạm từ Box (qua SSH; máy phải chứng minh được là máy đã cấp)
@@ -27,6 +28,8 @@ LIB=/usr/local/lib/onebee-box
 . "${LIB}/common.sh"
 # shellcheck source=/dev/null
 . "${LIB}/sao-luu.sh"
+# shellcheck source=/dev/null
+. "${LIB}/chan-doan.sh"
 
 [[ ${EUID} -eq 0 ]] || die "Hãy chạy bằng quyền quản trị: sudo onebee-box $*"
 
@@ -446,6 +449,7 @@ with_lock() { lay_khoa; "$@"; }
 
 case "${1:-}" in
   trang-thai) cmd_trang_thai ;;
+  chan-doan) shift; cmd_chan_doan "$@" ;;
   them-may) shift; cmd_them_may "$@" ;;
   may-tram) cmd_may_tram ;;
   bao-cao-tuan) shift; cmd_bao_cao_tuan "$@" ;;
@@ -468,5 +472,5 @@ case "${1:-}" in
   dat-mat-khau-email) cmd_dat_mat_khau_email ;;
   email-thu) bao_cao_n8n THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
                && echo "Đã chuyển cho n8n gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
-  *) sed -n '2,23p' "$0" | sed 's/^# //'; exit 1 ;;
+  *) sed -n '2,24p' "$0" | sed 's/^# //'; exit 1 ;;
 esac

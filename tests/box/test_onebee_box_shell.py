@@ -134,7 +134,7 @@ class OnebeeBoxShell(unittest.TestCase):
             return (txt.replace("/usr/local/lib/onebee-box", lib).replace("/var/log/onebee-box", f"{t}/log")
                     .replace("/run/onebee-box.lock", f"{t}/onebee-box.lock")
                     .replace("[[ ${EUID} -eq 0 ]] ||", "[[ 1 -eq 1 ]] ||"))
-        files = {"common.sh": "onebee-box-common.sh.j2", "sao-luu.sh": "onebee-box-sao-luu.sh.j2"}
+        files = {"common.sh": "onebee-box-common.sh.j2", "sao-luu.sh": "onebee-box-sao-luu.sh.j2", "chan-doan.sh": "onebee-box-chan-doan.sh.j2"}
         for dst, src in files.items():
             open(f"{lib}/{dst}", "w", encoding="utf-8").write(sua(render(env, src, **v)))
         self.cmd = f"{t}/bin/onebee-box"
