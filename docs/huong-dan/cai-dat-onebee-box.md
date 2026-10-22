@@ -4,12 +4,19 @@ OneBee Box là 1 máy chủ đặt tại đơn vị, trong mạng LAN. Dịch v�
 
 | Dịch vụ | Địa chỉ trong LAN | Dùng để |
 |---|---|---|
-| Trang giới thiệu | `http://<ip-box>/` | Bấm vào các dịch vụ bên dưới |
+| Trang chủ (Dashboard) | `http://onebee.local/` hoặc `http://<ip-box>/` | Tình trạng Box (CPU, RAM, ổ trống, Trợ lý AI, thư mục chung, sao lưu), lối tắt các dịch vụ, cẩm nang |
 | Trợ lý AI (Open WebUI + Ollama) | `http://<ip-box>:3000` | Hỏi đáp, soạn thảo — AI chạy tại chỗ, không gửi dữ liệu ra ngoài |
 | Tự động hóa (n8n) | `http://<ip-box>:5678` | Quy trình tự động |
 | Giám sát (Uptime Kuma) | `http://<ip-box>:3001` | Theo dõi dịch vụ còn chạy không |
-| Thư mục chung (Samba) | `smb://<ip-box>/chung` | Chia sẻ file trong đơn vị |
+| Thư mục chung (Samba) | `smb://onebee.local/chung` (Windows: `\\onebee.local\chung`) | Chia sẻ file trong đơn vị |
 | Kho sao lưu máy trạm | cổng 8000 | Máy trạm OneBee OS tự sao lưu lên |
+
+**Tên `onebee.local` (mDNS)**: Box tự quảng bá tên trong mạng LAN bằng avahi — máy Windows 10+, macOS, iOS, Android, Linux Mint gõ
+`http://onebee.local` là vào trang chủ, không cần nhớ IP (Box đổi IP thì tên tự trỏ IP mới; các dịch vụ khác vẫn cần IP cố định như mục 1). Đổi tên: `onebee_box_ten_mdns` trong `box/ansible/group_vars/all.yml`
+(LAN có 2 Box trùng tên thì Box sau tự thành `onebee-2.local` — hãy đặt tên khác). Tên đơn vị trên trang chủ: `onebee_box_ten_don_vi`.
+Tên chỉ dùng trong cùng mạng LAN (không qua router sang mạng khác, không qua Tailscale) và chỉ trỏ IPv4.
+Khi đã bật HTTPS, `http://onebee.local` mở trang hướng dẫn cài chứng chỉ (trang chủ ở `https://<ip-box>/`, chứng chỉ không cấp cho tên `.local`).
+Kiểm tra trên Box: `avahi-resolve-host-name -4 onebee.local`, hoặc chạy `sudo tests/box/check-mdns-dashboard.sh`.
 
 **Mở Trợ lý AI đúng địa chỉ:** dùng IP LAN của Box (`http://<ip-box>:3000`; `https://` khi đã bật HTTPS) hoặc, với kỹ thuật qua Tailscale,
 `box.<mã đơn vị>.onebee.internal`. Mở bằng tên/IP khác (tên DNS của router, IP Tailscale trần, đường hầm SSH `localhost`) thì trang vẫn hiện nhưng
@@ -49,7 +56,7 @@ git clone https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-sourc
 cd onebee
 sudo ./box/onebee-box-install.sh
 ```
-Lần đầu tải vài GB image. Xong sẽ in địa chỉ trang giới thiệu:
+Lần đầu tải vài GB image. Xong mở trang chủ `http://onebee.local` (hoặc IP Box in ở cuối bộ cài):
 
 ![Trang giới thiệu OneBee Box](anh/01-trang-gioi-thieu-box.png)
 

@@ -1,0 +1,11 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<!-- Quản lý bởi OneBee OS (box/ansible/roles/box-base): quảng bá trang chủ Box trong LAN (Safari, ứng dụng duyệt mạng tự thấy) -->
+<service-group>
+  <name replace-wildcards="yes">OneBee Box (%h)</name>
+  <service>
+    <type>_http._tcp</type>
+    <port>{{ onebee_box_ports.portal }}</port>
+    <txt-record>path=/</txt-record>
+  </service>
+</service-group>

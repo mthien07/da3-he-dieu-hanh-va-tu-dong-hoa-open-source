@@ -60,6 +60,8 @@
 		X-Frame-Options DENY
 		Referrer-Policy no-referrer
 	}
+	# Số liệu tình trạng trên trang chủ đổi mỗi phút (onebee-trang-thai-web.timer) → trình duyệt không giữ bản cũ
+	header /trang-thai.json Cache-Control no-store
 }
 
 {{ dia_chi(cong.open_webui) }} {
@@ -94,6 +96,7 @@
 }
 {% endif %}
 {% else %}
+# Cổng 80: trang chủ cho mọi tên gọi Box (IP, {{ onebee_box_ten_mdns }}.local qua mDNS)
 :80 {
 	root * /srv
 	file_server
@@ -103,5 +106,6 @@
 		Referrer-Policy no-referrer
 		-Server
 	}
+	header /trang-thai.json Cache-Control no-store
 }
 {% endif %}

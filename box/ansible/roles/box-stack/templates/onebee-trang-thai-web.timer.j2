@@ -1,0 +1,11 @@
+# Quản lý bởi OneBee OS
+[Unit]
+Description=OneBee Box — cập nhật số liệu tình trạng trang chủ mỗi phút
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=1min
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target

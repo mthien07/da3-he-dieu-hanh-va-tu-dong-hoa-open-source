@@ -129,6 +129,9 @@ cmd_sao_luu_co_bao_cao() {
   ( cmd_sao_luu ) 2>&1 | tee "${log}"
   st=${PIPESTATUS[0]}
   set -e
+  # Kết quả lần cuối cho ô "Sao lưu" trên trang chủ (onebee-trang-thai-web.py đọc)
+  printf '%s %s\n' "$([[ ${st} -eq 0 ]] && echo DAT || echo LOI)" "$(date +%s)" >/var/lib/onebee-box/sao-luu-lan-cuoi \
+    || warn "Không ghi được kết quả sao lưu cho trang chủ"
   bao_cao_n8n "$([[ ${st} -eq 0 ]] && echo DAT || echo LOI)" "$(tail -n 12 "${log}")" \
     || warn "Không gửi được báo cáo sao lưu qua n8n/email"
   rm -f "${log}"

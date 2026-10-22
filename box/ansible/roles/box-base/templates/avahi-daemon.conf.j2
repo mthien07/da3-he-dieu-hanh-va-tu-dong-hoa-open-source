@@ -1,0 +1,29 @@
+# Quản lý bởi OneBee OS (box/ansible/roles/box-base) — sửa group_vars rồi chạy lại bộ cài, không sửa tay
+# Box hiện trong LAN với tên {{ onebee_box_ten_mdns }}.local
+[server]
+host-name={{ onebee_box_ten_mdns }}
+domain-name=local
+{% if onebee_mdns_cong_mang %}
+# Chỉ cổng mạng chính: không quảng bá IP các mạng Docker (docker0, br-*) cho tên của Box
+allow-interfaces={{ onebee_mdns_cong_mang }}
+{% endif %}
+use-ipv4=yes
+# Docker chỉ mở cổng IPv4 → tên chỉ trỏ IPv4 (máy Windows thử IPv6 trước sẽ treo chờ)
+use-ipv6=no
+ratelimit-interval-usec=1000000
+ratelimit-burst=1000
+
+[wide-area]
+enable-wide-area=no
+
+[publish]
+publish-addresses=yes
+publish-aaaa-on-ipv4=no
+publish-a-on-ipv6=no
+# Không lộ địa chỉ MAC (dịch vụ _workstation) và hệ điều hành/CPU (HINFO) cho cả mạng
+publish-workstation=no
+publish-hinfo=no
+publish-domain=yes
+
+[reflector]
+enable-reflector=no

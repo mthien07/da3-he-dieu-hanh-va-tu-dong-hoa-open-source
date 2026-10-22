@@ -264,6 +264,41 @@
     mode: "0644"
   loop: [site, site-http]
 
+# Ô "Tình trạng hệ thống" của trang chủ đọc /trang-thai.json — tệp tĩnh do lịch trên Box ghi mỗi phút (không mở thêm API nào)
+- name: Tạo thư mục trạng thái của Box (kết quả sao lưu lần cuối)
+  ansible.builtin.file:
+    path: /var/lib/onebee-box
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Cài công cụ số liệu tình trạng cho trang chủ
+  ansible.builtin.copy:
+    src: onebee-trang-thai-web.py
+    dest: /usr/local/lib/onebee-box/onebee-trang-thai-web.py
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Cài lịch cập nhật số liệu tình trạng (systemd)
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - onebee-trang-thai-web.service
+    - onebee-trang-thai-web.timer
+
+- name: Bật lịch cập nhật số liệu tình trạng mỗi phút
+  ansible.builtin.systemd_service:
+    name: onebee-trang-thai-web.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
 # Máy đã cấp từ trước (Box nâng cấp) được ghi vào danh sách; Box mới chưa có máy nào thì không đổi gì
 - name: Đồng bộ danh sách máy đã cấp cho n8n
   ansible.builtin.command: /usr/local/sbin/onebee-box dong-bo-ten-may
