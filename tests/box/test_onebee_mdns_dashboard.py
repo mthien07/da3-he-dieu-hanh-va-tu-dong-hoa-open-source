@@ -22,6 +22,7 @@ import xml.etree.ElementTree as ET
 
 import jinja2
 import yaml
+from markupsafe import escape
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "../..")
@@ -30,10 +31,25 @@ TRANG_THAI_PY = os.path.join(ROLES, "box-stack/files/onebee-trang-thai-web.py")
 CADDY = os.environ.get("ONEBEE_TEST_CADDY") or shutil.which("caddy")
 
 
+def nhom_cam_nang():
+    with open(os.path.join(ROLES, "box-stack/tasks/main.yml"), encoding="utf-8") as f:
+        for t in yaml.safe_load(f):
+            facts = t.get("ansible.builtin.set_fact") or {}
+            if "onebee_cam_nang_nhom" in facts:
+                return facts["onebee_cam_nang_nhom"]
+    raise AssertionError("tasks box-stack thiếu onebee_cam_nang_nhom")
+
+
 def bien(**them):
     v = yaml.safe_load(open(os.path.join(ROOT, "box/ansible/group_vars/all.yml"), encoding="utf-8"))
     v.update(onebee_box_ip="192.168.1.10", onebee_box_ma_don_vi="anphu", onebee_https_hieu_luc=False,
              onebee_kuma_dia_chi="0.0.0.0", onebee_mdns_cong_mang="eth0")
+    # Hai nguồn dữ liệu dùng chung: cẩm nang phím tắt (máy trạm) và 4 gợi ý soạn văn bản (Trợ lý AI). Bộ cài nạp bằng lookup
+    for khoa, duong_dan in (("onebee_cam_nang", "desktop/ansible/roles/theme/files/onebee-cam-nang.json"),
+                            ("onebee_goi_y", "box/ansible/roles/box-ai/files/goi-y.json")):
+        with open(os.path.join(ROOT, duong_dan), encoding="utf-8") as f:
+            v[khoa] = json.load(f)
+    v["onebee_cam_nang_nhom"] = nhom_cam_nang()   # bảng tên nhóm do bộ cài đặt (tasks), test không chép lần hai
     v.update(them)
     return v
 
@@ -132,6 +148,34 @@ class TrangChu(unittest.TestCase):
         for y in ("Ctrl + P", "Super + Space", "Ctrl + S"):
             self.assertIn(y, h)
 
+    def test_cam_nang_ve_tu_nguon_chung(self):
+        for muc in bien()["onebee_cam_nang"]["phim_tat"]:
+            self.assertIn(muc["phim"], self.html, muc["ma"])
+        self.assertNotIn("Mở Terminal", self.html)   # nhân viên không phải mở Terminal: bấm biểu tượng Trợ lý trên thanh tác vụ
+
+    def test_cam_nang_du_bon_nhom_dung_thu_tu(self):
+        nhom = bien()["onebee_cam_nang_nhom"]
+        self.assertEqual([n["ten"] for n in nhom], ["Gõ tiếng Việt", "Màn hình và cửa sổ", "Chụp màn hình", "Soạn thảo"])
+        tieu_de = re.findall(r"<li><b>([^<]+)</b></li>", self.html.split('<summary>Phím tắt hay dùng</summary>', 1)[1].split("</details>", 1)[0])
+        self.assertEqual(tieu_de, [n["ten"] for n in nhom])
+        ma_nhom = {n["ma"] for n in nhom}
+        for muc in bien()["onebee_cam_nang"]["phim_tat"]:
+            self.assertIn(muc["nhom"], ma_nhom, muc["ma"])   # thêm nhóm mới vào cẩm nang mà quên bảng tên thì báo ngay
+
+    def test_loi_vao_mau_soan_van_ban(self):
+        h = self.html
+        goi_y = bien()["onebee_goi_y"]
+        self.assertTrue(goi_y)
+        for g in goi_y:
+            the = re.search(r'<a [^>]*data-q="' + re.escape(str(escape(g["content"][:20]))), h)
+            self.assertIsNotNone(the, g["title"])
+            self.assertIn('data-port="3000"', h[h.rfind("<a ", 0, the.end()):the.end()])
+        self.assertIn("submit=false", h)          # mở trang chỉ điền sẵn câu mở đầu, không tự chạy model
+        self.assertIn("models=onebee-tro-ly", h)
+
+    def test_o_may_tram_da_sao_luu(self):
+        self.assertIn('id="dv-may_tram"', self.html)
+
     def test_o_tinh_trang_doc_so_lieu_va_khong_dung_innerhtml(self):
         h = self.html
         self.assertIn('fetch("/trang-thai.json"', h)
@@ -170,7 +214,7 @@ class TrangThaiWeb(unittest.TestCase):
                 open(f, "w").write(nd + "\n")
                 self.assertEqual(self.m.sao_luu(f, bay_gio), mong, nd)
 
-    def chay(self, docker_ra, smbd_ma):
+    def chay(self, docker_ra, smbd_ma, tong_hop=None):
         t = self.t = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, t)
         bin_ = os.path.join(t, "bin")
@@ -184,6 +228,8 @@ class TrangThaiWeb(unittest.TestCase):
         open(os.path.join(proc, "stat"), "w").write("cpu  100 0 100 800 0 0 0 0 0 0\ncpu0 1 0 0 0 0 0 0 0 0 0\n")
         open(os.path.join(proc, "meminfo"), "w").write("MemTotal: 4000000 kB\nMemAvailable: 3000000 kB\n")
         open(os.path.join(t, "sao-luu-lan-cuoi"), "w").write(f"DAT {int(time.time())}\n")
+        if tong_hop is not None:
+            open(os.path.join(t, "may-tram-tong-hop"), "w").write(tong_hop)
         ra = os.path.join(t, "site", "trang-thai.json")
         os.makedirs(os.path.dirname(ra))
         r = subprocess.run([sys.executable, TRANG_THAI_PY, ra, t, os.path.join(t, "sao-luu-lan-cuoi")], capture_output=True, text=True,
@@ -194,13 +240,23 @@ class TrangThaiWeb(unittest.TestCase):
     def test_ghi_json_day_du_nguyen_tu_va_khong_lo_thong_tin_mang(self):
         ra = self.chay('echo true; echo true', 0)
         d = json.load(open(ra))
-        self.assertEqual(set(d), {"cap_nhat", "cpu_phan_tram", "ram_phan_tram", "o_dia", "dich_vu"})
+        self.assertEqual(set(d), {"cap_nhat", "cpu_phan_tram", "ram_phan_tram", "o_dia", "dich_vu", "may_tram"})
         self.assertEqual(d["ram_phan_tram"], 25)
+        self.assertIsNone(d["may_tram"])   # chưa có lần sao lưu đêm nào ghi tổng hợp
         self.assertEqual(set(d["o_dia"]), {"con_trong_gb", "da_dung_phan_tram"})
         self.assertGreater(d["o_dia"]["con_trong_gb"], 0)
         self.assertEqual(d["dich_vu"], {"tro_ly_ai": "chay", "thu_muc_chung": "chay", "sao_luu": "tot"})
         self.assertEqual(stat.S_IMODE(os.stat(ra).st_mode), 0o644)            # Caddy (không phải root) đọc được
         self.assertEqual(os.listdir(os.path.dirname(ra)), ["trang-thai.json"])  # không sót tệp tạm
+
+    def test_tong_hop_may_tram_chi_co_hai_con_so(self):
+        d = json.load(open(self.chay('echo true; echo true', 0, '{"tong": 5, "sao_luu_trong_han": 4, "luc": 1762905600}')))
+        self.assertEqual(d["may_tram"], {"tong": 5, "sao_luu_trong_han": 4})
+
+    def test_khong_co_tong_hop_may_tram_thi_null(self):
+        self.assertIsNone(json.load(open(self.chay('echo true; echo true', 0)))["may_tram"])
+        for rac in ("abc", '{"tong": 3, "sao_luu_trong_han": 4}', '{"tong": "5", "sao_luu_trong_han": 4}', '{"tong": 5}'):
+            self.assertIsNone(json.load(open(self.chay('echo true; echo true', 0, rac)))["may_tram"], rac)
 
     def test_dich_vu_ngung_hoac_khong_co_docker(self):
         d = json.load(open(self.chay('echo true; echo false', 3)))
@@ -229,6 +285,11 @@ class TrienKhai(unittest.TestCase):
         than = sh.split("cmd_sao_luu_co_bao_cao() {", 1)[1].split("\n}\n", 1)[0]
         self.assertIn("/var/lib/onebee-box/sao-luu-lan-cuoi", than)
         self.assertIn("DAT", than)
+
+    def test_sao_luu_dem_ghi_tong_hop_may_tram(self):
+        sh = ve("box-stack/templates/onebee-box-sao-luu.sh.j2")
+        self.assertIn("may_tram_py dem", sh)
+        self.assertIn("/var/lib/onebee-box/may-tram-tong-hop", sh)
 
     def test_open_webui_nhan_origin_onebee_local_o_che_do_http(self):
         s = yaml.safe_load(ve("box-stack/templates/docker-compose.yml.j2"))["services"]

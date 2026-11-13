@@ -28,6 +28,10 @@ Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài ch�
 - Ngưỡng báo sao lưu trễ của `onebee-chan-doan` trên máy trạm đổi từ 26 giờ sang 72 giờ cho khớp Box (máy tắt cuối tuần không bị báo nhầm).
 - Trợ lý AI trên Box: 4 gợi ý tiếng Việt bấm được trên màn hình trò chuyện mới (chèn câu mở đầu vào ô nhập để người dùng viết tiếp)
   và dòng nhắc "Trợ lý AI có thể sai" trên giao diện web.
+- Trang chủ Box: cẩm nang phím tắt lấy từ `onebee-cam-nang.json`, cùng nguồn với máy văn phòng; không còn hướng dẫn mở Terminal.
+- Trang chủ Box: mục "Soạn văn bản bằng Trợ lý AI" có 4 thẻ mở thẳng Trợ lý với câu mở đầu điền sẵn (từ `goi-y.json`), người dùng viết tiếp rồi tự bấm gửi.
+- Trang chủ Box: ô "Máy trạm đã sao lưu" cho quản lý biết bao nhiêu máy đã sao lưu trong 3 ngày; chỉ hiện hai con số, không có tên máy,
+  cập nhật sau lần sao lưu đêm.
 
 ## [1.1.0] — 22/10/2026 — Năm tính năng mới và bộ cài USB offline
 Phiên bản 1.0.0 chuyển hóa OneBee OS (DA3) thành sản phẩm thương mại hoàn chỉnh, hấp thụ tinh hoa kiến trúc từ các dự án mã nguồn mở hàng đầu thế giới (CasaOS, YunoHost, Zorin OS, Nextcloud, Synology/TrueNAS).
