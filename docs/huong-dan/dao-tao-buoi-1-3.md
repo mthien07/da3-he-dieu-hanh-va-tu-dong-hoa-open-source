@@ -9,7 +9,7 @@ Mục tiêu: người dùng tự mở máy, tìm ứng dụng, gõ tiếng Việ
 1. (10') Vì sao đổi: máy nhanh hơn/ổn định (nói số đo "trước" của chính máy đó nếu đã đo), không bản quyền lậu, có sao lưu.
 2. (15') Màn hình: nút menu góc trái (hoặc phím Windows), thanh tác vụ, khay đồng hồ, tắt/khởi động lại máy.
    Thực hành: mở Firefox, LibreOffice Writer, thư mục cá nhân; ghim ứng dụng hay dùng ra thanh tác vụ.
-3. (15') Gõ tiếng Việt: Telex như Unikey. Đổi Việt/Anh bằng phím tắt ghi trên [tờ phím tắt](to-phim-tat.md).
+3. (15') Gõ tiếng Việt: Telex như Unikey. Đổi Việt/Anh: **Super + Space** (ghi trên [tờ phím tắt](to-phim-tat.md)).
    Thực hành: gõ tên đơn vị, một câu có đủ dấu.
 4. (15') File: thư mục Tài liệu, Tải xuống; file cũ từ Windows đã chép ở đâu; thư mục chung trên Box (`smb://<ip-box>/chung`).
 5. (5') Khi gặp khó: menu **"Báo cần hỗ trợ (OneBee)"** — chọn loại sự cố, mô tả, gửi. Gấp thì gọi điện thêm.
@@ -26,7 +26,7 @@ Kiểm tra cuối buổi: mỗi người làm 1 văn bản thật của mình, x
 
 ## Buổi 3 — Box, Trợ lý AI, tự động (tuần 2)
 Mục tiêu: dùng được các tiện ích trên OneBee Box, biết dữ liệu được sao lưu thế nào.
-1. (15') Trợ lý AI `http://<ip-box>:3000` → chọn "Trợ lý OneBee": soạn công văn nháp, tóm tắt văn bản.
+1. (15') Trợ lý AI: bấm biểu tượng **"Trợ lý AI OneBee"** trên thanh tác vụ: soạn công văn nháp, tóm tắt văn bản.
    **AI có thể sai** — luôn đọc lại số liệu, tên, ngày tháng. Không dán mật khẩu, số tài khoản vào ô hỏi.
    Lệnh `hoi` trên máy (cho người quen dòng lệnh): mỗi người chạy một lần `hoi --dang-nhap` (hoặc `hoi --dan-khoa`) để dùng khóa riêng của mình.
    **Nhân viên đã từng gõ mật khẩu Trợ lý AI/biểu mẫu khi Box còn chạy HTTP: đổi mật khẩu ngay** (Open WebUI → Cài đặt → Tài khoản → đổi mật khẩu).
