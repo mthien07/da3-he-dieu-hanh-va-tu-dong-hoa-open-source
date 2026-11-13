@@ -230,6 +230,26 @@ class EnforceSettings(unittest.TestCase):
             {"chatDirection": "auto", "insertSuggestionPrompt": True},
         )
 
+    def test_bang_nhac_them_mot_lan_va_giu_bang_cua_quan_tri(self):
+        khac = {
+            "id": "khac",
+            "type": "info",
+            "title": "",
+            "content": "Thông báo của quản trị",
+            "dismissible": True,
+            "timestamp": 1700000000,
+        }
+        WebuiGia.state["banners"] = [khac]
+        WebuiGia.state["posts"] = []
+        with redirect_stdout(io.StringIO()):
+            self.w.dong_bo_bang_nhac("tok")
+        self.assertEqual(WebuiGia.state["posts"], ["/api/v1/configs/banners"])
+        self.assertEqual(WebuiGia.state["banners"], [khac, self.w.BANG_NHAC])
+        WebuiGia.state["posts"] = []
+        with redirect_stdout(io.StringIO()):
+            self.w.dong_bo_bang_nhac("tok")
+        self.assertEqual(WebuiGia.state["posts"], [])
+
 
 class TaiKhoanMay(unittest.TestCase):
     """lay-khoa (chỉ đọc) và xoa-tai-khoan (thu hồi máy) — rà soát bảo mật F2: thu hồi/in lại cấu hình không có tác dụng phụ."""
