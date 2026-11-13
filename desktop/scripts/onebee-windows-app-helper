@@ -204,7 +204,9 @@ thuc_thi_hanh_dong() {
       fi
       ;;
     bao_ho_tro)
-      if [[ -f /usr/share/applications/onebee-bao-ho-tro.desktop ]] && command -v gtk-launch >/dev/null 2>&1; then
+      if command -v onebee-bao-ho-tro >/dev/null 2>&1; then
+        onebee-bao-ho-tro --loai "Phần mềm chỉ chạy trên Windows" --mo-ta "Cần dùng file Windows: ${ten_tep}" >/dev/null 2>&1 &
+      elif [[ -f /usr/share/applications/onebee-bao-ho-tro.desktop ]] && command -v gtk-launch >/dev/null 2>&1; then
         gtk-launch onebee-bao-ho-tro >/dev/null 2>&1 &
       else
         bao "Máy này chưa có mục Báo cần hỗ trợ (máy chưa nối OneBee Box). Hãy gọi điện cho kỹ thuật OneBee."
