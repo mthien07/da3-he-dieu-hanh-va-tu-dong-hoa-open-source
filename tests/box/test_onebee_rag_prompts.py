@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 """Kiểm thử unit test cho module Prompts và Knowledge Base RAG."""
+import inspect
 import io
 import json
 import os
@@ -110,13 +111,45 @@ class TestRAGPrompts(unittest.TestCase):
             onebee_webui.dong_bo_prompts(token="test-token")
 
     @patch("onebee_webui.call")
-    def test_dong_bo_tri_thuc_create_collection(self, mock_call):
+    def test_tri_thuc_da_co_thi_khong_tao_trung(self, mock_call):
+        mock_call.return_value = (
+            200,
+            {
+                "items": [
+                    {
+                        "id": "kb1",
+                        "name": "Thư viện Pháp lý HTX",
+                        "access_grants": [{"principal_type": "user", "principal_id": "*", "permission": "read"}],
+                    }
+                ],
+                "total": 1,
+            },
+        )
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            cid = onebee_webui.dong_bo_tri_thuc(token="test-token")
+        out = buf.getvalue()
+        self.assertEqual(cid, "kb1")
+        paths = [(c.args[0], c.args[1]) for c in mock_call.call_args_list]
+        self.assertNotIn(("POST", "/api/v1/knowledge/create"), paths)
+        self.assertNotIn("đã tạo", out)
+
+    @patch("onebee_webui.call")
+    def test_tri_thuc_chua_co_thi_tao_mot_lan_va_cho_moi_nguoi_doc(self, mock_call):
         mock_call.side_effect = [
-            (200, []),  # GET /api/v1/knowledge/ -> chưa có
-            (200, {"id": "col-123", "name": "Thư viện Pháp lý HTX"}),  # POST /api/v1/knowledge/create
+            (200, {"items": [], "total": 0}),
+            (200, {"id": "kb2"}),
         ]
         cid = onebee_webui.dong_bo_tri_thuc(token="test-token")
-        self.assertEqual(cid, "col-123")
+        self.assertEqual(cid, "kb2")
+        posts = [c for c in mock_call.call_args_list if c.args[0] == "POST" and c.args[1] == "/api/v1/knowledge/create"]
+        self.assertEqual(len(posts), 1)
+        body = posts[0].args[3] if len(posts[0].args) > 3 else posts[0].kwargs.get("body")
+        self.assertEqual(body.get("access_grants"), onebee_webui.PUBLIC_READ)
+
+    def test_dong_bo_tro_ly_khong_tu_tao_bo_tri_thuc(self):
+        src = inspect.getsource(onebee_webui.dong_bo_tro_ly)
+        self.assertNotIn("dong_bo_tri_thuc(", src)
 
 
 if __name__ == "__main__":

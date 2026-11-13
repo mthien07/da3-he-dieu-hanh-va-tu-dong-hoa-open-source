@@ -174,34 +174,40 @@ def dong_bo_prompts(token=None):
     return count
 
 
+def tim_bo_tri_thuc(token, ten):
+    page, da_gom = 1, 0
+    while True:
+        st, d = call("GET", f"/api/v1/knowledge/search?query={urllib.parse.quote(ten)}&page={page}", token)
+        if st != 200 or not isinstance(d, dict):
+            sys.exit(f"LỖI: không liệt kê được bộ tri thức ({st}): {d}")
+        for it in d["items"]:
+            if it.get("name") == ten:
+                return it
+        da_gom += len(d["items"])
+        if not d["items"] or da_gom >= d["total"]:
+            return None
+        page += 1
+
+
 def dong_bo_tri_thuc(token=None):
     """Tạo hoặc cập nhật Bộ tri thức cơ sở RAG (Thư viện Pháp lý HTX) trên Open WebUI."""
     if token is None:
         token = admin_token()
-    status, collections = call("GET", "/api/v1/knowledge/", token)
-    col_id = None
-    target_name = "Thư viện Pháp lý HTX"
-    if status == 200 and isinstance(collections, list):
-        for c in collections:
-            if isinstance(c, dict) and c.get("name") == target_name:
-                col_id = c.get("id")
-                break
-    if not col_id:
-        payload = {
-            "name": target_name,
-            "description": "Bộ văn bản pháp luật và quy chuẩn hành chính cơ sở (Luật HTX 2023, Nghị định 30/2020/NĐ-CP)",
-            "data": {}
-        }
-        c_status, c_data = call("POST", "/api/v1/knowledge/create", token, payload)
-        if c_status in (200, 201) and isinstance(c_data, dict):
-            col_id = c_data.get("id")
-            print(f"Bộ tri thức RAG: đã tạo mới danh mục '{target_name}' (id: {col_id})")
-        else:
-            print(f"Bộ tri thức RAG: Open WebUI chưa sẵn sàng module Knowledge ({c_status})")
-            return None
-    else:
-        print(f"Bộ tri thức RAG: danh mục '{target_name}' đã tồn tại (id: {col_id})")
-    return col_id
+    ten = "Thư viện Pháp lý HTX"
+    cur = tim_bo_tri_thuc(token, ten)
+    if cur:
+        print(f"Bộ tri thức: '{ten}' đã có, không đổi")
+        return cur["id"]
+    payload = {
+        "name": ten,
+        "description": "Bộ văn bản pháp luật và quy chuẩn hành chính cơ sở (Luật HTX 2023, Nghị định 30/2020/NĐ-CP)",
+        "access_grants": PUBLIC_READ,
+    }
+    st, d = call("POST", "/api/v1/knowledge/create", token, payload)
+    if st != 200 or not isinstance(d, dict):
+        sys.exit(f"LỖI: không tạo được bộ tri thức '{ten}' ({st}): {d}")
+    print(f"Bộ tri thức: đã tạo '{ten}'")
+    return d["id"]
 
 
 def dong_bo_tro_ly():
@@ -227,7 +233,6 @@ def dong_bo_tro_ly():
     else:
         print("Trợ lý OneBee: đã cập nhật cài đặt quản trị" if settings_changed else "Trợ lý OneBee: không đổi")
     dong_bo_prompts(token)
-    dong_bo_tri_thuc(token)
 
 
 def cap_khoa(ten):
