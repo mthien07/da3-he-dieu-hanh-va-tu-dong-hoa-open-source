@@ -12,6 +12,8 @@ Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài ch�
 - `desktop/ansible/roles/theme/files/onebee-cam-nang.json`: một nguồn cho phím tắt và tên gọi; test
   `tests/desktop/test_onebee_cam_nang.py` báo lỗi khi cấu hình máy hoặc tài liệu lệch nguồn này.
 - `tests/desktop/check-exe-handler.sh` được chạy trong CI.
+- **Trung tâm OneBee** (`onebee-trung-tam`, role `trung-tam`): tự mở ở lần đăng nhập đầu của mỗi người và ghim đầu menu Bắt đầu; gồm trang Bắt đầu (6 ô lớn dẫn tới Soạn văn bản, Bảng tính, Thư mục của tôi, Thư mục chung, Trợ lý AI, Cần giúp đỡ), trang Phím tắt (đọc từ `onebee-cam-nang.json`) và trang Cần giúp đỡ.
+- Biến `onebee_dien_thoai_ho_tro` trong `desktop/ansible/group_vars/all.yml`: số điện thoại hỗ trợ khẩn cấp hiển thị ở trang Cần giúp đỡ của Trung tâm OneBee (để trống thì ẩn).
 
 ## [1.1.0] — 22/10/2026 — Năm tính năng mới và bộ cài USB offline
 Phiên bản 1.0.0 chuyển hóa OneBee OS (DA3) thành sản phẩm thương mại hoàn chỉnh, hấp thụ tinh hoa kiến trúc từ các dự án mã nguồn mở hàng đầu thế giới (CasaOS, YunoHost, Zorin OS, Nextcloud, Synology/TrueNAS).
