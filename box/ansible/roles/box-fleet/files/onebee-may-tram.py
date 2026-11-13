@@ -4,6 +4,7 @@
   onebee-may-tram.py bang    <thu-muc-tinh-trang> ten=gio ...        In bảng cho người quản trị
   onebee-may-tram.py payload <thu-muc-tinh-trang> <trang_thai> <noi_dung> ten=gio ...
                                                                      JSON báo cáo gửi n8n (email hằng ngày)
+  onebee-may-tram.py dem     <thu-muc-tinh-trang> ten=gio ...        JSON hai con số {tong, sao_luu_trong_han, luc} cho trang chủ (không có tên máy)
   onebee-may-tram.py kho     <thu-muc-tinh-trang> ten ...            In "ten ip [ghim|chua-ghim]" của máy có thể SSH tới (cập nhật qua SSH)
 
 Biến môi trường (do lệnh onebee-box đặt):
@@ -186,6 +187,13 @@ def in_bang(rows):
     return 0
 
 
+def in_so_luong(rows):
+    """In đúng hai con số cho trang chủ Box (tệp công khai trong LAN): tổng số máy trạm và số máy đã sao lưu trong NGUONG_SAO_LUU_GIO giờ."""
+    trong_han = sum(1 for r in rows if isinstance(r["gio_tu_lan_cuoi"], int) and 0 <= r["gio_tu_lan_cuoi"] <= NGUONG_SAO_LUU_GIO)
+    print(json.dumps({"tong": len(rows), "sao_luu_trong_han": trong_han, "luc": int(time.time())}))
+    return 0
+
+
 def in_kho(thu_muc, danh_sach):
     """In "ten ip ghim|chua-ghim" cho máy có thể SSH tới.
 
@@ -220,13 +228,15 @@ def in_kho(thu_muc, danh_sach):
 
 
 def main(argv):
-    if len(argv) < 3 or argv[1] not in ("bang", "payload", "kho"):
+    if len(argv) < 3 or argv[1] not in ("bang", "payload", "dem", "kho"):
         sys.exit(__doc__)
     lenh, thu_muc = argv[1], argv[2]
     if lenh == "kho":
         return in_kho(thu_muc, argv[3:])
     if lenh == "bang":
         return in_bang(tong_hop(thu_muc, argv[3:]))
+    if lenh == "dem":
+        return in_so_luong(tong_hop(thu_muc, argv[3:]))
     trang_thai, noi_dung = argv[3], argv[4]
     rows = [] if trang_thai == "THU" else tong_hop(thu_muc, argv[5:])
     print(json.dumps({"trang_thai": trang_thai, "noi_dung": noi_dung, "nguong_gio": NGUONG_SAO_LUU_GIO,
