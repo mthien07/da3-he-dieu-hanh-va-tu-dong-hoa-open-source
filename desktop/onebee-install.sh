@@ -65,10 +65,12 @@ if [[ ${status} -eq 0 ]]; then
   fi
 
   mime_types=(
+    application/vnd.microsoft.portable-executable
+    application/x-msdownload
+    application/x-ms-dos-executable
+    application/x-dosexec
     application/x-msdos-program
     application/x-msi
-    application/x-executable
-    application/vnd.microsoft.portable-executable
   )
 
   for mime in "${mime_types[@]}"; do
@@ -79,6 +81,7 @@ if [[ ${status} -eq 0 ]]; then
 
   mime_conf="/etc/xdg/mimeapps.list"
   touch "${mime_conf}"
+  sed -i '\|^application/x-executable=onebee-exe-handler.desktop$|d' "${mime_conf}"   # bản 1.1.0 trở về trước đăng ký nhầm kiểu của chương trình Linux
   if ! grep -q '\[Default Applications\]' "${mime_conf}"; then
     printf '[Default Applications]\n' >> "${mime_conf}"
   fi

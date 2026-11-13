@@ -5,6 +5,7 @@
 #   onebee-windows-app-helper <tep_tin.exe|tep_tin.msi>
 #   onebee-windows-app-helper --detect <tep_tin>   (chỉ in kết quả nhận diện ra terminal)
 #   onebee-windows-app-helper --cli <tep_tin>      (chạy chế độ dòng lệnh dù có màn hình)
+#   onebee-windows-app-helper --lam <mã> <tep_tin> (làm ngay một hành động, không hiện hộp thoại hỏi)
 set -euo pipefail
 
 PHAN_MEM_BAN_QUYEN="OneBee OS"
@@ -17,6 +18,7 @@ Cách dùng: onebee-windows-app-helper [TÙY CHỌN] <đường_dẫn_file>
 Tùy chọn:
   --detect     Nhận diện và in thông tin phân tích ra stdout (không mở giao diện)
   --cli        Chạy giao diện dòng lệnh (không gọi hộp thoại zenity)
+  --lam <mã>   Làm ngay hành động có mã <mã> (ví dụ browser, pdf_reader, wine, bao_ho_tro), không hiện hộp thoại hỏi
   -h, --help   Hiển thị hướng dẫn này
   -v, --version Hiển thị thông tin phiên bản
 EOF
@@ -24,6 +26,7 @@ EOF
 
 che_do="gui"
 tep_tin=""
+ma_lam=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -34,6 +37,16 @@ while [[ $# -gt 0 ]]; do
     --cli)
       che_do="cli"
       shift
+      ;;
+    --lam)
+      if [[ $# -lt 2 ]]; then
+        printf 'LỖI: --lam cần kèm mã hành động.\n\n' >&2
+        in_huong_dan >&2
+        exit 1
+      fi
+      che_do="lam"
+      ma_lam="$2"
+      shift 2
       ;;
     -h|--help)
       in_huong_dan
@@ -77,36 +90,36 @@ lenh_hanh_dong=""
 if [[ "${ten_tep_thuong}" == *zalo* ]]; then
   ten_ung_dung="Zalo (Bản cài đặt Windows)"
   khoa_nhan_dien="zalo"
-  goi_y="Đã có Zalo phiên bản Web / Native cho OneBee OS. Bạn có thể mở ngay Zalo Web trên trình duyệt để nhắn tin mà không cần cài đặt phần mềm Windows."
+  goi_y="Dùng Zalo ngay trên trình duyệt (Zalo Web), không cần cài phần mềm Windows."
   nhan_hanh_dong="Mở Zalo Web"
   lenh_hanh_dong="zalo_web"
 
 elif [[ "${ten_tep_thuong}" == *chrome* || "${ten_tep_thuong}" == *chromium* ]]; then
-  ten_ung_dung="Google Chrome / Trình duyệt Web"
+  ten_ung_dung="Trình duyệt web (Chrome, Cốc Cốc, Edge...)"
   khoa_nhan_dien="chrome"
-  goi_y="OneBee OS đã tích hợp sẵn trình duyệt Chromium / Firefox bảo mật, tương thích 100% với các trang web và dịch vụ công. Không cần cài đặt bản Windows!"
+  goi_y="Máy đã có sẵn trình duyệt Firefox, dùng được các trang web và dịch vụ công như trên Windows. Không cần cài bản Windows."
   nhan_hanh_dong="Mở Trình duyệt Web"
   lenh_hanh_dong="browser"
 
 elif [[ "${ten_tep_thuong}" == *unikey* ]]; then
   ten_ung_dung="Bộ gõ tiếng Việt UniKey"
   khoa_nhan_dien="unikey"
-  goi_y="Hệ điều hành đã tích hợp sẵn bộ gõ IBus Bamboo chuẩn quốc gia, gõ tiếng Việt mượt mà và không lo lỗi xung đột. Không cần cài đặt UniKey!"
+  goi_y="Máy đã có sẵn bộ gõ tiếng Việt (IBus Bamboo), gõ Telex như Unikey. Không cần cài Unikey."
   nhan_hanh_dong="Mở Cài đặt Bộ gõ"
   lenh_hanh_dong="ime_setup"
 
 elif [[ "${ten_tep_thuong}" == *foxit* || "${ten_tep_thuong}" == *acrobat* || "${ten_tep_thuong}" == *adobereader* || "${ten_tep_thuong}" == *pdfreader* ]]; then
   ten_ung_dung="Trình đọc tài liệu PDF (Foxit / Adobe Acrobat)"
   khoa_nhan_dien="foxit"
-  goi_y="OneBee OS đã tích hợp sẵn Trình đọc tài liệu PDF nhẹ, an toàn, mở tức thì và không bị chèn quảng cáo độc hại."
+  goi_y="Máy đã có sẵn trình đọc PDF. Bấm đúp vào file PDF là mở được."
   nhan_hanh_dong="Mở Trình đọc PDF"
   lenh_hanh_dong="pdf_reader"
 
 elif [[ "${ten_tep_thuong}" == *vlc* ]]; then
-  ten_ung_dung="Trình phát đa phương tiện VLC"
+  ten_ung_dung="Trình phát phim, nhạc"
   khoa_nhan_dien="vlc"
-  goi_y="Đã có sẵn trình phát đa phương tiện VLC Native cho Linux chất lượng cao, hỗ trợ toàn bộ các định dạng video, âm thanh."
-  nhan_hanh_dong="Mở VLC Linux"
+  goi_y="Máy đã có sẵn trình phát phim, nhạc. Bấm đúp vào file phim, nhạc là mở được."
+  nhan_hanh_dong="Mở trình phát phim, nhạc"
   lenh_hanh_dong="media_player"
 
 elif [[ "${ten_tep_thuong}" == *ultraviewer* || "${ten_tep_thuong}" == *teamviewer* || "${ten_tep_thuong}" == *anydesk* ]]; then
@@ -119,85 +132,96 @@ elif [[ "${ten_tep_thuong}" == *ultraviewer* || "${ten_tep_thuong}" == *teamview
 elif [[ "${ten_tep_thuong}" == *office* || "${ten_tep_thuong}" == *word* || "${ten_tep_thuong}" == *excel* || "${ten_tep_thuong}" == *powerpoint* ]]; then
   ten_ung_dung="Microsoft Office (Word / Excel / PowerPoint)"
   khoa_nhan_dien="office"
-  goi_y="OneBee OS đã chuẩn hóa bộ ứng dụng LibreOffice tương thích định dạng .docx, .xlsx, .pptx và đầy đủ phông chữ tiếng Việt chuẩn."
+  goi_y="LibreOffice trên máy mở và lưu được file Word, Excel, PowerPoint (.docx, .xlsx, .pptx)."
   nhan_hanh_dong="Mở LibreOffice"
   lenh_hanh_dong="libreoffice"
 
 else
   ten_ung_dung="Ứng dụng Windows (${ten_tep})"
   khoa_nhan_dien="unknown_windows"
-  goi_y="Tập tin này là phần mềm dành riêng cho hệ điều hành Microsoft Windows (.exe / .msi). Bạn có thể chạy thử qua WINE, mở trên máy ảo kế toán chuyên dụng hoặc yêu cầu kỹ thuật OneBee hỗ trợ."
+  goi_y="Tập tin này là phần mềm chỉ chạy trên Windows (.exe / .msi). Hãy báo kỹ thuật OneBee để được hướng dẫn cách làm việc này trên máy."
   nhan_hanh_dong="Tùy chọn tương thích"
   lenh_hanh_dong="advanced_options"
 fi
+
+# Hiện lời nhắn: hộp thoại khi có màn hình và zenity, ngược lại in ra màn hình
+bao() {
+  local loi_nhan="$1"
+  if [[ "${che_do}" == "gui" && -n "${DISPLAY:-}" ]] && command -v zenity >/dev/null 2>&1; then
+    zenity --info --title="${TIEU_DE}" --width=420 --text="${loi_nhan}" 2>/dev/null || true
+  else
+    printf '%b\n' "${loi_nhan}"
+  fi
+}
+
+# mo_hoac_bao "<tên hiển thị>" <lệnh 1> [<lệnh 2> ...]: chạy nền lệnh đầu tiên có trên máy; không có lệnh nào thì nói rõ cho người dùng
+mo_hoac_bao() {
+  local ten_hien_thi="$1" lenh
+  local -a phan_lenh
+  shift
+  for lenh in "$@"; do
+    read -r -a phan_lenh <<<"${lenh}"
+    if command -v "${phan_lenh[0]}" >/dev/null 2>&1; then
+      "${phan_lenh[@]}" >/dev/null 2>&1 &
+      return 0
+    fi
+  done
+  bao "Máy này chưa có ${ten_hien_thi}.\n\nBấm \"Báo cần hỗ trợ (OneBee)\" trong menu Bắt đầu để kỹ thuật cài giúp."
+}
 
 thuc_thi_hanh_dong() {
   local hanh_dong="$1"
   case "${hanh_dong}" in
     zalo_web)
-      if command -v xdg-open >/dev/null 2>&1; then
-        xdg-open 'https://chat.zalo.me' >/dev/null 2>&1 &
-      elif command -v x-www-browser >/dev/null 2>&1; then
-        x-www-browser 'https://chat.zalo.me' >/dev/null 2>&1 &
-      fi
+      mo_hoac_bao "trình duyệt web" "xdg-open https://chat.zalo.me" "x-www-browser https://chat.zalo.me"
       ;;
     browser)
-      if command -v x-www-browser >/dev/null 2>&1; then
-        x-www-browser >/dev/null 2>&1 &
-      elif command -v chromium-browser >/dev/null 2>&1; then
-        chromium-browser >/dev/null 2>&1 &
-      elif command -v firefox >/dev/null 2>&1; then
-        firefox >/dev/null 2>&1 &
-      fi
+      mo_hoac_bao "trình duyệt web" "x-www-browser" "firefox"
       ;;
     ime_setup)
-      if command -v ibus-setup >/dev/null 2>&1; then
-        ibus-setup >/dev/null 2>&1 &
-      fi
+      mo_hoac_bao "công cụ cài đặt bộ gõ" "ibus-setup"
       ;;
     pdf_reader)
-      if command -v evince >/dev/null 2>&1; then
-        evince >/dev/null 2>&1 &
-      elif command -v xreader >/dev/null 2>&1; then
-        xreader >/dev/null 2>&1 &
-      fi
+      mo_hoac_bao "trình đọc PDF" "xreader" "evince"
       ;;
     media_player)
-      if command -v vlc >/dev/null 2>&1; then
-        vlc >/dev/null 2>&1 &
-      elif command -v celluloid >/dev/null 2>&1; then
-        celluloid >/dev/null 2>&1 &
-      fi
-      ;;
-    onebee_support)
-      if command -v onebee-ho-tro >/dev/null 2>&1; then
-        onebee-ho-tro &
-      fi
+      mo_hoac_bao "trình phát phim, nhạc" "celluloid" "vlc"
       ;;
     libreoffice)
-      if command -v libreoffice >/dev/null 2>&1; then
-        libreoffice >/dev/null 2>&1 &
-      fi
+      mo_hoac_bao "LibreOffice" "libreoffice"
+      ;;
+    remote_vm)
+      mo_hoac_bao "phần mềm nối máy tính từ xa (Remmina)" "remmina"
+      ;;
+    onebee_support)
+      mo_hoac_bao "công cụ hỗ trợ từ xa OneBee" "onebee-ho-tro"
       ;;
     wine)
       if command -v wine >/dev/null 2>&1; then
         wine "${tep_tin}" >/dev/null 2>&1 &
       else
-        if [[ -n "${DISPLAY:-}" ]] && command -v zenity >/dev/null 2>&1; then
-          zenity --info --title="${TIEU_DE}" \
-            --text="Máy chưa cài đặt môi trường tương thích WINE.\n\nHãy liên hệ kỹ thuật viên OneBee hoặc quản trị viên để được hỗ trợ cài đặt." 2>/dev/null || true
-        else
-          printf 'CẢNH BÁO: Máy chưa cài đặt môi trường WINE. Cần liên hệ kỹ thuật OneBee.\n'
-        fi
+        bao "Máy này chưa có môi trường chạy phần mềm Windows (WINE).\n\nBấm \"Báo cần hỗ trợ (OneBee)\" trong menu Bắt đầu để kỹ thuật xem giúp."
       fi
       ;;
-    remote_vm)
-      if command -v remmina >/dev/null 2>&1; then
-        remmina >/dev/null 2>&1 &
+    bao_ho_tro)
+      if [[ -f /usr/share/applications/onebee-bao-ho-tro.desktop ]] && command -v gtk-launch >/dev/null 2>&1; then
+        gtk-launch onebee-bao-ho-tro >/dev/null 2>&1 &
+      else
+        bao "Máy này chưa có mục Báo cần hỗ trợ (máy chưa nối OneBee Box). Hãy gọi điện cho kỹ thuật OneBee."
       fi
+      ;;
+    *)
+      printf 'LỖI: Không có hành động "%s".\n' "${hanh_dong}" >&2
+      return 1
       ;;
   esac
 }
+
+# 0. Chế độ làm ngay một hành động (dùng cho kiểm thử tự động và cho các nút), không hiện hộp thoại nào khác
+if [[ "${che_do}" == "lam" ]]; then
+  thuc_thi_hanh_dong "${ma_lam}" || exit 1
+  exit 0
+fi
 
 # 1. Chế độ Detect (dành cho automation test & script phân tích)
 if [[ "${che_do}" == "detect" ]]; then
@@ -228,23 +252,22 @@ if [[ "${co_gui}" == true ]]; then
   else
     # Trường hợp file lạ: cung cấp các lựa chọn WINE / Máy ảo / Hỗ trợ kỹ thuật
     thong_diep="Tập tin: <b>${ten_tep}</b> (${kich_thuoc})\n\n${goi_y}\n\nVui lòng chọn cách xử lý bên dưới:"
+    cac_dong_chon=()
+    if command -v wine >/dev/null 2>&1; then
+      cac_dong_chon+=("wine" "🚀 Chạy thử với môi trường tương thích WINE")
+    fi
+    if command -v remmina >/dev/null 2>&1; then
+      cac_dong_chon+=("remote_vm" "💻 Mở máy ảo / máy kế toán chuyên dụng (Remmina)")
+    fi
+    cac_dong_chon+=("bao_ho_tro" "Báo cần hỗ trợ (gửi yêu cầu cho kỹ thuật OneBee)" "cancel" "❌ Đóng lại")
     lua_chon="$(zenity --list --title="${TIEU_DE}" --text="${thong_diep}" \
       --column="Mã" --column="Phương án xử lý" --hide-column=1 \
       --width=520 --height=280 \
-      "wine" "🚀 Chạy thử với môi trường tương thích WINE" \
-      "remote_vm" "💻 Mở máy ảo / máy kế toán chuyên dụng (Remmina)" \
-      "onebee_support" "📞 Yêu cầu hỗ trợ kỹ thuật OneBee" \
-      "cancel" "❌ Đóng lại" 2>/dev/null || printf 'cancel')"
+      "${cac_dong_chon[@]}" 2>/dev/null || printf 'cancel')"
 
     case "${lua_chon}" in
-      wine)
-        thuc_thi_hanh_dong "wine"
-        ;;
-      remote_vm)
-        thuc_thi_hanh_dong "remote_vm"
-        ;;
-      onebee_support)
-        thuc_thi_hanh_dong "onebee_support"
+      wine|remote_vm|bao_ho_tro)
+        thuc_thi_hanh_dong "${lua_chon}"
         ;;
       *)
         exit 0
@@ -263,9 +286,16 @@ else
   printf '============================================================\n'
   if [[ "${khoa_nhan_dien}" == "unknown_windows" ]]; then
     printf ' Các tùy chọn có sẵn:\n'
-    printf '  1. Chạy thử với môi trường WINE:      wine "%s"\n' "${tep_tin}"
-    printf '  2. Mở máy ảo kế toán chuyên dụng:    remmina\n'
-    printf '  3. Yêu cầu hỗ trợ kỹ thuật OneBee:   onebee-ho-tro\n'
+    so_thu_tu=1
+    if command -v wine >/dev/null 2>&1; then
+      printf '  %d. Chạy thử với môi trường WINE:      wine "%s"\n' "${so_thu_tu}" "${tep_tin}"
+      so_thu_tu=$((so_thu_tu + 1))
+    fi
+    if command -v remmina >/dev/null 2>&1; then
+      printf '  %d. Mở máy ảo kế toán chuyên dụng:    remmina\n' "${so_thu_tu}"
+      so_thu_tu=$((so_thu_tu + 1))
+    fi
+    printf '  %d. Báo cần hỗ trợ: bấm "Báo cần hỗ trợ (OneBee)" trong menu Bắt đầu\n' "${so_thu_tu}"
     printf '============================================================\n'
   fi
 fi
