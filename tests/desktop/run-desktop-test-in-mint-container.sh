@@ -23,8 +23,8 @@ docker run --rm ${extra_ca[@]+"${extra_ca[@]}"} -v "${REPO_ROOT}:/onebee:ro" "${
   apt-get install -y -q mintupdate mint-artwork cinnamon-desktop-data cinnamon-common nemo-data libglib2.0-bin >/dev/null
 
   cp -r /onebee /tmp/onebee
-  echo "===== LẦN 1: cài đặt ====="
-  /tmp/onebee/desktop/onebee-install.sh | tee /tmp/run1.log
+  echo "===== LẦN 1: cài đặt (LANG=vi_VN như Mint cài bằng tiếng Việt) ====="
+  LANG=vi_VN /tmp/onebee/desktop/onebee-install.sh | tee /tmp/run1.log
   echo "===== LẦN 2: kiểm tra idempotent ====="
   /tmp/onebee/desktop/onebee-install.sh | tee /tmp/run2.log
   if ! grep -Eq "changed=0 .*failed=0" /tmp/run2.log; then
