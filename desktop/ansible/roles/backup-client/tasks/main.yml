@@ -100,3 +100,65 @@
       Chưa bật sao lưu: chạy 'sudo onebee-box them-may <tên-máy>' trên OneBee Box,
       dán kết quả vào /etc/onebee/may-tram.env rồi chạy lại bộ cài.
   when: not onebee_backup_conf.stat.exists
+
+# Nhắc người đang đăng nhập khi máy lâu chưa sao lưu: dịch vụ mức người dùng của systemd, bật cho mọi người dùng bằng liên kết
+# trong /etc/systemd/user (không cần gọi systemctl). Không có 'when': máy chưa nối Box thì lệnh tự im lặng.
+- name: Tạo thư mục lệnh của OneBee
+  ansible.builtin.file:
+    path: /usr/local/lib/onebee
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Cài lệnh nhắc sao lưu trễ
+  ansible.builtin.copy:
+    src: onebee-nhac-sao-luu
+    dest: /usr/local/lib/onebee/onebee-nhac-sao-luu
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Cài lịch nhắc sao lưu trễ (mức người dùng)
+  ansible.builtin.copy:
+    dest: "/etc/systemd/user/{{ item.name }}"
+    content: "{{ item.content }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - name: onebee-nhac-sao-luu.service
+      content: |
+        # Quản lý bởi OneBee OS
+        [Unit]
+        Description=OneBee — nhắc khi máy lâu chưa sao lưu
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/local/lib/onebee/onebee-nhac-sao-luu
+    - name: onebee-nhac-sao-luu.timer
+      content: |
+        # Quản lý bởi OneBee OS — 30 phút sau khi đăng nhập, rồi mỗi 6 giờ (lệnh tự giới hạn một thông báo mỗi ngày)
+        [Unit]
+        Description=OneBee — lịch nhắc khi máy lâu chưa sao lưu
+
+        [Timer]
+        OnStartupSec=30min
+        OnUnitActiveSec=6h
+
+        [Install]
+        WantedBy=timers.target
+
+- name: Tạo thư mục bật lịch của người dùng
+  ansible.builtin.file:
+    path: /etc/systemd/user/timers.target.wants
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Bật lịch nhắc sao lưu trễ cho mọi người dùng
+  ansible.builtin.file:
+    src: /etc/systemd/user/onebee-nhac-sao-luu.timer
+    dest: /etc/systemd/user/timers.target.wants/onebee-nhac-sao-luu.timer
+    state: link

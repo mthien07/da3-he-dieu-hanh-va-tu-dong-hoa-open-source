@@ -94,14 +94,38 @@ moi_thu_khoe; PATH="${T}/bin:/usr/bin:/bin"
 kich_ban "Chưa cài restic → LỖI" 2 "LỖI:Phần mềm sao lưu (restic)"
 moi_thu_khoe; : >"${SIM}/dung-onebee-sao-luu.timer"
 kich_ban "Lịch sao lưu tắt → LỖI" 2 "LỖI:Lịch sao lưu hằng ngày"
+moi_thu_khoe; echo $(( $(date +%s) - 80 * 3600 )) >"${T}/var/sao-luu-cuoi"
+kich_ban "Lần sao lưu cuối cách 80 giờ (quá 72 giờ) → CẢNH BÁO, mã thoát 1" 1 "CẢNH BÁO:Lần sao lưu cuối"
 moi_thu_khoe; echo $(( $(date +%s) - 30 * 3600 )) >"${T}/var/sao-luu-cuoi"
-kich_ban "Lần sao lưu cuối cách 30 giờ → CẢNH BÁO, mã thoát 1" 1 "CẢNH BÁO:Lần sao lưu cuối"
+kich_ban "Lần sao lưu cuối cách 30 giờ (máy tắt cuối tuần chưa quá 72 giờ) → mọi mục OK, mã thoát 0" 0 ""
 moi_thu_khoe; rm -f "${T}/var/sao-luu-cuoi"
 kich_ban "Chưa sao lưu lần nào → LỖI" 2 "LỖI:Lần sao lưu cuối"
 moi_thu_khoe; echo 85 >"${SIM}/df-home"
 kich_ban "Ổ /home 85% → CẢNH BÁO" 1 "CẢNH BÁO:Ổ chứa /home"
 moi_thu_khoe; echo 95 >"${SIM}/df-home"
 kich_ban "Ổ /home 95% → LỖI" 2 "LỖI:Ổ chứa /home"
+
+# --json: chỉ stdout (stderr bỏ đi để lỗi cú pháp không lẫn vào JSON)
+chay_json() { OUT="$(bash "${CMD}" --json 2>/dev/null)"; RC=$?; }
+moi_thu_khoe; chay_json
+if [[ "${RC}" == 0 ]] && ! grep -q $'\x1b' <<<"${OUT}" && python3 -c 'import json, sys
+d = json.load(sys.stdin)
+assert d["phien_ban"] == 1, d["phien_ban"]
+assert d["ket_luan"] == "ok", d["ket_luan"]
+assert len(d["muc"]) == 9, len(d["muc"])
+khoa = {"nhom", "ten", "trang_thai", "chi_tiet", "goi_y"}
+assert all(khoa <= set(m) for m in d["muc"]), d["muc"]' <<<"${OUT}" 2>"${T}/json.err"; then
+  pass "--json khi mọi thứ khỏe: ket_luan ok, 9 mục đủ khóa, mã thoát 0, không có mã màu"
+else fail "--json khi mọi thứ khỏe sai — mã thoát ${RC}: $(cat "${T}/json.err")"; echo "${OUT}"; fi
+moi_thu_khoe; : >"${SIM}/dung-onebee-sao-luu.timer"; chay_json
+if [[ "${RC}" == 2 ]] && python3 -c 'import json, sys
+d = json.load(sys.stdin)
+assert d["ket_luan"] == "loi", d["ket_luan"]
+loi = [m for m in d["muc"] if m["trang_thai"] == "loi"]
+assert len(loi) == 1 and "Lịch sao lưu" in loi[0]["ten"], loi
+assert d["dem"]["loi"] == 1, d["dem"]' <<<"${OUT}" 2>"${T}/json.err"; then
+  pass "--json khi lịch sao lưu tắt: ket_luan loi, đúng 1 mục loi (Lịch sao lưu), mã thoát 2"
+else fail "--json khi lịch sao lưu tắt sai — mã thoát ${RC}: $(cat "${T}/json.err")"; echo "${OUT}"; fi
 
 echo "---"
 echo "Kết quả: ${fails} mục không đạt"
