@@ -125,6 +125,23 @@ for ma_hanh_dong in browser ime_setup pdf_reader media_player libreoffice remote
   check "Nút '${ma_hanh_dong}' nói rõ khi máy chưa có ứng dụng đích" nut_phai_bao_ro "${ma_hanh_dong}"
 done
 
+# Có lệnh onebee-bao-ho-tro (máy đã nối Box) thì nút Báo cần hỗ trợ phải chuyển loại sự cố và tên file sang biểu mẫu
+# shellcheck disable=SC2317,SC2329  # được gọi gián tiếp qua check(): shellcheck 0.9 của CI báo SC2317, bản mới hơn báo SC2329
+nut_bao_ho_tro_dien_san() {
+  local bin_gia="${TMP_TEST_DIR}/bin-bao-ho-tro" ghi="${TMP_TEST_DIR}/bao-ho-tro.log"
+  mkdir -p "${bin_gia}"
+  rm -f "${ghi}"
+  cat >"${bin_gia}/onebee-bao-ho-tro" <<EOF
+#!/bin/sh
+printf '%s\n' "\$@" >"${ghi}"
+EOF
+  chmod +x "${bin_gia}/onebee-bao-ho-tro"
+  PATH="${bin_gia}:${TMP_BIN}" /bin/bash "${HELPER_SRC}" --cli --lam bao_ho_tro "${TMP_TEST_DIR}/MISA_SME_2023_Setup.msi" >/dev/null 2>&1 || return 1
+  for _ in $(seq 50); do [[ -s "${ghi}" ]] && break; sleep 0.1; done   # lệnh giả chạy nền, đợi nó ghi xong
+  grep -q 'Phần mềm chỉ chạy trên Windows' "${ghi}" && grep -q 'MISA_SME_2023_Setup.msi' "${ghi}"
+}
+check "Nút 'bao_ho_tro' mở biểu mẫu với loại 'Phần mềm chỉ chạy trên Windows' và tên file" nut_bao_ho_tro_dien_san
+
 # 5. Kiểm tra tích hợp trong desktop/onebee-install.sh
 check "onebee-install.sh có bước cài đặt helper vào /usr/local/bin" \
   grep -Eq 'onebee-windows-app-helper.*(/usr/local/bin|install|cp)' "${INSTALL_SRC}"

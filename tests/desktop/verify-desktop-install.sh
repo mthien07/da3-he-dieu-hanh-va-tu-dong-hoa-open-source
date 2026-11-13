@@ -31,6 +31,12 @@ done
 check "IBus là bộ gõ mặc định (im-config)" grep -q '^IM_CONFIG_DEFAULT_MODE=ibus$' /etc/default/im-config
 check "Bộ gõ ${ime_engine} được nạp sẵn trong IBus (gsettings org.freedesktop.ibus.general)" \
   bash -c "GSETTINGS_BACKEND=memory gsettings get org.freedesktop.ibus.general preload-engines | grep -q \"'${ime_engine}'\""
+if has_schema org.cinnamon.desktop.input-sources; then
+  check "Cinnamon có sẵn nguồn nhập IBus (gsettings org.cinnamon.desktop.input-sources)" \
+    bash -c "GSETTINGS_BACKEND=memory gsettings get org.cinnamon.desktop.input-sources sources | grep -qF \"'ibus'\""
+else
+  printf 'PASS  %s\n' "Cinnamon có sẵn nguồn nhập IBus (bỏ qua: Cinnamon cũ hơn 6.6)"
+fi
 if [[ ${ime_pkg} == ibus-bamboo ]]; then
   check "PPA ibus-bamboo chỉ cấp được gói ibus-bamboo (gói khác bị chặn)" \
     bash -c "apt-cache policy | grep -Eq -- '^ +-1 https://ppa.launchpadcontent.net/bamboo-engine/' \
@@ -117,26 +123,44 @@ if [[ -f /usr/share/cinnamon/applets/menu@cinnamon.org/settings-schema.json ]]; 
   check "Phím Super mở menu bắt đầu (applet menu mặc định)" \
     grep -qF 'Super_L::Super_R' /usr/share/cinnamon/applets/menu@cinnamon.org/settings-schema.json
 fi
+if [[ -d /usr/share/cinnamon/applets/menu@cinnamon.org ]]; then
+  check "Nút Bắt đầu dùng logo OneBee (mặc định của applet menu)" \
+    grep -qF '"onebee-logo"' /usr/share/cinnamon/applets/menu@cinnamon.org/settings-override.json
+else
+  printf 'PASS  %s\n' "Nút Bắt đầu dùng logo OneBee (bỏ qua: máy không có applet menu)"
+fi
 
 check "LibreOffice mở mặc định giao diện Ribbon (tab) cho Writer, Calc, Impress" bash -c \
   "[ \$(grep -c '<value>Tabbed</value>' /usr/lib/libreoffice/share/registry/onebee-office-ribbon.xcd) -eq 3 ]"
 
 if [[ -x /usr/bin/mintupdate-automation ]]; then
   check "Bật tự động nâng cấp mintupdate" test -e /etc/systemd/system/timers.target.wants/mintupdate-automation-upgrade.timer
-  check "Bật tự động dọn gói thừa mintupdate" test -e /etc/systemd/system/timers.target.wants/mintupdate-automation-autoremove.timer
+  # Bản mintupdate mới có thể không còn timer dọn gói thừa (bộ cài chỉ bật khi file timer tồn tại)
+  if [[ -f /usr/lib/systemd/system/mintupdate-automation-autoremove.timer ]]; then
+    check "Bật tự động dọn gói thừa mintupdate" test -e /etc/systemd/system/timers.target.wants/mintupdate-automation-autoremove.timer
+  fi
 else
   check "Bật unattended-upgrades" grep -q 'Unattended-Upgrade "1"' /etc/apt/apt.conf.d/20auto-upgrades
 fi
+
+check "Trình quản lý cập nhật không tự bật cửa sổ" \
+  grep -qxF 'show-welcome-page=false' /usr/share/glib-2.0/schemas/zz_onebee-updates.gschema.override
 
 check "Có lệnh sao lưu onebee-sao-luu + restic" bash -c "test -x /usr/local/sbin/onebee-sao-luu && command -v restic"
 check "Thư mục cấu hình /etc/onebee chỉ root vào (700)" bash -c "[ \"\$(stat -c %a /etc/onebee)\" = 700 ]"
 check "Có lệnh hỏi Trợ lý AI (hoi)" test -x /usr/local/bin/hoi
 check "Có lệnh báo tình trạng về Box" test -x /usr/local/sbin/onebee-bao-tinh-trang
 check "Có lệnh tự chẩn đoán máy trạm (onebee-chan-doan)" test -x /usr/local/bin/onebee-chan-doan
+check "Có lệnh mở biểu mẫu Báo cần hỗ trợ (onebee-bao-ho-tro)" test -x /usr/local/bin/onebee-bao-ho-tro
+check "Có nhắc sao lưu trễ cho người dùng (lệnh + lịch mức người dùng)" bash -c \
+  "test -x /usr/local/lib/onebee/onebee-nhac-sao-luu && test -L /etc/systemd/user/timers.target.wants/onebee-nhac-sao-luu.timer"
 check "Có hỗ trợ từ xa (onebee-ho-tro + x11vnc + mục menu)" bash -c \
   "test -x /usr/local/bin/onebee-ho-tro && command -v x11vnc && test -f /usr/share/applications/onebee-ho-tro.desktop"
 check "Có trợ lý tập tin Windows (.exe helper + desktop entry)" bash -c \
   "test -x /usr/local/bin/onebee-windows-app-helper && test -f /usr/share/applications/onebee-exe-handler.desktop"
+check "Có Trung tâm OneBee (lệnh, dữ liệu, mục menu, tự mở lần đầu)" bash -c \
+  "test -x /usr/local/bin/onebee-trung-tam && test -s /usr/share/onebee/cam-nang.json \
+   && test -f /usr/share/applications/onebee-trung-tam.desktop && test -f /etc/xdg/autostart/onebee-trung-tam.desktop"
 
 echo "----"
 if [[ ${fails} -eq 0 ]]; then echo "KẾT QUẢ: tất cả mục đạt"; else echo "KẾT QUẢ: ${fails} mục KHÔNG đạt"; exit 1; fi
