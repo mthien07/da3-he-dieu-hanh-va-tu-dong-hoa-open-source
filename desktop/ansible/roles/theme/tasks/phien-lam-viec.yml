@@ -87,3 +87,24 @@
     group: root
     mode: "0644"
   when: onebee_calendar_applet.stat.isdir | default(false)
+
+- name: Kiểm tra máy có màn hình đăng nhập LightDM không
+  ansible.builtin.stat:
+    path: /etc/lightdm
+  register: onebee_lightdm
+
+# force: false — chỉ tạo lần đầu; quản trị đã chỉnh bằng công cụ "Cửa sổ đăng nhập" của Mint thì giữ nguyên.
+# Hình nền nằm ở thư mục đọc được bởi mọi tài khoản nên màn hình đăng nhập (chạy bằng tài khoản lightdm) đọc được.
+- name: Màn hình đăng nhập dùng hình nền OneBee (không ghi đè nếu quản trị đã chỉnh)
+  ansible.builtin.copy:
+    dest: /etc/lightdm/slick-greeter.conf
+    content: |
+      # Quản lý bởi OneBee OS (chỉ tạo lần đầu; chỉnh tiếp bằng công cụ "Cửa sổ đăng nhập" của Mint)
+      [Greeter]
+      background={{ onebee_wallpaper_dir }}/onebee-wallpaper.png
+      draw-user-backgrounds=false
+    force: false
+    owner: root
+    group: root
+    mode: "0644"
+  when: onebee_lightdm.stat.isdir | default(false)
