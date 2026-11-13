@@ -46,3 +46,10 @@ Mạng có proxy HTTPS tự ký: `export ONEBEE_TEST_EXTRA_CA=/đường/dẫn/c
 
 ## Ứng xử
 Tham gia dự án đồng nghĩa với việc đồng ý [Quy tắc ứng xử](CODE_OF_CONDUCT.md).
+
+## Phát hành phiên bản mới
+1. Nâng `onebee_version` (`desktop/ansible/group_vars/all.yml`) và `onebee_box_version` (`box/ansible/group_vars/all.yml`) lên cùng số mới.
+2. Thêm mục `## [<số mới>] — <ngày> — <tóm tắt>` lên đầu `docs/project-changelog.md`.
+3. Commit, rồi chạy thử tại máy: `scripts/dong-goi-ban-phat-hanh.sh <số mới>` phải in "Đã tạo:".
+4. Đẩy nhánh `phat-hanh/v<số mới>` (hoặc đẩy tag `v<số mới>`). Workflow "Phát hành" tự đóng gói và tạo bản phát hành kèm file tải.
+5. **Không** tạo bản phát hành bằng tay trên GitHub hay bằng `gh release create`: bản tạo tay không có file tải và không qua bước kiểm phiên bản.
