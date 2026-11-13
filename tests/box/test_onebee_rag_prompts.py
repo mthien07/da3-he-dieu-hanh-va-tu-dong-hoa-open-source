@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 """Kiểm thử unit test cho module Prompts và Knowledge Base RAG."""
+import io
 import json
 import os
 import unittest
+from contextlib import redirect_stdout
 from unittest.mock import patch, MagicMock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -40,18 +42,72 @@ class TestRAGPrompts(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(knowledge_dir, "luat-hop-tac-xa-2023.md")))
 
     @patch("onebee_webui.call")
-    def test_dong_bo_prompts_api_calls(self, mock_call):
-        # Giả lập Open WebUI trả về danh sách prompt hiện có rỗng
+    def test_tao_mau_gui_dung_truong(self, mock_call):
         mock_call.side_effect = [
-            (200, []),  # GET /api/v1/prompts/
-            (200, {"status": True}),  # POST /api/v1/prompts/create (to-trinh)
-            (200, {"status": True}),  # POST /api/v1/prompts/create (bien-ban)
-            (200, {"status": True}),  # POST /api/v1/prompts/create (hop-dong)
-            (200, {"status": True}),  # POST /api/v1/prompts/create (bao-cao)
+            (200, []),
+            (200, {"id": "p"}),
+            (200, {"id": "p"}),
+            (200, {"id": "p"}),
+            (200, {"id": "p"}),
         ]
         count = onebee_webui.dong_bo_prompts(token="test-token")
         self.assertEqual(count, 4)
-        self.assertEqual(mock_call.call_count, 5)
+        posts = [c for c in mock_call.call_args_list if c.args[0] == "POST" and c.args[1] == "/api/v1/prompts/create"]
+        self.assertEqual(len(posts), 4)
+        for c in posts:
+            body = c.args[3] if len(c.args) > 3 else c.kwargs.get("body")
+            self.assertFalse(body["command"].startswith("/"))
+            self.assertTrue(body.get("name"))
+            self.assertTrue(body.get("content"))
+            self.assertEqual(body.get("access_grants"), onebee_webui.PUBLIC_READ)
+            self.assertNotIn("title", body)
+
+    @patch("onebee_webui.call")
+    def test_mau_da_dung_thi_khong_goi_gi_them(self, mock_call):
+        prompts_dir = os.path.join(SCRIPT_DIR, "prompts")
+        existing = []
+        for i, fname in enumerate(sorted(os.listdir(prompts_dir))):
+            if fname.endswith(".json"):
+                with open(os.path.join(prompts_dir, fname), encoding="utf-8") as f:
+                    d = json.load(f)
+                existing.append({
+                    "id": f"p{i}",
+                    "command": d["command"].lstrip("/"),
+                    "name": d["title"],
+                    "content": d["content"],
+                    "access_grants": [{"principal_type": "user", "principal_id": "*", "permission": "read"}],
+                })
+        mock_call.return_value = (200, existing)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            onebee_webui.dong_bo_prompts(token="test-token")
+        out = buf.getvalue()
+        self.assertEqual(mock_call.call_count, 1)
+        self.assertNotIn("đã tạo", out)
+        self.assertNotIn("đã cập nhật", out)
+
+    @patch("onebee_webui.call")
+    def test_mau_khac_noi_dung_thi_cap_nhat_theo_id(self, mock_call):
+        mock_call.side_effect = [
+            (200, [{"id": "p1", "command": "to-trinh", "name": "cũ", "content": "cũ", "access_grants": []}]),
+            (200, {"id": "p"}),
+            (200, {"id": "p"}),
+            (200, {"id": "p"}),
+            (200, {"id": "p"}),
+        ]
+        onebee_webui.dong_bo_prompts(token="test-token")
+        paths = [(c.args[0], c.args[1]) for c in mock_call.call_args_list]
+        self.assertIn(("POST", "/api/v1/prompts/id/p1/update"), paths)
+        self.assertFalse(any("/command/" in p for _, p in paths))
+
+    @patch("onebee_webui.call")
+    def test_loi_tao_mau_thi_dung(self, mock_call):
+        mock_call.side_effect = [
+            (200, []),
+            (422, "thiếu name"),
+        ]
+        with self.assertRaises(SystemExit):
+            onebee_webui.dong_bo_prompts(token="test-token")
 
     @patch("onebee_webui.call")
     def test_dong_bo_tri_thuc_create_collection(self, mock_call):
