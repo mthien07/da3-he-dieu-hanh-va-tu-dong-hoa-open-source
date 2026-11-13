@@ -7,7 +7,7 @@ Sau mỗi buổi: ghi số người, thắc mắc chưa giải quyết (đưa v�
 ## Buổi 1 — Làm quen (ngày cài máy)
 Mục tiêu: người dùng tự mở máy, tìm ứng dụng, gõ tiếng Việt, tìm lại file cũ.
 1. (10') Vì sao đổi: máy nhanh hơn/ổn định (nói số đo "trước" của chính máy đó nếu đã đo), không bản quyền lậu, có sao lưu.
-2. (15') Màn hình: nút menu góc trái (hoặc phím Windows), thanh tác vụ, khay đồng hồ, tắt/khởi động lại máy.
+2. (15') Màn hình: nút menu góc trái (hoặc phím Windows), thanh tác vụ, khay đồng hồ, tắt/khởi động lại máy. Cửa sổ **Trung tâm OneBee** tự mở ở lần đăng nhập đầu; mở lại từ menu Bắt đầu.
    Thực hành: mở Firefox, LibreOffice Writer, thư mục cá nhân; ghim ứng dụng hay dùng ra thanh tác vụ.
 3. (15') Gõ tiếng Việt: Telex như Unikey. Đổi Việt/Anh: **Super + Space** (ghi trên [tờ phím tắt](to-phim-tat.md)).
    Thực hành: gõ tên đơn vị, một câu có đủ dấu.

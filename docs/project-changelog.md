@@ -18,6 +18,8 @@ Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài ch�
 - Tắt cửa sổ chào (`mintwelcome`) và báo cáo hệ thống (`mintreport`) lúc đăng nhập bằng `dpkg-divert --local --rename` (bền qua cập nhật gói); trình quản lý cập nhật (`com.linuxmint.updates`) không tự bật cửa sổ hay thông báo cho nhân viên.
 - Đồng hồ thanh tác vụ Cinnamon hiển thị giờ và ngày/tháng/năm kiểu Việt Nam (`%H:%M  %d/%m/%Y`) qua `calendar-settings-override.json`.
 - Màn hình đăng nhập LightDM (`slick-greeter.conf`) dùng hình nền OneBee (`force: false`, giữ nguyên nếu quản trị đã tự chỉnh).
+- **Trung tâm OneBee** (`onebee-trung-tam`, role `trung-tam`): tự mở ở lần đăng nhập đầu của mỗi người và ghim đầu menu Bắt đầu; gồm trang Bắt đầu (6 ô lớn dẫn tới Soạn văn bản, Bảng tính, Thư mục của tôi, Thư mục chung, Trợ lý AI, Cần giúp đỡ), trang Phím tắt (đọc từ `onebee-cam-nang.json`) và trang Cần giúp đỡ.
+- Biến `onebee_dien_thoai_ho_tro` trong `desktop/ansible/group_vars/all.yml`: số điện thoại hỗ trợ khẩn cấp hiển thị ở trang Cần giúp đỡ của Trung tâm OneBee (để trống thì ẩn).
 
 ## [1.1.0] — 22/10/2026 — Năm tính năng mới và bộ cài USB offline
 Phiên bản 1.0.0 chuyển hóa OneBee OS (DA3) thành sản phẩm thương mại hoàn chỉnh, hấp thụ tinh hoa kiến trúc từ các dự án mã nguồn mở hàng đầu thế giới (CasaOS, YunoHost, Zorin OS, Nextcloud, Synology/TrueNAS).

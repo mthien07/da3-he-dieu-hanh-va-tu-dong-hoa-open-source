@@ -76,6 +76,7 @@ scenario_mint() {
     su - nhanvien -c "$T/extended/check-office-documents-inside.sh"
     su - nhanvien -c "$T/extended/check-vietnamese-typing-inside.sh" 2>/dev/null | grep -E "^(PASS|FAIL|Gõ|preload|hình nền)"
     su - nhanvien -c "$T/extended/check-ho-tro-tu-xa-inside.sh"
+    su - nhanvien -c "$T/extended/check-trung-tam-inside.sh"
     # Bộ đo trước/sau: chạy được trên máy đã cài, đo được thời gian mở LibreOffice, ghi đủ cột CSV
     su - nhanvien -c "Xvfb :78 >/dev/null 2>&1 & xp=\$!; sleep 2; DISPLAY=:78 python3 /tmp/onebee/tests/do-dac/do-may.py \
       --don-vi thu --may mint-thu --giai-doan sau --bam-gio-khoi-dong 45 -o /tmp/do-dac.csv >/dev/null; kill \$xp"

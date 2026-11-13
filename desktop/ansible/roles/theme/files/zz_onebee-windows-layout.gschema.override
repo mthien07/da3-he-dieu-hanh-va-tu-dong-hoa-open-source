@@ -34,7 +34,7 @@ home-icon-visible=true
 [org.cinnamon]
 app-menu-icon-name='onebee-logo'
 app-menu-label='Bắt đầu'
-favorite-apps=['firefox.desktop', 'libreoffice-writer.desktop', 'libreoffice-calc.desktop', 'libreoffice-impress.desktop', 'nemo.desktop', 'onebee-tro-ly-ai.desktop', 'cinnamon-settings.desktop']
+favorite-apps=['onebee-trung-tam.desktop', 'firefox.desktop', 'libreoffice-writer.desktop', 'libreoffice-calc.desktop', 'libreoffice-impress.desktop', 'nemo.desktop', 'onebee-tro-ly-ai.desktop', 'cinnamon-settings.desktop']
 
 # Biểu tượng: thư mục màu vàng cát giống Windows (Mint-Y-Sand có sẵn trong gói mint-y-icons)
 [org.cinnamon.desktop.interface]

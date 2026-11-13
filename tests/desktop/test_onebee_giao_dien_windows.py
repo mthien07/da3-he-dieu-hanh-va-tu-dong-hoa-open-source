@@ -112,7 +112,9 @@ class FileOverrideGsettings(unittest.TestCase):
             self.assertNotIn(phim, dung, f"{phim} (Quản lý tác vụ) trùng {dung.get(phim)}")
 
     def test_ghim_menu_bat_dau_la_ung_dung_van_phong(self):
-        ghim = set(re.findall(r"'([^']+\.desktop)'", doc_override()["org.cinnamon"]["favorite-apps"]))
+        ds = re.findall(r"'([^']+\.desktop)'", doc_override()["org.cinnamon"]["favorite-apps"])
+        self.assertEqual(ds[0], "onebee-trung-tam.desktop")
+        ghim = set(ds)
         self.assertTrue(APPS_VAN_PHONG <= ghim, APPS_VAN_PHONG - ghim)
 
     @unittest.skipUnless(shutil.which("glib-compile-schemas"), "máy không có glib-compile-schemas")
