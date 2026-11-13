@@ -14,6 +14,10 @@ Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài ch�
 - `tests/desktop/check-exe-handler.sh` được chạy trong CI.
 - **Trung tâm OneBee** (`onebee-trung-tam`, role `trung-tam`): tự mở ở lần đăng nhập đầu của mỗi người và ghim đầu menu Bắt đầu; gồm trang Bắt đầu (6 ô lớn dẫn tới Soạn văn bản, Bảng tính, Thư mục của tôi, Thư mục chung, Trợ lý AI, Cần giúp đỡ), trang Phím tắt (đọc từ `onebee-cam-nang.json`) và trang Cần giúp đỡ.
 - Biến `onebee_dien_thoai_ho_tro` trong `desktop/ansible/group_vars/all.yml`: số điện thoại hỗ trợ khẩn cấp hiển thị ở trang Cần giúp đỡ của Trung tâm OneBee (để trống thì ẩn).
+- Trang **Kiểm tra máy** trong Trung tâm OneBee: bấm "Kiểm tra ngay" để thấy từng mục đạt hay lỗi kèm gợi ý tiếng Việt, rồi gửi yêu cầu hỗ trợ kèm kết quả, không cần mở Terminal. `onebee-chan-doan` có thêm `--json` (đầu ra chữ giữ nguyên).
+- "Báo cần hỗ trợ (OneBee)" mở biểu mẫu đã điền sẵn tên máy qua lệnh mới `onebee-bao-ho-tro` (địa chỉ biểu mẫu nằm trong `/etc/onebee-ho-tro.conf`); với file Windows lạ, trợ lý tập tin điền sẵn thêm loại "Phần mềm chỉ chạy trên Windows" và tên file. Box đời cũ đẩy lại mục menu kiểu cũ vẫn dùng được, chỉ mất phần điền sẵn, hết khi Box được cài bản mới.
+- Nhắc sao lưu trễ: máy đã nối Box mà quá 72 giờ chưa sao lưu thì người đang đăng nhập nhận một thông báo (tối đa một lần mỗi ngày), qua dịch vụ systemd mức người dùng `onebee-nhac-sao-luu`.
+- Ngưỡng báo sao lưu trễ của `onebee-chan-doan` trên máy trạm đổi từ 26 giờ sang 72 giờ cho khớp Box (máy tắt cuối tuần không bị báo nhầm).
 
 ## [1.1.0] — 22/10/2026 — Năm tính năng mới và bộ cài USB offline
 Phiên bản 1.0.0 chuyển hóa OneBee OS (DA3) thành sản phẩm thương mại hoàn chỉnh, hấp thụ tinh hoa kiến trúc từ các dự án mã nguồn mở hàng đầu thế giới (CasaOS, YunoHost, Zorin OS, Nextcloud, Synology/TrueNAS).

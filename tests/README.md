@@ -24,7 +24,9 @@ Các bài unit mới: `test_onebee_ca.py` (CA, ràng buộc tên bằng openssl/
 `tests/desktop/check-exe-handler.sh`: kiểm tra bộ trợ lý bắt file Windows `.exe` / `.msi` (onebee-windows-app-helper), đăng ký MIME handler hệ thống và nhận diện gợi ý ứng dụng thay thế (Zalo, Chrome, Unikey, Foxit, VLC, Ultraviewer, WINE/máy ảo).
 `tests/desktop/test_onebee_phien_ban.py`: phiên bản trong bộ cài Desktop, bộ cài Box và mục đầu nhật ký thay đổi phải trùng nhau và không thấp hơn tag mới nhất.
 `tests/desktop/test_onebee_cam_nang.py`: phím tắt và tên gọi trong `onebee-cam-nang.json` khớp cấu hình máy (gschema, dconf, mục menu) và 5 tài liệu phát cho người dùng.
-`tests/desktop/test_onebee_trung_tam.py`: phần logic của Trung tâm OneBee (`onebee-trung-tam`) không cần GTK: đọc cẩm nang phím tắt, thông tin đơn vị, dấu đã xem lần đầu, 6 ô trang Bắt đầu và tham số dòng lệnh.
+`tests/desktop/test_onebee_trung_tam.py`: phần logic của Trung tâm OneBee (`onebee-trung-tam`) không cần GTK: đọc cẩm nang phím tắt, thông tin đơn vị, dấu đã xem lần đầu, 6 ô trang Bắt đầu tham số dòng lệnh, đọc kết quả `onebee-chan-doan --json` và tóm tắt lỗi gửi kèm yêu cầu hỗ trợ.
+`tests/desktop/test_onebee_bao_ho_tro.py`: lệnh `onebee-bao-ho-tro`: đọc địa chỉ biểu mẫu từ file cấu hình (từ chối địa chỉ lạ), điền sẵn tên máy/loại/mô tả có mã hóa phần trăm, cắt mô tả dài, báo rõ khi máy chưa nối Box, mở `xdg-open` giả.
+`tests/desktop/test_onebee_nhac_sao_luu.py`: lệnh `onebee-nhac-sao-luu`: nhắc đúng khi quá 72 giờ chưa sao lưu và chỉ một lần mỗi ngày, im lặng khi chưa nối Box, sao lưu mới, file lỗi hoặc không có `notify-send` (đường dẫn thay bằng biến môi trường, `notify-send` giả).
 `tests/box/check-rag-prompts.sh` và `tests/box/test_onebee_rag_prompts.py`: kiểm tra kho mẫu prompt hành chính NĐ 30/2020/NĐ-CP (Tờ trình, Biên bản, Hợp đồng HTX, Báo cáo) và bộ tri thức RAG Open WebUI.
 `tests/box/check-alerts.sh`: kiểm tra tính năng cảnh báo chủ động qua Telegram Bot và n8n Webhook.
 `tests/box/check-offline-bundle.sh`: kiểm tra kịch bản đóng gói và cài đặt OneBee Box offline từ USB.
