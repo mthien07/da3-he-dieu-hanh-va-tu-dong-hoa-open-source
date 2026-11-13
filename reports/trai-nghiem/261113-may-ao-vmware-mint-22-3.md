@@ -39,6 +39,9 @@ Box thử: máy ảo VMware Ubuntu Server 24.04 (ảnh cloud chính thức), One
   thành `('vi_VN', 'TCVN')` dù glibc dùng UTF-8 (`LANG=vi_VN locale charmap` in `UTF-8`).
 - Chạy tạm bằng `sudo LANG=vi_VN.UTF-8 LC_ALL=vi_VN.UTF-8 ./desktop/onebee-install.sh`: `ok=106 changed=59 unreachable=0 failed=0 skipped=41`,
   bộ cài đổi `/etc/default/locale` thành `LANG=vi_VN.UTF-8`.
+- Vì sao lần chạy sau không lỗi: task "Đặt ngôn ngữ mặc định của hệ thống" của role `base` ghi `LANG=vi_VN.UTF-8` vào `/etc/default/locale`
+  (biến `onebee_locale`); sau khi khởi động lại, phiên đăng nhập mang `LANG=vi_VN.UTF-8`, Python đọc ra UTF-8 nên Ansible chạy được. Chỉ lần cài
+  đầu trên máy Mint cài bằng tiếng Việt bị chặn. Đã sửa ở bộ cài (xem bảng cuối file).
 - Khởi động lại, **lần 2 chạy đúng lệnh tài liệu** (chưa nối Box):
   `localhost : ok=100 changed=0 unreachable=0 failed=0 skipped=45 rescued=0 ignored=0` (ảnh `03-cai-desktop-lan-2-tong-ket.png`).
 - Sau khi nối Box (`/etc/onebee/may-tram.env` từ `sudo onebee-box them-may ketoan-01`): lần 3 `ok=127 changed=21 failed=0`,
@@ -214,13 +217,42 @@ và hồ sơ người dùng không ghi đè). Ba cách đã thử:
 
 ## Mục không đạt và cách xử lý
 Số mục không đạt trong A–I: 5 (D2, G1, G4, H1, I1), cộng 1 lỗi cài đặt ngoài phiếu. Theo rủi ro của plan, quá 5 mục thì dừng và báo; ở đây vừa đủ 5
-nên ghi lại và báo, **chưa sửa mã**. Nhóm B đạt toàn bộ.
+nên ghi lại và báo. Nhóm B đạt toàn bộ. Sau khi anh Thiện quyết, các mục được xử lý trên nhánh `fix/muc-khong-dat-phieu-kiem-trai-nghiem`
+(cột Trạng thái ghi commit); kết quả kiểm lại ở mục "Kiểm lại sau khi sửa".
 
 | Mục | Điều đã thấy | Ảnh / log | Cách xử lý | Trạng thái |
 |---|---|---|---|---|
-| Cài đặt (ngoài phiếu) | Mint cài bằng tiếng Việt (`LANG=vi_VN`): `sudo ./desktop/onebee-install.sh` dừng với `ERROR: Ansible requires the locale encoding to be UTF-8; Detected TCVN.` | `00-cai-desktop-lan-dau-loi-locale.png` | Không có trong bảng 7.4 → theo "Quy tắc khi kiểm chứng không đạt": dừng, chờ anh Thiện quyết. Cách chạy tạm đã dùng: `sudo LANG=vi_VN.UTF-8 LC_ALL=vi_VN.UTF-8 ./desktop/onebee-install.sh` | chưa xử lý |
-| D2 | Trang Phím tắt thiếu 2 dòng của tờ: "Xuất PDF — Nút PDF trên thanh công cụ", "Mở cửa sổ dòng lệnh — Ctrl + Alt + T" | `D2-trang-phim-tat.png`, `D2-trang-phim-tat-cuon.png` | Không có trong bảng 7.4 → chờ quyết định (có thể là chủ ý: nguồn chung có 13 mục) | chưa xử lý |
-| G1 | Màn hình trò chuyện mới chỉ hiện 3 trong 4 gợi ý, đổi ngẫu nhiên mỗi lần tải | `G1-goi-y-va-dong-nhac.png`, `G1-tai-lai-1.png`, `G1-tai-lai-2.png` | Không có trong bảng 7.4 → chờ quyết định | chưa xử lý |
-| G4 | Nhiều chữ tiếng Anh khi đăng nhập, hỏi, xem lịch sử, đổi mật khẩu (danh sách ở mục G4) | `G2-tra-loi-90s.png`, `G3-go-gach-cheo.png`, `G4-*.png` | Theo bảng 7.4: tạo `box/ansible/roles/box-ai/files/giao-dien-tieng-viet.json` chỉ gồm các chuỗi ở G4, gửi thêm trường `I18N` trong `enforce_settings`, thêm test với máy chủ giả | chưa xử lý |
-| H1 | Cẩm nang trang chủ Box thiếu 2 dòng của tờ phím tắt (như D2); phần "không còn Mở Terminal" đạt | `H-trang-chu-box.png`, chữ trang qua `curl` | Không có trong bảng 7.4 → chờ quyết định cùng D2 | chưa xử lý |
-| I1 | Màn hình có "Tập tin → Export As → Xuất dạng PDF..." và nút `Export Directly as PDF`; không có "Tệp → Xuất ra PDF" như trang chủ Box ghi | `I-menu-tap-tin.png`, `I-menu-export-as.png`, `I-nut-pdf-chu-goi-y.png` | Theo bảng 7.4: sửa giống hệt chữ trên màn hình ở `to-phim-tat.md`, `index.html.j2`, `tro-ly-onebee-loi-dan.md`; sửa lời dặn thì phải chấm lại nhóm 1 bằng Ollama, không có máy Ollama thì chỉ sửa 2 nơi kia | chưa xử lý |
+| Cài đặt (ngoài phiếu) | Mint cài bằng tiếng Việt (`LANG=vi_VN`): `sudo ./desktop/onebee-install.sh` dừng với `ERROR: Ansible requires the locale encoding to be UTF-8; Detected TCVN.` | `00-cai-desktop-lan-dau-loi-locale.png` | Anh Thiện quyết sửa. Bộ cài Desktop, bộ cài Box (cả đường cài từ USB) và `onebee-box cap-nhat-may`/`dong-bo-may` gọi `ansible-playbook` với `LC_ALL=C.UTF-8` (có sẵn trong glibc); test `tests/desktop/test_onebee_locale_ansible.py`, lần cài đầu trong test container Desktop và Box chạy với `LANG=vi_VN` | đã sửa (commit 0e24e34) |
+| D2 | Trang Phím tắt thiếu 2 dòng của tờ: "Xuất PDF — Nút PDF trên thanh công cụ", "Mở cửa sổ dòng lệnh — Ctrl + Alt + T" | `D2-trang-phim-tat.png`, `D2-trang-phim-tat-cuon.png` | Anh Thiện quyết: chủ ý, không sửa mã. "Mở cửa sổ dòng lệnh" cố ý không đưa cho nhân viên; "Xuất PDF — nút PDF" không phải phím tắt. Sửa phiếu D2: trang khớp 13 mục của nguồn chung | giới hạn đã biết: phiếu ghi quá chặt, đã sửa phiếu (commit c581b31) |
+| G1 | Màn hình trò chuyện mới chỉ hiện 3 trong 4 gợi ý, đổi ngẫu nhiên mỗi lần tải | `G1-goi-y-va-dong-nhac.png`, `G1-tai-lai-1.png`, `G1-tai-lai-2.png` | Anh Thiện quyết: cách Open WebUI hiển thị, không sửa mã. Mã v0.11.4: `Suggestions.svelte` xáo thứ tự gợi ý mỗi lần tải (`sort(() => Math.random() - 0.5)`) và khung gợi ý cao cố định, ẩn thanh cuộn (`max-h-36 overflow-auto scrollbar-none`) nên thường thấy 3. Sửa phiếu G1 | giới hạn đã biết: Open WebUI hiện ngẫu nhiên một phần gợi ý mỗi lần tải; đã sửa phiếu (commit 16f2281) |
+| G4 | Nhiều chữ tiếng Anh khi đăng nhập, hỏi, xem lịch sử, đổi mật khẩu (danh sách ở mục G4) | `G2-tra-loi-90s.png`, `G3-go-gach-cheo.png`, `G4-*.png` | Theo bảng 7.4: `box/ansible/roles/box-ai/files/giao-dien-tieng-viet.json` (40 chuỗi của G4), `enforce_settings` gửi thêm `I18N`, test với máy chủ giả. Khóa là đúng chuỗi giao diện gọi: chữ tiếng Anh gốc, riêng trang Cài đặt là khóa `settings.…` (vd "Bio" là `settings.personal.account.bio.label`); "Gợi ý một số mẫu prompt" là bản dịch sẵn của khóa `Suggested` | đã sửa (commit a918fe7); giới hạn đã biết: tên "Open WebUI" (biến `WEBUI_NAME`, không qua bản dịch, giấy phép hạn chế đổi tên), tên riêng "Gravatar", lời hỏi dịch trang của Firefox |
+| H1 | Cẩm nang trang chủ Box thiếu 2 dòng của tờ phím tắt (như D2); phần "không còn Mở Terminal" đạt | `H-trang-chu-box.png`, chữ trang qua `curl` | Như D2. Sửa phiếu H1: cẩm nang trang chủ Box khớp 13 mục của nguồn chung | giới hạn đã biết: phiếu ghi quá chặt, đã sửa phiếu (commit c581b31) |
+| I1 | Màn hình có "Tập tin → Export As → Xuất dạng PDF..." và nút `Export Directly as PDF`; không có "Tệp → Xuất ra PDF" như trang chủ Box ghi | `I-menu-tap-tin.png`, `I-menu-export-as.png`, `I-nut-pdf-chu-goi-y.png` | Theo bảng 7.4. Trang chủ Box (`index.html.j2`) nay ghi: nút **PDF** trên thanh công cụ (chữ gợi ý: Export Directly as PDF) hoặc menu **Tập tin → Export As → Xuất dạng PDF...**; test trong `tests/box/test_onebee_mdns_dashboard.py`. Tờ phím tắt đã đúng ("Nút PDF trên thanh công cụ"), không sửa. Lời dặn Trợ lý (`tro-ly-onebee-loi-dan.md`) **chưa sửa**: phải chấm lại nhóm 1 bằng Ollama | đã sửa (commit 2bf0371) ở trang chủ Box; lời dặn Trợ lý vẫn ghi "Tệp → Xuất dưới dạng → Xuất thành PDF", để đợt sau khi có máy chấm |
+
+## Kiểm lại sau khi sửa (14/11/2026, cùng hai máy ảo, nhánh `fix/muc-khong-dat-phieu-kiem-trai-nghiem`)
+Kiểm tự động như trên, chưa có người xác nhận.
+- **Locale, máy Mint:** đặt lại `/etc/default/locale` thành `LANG="vi_VN"` như lúc mới cài; trong phiên `quantri`, `export LANG=vi_VN`
+  (sudo giữ nguyên `LANG=vi_VN`), `sudo ./desktop/onebee-install.sh`:
+  - bản cũ (commit 5f2993d): `ERROR: Ansible requires the locale encoding to be UTF-8; Detected TCVN.`, mã lỗi 1 — tái hiện đúng lỗi;
+  - bản sửa, lần 1: `localhost : ok=125 changed=2 unreachable=0 failed=0 skipped=20` (đổi lại `LANG=vi_VN.UTF-8` trong `/etc/default/locale`
+    và tạo thư mục chạy của sshd sau khởi động lại — task sẵn có);
+  - bản sửa, lần 2 (vẫn `LANG=vi_VN`): `localhost : ok=125 changed=0 unreachable=0 failed=0 skipped=20`.
+- **Locale, Box** (Ubuntu Server chỉ có locale `C.utf8`, `en_US.utf8`): `sudo LANG=vi_VN ./onebee-box-install.sh` — bản cũ:
+  `ERROR: Ansible could not initialize the preferred locale: unsupported locale setting`; bản sửa lần 1 `ok=107 changed=5 failed=0`
+  (cài file mới, đồng bộ Trợ lý), lần 2 `ok=107 changed=0 unreachable=0 failed=0 skipped=39`.
+- **G4:** `/api/config` trên Box (chưa đăng nhập) trả đủ 40 bản dịch của `giao-dien-tieng-viet.json`. Trên máy Mint, Firefox cửa sổ riêng tư:
+  trang đăng nhập "Thư điện tử"; màn hình mới "Gợi ý"; menu người dùng "Cập nhật trạng thái"; Cài đặt: "Cá nhân", "Cơ bản", "Phím tắt",
+  "Tùy chọn", "Dữ liệu", "Quản lý dữ liệu", "Mức sử dụng", "Thông báo trên máy tính", các dòng mô tả; Tài khoản: "Tải ảnh lên",
+  "Chữ cái đầu tên", "Giới thiệu", "Giới tính", "Không nêu", "Ngày sinh", "Biến của người dùng". Ảnh `G4-sau-sua-dang-nhap.png`,
+  `G4-sau-sua-goi-y.png`, `G4-sau-sua-menu-nguoi-dung.png`, `G4-sau-sua-cai-dat-chung.png`, `G4-sau-sua-tai-khoan.png`.
+  Còn tiếng Anh: "Open WebUI", "Gravatar", ô gợi ý "Nhập Email của bạn" (bản dịch sẵn của Open WebUI, ngoài danh sách G4).
+  Chưa chụp lại: "Thought", "Follow up", "Commands", "Temporary", mục `/`, "Thư mục", "Cuộc trò chuyện", "Khóa API", "Thông tin bí mật"
+  (có trong `/api/config` ở trên, chưa mở đúng màn hình đó).
+- I1: chữ trang chủ Box đổi theo commit 2bf0371, kiểm bằng test; chưa mở lại trang trên máy ảo.
+
+## Thấy thêm ngoài phiếu, để đợt sau
+- LibreOffice không mở giao diện tab (Ribbon) dù đã có `/usr/lib/libreoffice/share/registry/onebee-office-ribbon.xcd`
+  và hồ sơ người dùng không ghi đè (xem nhóm I và "Ghi chú ngoài phiếu").
+- Thẻ "Soạn văn bản bằng Trợ lý AI" trên trang chủ Box mở `http://onebee.local:3000`, còn biểu tượng Trợ lý trên máy trạm mở theo IP
+  (`http://192.168.72.50:3000`), nên đã đăng nhập ở một bên vẫn phải đăng nhập lại ở bên kia (xem H2).
+- Ô mật khẩu bị thêm dấu khi đang ở chế độ gõ tiếng Việt (gõ ` tacs vieetj` ra ` tác việt`, xem B5).
