@@ -190,3 +190,6 @@
     group: root
     mode: "0644"
   when: onebee_cinnamon_window_list.stat.isdir | default(false)
+
+- name: Mặc định của phiên làm việc (màn hình chào, cập nhật, đồng hồ, nút Bắt đầu, màn hình đăng nhập)
+  ansible.builtin.include_tasks: phien-lam-viec.yml

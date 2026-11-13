@@ -29,7 +29,7 @@ Nhật ký cài đặt nằm ở `/var/log/onebee/`.
 | Gõ tiếng Việt | IBus + Bamboo (Telex mặc định). Đổi tiếng Việt/tiếng Anh: phím tắt của IBus (mặc định Super + Space) |
 | Font | File Word/Excel dùng Arial, Times New Roman, Calibri: thay bằng font cùng kích thước (Liberation, Carlito) → giữ bố cục. Cambria → Noto Serif (font thay cùng kích thước Caladea thiếu chữ tiếng Việt), bố cục có thể lệch nhẹ |
 | LibreOffice | Lưu mặc định .docx / .xlsx / .pptx, không hỏi lại mỗi lần lưu. Thanh công cụ dạng tab (Ribbon) như Word/Excel/PowerPoint; đổi lại ở Xem → Giao diện người dùng. Bộ biểu tượng Colibre (kiểu giống Microsoft Office); đổi ở Công cụ → Tùy chọn → LibreOffice → Xem |
-| Giao diện | Hình nền OneBee (Cinnamon). Thanh tác vụ ở đáy màn hình: nút **Bắt đầu** có logo OneBee bên trái (phím Super), ghim sẵn Nemo, Firefox, Writer, Calc, Impress, Trợ lý AI; khay hệ thống + nút hiện màn hình nền bên phải. Nút thu nhỏ/phóng to/đóng ở góc phải cửa sổ. Rê chuột lên ứng dụng trên thanh tác vụ thấy ảnh thu nhỏ cửa sổ. Màn hình nền có Máy tính, Thùng rác, Thư mục cá nhân và (khi đã nối Box) lối tắt **Chia sẻ nội bộ (OneBee Box)** tới `smb://<IP Box>/chung`. Thư mục màu vàng (bộ biểu tượng Mint-Y-Sand). Nemo ẩn file ẩn, nhấp đúp để mở. Phím Win+E / D / L / R, Win+Shift+S (chụp vùng vào clipboard), Ctrl+Shift+Esc (Quản lý tác vụ) — xem [to-phim-tat.md](to-phim-tat.md) |
+| Giao diện | Hình nền OneBee (Cinnamon và màn hình đăng nhập LightDM). Thanh tác vụ ở đáy màn hình: nút **Bắt đầu** có logo OneBee bên trái (phím Super), ghim sẵn Nemo, Firefox, Writer, Calc, Impress, Trợ lý AI; khay hệ thống, đồng hồ hiện giờ và ngày/tháng/năm (`%H:%M  %d/%m/%Y`) + nút hiện màn hình nền bên phải. Nút thu nhỏ/phóng to/đóng ở góc phải cửa sổ. Rê chuột lên ứng dụng trên thanh tác vụ thấy ảnh thu nhỏ cửa sổ. Màn hình nền có Máy tính, Thùng rác, Thư mục cá nhân và (khi đã nối Box) lối tắt **Chia sẻ nội bộ (OneBee Box)** tới `smb://<IP Box>/chung`. Thư mục màu vàng (bộ biểu tượng Mint-Y-Sand). Nemo ẩn file ẩn, nhấp đúp để mở. Phím Win+E / D / L / R, Win+Shift+S (chụp vùng vào clipboard), Ctrl+Shift+Esc (Quản lý tác vụ) — xem [to-phim-tat.md](to-phim-tat.md) |
 | Cập nhật | Tự động nâng cấp và dọn gói thừa (mintupdate) |
 | Sao lưu | Khi có `/etc/onebee/may-tram.env` (từ OneBee Box): tự sao lưu `/home` lên Box 12:00 hằng ngày — xem hướng dẫn cài Box |
 | Múi giờ | Asia/Ho_Chi_Minh |
@@ -37,6 +37,8 @@ Nhật ký cài đặt nằm ở `/var/log/onebee/`.
 | Quản lý từ Box | Báo tình trạng mỗi giờ; Box cập nhật máy qua SSH — xem [quan-ly-may-tram.md](quan-ly-may-tram.md) |
 | Menu OneBee | "Báo cần hỗ trợ (OneBee)" (mở biểu mẫu trên Box), "Cho phép hỗ trợ từ xa (OneBee)" |
 | Trợ lý file Windows | Tự động bắt file `.exe` / `.msi` khi bấm đúp; gợi ý ứng dụng Linux tương đương (Zalo Web, Chromium, IBus Bamboo, PDF Viewer, VLC, hỗ trợ từ xa) hoặc hỗ trợ chạy WINE / máy ảo kế toán |
+
+Ghi chú: các file mặc định của gói Mint (`/etc/xdg/autostart/mintwelcome.desktop`, `/etc/xdg/autostart/mintreport.desktop`, `/usr/share/cinnamon/applets/menu@cinnamon.org/settings-override.json`) được chuyển hướng sang tên `.distrib` bằng `dpkg-divert` để không bị ghi đè khi gói cập nhật; hoàn tác bằng `sudo dpkg-divert --local --rename --remove <đường dẫn>`.
 
 ## 5. Tùy chỉnh
 Sửa `desktop/ansible/group_vars/all.yml` rồi chạy lại bộ cài (chạy lại nhiều lần an toàn), ví dụ:
