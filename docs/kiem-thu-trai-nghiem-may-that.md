@@ -109,7 +109,7 @@ Cần máy đã nối Box **[cần Box]**: máy chưa nối thì dịch vụ nh�
 
 ## I. Xuất PDF
 Trong LibreOffice Writer (giao diện tab) thử 3 cách: nút PDF trên thanh công cụ; menu Tệp → Xuất dưới dạng → Xuất thành PDF; Tệp → Xuất ra PDF.
-- [ ] I1 Ghi lại **cách nào có thật và tên đúng từng chữ trên màn hình**. (Tờ phím tắt đang ghi "nút PDF trên thanh công cụ", trang chủ Box đang ghi "Tệp → Xuất ra PDF".)
+- [ ] I1 Ghi lại **cách nào có thật và tên đúng từng chữ trên màn hình**. (Tờ phím tắt ghi "nút PDF trên thanh công cụ"; trang chủ Box ghi nút PDF và "Tập tin → Export As → Xuất dạng PDF...".)
 
 ## J. Năm việc đầu tiên với người dùng thật (không bắt buộc, làm khi có 1–3 nhân viên)
 Không hướng dẫn trước, bấm giờ từng việc, ghi "tự làm được / cần gợi ý / không làm được":
