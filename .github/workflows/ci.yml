@@ -54,6 +54,7 @@ jobs:
           tests/box/check-rag-prompts.sh                       # kho prompt hành chính NĐ 30 & RAG
           tests/box/check-alerts.sh                            # cảnh báo Telegram & n8n webhook
           tests/box/check-offline-bundle.sh                    # kịch bản đóng gói USB offline
+          tests/desktop/check-exe-handler.sh                   # trợ lý tập tin Windows (.exe/.msi)
           sudo -E env "PATH=${PATH}" tests/desktop/check-chan-doan-may-tram.sh   # onebee-chan-doan (root: mở cổng 445 giả)
       - name: yamllint
         run: yamllint .
