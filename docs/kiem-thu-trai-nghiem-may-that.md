@@ -65,7 +65,9 @@ Nếu tờ phím tắt đổi dòng, đổi theo số dòng của bảng đầu 
 Mục D5–D7 cần máy đã nối Box **[cần Box]**: chưa nối Box thì lệnh báo cần hỗ trợ báo rõ lý do thay vì mở biểu mẫu.
 - [ ] D1 Bấm lần lượt 6 ô của trang Bắt đầu (Soạn văn bản, Bảng tính, Thư mục của tôi, Thư mục chung của đơn vị, Trợ lý AI, Cần giúp đỡ) → mở đúng thứ ghi trên ô.
   Làm lần đầu khi máy chưa nối Box: ô thư mục chung báo rõ lý do. Làm lại sau khi nối Box: ô thư mục chung mở thư mục chung.
-- [ ] D2 Trang Phím tắt → nội dung trùng tờ phím tắt.
+- [ ] D2 Trang Phím tắt → có đủ 13 mục của nguồn chung `onebee-cam-nang.json`, mỗi dòng đúng chữ của dòng tương ứng trên tờ phím tắt.
+  Trang cố ý **không** có 2 dòng của tờ: "Xuất PDF — Nút PDF trên thanh công cụ" (không phải phím tắt) và
+  "Mở cửa sổ dòng lệnh — Ctrl + Alt + T" (không đưa cho nhân viên); ghi chú phụ của tờ (Shift + Print Screen, nút Bắt đầu) không bắt buộc có.
 - [ ] D3 Trang Kiểm tra máy → bấm "Kiểm tra ngay", trong khoảng 1 phút hiện lần lượt từng mục có biểu tượng đạt/cảnh báo/lỗi (9 mục khi máy tới được Box;
   Box không trả lời thì ít mục hơn). Ghi lại bố cục có bị cắt chữ, tràn khung hay chồng nút không, nhất là trên màn hình 1366×768.
   Đây là phần giao diện chưa kiểm được ngoài máy thật.
@@ -99,7 +101,8 @@ Cần máy đã nối Box **[cần Box]**: máy chưa nối thì dịch vụ nh�
 - [ ] G4 **[cần Box]** Ghi lại **mọi chữ tiếng Anh** nhìn thấy khi: đăng nhập, hỏi một câu, xem lại lịch sử, đổi mật khẩu, đăng xuất.
 
 ## H. Trang chủ Box (mở `http://onebee.local` từ máy trạm và từ điện thoại trong LAN) **[cần Box]**
-- [ ] H1 Cẩm nang "Phím tắt hay dùng" (mục Cẩm nang sử dụng) trùng tờ phím tắt; không còn chữ "Mở Terminal".
+- [ ] H1 Cẩm nang "Phím tắt hay dùng" (mục Cẩm nang sử dụng) có đủ 13 mục của nguồn chung, giống trang Phím tắt ở D2 (cố ý không có
+  2 dòng "Xuất PDF" và "Mở cửa sổ dòng lệnh" của tờ phím tắt); không còn chữ "Mở Terminal".
 - [ ] H2 Mục "Soạn văn bản bằng Trợ lý AI" có 4 thẻ; bấm một thẻ → Trợ lý mở, câu mở đầu đã điền sẵn và **không tự gửi**.
 - [ ] H3 Sau lần sao lưu đêm đầu tiên (hoặc sau `sudo onebee-box sao-luu`) → ô "Máy trạm đã sao lưu: x/y máy (trong 3 ngày)"; trang không lộ tên máy.
 
