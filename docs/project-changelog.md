@@ -1,5 +1,15 @@
 # Nhật ký thay đổi
 
+## [1.2.0] — (đang làm)
+### Sửa
+- Máy trạm (Mint 22.3): chỉ bật `mintupdate-automation-autoremove.timer` khi file timer tồn tại trên máy, tránh lỗi bộ cài trên bản mintupdate mới đã bỏ timer này.
+### Thêm
+- Máy trạm (Cinnamon 6.6 / Mint 22.3): nạp sẵn bộ gõ tiếng Việt (mặc định tiếng Việt trước, `Super + Space` sang tiếng Anh) ở cả khóa `sources` của `org.cinnamon.desktop.input-sources` và `preload-engines` của IBus.
+- Nút **Bắt đầu** trên máy có `mint-artwork`: gộp `menu-settings-override.json` (`menu-custom=true`, biểu tượng `onebee-logo`, nhãn `Bắt đầu`) vào mặc định của applet menu sau khi chuyển hướng file gốc bằng `dpkg-divert`.
+- Tắt cửa sổ chào (`mintwelcome`) và báo cáo hệ thống (`mintreport`) lúc đăng nhập bằng `dpkg-divert --local --rename` (bền qua cập nhật gói); trình quản lý cập nhật (`com.linuxmint.updates`) không tự bật cửa sổ hay thông báo cho nhân viên.
+- Đồng hồ thanh tác vụ Cinnamon hiển thị giờ và ngày/tháng/năm kiểu Việt Nam (`%H:%M  %d/%m/%Y`) qua `calendar-settings-override.json`.
+- Màn hình đăng nhập LightDM (`slick-greeter.conf`) dùng hình nền OneBee (`force: false`, giữ nguyên nếu quản trị đã tự chỉnh).
+
 ## [1.0.0] — 22/10/2026: Phiên bản Phát hành Thương mại Chính thức
 Phiên bản 1.0.0 chuyển hóa OneBee OS (DA3) thành sản phẩm thương mại hoàn chỉnh, hấp thụ tinh hoa kiến trúc từ các dự án mã nguồn mở hàng đầu thế giới (CasaOS, YunoHost, Zorin OS, Nextcloud, Synology/TrueNAS).
 
