@@ -54,3 +54,47 @@ echo "Câu trả lời của AI (${MODEL}, 150 ký tự đầu): ${answer:0:150}
 grep -q "[ạảãàáâậầấẩẫăắằặẳẵêếềệểễôốồộổỗơớờợởỡưứừựửữđ]" <<<"${answer}" \
   || { echo "FAIL  Không có câu trả lời tiếng Việt"; exit 1; }
 echo "PASS  Hỏi đáp tiếng Việt qua Trợ lý OneBee → Ollama chạy tại chỗ"
+
+pw_nv="$(python3 -c 'import secrets, string; print("".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(20)))')"
+id_nv="$(curl -s -m 30 -X POST "${API}/api/v1/auths/add" -H "Authorization: Bearer ${token}" \
+  -H 'Content-Type: application/json' \
+  -d "{\"name\":\"Nhân viên thử\",\"email\":\"nv-thu@onebee.lan\",\"password\":\"${pw_nv}\",\"role\":\"user\"}" \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))')"
+[[ -n "${id_nv}" ]] || { echo "FAIL  Tạo tài khoản nhân viên thử"; exit 1; }
+token_nv="$(curl -s -m 30 -X POST "${API}/api/v1/auths/signin" -H 'Content-Type: application/json' \
+  -d "{\"email\":\"nv-thu@onebee.lan\",\"password\":\"${pw_nv}\"}" \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin).get("token",""))')"
+[[ -n "${token_nv}" ]] || { echo "FAIL  Đăng nhập tài khoản nhân viên thử"; exit 1; }
+
+curl -s -m 30 "${API}/api/v1/prompts/" -H "Authorization: Bearer ${token_nv}" | python3 -c '
+import json, sys
+ds = json.load(sys.stdin)
+cmds = {p.get("command", "").lstrip("/") for p in ds if isinstance(p, dict)}
+assert {"to-trinh", "bien-ban", "hop-dong", "bao-cao"} <= cmds, f"thiếu mẫu: {cmds}"' \
+  || { echo "FAIL  Nhân viên chưa thấy đủ 4 mẫu soạn văn bản"; exit 1; }
+echo "PASS  Nhân viên thấy đủ 4 mẫu soạn văn bản"
+
+curl -s -m 30 "${API}/api/v1/models/model?id=onebee-tro-ly" -H "Authorization: Bearer ${token}" | python3 -c '
+import json, sys
+m = json.load(sys.stdin)
+sp = (m.get("meta") or {}).get("suggestion_prompts") or []
+assert len(sp) == 4, f"số gợi ý: {len(sp)}"' \
+  || { echo "FAIL  Trợ lý OneBee chưa có đủ 4 gợi ý tiếng Việt"; exit 1; }
+echo "PASS  Trợ lý OneBee có 4 gợi ý tiếng Việt"
+
+curl -s -m 30 "${API}/api/v1/configs/banners" -H "Authorization: Bearer ${token_nv}" | python3 -c '
+import json, sys
+ds = json.load(sys.stdin)
+assert any(isinstance(b, dict) and b.get("id") == "onebee-ai-co-the-sai" for b in ds), "thiếu băng nhắc"' \
+  || { echo "FAIL  Nhân viên chưa thấy băng nhắc AI có thể sai"; exit 1; }
+echo "PASS  Nhân viên thấy băng nhắc AI có thể sai"
+
+curl -s -m 30 "${API}/api/v1/auths/admin/config" -H "Authorization: Bearer ${token}" | python3 -c '
+import json, sys
+cfg = json.load(sys.stdin)
+ui = cfg.get("DEFAULT_INTERFACE_SETTINGS") or {}
+assert ui.get("insertSuggestionPrompt") is True, "chưa bật insertSuggestionPrompt"' \
+  || { echo "FAIL  Chưa bật mặc định chèn gợi ý vào ô nhập"; exit 1; }
+echo "PASS  Mặc định chèn gợi ý vào ô nhập để người dùng viết tiếp"
+
+curl -s -m 30 -X DELETE "${API}/api/v1/users/${id_nv}" -H "Authorization: Bearer ${token}" >/dev/null
