@@ -1,5 +1,9 @@
 ---
-# Tên engine IBus theo từng bộ gõ (US để vẫn gõ được tiếng Anh)
+# Tên engine IBus theo từng bộ gõ. Phần tử đầu là bộ gõ lúc đăng nhập: tiếng Việt trước, Super + Space để sang tiếng Anh.
 onebee_ibus_engines:
-  bamboo: "['BambooUs', 'Bamboo']"
-  unikey: "['xkb:us::eng', 'Unikey']"
+  bamboo: "['Bamboo', 'BambooUs']"
+  unikey: "['Unikey', 'xkb:us::eng']"
+# Cinnamon 6.6 (Mint 22.3) lấy danh sách bộ gõ từ org.cinnamon.desktop.input-sources thay cho preload-engines
+onebee_ibus_sources:
+  bamboo: "[('ibus', 'Bamboo'), ('ibus', 'BambooUs')]"
+  unikey: "[('ibus', 'Unikey'), ('xkb', 'us')]"

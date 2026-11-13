@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""onebee-nhac-sao-luu — nhắc người đang đăng nhập khi máy đã nối OneBee Box mà quá 72 giờ chưa sao lưu (tối đa một lần mỗi ngày).
+Chạy bằng quyền người dùng (timer mức người dùng của systemd), chỉ đọc file công khai; mọi sự cố đều im lặng thoát mã 0.
+Mốc "lần cuối": /var/lib/onebee/sao-luu-cuoi (giây epoch do onebee-sao-luu ghi); chưa có hoặc hỏng thì tính từ lúc máy nối Box
+(thời điểm sửa /etc/onebee-hoi.conf). Đường dẫn đổi được bằng ONEBEE_SAO_LUU_CUOI, ONEBEE_HOI_CONF, ONEBEE_NHAC_DAU."""
+import datetime
+import os
+import shutil
+import subprocess
+import sys
+import time
+
+NGUONG_GIAY = 72 * 3600   # cùng ngưỡng với onebee-chan-doan và Box
+SAO_LUU_CUOI = os.environ.get("ONEBEE_SAO_LUU_CUOI", "/var/lib/onebee/sao-luu-cuoi")
+HOI_CONF = os.environ.get("ONEBEE_HOI_CONF", "/etc/onebee-hoi.conf")
+DA_NHAC = os.environ.get("ONEBEE_NHAC_DAU") or os.path.join(
+    os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache"), "onebee", "nhac-sao-luu")
+LOI_NHAN = ("Hãy để máy bật qua 12 giờ trưa. Nếu mai vẫn thấy thông báo này, "
+            "mở Trung tâm OneBee → Cần giúp đỡ → Báo cần hỗ trợ.")
+
+
+def moc_sao_luu():
+    """Thời điểm (giây epoch) tính tuổi sao lưu; None nếu máy chưa nối Box (không có gì để nhắc)."""
+    try:
+        thoi_diem_noi_box = os.stat(HOI_CONF).st_mtime
+    except OSError:
+        return None
+    try:
+        with open(SAO_LUU_CUOI, encoding="utf-8") as f:
+            noi_dung = f.read().strip()
+        if noi_dung.isascii() and noi_dung.isdigit():
+            return int(noi_dung)
+    except (OSError, ValueError):
+        pass
+    return thoi_diem_noi_box
+
+
+def da_nhac_hom_nay(hom_nay):
+    try:
+        with open(DA_NHAC, encoding="utf-8") as f:
+            return f.read().strip() == hom_nay
+    except (OSError, ValueError):
+        return False
+
+
+def ghi_da_nhac(hom_nay):
+    try:
+        os.makedirs(os.path.dirname(DA_NHAC), exist_ok=True)
+        with open(DA_NHAC, "w", encoding="utf-8") as f:
+            f.write(hom_nay + "\n")
+    except OSError:
+        pass
+
+
+def main():
+    moc = moc_sao_luu()
+    if moc is None:
+        return 0
+    tuoi = time.time() - moc
+    if tuoi <= NGUONG_GIAY:   # gồm cả đồng hồ lệch về tương lai (tuổi âm)
+        return 0
+    hom_nay = datetime.date.today().isoformat()
+    if da_nhac_hom_nay(hom_nay) or not shutil.which("notify-send"):
+        return 0
+    so_ngay = int(tuoi // 86400)
+    try:
+        ket_qua = subprocess.run(
+            ["notify-send", "-u", "normal", "-i", "dialog-warning", f"OneBee: máy chưa sao lưu {so_ngay} ngày", LOI_NHAN],
+            check=False, timeout=30, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError):
+        return 0
+    if ket_qua.returncode == 0:
+        ghi_da_nhac(hom_nay)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

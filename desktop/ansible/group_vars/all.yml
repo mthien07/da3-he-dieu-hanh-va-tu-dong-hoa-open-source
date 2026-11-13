@@ -27,3 +27,6 @@ onebee_auto_updates: true
 
 # Hình nền OneBee (chỉ áp dụng khi máy có Cinnamon)
 onebee_wallpaper_dir: /usr/share/backgrounds/onebee
+
+# Số điện thoại hỗ trợ hiện trong Trung tâm OneBee, trang "Cần giúp đỡ" (để trống: không hiện)
+onebee_dien_thoai_ho_tro: ""
