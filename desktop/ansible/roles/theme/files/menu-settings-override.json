@@ -1,0 +1,5 @@
+{
+  "menu-custom": {"override-props": true, "default": true},
+  "menu-icon": {"override-props": true, "default": "onebee-logo"},
+  "menu-label": {"override-props": true, "default": "Bắt đầu"}
+}

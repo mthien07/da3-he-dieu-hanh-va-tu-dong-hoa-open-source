@@ -19,6 +19,7 @@
     - ket-noi-box
     - quan-ly-tap-trung
     - ho-tro-tu-xa
+    - trung-tam
   handlers:
     # Dùng chung cho role vietnamese (bộ gõ) và theme (hình nền)
     - name: Biên dịch lại gsettings schema

@@ -1,0 +1,71 @@
+---
+# Trung tâm OneBee: cửa sổ chào lần đầu, lối vào 6 việc chính, bảng phím tắt và trang Cần giúp đỡ.
+
+- name: Cài thư viện giao diện cho Trung tâm OneBee
+  ansible.builtin.apt:
+    name: [python3-gi, gir1.2-gtk-3.0]
+    state: present
+
+- name: Tạo thư mục dữ liệu OneBee
+  ansible.builtin.file:
+    path: /usr/share/onebee
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Cài Trung tâm OneBee
+  ansible.builtin.copy:
+    src: onebee-trung-tam
+    dest: /usr/local/bin/onebee-trung-tam
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Chép nguồn chung phím tắt và tên gọi
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../theme/files/onebee-cam-nang.json"
+    dest: /usr/share/onebee/cam-nang.json
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Ghi thông tin đơn vị cho Trung tâm OneBee
+  ansible.builtin.copy:
+    content: "{{ {'dien_thoai_ho_tro': onebee_dien_thoai_ho_tro} | to_json }}\n"
+    dest: /usr/share/onebee/don-vi.json
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Thêm mục "Trung tâm OneBee" vào menu
+  ansible.builtin.copy:
+    dest: /usr/share/applications/onebee-trung-tam.desktop
+    content: |
+      [Desktop Entry]
+      Type=Application
+      Name=Trung tâm OneBee
+      Comment=Bắt đầu dùng máy, phím tắt, báo cần hỗ trợ
+      Exec=onebee-trung-tam
+      Icon=onebee-logo
+      Terminal=false
+      Categories=Utility;
+      Keywords=onebee;huong dan;giup do;phim tat;
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Tự mở Trung tâm OneBee ở lần đăng nhập đầu của mỗi người
+  ansible.builtin.copy:
+    dest: /etc/xdg/autostart/onebee-trung-tam.desktop
+    content: |
+      [Desktop Entry]
+      Type=Application
+      Name=OneBee: chào mừng lần đầu
+      Exec=onebee-trung-tam --lan-dau
+      NoDisplay=true
+      X-GNOME-Autostart-enabled=true
+      X-GNOME-Autostart-Delay=5
+    owner: root
+    group: root
+    mode: "0644"
