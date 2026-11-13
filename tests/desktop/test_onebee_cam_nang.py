@@ -16,6 +16,7 @@ THEME_TASKS = os.path.join(ROLES, "theme/tasks/main.yml")
 
 # Tên gọi nào nằm ở file nào của bộ cài máy trạm (dòng Name=<tên>)
 NOI_DINH_NGHIA_TEN = {
+    "trung_tam": "trung-tam/tasks/main.yml",
     "tro_ly_ai": "theme/tasks/main.yml",
     "thu_muc_chung": "ket-noi-box/tasks/main.yml",
     "bao_ho_tro": "quan-ly-tap-trung/tasks/muc-menu.yml",

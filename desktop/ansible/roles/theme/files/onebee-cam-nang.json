@@ -2,6 +2,7 @@
   "phien_ban": 1,
   "ghi_chu": "Một nguồn cho phím tắt và tên gọi của OneBee OS. Sửa ở đây trước, rồi chạy test để biết bề mặt nào phải sửa theo.",
   "ten_goi": {
+    "trung_tam": "Trung tâm OneBee",
     "tro_ly_ai": "Trợ lý AI OneBee",
     "thu_muc_chung": "Chia sẻ nội bộ (OneBee Box)",
     "bao_ho_tro": "Báo cần hỗ trợ (OneBee)",
