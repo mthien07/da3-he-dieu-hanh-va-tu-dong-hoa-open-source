@@ -81,6 +81,7 @@ cd onebee && sudo ./desktop/onebee-install.sh
 | Trợ lý AI, quy trình tự động, email | [dung-tro-ly-ai-va-quy-trinh-tu-dong.md](docs/huong-dan/dung-tro-ly-ai-va-quy-trinh-tu-dong.md) |
 | Quản lý, cập nhật máy trạm, hỗ trợ từ xa | [quan-ly-may-tram.md](docs/huong-dan/quan-ly-may-tram.md) |
 | Vào máy từ xa để cài tiếp (máy mới cài hệ điều hành, ở nơi khác) | [truy-cap-tu-xa-khi-cai-may.md](docs/huong-dan/truy-cap-tu-xa-khi-cai-may.md) |
+| Kiểm trải nghiệm trên máy thật (phiên Cinnamon, Trợ lý AI, trang chủ Box) | [kiem-thu-trai-nghiem-may-that.md](docs/kiem-thu-trai-nghiem-may-that.md) · kết quả: [reports/trai-nghiem/](reports/trai-nghiem/) |
 | Chạy thử tại đơn vị, đào tạo, tờ phím tắt | [chay-thu-tai-don-vi.md](docs/huong-dan/chay-thu-tai-don-vi.md) · [dao-tao-buoi-1-3.md](docs/huong-dan/dao-tao-buoi-1-3.md) · [to-phim-tat.md](docs/huong-dan/to-phim-tat.md) |
 | Đo trước/sau | [do-truoc-sau.md](docs/huong-dan/do-truoc-sau.md) |
 | Kinh doanh: cách tính giá, mẫu hợp đồng (nháp), khảo sát khách | [docs/kinh-doanh/](docs/kinh-doanh/) |
@@ -95,6 +96,9 @@ cd onebee && sudo ./desktop/onebee-install.sh
   tường lửa (cả khi dừng/bật lại Docker), hỏng ổ → khôi phục, bật/tắt HTTPS, xoay khóa, khởi động lại); **Desktop trong container Linux Mint 22.3 71 PASS / 0 FAIL**;
   cả hai bộ cài chạy lần 2 `changed=0 failed=0`. Unit test Box 119 + Desktop 62 + AI 17 bài; lint sạch.
 - ✅ Model AI chọn bằng bộ chấm 40 câu tiếng Việt (98%): [ADR 0003](docs/adr/0003-chon-model-ai-gemma.md), [reports/ai/](reports/ai/).
+- ✅ Trải nghiệm người dùng (bản 1.2.0 đang chuẩn bị): **Trung tâm OneBee** tự mở ở lần đăng nhập đầu, trang **Kiểm tra máy** và nhắc sao lưu trễ để nhân viên tự xử lý bằng chuột,
+  4 gợi ý tiếng Việt và 4 mẫu soạn văn bản của Trợ lý AI, trang chủ Box có mục soạn văn bản và số máy trạm đã sao lưu.
+  **Chưa kiểm trên máy thật**: chưa có file kết quả nào trong [reports/trai-nghiem/](reports/trai-nghiem/); phiếu kiểm: [kiem-thu-trai-nghiem-may-that.md](docs/kiem-thu-trai-nghiem-may-that.md).
 - ⏳ **Chưa cài trên máy thật tại đơn vị nào** (phiên Cinnamon thật, phần cứng, LAN thật, Windows mở thư mục chung, tốc độ AI) →
   [phiếu kiểm thử máy thật](docs/kiem-thu-tren-may-that.md), [danh sách thử](docs/huong-dan/thu-nghiem-tren-may-ao.md).
 - ⏳ Chạy thử 4 tuần tại HTX OneBee → số liệu thật cho giá, video hướng dẫn.

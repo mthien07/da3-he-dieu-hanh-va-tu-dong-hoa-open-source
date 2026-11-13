@@ -12,7 +12,7 @@ Mục tiêu: người dùng tự mở máy, tìm ứng dụng, gõ tiếng Việ
 3. (15') Gõ tiếng Việt: Telex như Unikey. Đổi Việt/Anh: **Super + Space** (ghi trên [tờ phím tắt](to-phim-tat.md)).
    Thực hành: gõ tên đơn vị, một câu có đủ dấu.
 4. (15') File: thư mục Tài liệu, Tải xuống; file cũ từ Windows đã chép ở đâu; thư mục chung trên Box (`smb://<ip-box>/chung`).
-5. (5') Khi gặp khó: menu **"Báo cần hỗ trợ (OneBee)"** — chọn loại sự cố, mô tả, gửi. Gấp thì gọi điện thêm.
+5. (5') Khi gặp khó: mở **Trung tâm OneBee** → **Cần giúp đỡ** (hoặc menu "Báo cần hỗ trợ (OneBee)") — chọn loại sự cố, mô tả, gửi. Gấp thì gọi điện thêm.
 Kiểm tra cuối buổi: mỗi người tự mở 1 file Word cũ của mình và sửa 1 dòng tiếng Việt.
 
 ## Buổi 2 — Văn phòng (2–3 ngày sau)
@@ -35,5 +35,8 @@ Mục tiêu: dùng được các tiện ích trên OneBee Box, biết dữ liệ
 3. (10') Sao lưu: máy tự sao lưu 12:00 hằng ngày lên Box; lỡ xóa file thì báo hỗ trợ để lấy lại (loại "Sao lưu / mất file").
 4. (10') Hỗ trợ từ xa: menu "Cho phép hỗ trợ từ xa" → đọc mã cho kỹ thuật → khi máy hỏi thì bấm "Cho phép".
    **Chỉ bấm khi chính mình vừa gọi kỹ thuật OneBee.**
-5. (10') Hỏi đáp, ghi lại việc người dùng muốn tự động hóa thêm (đầu vào cho giai đoạn sau).
+5. (5') Tự kiểm tra máy: mở **Trung tâm OneBee** → **Kiểm tra máy** → **Kiểm tra ngay**; mục nào báo cảnh báo hoặc lỗi thì đọc gợi ý bên dưới,
+   chưa hết thì bấm gửi yêu cầu hỗ trợ kèm kết quả. Thông báo **"OneBee: máy chưa sao lưu … ngày"** nghĩa là máy đã nối Box nhưng quá 3 ngày chưa sao lưu được:
+   để máy bật qua 12 giờ trưa; mai vẫn còn thông báo thì **Trung tâm OneBee → Cần giúp đỡ → Báo cần hỗ trợ**.
+6. (10') Hỏi đáp, ghi lại việc người dùng muốn tự động hóa thêm (đầu vào cho giai đoạn sau).
 Kiểm tra cuối buổi: mỗi người hỏi Trợ lý 1 việc của mình và tự đánh giá câu trả lời đúng/sai.
