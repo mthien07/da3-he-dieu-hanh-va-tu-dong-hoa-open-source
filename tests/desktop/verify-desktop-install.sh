@@ -135,10 +135,16 @@ check "LibreOffice mở mặc định giao diện Ribbon (tab) cho Writer, Calc,
 
 if [[ -x /usr/bin/mintupdate-automation ]]; then
   check "Bật tự động nâng cấp mintupdate" test -e /etc/systemd/system/timers.target.wants/mintupdate-automation-upgrade.timer
-  check "Bật tự động dọn gói thừa mintupdate" test -e /etc/systemd/system/timers.target.wants/mintupdate-automation-autoremove.timer
+  # Bản mintupdate mới có thể không còn timer dọn gói thừa (bộ cài chỉ bật khi file timer tồn tại)
+  if [[ -f /usr/lib/systemd/system/mintupdate-automation-autoremove.timer ]]; then
+    check "Bật tự động dọn gói thừa mintupdate" test -e /etc/systemd/system/timers.target.wants/mintupdate-automation-autoremove.timer
+  fi
 else
   check "Bật unattended-upgrades" grep -q 'Unattended-Upgrade "1"' /etc/apt/apt.conf.d/20auto-upgrades
 fi
+
+check "Trình quản lý cập nhật không tự bật cửa sổ" \
+  grep -qxF 'show-welcome-page=false' /usr/share/glib-2.0/schemas/zz_onebee-updates.gschema.override
 
 check "Có lệnh sao lưu onebee-sao-luu + restic" bash -c "test -x /usr/local/sbin/onebee-sao-luu && command -v restic"
 check "Thư mục cấu hình /etc/onebee chỉ root vào (700)" bash -c "[ \"\$(stat -c %a /etc/onebee)\" = 700 ]"
