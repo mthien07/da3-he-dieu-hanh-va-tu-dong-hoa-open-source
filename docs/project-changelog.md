@@ -9,6 +9,8 @@ Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài ch�
 - Trang chủ Box, tờ phím tắt, sổ tay A4, giáo án và kịch bản video dùng cùng một phím khóa màn hình (Super + L) và cùng tên gọi
   như trên máy ("Trợ lý AI OneBee", "Chia sẻ nội bộ (OneBee Box)", "Cho phép hỗ trợ từ xa (OneBee)").
 - Máy trạm (Mint 22.3): chỉ bật `mintupdate-automation-autoremove.timer` khi file timer tồn tại trên máy, tránh lỗi bộ cài trên bản mintupdate mới đã bỏ timer này.
+- Trợ lý AI trên Box: 4 mẫu soạn văn bản (`/to-trinh`, `/bien-ban`, `/hop-dong`, `/bao-cao`) được tạo đúng theo API Open WebUI v0.11.4,
+  mọi nhân viên đều thấy và chạy lại không đổi; bộ cài thôi tự tạo bộ tri thức rỗng, lệnh `onebee-box dong-bo-tri-thuc` không tạo trùng.
 ### Thêm
 - `desktop/ansible/roles/theme/files/onebee-cam-nang.json`: một nguồn cho phím tắt và tên gọi; test
   `tests/desktop/test_onebee_cam_nang.py` báo lỗi khi cấu hình máy hoặc tài liệu lệch nguồn này.
@@ -24,6 +26,8 @@ Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài ch�
 - "Báo cần hỗ trợ (OneBee)" mở biểu mẫu đã điền sẵn tên máy qua lệnh mới `onebee-bao-ho-tro` (địa chỉ biểu mẫu nằm trong `/etc/onebee-ho-tro.conf`); với file Windows lạ, trợ lý tập tin điền sẵn thêm loại "Phần mềm chỉ chạy trên Windows" và tên file. Box đời cũ đẩy lại mục menu kiểu cũ vẫn dùng được, chỉ mất phần điền sẵn, hết khi Box được cài bản mới.
 - Nhắc sao lưu trễ: máy đã nối Box mà quá 72 giờ chưa sao lưu thì người đang đăng nhập nhận một thông báo (tối đa một lần mỗi ngày), qua dịch vụ systemd mức người dùng `onebee-nhac-sao-luu`.
 - Ngưỡng báo sao lưu trễ của `onebee-chan-doan` trên máy trạm đổi từ 26 giờ sang 72 giờ cho khớp Box (máy tắt cuối tuần không bị báo nhầm).
+- Trợ lý AI trên Box: 4 gợi ý tiếng Việt bấm được trên màn hình trò chuyện mới (chèn câu mở đầu vào ô nhập để người dùng viết tiếp)
+  và dòng nhắc "Trợ lý AI có thể sai" trên giao diện web.
 
 ## [1.1.0] — 22/10/2026 — Năm tính năng mới và bộ cài USB offline
 Phiên bản 1.0.0 chuyển hóa OneBee OS (DA3) thành sản phẩm thương mại hoàn chỉnh, hấp thụ tinh hoa kiến trúc từ các dự án mã nguồn mở hàng đầu thế giới (CasaOS, YunoHost, Zorin OS, Nextcloud, Synology/TrueNAS).
@@ -40,7 +44,7 @@ Phiên bản 1.0.0 chuyển hóa OneBee OS (DA3) thành sản phẩm thương m�
    - Hộp thoại Zenity tiếng Việt gợi ý ứng dụng Linux tương đương (Zalo Web/Native, Chromium, IBus Bamboo, Foxit/Evince, VLC, Hỗ trợ từ xa OneBee).
 4. **Kho Mẫu Prompt Hành chính NĐ 30 & Bộ Tri thức RAG Open WebUI (Nextcloud/Dify):**
    - 4 mẫu prompt chuẩn: `/to-trinh` (Nghị định 30/2020/NĐ-CP), `/bien-ban` (Họp HTX), `/hop-dong` (Bao tiêu nông sản Luật HTX 2023), `/bao-cao` (Tài chính & quỹ chung không chia).
-   - Danh mục tri thức `Thư viện Pháp lý HTX` hỗ trợ RAG trích dẫn điều khoản luật chính xác.
+   - Danh mục tri thức `Thư viện Pháp lý HTX`: mới có khung, **chưa nạp tài liệu** (xem 1.2.0).
 5. **Cảnh báo Sự cố Chủ động qua Telegram & n8n (Synology/TrueNAS):**
    - Gửi cảnh báo tức thời vào điện thoại quản trị viên (`ℹ️ INFO`, `⚠️ WARN`, `🚨 CRIT`) khi sao lưu hoàn tất, ổ đĩa đầy hoặc dịch vụ dừng.
    - Lệnh quản trị `sudo onebee-box dat-telegram` và `sudo onebee-box canh-bao`.

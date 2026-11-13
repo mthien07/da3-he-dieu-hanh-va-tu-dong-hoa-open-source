@@ -8,6 +8,7 @@ import os
 import tempfile
 import threading
 import unittest
+import urllib.parse
 from contextlib import redirect_stdout
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -41,6 +42,14 @@ class WebuiGia(BaseHTTPRequestHandler):
         if self.path == "/api/v1/auths/api_key":
             khoa = self.state.get("khoa", {}).get(self.headers.get("Authorization", "").replace("Bearer ", ""))
             return self._gui(200, {"api_key": khoa}) if khoa else self._gui(404, {"detail": "none"})
+        if self.path.startswith("/api/v1/models/model?id="):
+            mid = urllib.parse.unquote(self.path.split("?id=", 1)[1])
+            m = self.state.get("models", {}).get(mid)
+            return self._gui(200, m) if m else self._gui(404, {"detail": "not found"})
+        if self.path == "/api/v1/prompts/":
+            return self._gui(200, list(self.state.get("prompts", {}).values()))
+        if self.path == "/api/v1/configs/banners":
+            return self._gui(200, self.state.get("banners", []))
         self._gui(404, {"detail": "not found"})
 
     def do_DELETE(self):
@@ -79,6 +88,26 @@ class WebuiGia(BaseHTTPRequestHandler):
                 return self._gui(400, {"detail": "sai"})
             self.state["mat_khau"][email] = body["new_password"]
             return self._gui(200, True)
+        if self.path == "/api/v1/models/create" or self.path.startswith("/api/v1/models/model/update"):
+            self.state.setdefault("models", {})[body["id"]] = body
+            return self._gui(200, body)
+        if self.path == "/api/v1/prompts/create":
+            prompts = self.state.setdefault("prompts", {})
+            rec = {"id": f"p-{len(prompts)}", **body}
+            prompts[body["command"]] = rec
+            return self._gui(200, rec)
+        if self.path.startswith("/api/v1/prompts/id/") and self.path.endswith("/update"):
+            prompts = self.state.setdefault("prompts", {})
+            pid = self.path.split("/")[5]
+            rec = {"id": pid, **body}
+            prompts[body["command"]] = rec
+            return self._gui(200, rec)
+        if self.path == "/api/v1/configs/banners":
+            # Như BannerModel của v0.11.4 (config.py): lưu qua pydantic nên GET trả thêm trường mặc định i18n=None
+            self.state["banners"] = [{"i18n": b.get("i18n"), "id": b["id"], "type": b["type"], "title": b.get("title"),
+                                      "content": b["content"], "dismissible": b["dismissible"],
+                                      "timestamp": b["timestamp"]} for b in body["banners"]]
+            return self._gui(200, self.state["banners"])
         self._gui(404, {"detail": "not found"})
 
 
@@ -160,6 +189,72 @@ class EnforceSettings(unittest.TestCase):
                 self.w.enforce_settings("tok")
         finally:
             WebuiGia.do_GET = orig
+
+    def test_tep_goi_y_hop_le(self):
+        with open(self.w.GOI_Y, encoding="utf-8") as f:
+            ds = json.load(f)
+        self.assertIsInstance(ds, list)
+        self.assertIn(len(ds), (3, 4))
+        for muc in ds:
+            self.assertIsInstance(muc.get("title"), list)
+            self.assertIn(len(muc["title"]), (1, 2))
+            self.assertTrue(all(isinstance(s, str) and s.strip() for s in muc["title"]))
+            self.assertTrue(isinstance(muc.get("content"), str) and muc["content"].strip())
+
+    def test_tro_ly_mang_goi_y_va_chay_lai_khong_doi(self):
+        WebuiGia.state["mat_khau"] = {"quantri@onebee.lan": "admin-mk"}
+        with open(self.w.GOI_Y, encoding="utf-8") as f:
+            mong_doi = json.load(f)
+        loi_dan = os.path.join(HERE, "../../box/ansible/roles/box-ai/files/tro-ly-onebee-loi-dan.md")
+        try:
+            os.environ["WEBUI_ADMIN_EMAIL"] = "quantri@onebee.lan"
+            os.environ["WEBUI_ADMIN_PASSWORD"] = "admin-mk"
+            os.environ["ONEBEE_AI_MODEL"] = "gemma4:e2b-it-qat"
+            os.environ["ONEBEE_LOI_DAN"] = loi_dan
+            with redirect_stdout(io.StringIO()):
+                self.w.dong_bo_tro_ly()
+            m = WebuiGia.state.get("models", {}).get("onebee-tro-ly")
+            self.assertIsNotNone(m)
+            self.assertEqual(m["meta"].get("suggestion_prompts"), mong_doi)
+            WebuiGia.state["posts"] = []
+            with redirect_stdout(io.StringIO()):
+                self.w.dong_bo_tro_ly()
+            model_posts = [p for p in WebuiGia.state["posts"] if "models/model/update" in p or "models/create" in p]
+            self.assertEqual(model_posts, [])
+        finally:
+            for k in ("WEBUI_ADMIN_EMAIL", "WEBUI_ADMIN_PASSWORD", "ONEBEE_AI_MODEL", "ONEBEE_LOI_DAN"):
+                os.environ.pop(k, None)
+
+    def test_mac_dinh_chen_goi_y_vao_o_nhap_va_giu_cai_dat_khac(self):
+        WebuiGia.state["config"]["DEFAULT_INTERFACE_SETTINGS"] = {"chatDirection": "auto"}
+        self.assertTrue(self.w.enforce_settings("tok"))
+        self.assertEqual(
+            WebuiGia.state["config"].get("DEFAULT_INTERFACE_SETTINGS"),
+            {"chatDirection": "auto", "insertSuggestionPrompt": True},
+        )
+
+    def test_bang_nhac_them_mot_lan_va_giu_bang_cua_quan_tri(self):
+        khac = {
+            "id": "khac",
+            "type": "info",
+            "title": "",
+            "content": "Thông báo của quản trị",
+            "dismissible": True,
+            "timestamp": 1700000000,
+        }
+        WebuiGia.state["banners"] = [khac]
+        WebuiGia.state["posts"] = []
+        with redirect_stdout(io.StringIO()):
+            self.w.dong_bo_bang_nhac("tok")
+        self.assertEqual(WebuiGia.state["posts"], ["/api/v1/configs/banners"])
+        self.assertEqual([b["id"] for b in WebuiGia.state["banners"]], ["khac", self.w.BANG_NHAC["id"]])
+        self.assertEqual(WebuiGia.state["banners"][0]["content"], khac["content"])
+        luu = WebuiGia.state["banners"][1]
+        self.assertEqual({k: luu[k] for k in self.w.BANG_NHAC}, self.w.BANG_NHAC)
+        WebuiGia.state["posts"] = []   # lần 2: Open WebUI trả băng có thêm i18n=None → vẫn phải coi là không đổi
+        with redirect_stdout(io.StringIO()):
+            self.w.dong_bo_bang_nhac("tok")
+        self.assertEqual(WebuiGia.state["posts"], [])
 
 
 class TaiKhoanMay(unittest.TestCase):
