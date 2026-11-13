@@ -70,6 +70,7 @@
       <span>Trợ lý AI: <b id="dv-tro_ly_ai">…</b></span>
       <span>Thư mục chung: <b id="dv-thu_muc_chung">…</b></span>
       <span>Sao lưu: <b id="dv-sao_luu">…</b></span>
+      <span id="dv-may_tram-o" hidden>Máy trạm đã sao lưu: <b id="dv-may_tram">…</b></span>
     </div>
     <div id="tt-cap-nhat">Đang tải số liệu…</div>
   </section>
@@ -175,6 +176,15 @@
       b.textContent = NHAN[v] || "Không rõ";
       b.setAttribute("data-muc", MUC[v] || "canh-bao");
     });
+    // Ô máy trạm: chỉ hiện khi lệnh sao lưu đêm đã ghi hai con số (không có tên máy)
+    var mt = d.may_tram, oMt = document.getElementById("dv-may_tram-o"), bMt = document.getElementById("dv-may_tram");
+    if (mt && mt.tong > 0) {
+      bMt.textContent = mt.sao_luu_trong_han + "/" + mt.tong + " máy (trong 3 ngày)";
+      bMt.setAttribute("data-muc", mt.sao_luu_trong_han === mt.tong ? "tot" : "canh-bao");
+      oMt.hidden = false;
+    } else {
+      oMt.hidden = true;
+    }
     var t = new Date(d.cap_nhat), e = document.getElementById("tt-cap-nhat");
     e.textContent = "Cập nhật lúc " + t.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
     e.setAttribute("data-muc", Date.now() - t.getTime() > 5 * 60000 ? "loi" : "tot");   // số liệu cũ: lịch cập nhật trên Box đã ngừng
