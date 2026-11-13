@@ -334,6 +334,7 @@ Mọi dòng phải là `PASS`, dòng cuối `KẾT QUẢ: tất cả mục đạ
 - Mở LibreOffice Writer, gõ vài chữ, Ctrl + S → mặc định lưu `.docx`.
 - Sao lưu ngay: `sudo onebee-sao-luu` → báo sao lưu xong.
 - Hỏi Trợ lý AI: `hoi cách xuất file PDF` → có câu trả lời tiếng Việt.
+- Đăng xuất, đăng nhập bằng tài khoản nhân viên vừa tạo ở 6.4: cửa sổ **Trung tâm OneBee** phải tự mở.
 
 **Làm lại Phần 5–6 cho từng máy trạm.** Có nhiều máy giống hệt nhau: xem cách nhân bản ở [cai-hang-loat.md](cai-hang-loat.md).
 

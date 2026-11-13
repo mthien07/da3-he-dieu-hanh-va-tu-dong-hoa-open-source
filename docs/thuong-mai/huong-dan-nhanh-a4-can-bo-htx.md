@@ -5,7 +5,7 @@
 
 ### 1. 🌐 Truy cập Hệ thống Máy chủ OneBee Box
 - **Địa chỉ vào thẳng:** Mở trình duyệt web gõ: **`http://onebee.local`** (hoặc địa chỉ IP được cấp: `http://192.168.1.xxx`).
-- **Trang chủ Dashboard:** Cung cấp liên kết nhanh tới Trợ lý AI, Thư mục tài liệu chung, Báo cáo và Trạng thái máy chủ.
+- **Trang chủ Dashboard:** Cung cấp liên kết nhanh tới Trợ lý AI, Thư mục tài liệu chung, Báo cáo và Trạng thái máy chủ; mục **"Soạn văn bản bằng Trợ lý AI"**: bấm một thẻ là mở Trợ lý với câu mở đầu điền sẵn.
 
 ---
 
@@ -41,5 +41,6 @@ Bấm biểu tượng **Trợ lý AI OneBee** trên thanh tác vụ (hoặc mở
 ---
 
 ### 6. 🆘 Hỗ trợ Kỹ thuật & Sự cố Khẩn cấp
+- Mở **Trung tâm OneBee** (menu **Bắt đầu**) → **Cần giúp đỡ** (báo kỹ thuật) hoặc **Kiểm tra máy** (tự xem máy trục trặc gì).
 - Mở menu **Bắt đầu** → **"Cho phép hỗ trợ từ xa (OneBee)"** để cấp mã kết nối cho kỹ thuật viên. Chỉ bấm khi chính mình vừa gọi kỹ thuật OneBee.
 - Số điện thoại kỹ thuật hỗ trợ: **0777 794 089** (HTX OneBee).
