@@ -1,5 +1,28 @@
 ---
-# Mục menu mở biểu mẫu trên Box — sinh từ cấu hình máy trạm (onebee_may_tram). Dùng chung với playbook dong-bo-may-tram.yml của Box.
+# Mục menu mở biểu mẫu trên Box — sinh từ cấu hình máy trạm (onebee_may_tram). Dùng chung với playbook dong-bo-may-tram.yml của Box:
+# mọi thứ mục menu cần (lệnh onebee-bao-ho-tro, địa chỉ biểu mẫu) phải được cài ngay trong file này, nếu không Box đẩy mục menu
+# trỏ tới lệnh mà máy trạm chưa có.
+
+- name: Cài lệnh mở biểu mẫu Báo cần hỗ trợ
+  ansible.builtin.copy:
+    src: onebee-bao-ho-tro
+    dest: /usr/local/bin/onebee-bao-ho-tro
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ghi địa chỉ biểu mẫu Báo cần hỗ trợ
+  ansible.builtin.copy:
+    dest: /etc/onebee-ho-tro.conf
+    content: |
+      # Quản lý bởi OneBee OS
+      HO_TRO_URL={{ onebee_giao_thuc }}://{{ onebee_may_tram.BOX_IP }}:5678/form/onebee-ho-tro
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    onebee_giao_thuc: "{{ 'https' if onebee_may_tram.BOX_HTTPS | default('') == '1' else 'http' }}"
+  when: onebee_may_tram.BOX_IP | default('') is match('^[0-9]{1,3}(\.[0-9]{1,3}){3}$')
 
 - name: Thêm mục "Báo cần hỗ trợ" vào menu (mở biểu mẫu trên Box)
   ansible.builtin.copy:
@@ -9,7 +32,7 @@
       Type=Application
       Name=Báo cần hỗ trợ (OneBee)
       Comment=Gửi yêu cầu hỗ trợ cho kỹ thuật OneBee
-      Exec=xdg-open {{ onebee_giao_thuc }}://{{ onebee_may_tram.BOX_IP }}:5678/form/onebee-ho-tro
+      Exec=onebee-bao-ho-tro
       Icon=help-browser
       Terminal=false
       Categories=System;
