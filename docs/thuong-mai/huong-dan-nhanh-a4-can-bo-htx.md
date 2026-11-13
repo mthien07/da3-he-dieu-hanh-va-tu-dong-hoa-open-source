@@ -10,7 +10,7 @@
 ---
 
 ### 2. 🤖 Trợ lý AI Soạn thảo Văn bản Cơ sở (Chạy nội bộ 100%)
-Nhấn vào biểu tượng **Trợ lý AI** trên Desktop hoặc truy cập cổng `:3000`:
+Bấm biểu tượng **Trợ lý AI OneBee** trên thanh tác vụ (hoặc mở `http://onebee.local` rồi chọn **Trợ lý AI nội bộ**):
 - **Gõ mẫu lệnh nhanh 1-Click:**
   - 📝 **`/to-trinh`** : Tự động lập Tờ trình / Công văn đúng thể thức **Nghị định 30/2020/NĐ-CP**.
   - 📑 **`/bien-ban`** : Lập Biên bản cuộc họp Hội đồng quản trị / Đại hội xã viên.
@@ -23,13 +23,13 @@ Nhấn vào biểu tượng **Trợ lý AI** trên Desktop hoặc truy cập c�
 
 ### 3. 📁 Lưu trữ & Chia sẻ Dữ liệu Dùng chung (Samba)
 - **Trên máy tính Windows:** Nhấn tổ hợp phím `Windows + R`, gõ: `\\onebee.local\chung` rồi nhấn Enter.
-- **Trên máy trạm Linux Mint:** Nhấn đúp chuột vào biểu tượng **"Thư mục chung OneBee"** trên màn hình nền.
+- **Trên máy trạm Linux Mint:** Nhấn đúp chuột vào biểu tượng **"Chia sẻ nội bộ (OneBee Box)"** trên màn hình nền.
 - ⚠️ **Lưu ý:** Tuyệt đối không xóa nhầm tài liệu của các phòng ban khác trong thư mục `chung`.
 
 ---
 
 ### 4. ⌨️ Bộ gõ Tiếng Việt & Bộ ứng dụng Văn phòng
-- **Đổi kiểu gõ:** Nhấn phím **`Super + Space`** (phím Windows + Phím cách) hoặc `Ctrl + Shift` để bật/tắt gõ tiếng Việt IBus Bamboo.
+- **Đổi kiểu gõ:** Nhấn phím **`Super + Space`** (phím Windows + phím cách) để bật/tắt gõ tiếng Việt.
 - **Soạn thảo văn bản:** Sử dụng **LibreOffice Writer** (Word), **Calc** (Excel), **Impress** (PowerPoint). Hệ thống đã tự động cấu hình lưu định dạng chuẩn quốc tế `.docx`, `.xlsx`, `.pptx`.
 
 ---
@@ -41,5 +41,5 @@ Nhấn vào biểu tượng **Trợ lý AI** trên Desktop hoặc truy cập c�
 ---
 
 ### 6. 🆘 Hỗ trợ Kỹ thuật & Sự cố Khẩn cấp
-- Nhấn vào biểu tượng **"Hỗ trợ từ xa OneBee"** trên màn hình để cấp mã kết nối cho kỹ thuật viên.
+- Mở menu **Bắt đầu** → **"Cho phép hỗ trợ từ xa (OneBee)"** để cấp mã kết nối cho kỹ thuật viên. Chỉ bấm khi chính mình vừa gọi kỹ thuật OneBee.
 - Số điện thoại kỹ thuật hỗ trợ: **0777 794 089** (HTX OneBee).

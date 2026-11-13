@@ -7,6 +7,6 @@ Exec=onebee-windows-app-helper %F
 Icon=system-run
 Terminal=false
 Categories=System;Utility;
-MimeType=application/x-msdos-program;application/x-msi;application/x-executable;application/vnd.microsoft.portable-executable;
+MimeType=application/vnd.microsoft.portable-executable;application/x-msdownload;application/x-ms-dos-executable;application/x-dosexec;application/x-msdos-program;application/x-msi;
 NoDisplay=false
 StartupNotify=true

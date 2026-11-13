@@ -1,16 +1,25 @@
 # Nhật ký thay đổi
 
 ## [1.2.0] — (đang làm)
+Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài chưa được nâng). Bản 1.2.0 là bản có file tải kế tiếp.
 ### Sửa
+- Bộ cài Desktop và Box ghi đúng phiên bản; thêm test chặn việc phát hành khi phiên bản trong mã thấp hơn tag.
+- Trợ lý tập tin Windows: nút nào cũng mở được ứng dụng hoặc nói rõ vì sao chưa mở được; không còn nhận chương trình Linux là
+  "phần mềm Windows"; lời gợi ý chỉ nêu ứng dụng thật sự có trên máy.
+- Trang chủ Box, tờ phím tắt, sổ tay A4, giáo án và kịch bản video dùng cùng một phím khóa màn hình (Super + L) và cùng tên gọi
+  như trên máy ("Trợ lý AI OneBee", "Chia sẻ nội bộ (OneBee Box)", "Cho phép hỗ trợ từ xa (OneBee)").
 - Máy trạm (Mint 22.3): chỉ bật `mintupdate-automation-autoremove.timer` khi file timer tồn tại trên máy, tránh lỗi bộ cài trên bản mintupdate mới đã bỏ timer này.
 ### Thêm
+- `desktop/ansible/roles/theme/files/onebee-cam-nang.json`: một nguồn cho phím tắt và tên gọi; test
+  `tests/desktop/test_onebee_cam_nang.py` báo lỗi khi cấu hình máy hoặc tài liệu lệch nguồn này.
+- `tests/desktop/check-exe-handler.sh` được chạy trong CI.
 - Máy trạm (Cinnamon 6.6 / Mint 22.3): nạp sẵn bộ gõ tiếng Việt (mặc định tiếng Việt trước, `Super + Space` sang tiếng Anh) ở cả khóa `sources` của `org.cinnamon.desktop.input-sources` và `preload-engines` của IBus.
 - Nút **Bắt đầu** trên máy có `mint-artwork`: gộp `menu-settings-override.json` (`menu-custom=true`, biểu tượng `onebee-logo`, nhãn `Bắt đầu`) vào mặc định của applet menu sau khi chuyển hướng file gốc bằng `dpkg-divert`.
 - Tắt cửa sổ chào (`mintwelcome`) và báo cáo hệ thống (`mintreport`) lúc đăng nhập bằng `dpkg-divert --local --rename` (bền qua cập nhật gói); trình quản lý cập nhật (`com.linuxmint.updates`) không tự bật cửa sổ hay thông báo cho nhân viên.
 - Đồng hồ thanh tác vụ Cinnamon hiển thị giờ và ngày/tháng/năm kiểu Việt Nam (`%H:%M  %d/%m/%Y`) qua `calendar-settings-override.json`.
 - Màn hình đăng nhập LightDM (`slick-greeter.conf`) dùng hình nền OneBee (`force: false`, giữ nguyên nếu quản trị đã tự chỉnh).
 
-## [1.0.0] — 22/10/2026: Phiên bản Phát hành Thương mại Chính thức
+## [1.1.0] — 22/10/2026 — Năm tính năng mới và bộ cài USB offline
 Phiên bản 1.0.0 chuyển hóa OneBee OS (DA3) thành sản phẩm thương mại hoàn chỉnh, hấp thụ tinh hoa kiến trúc từ các dự án mã nguồn mở hàng đầu thế giới (CasaOS, YunoHost, Zorin OS, Nextcloud, Synology/TrueNAS).
 
 ### Tính năng Nổi bật Vượt trội (5 Trụ cột Tinh hoa Nguồn mở):
@@ -56,6 +65,30 @@ Phiên bản 1.0.0 chuyển hóa OneBee OS (DA3) thành sản phẩm thương m�
   (`smb://<IP Box>/chung`, đặt lúc đăng nhập); LibreOffice bộ biểu tượng **Colibre** (kiểu giống Microsoft Office).
 - Phiếu `docs/kiem-thu-tren-may-that.md` mục E2 kiểm cầu nối trên máy thật. Test tự động `tests/desktop/test_mo_truy_cap_tu_xa.py` dùng lệnh giả;
   **chưa chạy trên máy thật**.
+
+## [1.0.0] — 15/10/2026 — Bản phát hành chính thức đầu tiên
+Bản đủ tính năng cho một đơn vị, gồm mọi thay đổi từ 1.0.0-rc.1 (các mục dưới đây). Đã nghiệm thu tự động trong container
+(`reports/nghiem-thu-v1-docker.md`); **chưa cài trên máy thật tại đơn vị nào** — phiếu `docs/kiem-thu-tren-may-that.md` nhóm B–E còn mở,
+chưa có số đo tốc độ AI trên máy thật.
+### Tính năng chính
+- **OneBee OS Desktop** (Linux Mint 22.x): gõ Telex (IBus + Bamboo), LibreOffice lưu mặc định .docx/.xlsx/.pptx, font thay thế, tự cập nhật,
+  tự sao lưu lên Box, lệnh `hoi` hỏi Trợ lý AI, báo tình trạng máy, báo cần hỗ trợ, hỗ trợ từ xa có đồng ý.
+- **OneBee Box** (Ubuntu Server 24.04): Trợ lý AI chạy tại chỗ (Ollama + Open WebUI, `gemma4:e2b-it-qat`), n8n gửi email (báo cáo sao lưu, nhắc hạn,
+  đơn hàng, tóm tắt PDF, sổ hỗ trợ), giám sát Uptime Kuma, thư mục chung Samba (SMB 3.1.1 bắt buộc mã hóa), sao lưu 2 tầng bằng restic
+  (rest-server chỉ-thêm → ổ ngoài) và khôi phục toàn bộ khi hỏng ổ, tường lửa chỉ mở cho LAN.
+- **Quản lý tập trung**: `onebee-box them-may`, `may-tram`, `cap-nhat-may`, `dong-bo-may`, `xoay-khoa`, `bao-cao-tuan`; HTTPS nội bộ bằng CA riêng
+  có ràng buộc tên (tùy chọn `onebee_box_https`).
+### Giao diện quen thuộc như Windows (Desktop)
+- Nút thu nhỏ/phóng to/đóng bên phải; Win+E mở thư mục cá nhân, Win+D hiện màn hình nền, Win+L khóa màn hình (Super+L không còn mở bảng gỡ lỗi
+  Looking Glass, kỹ thuật mở bằng Alt+F2 → `lg`); màn hình nền có Máy tính, Thùng rác, Thư mục cá nhân.
+- Ghim sẵn Nemo, Firefox, Writer, Calc, Impress, **Trợ lý AI OneBee** (mở giao diện web của Trợ lý trên Box) ở thanh tác vụ và menu bắt đầu.
+- LibreOffice mở mặc định giao diện dạng tab (Ribbon) cho Writer, Calc, Impress; vẫn lưu mặc định .docx/.xlsx/.pptx.
+- Đều là giá trị mặc định: tài khoản đã tự đổi trước khi cài giữ lựa chọn cũ. Đã kiểm giá trị cấu hình trong container Mint 22.3 có gói
+  `cinnamon-common` + `nemo-data` thật; **chưa kiểm trong phiên Cinnamon thật** (hiển thị nút menu, ghim thanh tác vụ, Ribbon, bấm phím thật).
+### Sửa lũy nghiệm bộ cài
+- Bước "Cập nhật danh mục gói" (Box và Desktop) không còn báo `changed` khi danh mục cũ hơn 1 giờ — lần cài đầu kéo dài hơn 1 giờ (tải image chậm)
+  từng làm lần chạy lại báo `changed=1`. Làm mới danh mục không đổi trạng thái hệ thống.
+### Sửa lỗi tìm được khi kiểm thử Docker và rà soát mã (14/10/2026, chi tiết: `docs/kiem-thu-tren-may-that.md` mục "Đợt sửa 14/10/2026")
 - **Open WebUI chế độ HTTP chặn Origin lạ:** `CORS_ALLOW_ORIGIN` = IP Box + `box.<mã>.onebee.internal` (cổng 3000) cả khi chưa bật HTTPS — trước đây phản chiếu mọi Origin
   kèm `allow-credentials`. Test `check-https.sh` không còn đạt giả khi curl lỗi. Danh sách này áp cho cả kết nối thời gian thực (WebSocket) của chat:
   mở Trợ lý bằng địa chỉ khác (tên do router cấp, IP Tailscale, `localhost` qua đường hầm SSH) phải khai thêm vào biến mới `onebee_box_cors_them`
