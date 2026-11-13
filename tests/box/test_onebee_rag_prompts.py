@@ -152,5 +152,35 @@ class TestRAGPrompts(unittest.TestCase):
         self.assertNotIn("dong_bo_tri_thuc(", src)
 
 
+class TestCaiDatTrenBox(unittest.TestCase):
+    """Tệp mẫu phải nằm ngay trong thư mục mà onebee-webui.py đọc trên Box (cạnh script), không lồng thêm một cấp."""
+
+    @staticmethod
+    def noi_tep_ve(src, dest):
+        # Quy tắc của ansible.builtin.copy: src là thư mục không có "/" cuối → chép cả thư mục vào trong dest
+        # (dest/<tên src>/...); có "/" cuối → chỉ chép nội dung vào dest
+        return dest.rstrip("/") if src.endswith("/") else os.path.join(dest.rstrip("/"), os.path.basename(src))
+
+    def test_mau_va_tri_thuc_cai_dung_thu_muc_script_doc(self):
+        import yaml
+        with open(os.path.join(ROOT, "box/ansible/roles/box-ai/tasks/main.yml"), encoding="utf-8") as f:
+            tasks = yaml.safe_load(f)
+        noi = {}
+        for t in tasks:
+            copy = t.get("ansible.builtin.copy")
+            if not copy:
+                continue
+            for item in t.get("loop", []):
+                src = copy["src"].replace("{{ item.src }}", item["src"])
+                dest = copy["dest"].replace("{{ item.src }}", item["src"]).replace("{{ item.dest }}", item.get("dest", ""))
+                if os.path.isdir(os.path.join(SCRIPT_DIR, src)):
+                    noi[src.rstrip("/")] = self.noi_tep_ve(src, dest)
+                else:
+                    noi[src] = dest
+        thu_muc_script = os.path.dirname(noi["onebee-webui.py"])
+        self.assertEqual(noi.get("prompts"), os.path.join(thu_muc_script, "prompts"))
+        self.assertEqual(noi.get("knowledge"), os.path.join(thu_muc_script, "knowledge"))
+
+
 if __name__ == "__main__":
     unittest.main()

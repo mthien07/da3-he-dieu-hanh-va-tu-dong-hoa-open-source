@@ -15,8 +15,9 @@
 
 - name: Cài đặt kho mẫu prompt hành chính và tri thức RAG
   ansible.builtin.copy:
-    src: "{{ item.src }}"
-    dest: "/usr/local/lib/onebee-box/{{ item.dest }}"
+    # "/" cuối: chép nội dung thư mục vào đúng chỗ onebee-webui.py đọc (thiếu thì thành prompts/prompts/*.json)
+    src: "{{ item.src }}/"
+    dest: "/usr/local/lib/onebee-box/{{ item.dest }}/"
     owner: root
     group: root
     mode: "0755"
