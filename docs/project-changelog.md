@@ -11,7 +11,16 @@ Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài ch�
 - Máy trạm (Mint 22.3): chỉ bật `mintupdate-automation-autoremove.timer` khi file timer tồn tại trên máy, tránh lỗi bộ cài trên bản mintupdate mới đã bỏ timer này.
 - Trợ lý AI trên Box: 4 mẫu soạn văn bản (`/to-trinh`, `/bien-ban`, `/hop-dong`, `/bao-cao`) được tạo đúng theo API Open WebUI v0.11.4,
   mọi nhân viên đều thấy và chạy lại không đổi; bộ cài thôi tự tạo bộ tri thức rỗng, lệnh `onebee-box dong-bo-tri-thuc` không tạo trùng.
+- Bộ cài Desktop, bộ cài Box (cả đường cài từ USB) và `onebee-box cap-nhat-may` / `dong-bo-may` chạy Ansible bằng `LC_ALL=C.UTF-8`:
+  Mint cài bằng tiếng Việt đặt `LANG=vi_VN` làm bộ cài dừng ngay với "Ansible requires the locale encoding to be UTF-8; Detected TCVN".
+  Test `tests/desktop/test_onebee_locale_ansible.py`; lần cài đầu trong test container Desktop và Box chạy với `LANG=vi_VN`.
+- Trang chủ Box ghi cách xuất PDF đúng chữ LibreOffice hiện trên màn hình: nút PDF (chữ gợi ý `Export Directly as PDF`) hoặc
+  menu "Tập tin → Export As → Xuất dạng PDF...". Lời dặn của Trợ lý (`tro-ly-onebee-loi-dan.md`) vẫn ghi cách cũ: sửa lời dặn
+  phải chấm lại chất lượng Trợ lý bằng Ollama, chưa làm.
 ### Thêm
+- Trợ lý AI trên Box: bản dịch tiếng Việt bổ sung (`box-ai/files/giao-dien-tieng-viet.json`) cho chữ tiếng Anh còn sót ở trang đăng nhập,
+  khi hỏi, thanh bên và trang Cài đặt → Tài khoản; gửi qua trường `I18N` của cài đặt quản trị Open WebUI, giữ bản dịch quản trị tự thêm,
+  chạy lại không đổi. Tên "Open WebUI" và "Gravatar" giữ nguyên.
 - `desktop/ansible/roles/theme/files/onebee-cam-nang.json`: một nguồn cho phím tắt và tên gọi; test
   `tests/desktop/test_onebee_cam_nang.py` báo lỗi khi cấu hình máy hoặc tài liệu lệch nguồn này.
 - `tests/desktop/check-exe-handler.sh` được chạy trong CI.

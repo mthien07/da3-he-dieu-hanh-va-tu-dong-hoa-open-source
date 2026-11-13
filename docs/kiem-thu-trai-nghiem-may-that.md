@@ -65,7 +65,9 @@ Nếu tờ phím tắt đổi dòng, đổi theo số dòng của bảng đầu 
 Mục D5–D7 cần máy đã nối Box **[cần Box]**: chưa nối Box thì lệnh báo cần hỗ trợ báo rõ lý do thay vì mở biểu mẫu.
 - [ ] D1 Bấm lần lượt 6 ô của trang Bắt đầu (Soạn văn bản, Bảng tính, Thư mục của tôi, Thư mục chung của đơn vị, Trợ lý AI, Cần giúp đỡ) → mở đúng thứ ghi trên ô.
   Làm lần đầu khi máy chưa nối Box: ô thư mục chung báo rõ lý do. Làm lại sau khi nối Box: ô thư mục chung mở thư mục chung.
-- [ ] D2 Trang Phím tắt → nội dung trùng tờ phím tắt.
+- [ ] D2 Trang Phím tắt → có đủ 13 mục của nguồn chung `onebee-cam-nang.json`, mỗi dòng đúng chữ của dòng tương ứng trên tờ phím tắt.
+  Trang cố ý **không** có 2 dòng của tờ: "Xuất PDF — Nút PDF trên thanh công cụ" (không phải phím tắt) và
+  "Mở cửa sổ dòng lệnh — Ctrl + Alt + T" (không đưa cho nhân viên); ghi chú phụ của tờ (Shift + Print Screen, nút Bắt đầu) không bắt buộc có.
 - [ ] D3 Trang Kiểm tra máy → bấm "Kiểm tra ngay", trong khoảng 1 phút hiện lần lượt từng mục có biểu tượng đạt/cảnh báo/lỗi (9 mục khi máy tới được Box;
   Box không trả lời thì ít mục hơn). Ghi lại bố cục có bị cắt chữ, tràn khung hay chồng nút không, nhất là trên màn hình 1366×768.
   Đây là phần giao diện chưa kiểm được ngoài máy thật.
@@ -90,8 +92,9 @@ Cần máy đã nối Box **[cần Box]**: máy chưa nối thì dịch vụ nh�
 - [ ] F3 `systemctl --user list-timers | grep onebee` → có `onebee-nhac-sao-luu.timer`. Không thấy thì thử `systemctl --user list-timers --all | grep onebee` và ghi lại cả hai kết quả.
 
 ## G. Trợ lý AI (cần Box)
-- [ ] G1 **[cần Box]** Bấm biểu tượng Trợ lý AI OneBee trên thanh tác vụ, đăng nhập tài khoản nhân viên → màn hình trò chuyện mới có 4 gợi ý tiếng Việt
-  (Soạn tờ trình, công văn; Lập biên bản họp; Soạn thông báo; Tóm tắt văn bản) và dòng nhắc "Trợ lý AI có thể sai".
+- [ ] G1 **[cần Box]** Bấm biểu tượng Trợ lý AI OneBee trên thanh tác vụ, đăng nhập tài khoản nhân viên → màn hình trò chuyện mới hiện các gợi ý
+  tiếng Việt của OneBee (Open WebUI hiện ngẫu nhiên một phần mỗi lần tải, trong 4 gợi ý: Soạn tờ trình, công văn; Lập biên bản họp;
+  Soạn thông báo; Tóm tắt văn bản), bấm được, và dòng nhắc "Trợ lý AI có thể sai".
 - [ ] G2 **[cần Box]** Bấm một gợi ý → câu mở đầu được chèn vào ô nhập, chưa gửi; viết tiếp rồi gửi → nhận văn bản tiếng Việt.
 - [ ] G3 **[cần Box]** Gõ `/` trong ô nhập → thấy 4 mẫu `to-trinh`, `bien-ban`, `hop-dong`, `bao-cao`.
 - [ ] G5 Trợ lý "Tra cứu Luật HTX và Nghị định 30": **chưa có trong bản này, bỏ qua** (ghi "bỏ qua" ở mục này).
@@ -99,13 +102,14 @@ Cần máy đã nối Box **[cần Box]**: máy chưa nối thì dịch vụ nh�
 - [ ] G4 **[cần Box]** Ghi lại **mọi chữ tiếng Anh** nhìn thấy khi: đăng nhập, hỏi một câu, xem lại lịch sử, đổi mật khẩu, đăng xuất.
 
 ## H. Trang chủ Box (mở `http://onebee.local` từ máy trạm và từ điện thoại trong LAN) **[cần Box]**
-- [ ] H1 Cẩm nang "Phím tắt hay dùng" (mục Cẩm nang sử dụng) trùng tờ phím tắt; không còn chữ "Mở Terminal".
+- [ ] H1 Cẩm nang "Phím tắt hay dùng" (mục Cẩm nang sử dụng) có đủ 13 mục của nguồn chung, giống trang Phím tắt ở D2 (cố ý không có
+  2 dòng "Xuất PDF" và "Mở cửa sổ dòng lệnh" của tờ phím tắt); không còn chữ "Mở Terminal".
 - [ ] H2 Mục "Soạn văn bản bằng Trợ lý AI" có 4 thẻ; bấm một thẻ → Trợ lý mở, câu mở đầu đã điền sẵn và **không tự gửi**.
 - [ ] H3 Sau lần sao lưu đêm đầu tiên (hoặc sau `sudo onebee-box sao-luu`) → ô "Máy trạm đã sao lưu: x/y máy (trong 3 ngày)"; trang không lộ tên máy.
 
 ## I. Xuất PDF
 Trong LibreOffice Writer (giao diện tab) thử 3 cách: nút PDF trên thanh công cụ; menu Tệp → Xuất dưới dạng → Xuất thành PDF; Tệp → Xuất ra PDF.
-- [ ] I1 Ghi lại **cách nào có thật và tên đúng từng chữ trên màn hình**. (Tờ phím tắt đang ghi "nút PDF trên thanh công cụ", trang chủ Box đang ghi "Tệp → Xuất ra PDF".)
+- [ ] I1 Ghi lại **cách nào có thật và tên đúng từng chữ trên màn hình**. (Tờ phím tắt ghi "nút PDF trên thanh công cụ"; trang chủ Box ghi nút PDF và "Tập tin → Export As → Xuất dạng PDF...".)
 
 ## J. Năm việc đầu tiên với người dùng thật (không bắt buộc, làm khi có 1–3 nhân viên)
 Không hướng dẫn trước, bấm giờ từng việc, ghi "tự làm được / cần gợi ý / không làm được":

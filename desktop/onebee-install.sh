@@ -48,8 +48,10 @@ fi
 mkdir -p "${LOG_DIR}"
 log "Bắt đầu cài đặt — nhật ký: ${LOG_FILE}"
 cd "${PLAYBOOK_DIR}"
+# Ansible chỉ chạy khi bảng mã của locale là UTF-8. Mint cài bằng tiếng Việt ghi LANG=vi_VN (Python hiểu là bảng mã TCVN),
+# người khác có thể đặt locale chưa được tạo trên máy → chạy Ansible bằng C.UTF-8 (có sẵn trong glibc, không cần locale-gen).
 set +e
-ANSIBLE_CONFIG="${PLAYBOOK_DIR}/ansible.cfg" ansible-playbook site.yml 2>&1 | tee "${LOG_FILE}"
+LC_ALL=C.UTF-8 ANSIBLE_CONFIG="${PLAYBOOK_DIR}/ansible.cfg" ansible-playbook site.yml 2>&1 | tee "${LOG_FILE}"
 status=${PIPESTATUS[0]}
 set -e
 
