@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # check-alerts.sh — Kiểm thử tính năng cảnh báo chủ động qua Telegram và n8n Webhook
 set -euo pipefail
 

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử nhanh bộ biểu tượng LibreOffice mặc định (role office): Colibre, kiểu biểu tượng giống Microsoft Office.
 Không cần LibreOffice thật (giá trị thực tế do check-libreoffice-default-formats.py đọc qua UNO). Chạy: python3 -m unittest"""
 import os

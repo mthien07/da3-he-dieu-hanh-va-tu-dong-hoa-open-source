@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Danh sách quy trình mẫu (tên file mẫu + ID cố định trong n8n)
 onebee_n8n_workflows:
   - {file: 01-bao-cao-sao-luu, id: onebeeBaoCaoSL01}

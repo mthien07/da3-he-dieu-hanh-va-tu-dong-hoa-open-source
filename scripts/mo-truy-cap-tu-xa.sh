@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # mo-truy-cap-tu-xa — cầu nối TẠM để kỹ thuật OneBee cài tiếp một máy mới cài hệ điều hành ở nơi khác (khác mạng, chỉ có wifi):
 #   1. Tailscale (mạng riêng mã hóa, đi xuyên NAT) + Tailscale SSH: kỹ thuật SSH bằng chính tài khoản Tailscale của mình —
 #      không cần gửi khóa SSH hay mật khẩu máy qua tin nhắn.

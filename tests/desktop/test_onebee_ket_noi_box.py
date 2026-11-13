@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử role ket-noi-box: kiểm CA (vân tay + ràng buộc tên) và chính sách trình duyệt (Firefox/Chromium) cài, gỡ, trộn với file của gói.
 Dùng CA thật do box-stack/files/onebee-ca.sh sinh. Chạy: python3 -m unittest"""
 import base64

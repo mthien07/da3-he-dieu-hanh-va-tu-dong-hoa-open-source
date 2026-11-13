@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử CA riêng của Box (box-stack/files/onebee-ca.sh): ràng buộc tên thật sự chặn chứng chỉ giả, idempotent, xoay CA phải có chủ ý.
 Chuỗi thật: gốc → trung gian → lá (lá do test ký bằng khóa trung gian — giả định kẻ tấn công lấy được khóa trung gian).
 Kiểm bằng openssl, Python ssl và curl. Chạy: python3 -m unittest"""

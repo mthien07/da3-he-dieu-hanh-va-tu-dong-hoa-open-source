@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # shellcheck disable=SC2016  # thân các lệnh giả viết trong nháy đơn: biến phải mở rộng lúc lệnh giả chạy, không phải lúc tạo
 # Kiểm thử lệnh máy trạm "onebee-chan-doan" mà không cần Box thật: Box giả ở 127.0.0.1 (cổng TCP thật mở bằng python3: Trợ lý AI,
 # Samba 445, nhận sao lưu), ping/ip/systemctl/df GIẢ (trạng thái đặt bằng file trong $SIM). Mỗi kịch bản làm hỏng ĐÚNG 1 thứ → đúng dòng đó

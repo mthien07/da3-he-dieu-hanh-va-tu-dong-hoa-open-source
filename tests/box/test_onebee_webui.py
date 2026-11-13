@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử đơn vị cho công cụ quản lý Open WebUI (box-ai/files/onebee-webui.py) bằng máy chủ Open WebUI giả.
 Kiểm: enforce_settings đặt đúng cài đặt bảo mật + quyền mặc định, chạy lần 2 không đổi gì. Chạy: python3 -m unittest"""
 import importlib.util

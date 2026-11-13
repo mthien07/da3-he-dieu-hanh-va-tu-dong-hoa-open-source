@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Nhật ký tuần (Markdown) cho đợt chạy thử / gói bảo trì — được lệnh `onebee-box bao-cao-tuan` gọi.
 
   onebee-bao-cao-tuan.py <thu-muc-ho-tro> [YYYY-MM-DD] < tinh-trang-may.json

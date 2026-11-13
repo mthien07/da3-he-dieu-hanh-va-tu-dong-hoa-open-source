@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Cửa sổ GTK có 1 ô nhập. Nhấn Enter → ghi nội dung ô nhập ra file (argv[1]) rồi thoát.
 Dùng để kiểm tra gõ tiếng Việt thật qua IBus (không cần người ngồi gõ)."""
 import sys

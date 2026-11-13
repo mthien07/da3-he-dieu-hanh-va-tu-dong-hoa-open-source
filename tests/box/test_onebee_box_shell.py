@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử các lệnh shell quản lý máy trạm của `onebee-box` (them-may, thu-hoi-may, cap-nhat-may, dong-bo-may, ghim-lai-may)
 mà không cần Box thật: render các mẫu .j2, chạy bằng bash trong thư mục tạm, với `ssh`, `ansible-playbook`, Open WebUI GIẢ.
 Dùng ssh-keygen và htpasswd thật (apt: openssh-client, apache2-utils) — thiếu thì bỏ qua. Chạy: python3 -m unittest

@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Đẩy cấu hình từ Box xuống máy trạm (lệnh: sudo onebee-box dong-bo-may <tên>|--tat-ca). Cấu hình dựng sẵn trên Box, mỗi máy một file
 # ${onebee_cau_hinh_dir}/<tên>.env. Lệnh onebee-box chỉ gọi playbook này cho máy đã CHỨNG MINH là máy đã cấp (biết mật khẩu kho sao lưu)
 # và đã ghim khóa SSH — không bao giờ đẩy bí mật tới máy chưa qua bước đó. Mọi task đụng nội dung cấu hình đều no_log.

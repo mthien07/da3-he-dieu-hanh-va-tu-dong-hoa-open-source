@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Chạy thử bộ cài OneBee OS Desktop trong container Linux Mint 22.3 (image linuxmintd/mint22.3-amd64).
 # Kiểm tra: (1) cài được, (2) chạy lần 2 không thay đổi gì (idempotent), (3) verify-desktop-install.sh đạt,
 # (4) LibreOffice thật sự đọc được cấu hình định dạng mặc định (qua UNO).

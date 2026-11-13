@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # check-offline-bundle.sh — Kiểm thử bộ kịch bản đóng gói và cài đặt offline từ USB
 set -euo pipefail
 

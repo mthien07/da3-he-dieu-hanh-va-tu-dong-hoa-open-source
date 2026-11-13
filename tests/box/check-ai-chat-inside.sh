@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra Trợ lý AI thật trên Box: model Gemma nạp vào Ollama → đăng nhập tài khoản quản trị tạo sẵn
 # → "Trợ lý OneBee" có lời dặn tiếng Việt → hỏi 1 câu → nhận câu trả lời tiếng Việt; đăng ký tự do đã tắt.
 set -euo pipefail

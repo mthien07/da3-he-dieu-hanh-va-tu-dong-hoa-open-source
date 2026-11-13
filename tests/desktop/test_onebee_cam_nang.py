@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử nguồn chung cẩm nang (onebee-cam-nang.json): phím tắt và tên gọi trên máy phải khớp nguồn,
 và 5 tài liệu phát cho người dùng không được nêu tên sai hay phím sai.
 Chạy: python3 -m unittest"""

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử phiên bản nhất quán: bộ cài Desktop, bộ cài Box và mục đầu nhật ký thay đổi phải trùng nhau,
 và không thấp hơn tag phát hành mới nhất (nếu không thì workflow phát hành không đính kèm file tải).
 Chạy: python3 -m unittest"""

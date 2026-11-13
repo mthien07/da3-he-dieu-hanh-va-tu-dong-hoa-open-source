@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra tên onebee.local (mDNS) và trang chủ Dashboard cổng 80 (chạy trên Box bằng root, sau khi cài). Cần: avahi-utils, curl, python3.
 # Cách dùng: check-mdns-dashboard.sh [tên-mdns]   (mặc định: onebee → onebee.local)
 # Phân giải bằng avahi (không cần libnss-mdns trên Box), rồi gọi http://<tên>.local đúng tên miền bằng curl --resolve.

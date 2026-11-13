@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử onebee-loi-tat-chia-se (role ket-noi-box): đặt lối tắt "Chia sẻ nội bộ (OneBee Box)" lên màn hình nền khi đăng nhập —
 đặt 1 lần, người dùng xóa thì không đặt lại, Box đổi IP thì làm mới, bản người dùng tự sửa thì giữ; chưa nối Box thì không làm gì.
 Lệnh giả: xdg-user-dir (thư mục màn hình nền tiếng Việt), gio. Chạy: python3 -m unittest"""

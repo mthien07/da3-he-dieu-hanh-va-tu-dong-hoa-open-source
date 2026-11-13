@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử phía máy trạm khi Box bật HTTPS (rà soát bảo mật F3, Pha 4): hoi / onebee-bao-tinh-trang ghim CA riêng của OneBee,
 từ chối http:// khi máy đã có dấu bật HTTPS, báo lỗi dễ hiểu (chứng chỉ lạ, 502/503/504, 301/308); onebee-sao-luu đọc cấu hình không chạy như mã shell.
 Máy chủ TLS thật dùng CA do box-stack/files/onebee-ca.sh sinh. Chạy: python3 -m unittest"""

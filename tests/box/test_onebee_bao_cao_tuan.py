@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử đơn vị cho nhật ký tuần (box-fleet/files/onebee-bao-cao-tuan.py). Chạy: python3 -m unittest"""
 import datetime as dt
 import importlib.util

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Đóng gói bản phát hành OneBee OS: dist/onebee-os-<phiên-bản>.tar.gz + SHA256SUMS + ghi-chu-phat-hanh.md
 # Cách dùng: scripts/dong-goi-ban-phat-hanh.sh 0.5.0
 # Chỉ đóng gói file đã commit (git archive) → không lẫn file tạm, khóa, mật khẩu trên máy người đóng gói.

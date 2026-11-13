@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # dong-goi-usb-offline.sh — Chuẩn bị gói cài đặt OneBee Box Offline ra USB/Thư mục
 # Chạy trên máy kỹ thuật viên có Internet để chuẩn bị gói mang đi triển khai tại cơ sở.
 set -euo pipefail
