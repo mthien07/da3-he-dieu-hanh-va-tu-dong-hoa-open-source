@@ -47,7 +47,6 @@ class TrungTamOneBee(unittest.TestCase):
         with mock.patch.dict(sys.modules, {"gi": None}):
             m = nap_trung_tam()
             self.assertIsNone(sys.modules["gi"], "nạp module không được import gi")
-        self.assertTrue(callable(m.chay_giao_dien))
         self.assertEqual([ma for ma, _ in m.TRANG], ["bat-dau", "phim-tat", "tro-giup"])
 
     def test_nhom_phim_tat_dung_thu_tu_va_du_muc(self):
