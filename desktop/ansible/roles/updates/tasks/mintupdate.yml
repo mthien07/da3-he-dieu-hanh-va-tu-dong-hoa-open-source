@@ -1,6 +1,12 @@
 ---
 # Làm đúng như lệnh `mintupdate-automation <loại> enable`: tạo file đánh dấu + bật timer systemd.
 # Tự viết lại để chạy lặp nhiều lần không báo thay đổi (lệnh gốc luôn chạy lại).
+# mintupdate bản mới (Mint 22.3) có thể không còn timer dọn gói thừa; thiếu file timer thì `systemctl enable` báo lỗi, nên chỉ bật khi có.
+- name: Kiểm tra bản mintupdate này còn timer dọn gói thừa không
+  ansible.builtin.stat:
+    path: /usr/lib/systemd/system/mintupdate-automation-autoremove.timer
+  register: onebee_mintupdate_don
+
 - name: Tạo thư mục trạng thái của mintupdate
   ansible.builtin.file:
     path: /var/lib/linuxmint
@@ -26,9 +32,9 @@
   ansible.builtin.command: "systemctl enable {{ item }}"
   args:
     creates: "/etc/systemd/system/timers.target.wants/{{ item }}"
-  loop:
-    - mintupdate-automation-upgrade.timer
-    - mintupdate-automation-autoremove.timer
+  loop: >-
+    {{ ['mintupdate-automation-upgrade.timer']
+       + (['mintupdate-automation-autoremove.timer'] if onebee_mintupdate_don.stat.exists else []) }}
 
 - name: Kiểm tra máy đang chạy systemd (không phải lúc cài trong chroot/container)
   ansible.builtin.stat:
@@ -38,8 +44,8 @@
 - name: Chạy ngay các timer (không cần chờ khởi động lại) khi máy đang chạy systemd
   # noqa: command-instead-of-module — giống hệt lệnh mintupdate-automation gốc
   ansible.builtin.command: "systemctl start {{ item }}"
-  loop:
-    - mintupdate-automation-upgrade.timer
-    - mintupdate-automation-autoremove.timer
+  loop: >-
+    {{ ['mintupdate-automation-upgrade.timer']
+       + (['mintupdate-automation-autoremove.timer'] if onebee_mintupdate_don.stat.exists else []) }}
   when: onebee_systemd_booted.stat.exists
   changed_when: false
