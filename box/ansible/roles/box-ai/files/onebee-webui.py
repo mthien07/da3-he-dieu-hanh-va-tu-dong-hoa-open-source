@@ -224,7 +224,8 @@ def dong_bo_bang_nhac(token):
     st, ds = call("GET", "/api/v1/configs/banners", token)
     if st != 200 or not isinstance(ds, list):
         sys.exit(f"LỖI: không đọc được danh sách băng nhắc ({st}): {ds}")
-    if any(b == BANG_NHAC for b in ds):
+    # Chỉ so các trường OneBee đặt: Open WebUI lưu qua BannerModel nên trả thêm trường mặc định (vd i18n=None)
+    if any(isinstance(b, dict) and all(b.get(k) == v for k, v in BANG_NHAC.items()) for b in ds):
         return
     moi = [b for b in ds if isinstance(b, dict) and b.get("id") != BANG_NHAC["id"]] + [BANG_NHAC]
     st, d = call("POST", "/api/v1/configs/banners", token, {"banners": moi})

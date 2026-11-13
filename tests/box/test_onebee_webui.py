@@ -103,8 +103,11 @@ class WebuiGia(BaseHTTPRequestHandler):
             prompts[body["command"]] = rec
             return self._gui(200, rec)
         if self.path == "/api/v1/configs/banners":
-            self.state["banners"] = body["banners"]
-            return self._gui(200, body["banners"])
+            # Như BannerModel của v0.11.4 (config.py): lưu qua pydantic nên GET trả thêm trường mặc định i18n=None
+            self.state["banners"] = [{"i18n": b.get("i18n"), "id": b["id"], "type": b["type"], "title": b.get("title"),
+                                      "content": b["content"], "dismissible": b["dismissible"],
+                                      "timestamp": b["timestamp"]} for b in body["banners"]]
+            return self._gui(200, self.state["banners"])
         self._gui(404, {"detail": "not found"})
 
 
@@ -244,8 +247,11 @@ class EnforceSettings(unittest.TestCase):
         with redirect_stdout(io.StringIO()):
             self.w.dong_bo_bang_nhac("tok")
         self.assertEqual(WebuiGia.state["posts"], ["/api/v1/configs/banners"])
-        self.assertEqual(WebuiGia.state["banners"], [khac, self.w.BANG_NHAC])
-        WebuiGia.state["posts"] = []
+        self.assertEqual([b["id"] for b in WebuiGia.state["banners"]], ["khac", self.w.BANG_NHAC["id"]])
+        self.assertEqual(WebuiGia.state["banners"][0]["content"], khac["content"])
+        luu = WebuiGia.state["banners"][1]
+        self.assertEqual({k: luu[k] for k in self.w.BANG_NHAC}, self.w.BANG_NHAC)
+        WebuiGia.state["posts"] = []   # lần 2: Open WebUI trả băng có thêm i18n=None → vẫn phải coi là không đổi
         with redirect_stdout(io.StringIO()):
             self.w.dong_bo_bang_nhac("tok")
         self.assertEqual(WebuiGia.state["posts"], [])
