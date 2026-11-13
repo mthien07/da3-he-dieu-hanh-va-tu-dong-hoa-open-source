@@ -72,3 +72,18 @@
     group: root
     mode: "0644"
   notify: Biên dịch lại gsettings schema
+
+# Cinnamon gộp settings-override.json vào mặc định của applet khi người dùng đăng nhập lần đầu; người dùng đã tự chỉnh thì giữ.
+- name: Kiểm tra máy có applet lịch của Cinnamon không
+  ansible.builtin.stat:
+    path: /usr/share/cinnamon/applets/calendar@cinnamon.org
+  register: onebee_calendar_applet
+
+- name: Đồng hồ hiện giờ và ngày/tháng/năm
+  ansible.builtin.copy:
+    src: calendar-settings-override.json
+    dest: /usr/share/cinnamon/applets/calendar@cinnamon.org/settings-override.json
+    owner: root
+    group: root
+    mode: "0644"
+  when: onebee_calendar_applet.stat.isdir | default(false)
