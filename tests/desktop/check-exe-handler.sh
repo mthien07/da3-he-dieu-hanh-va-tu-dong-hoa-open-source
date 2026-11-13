@@ -115,7 +115,7 @@ for lenh in basename tr du cut; do
   ln -s "$(command -v "${lenh}")" "${TMP_BIN}/${lenh}"
 done
 
-# shellcheck disable=SC2329  # được gọi gián tiếp qua check()
+# shellcheck disable=SC2317,SC2329  # được gọi gián tiếp qua check(): shellcheck 0.9 của CI báo SC2317, bản mới hơn báo SC2329
 nut_phai_bao_ro() { # nut_phai_bao_ro <mã hành động>: thoát mã 0 và đầu ra có "chưa có"
   local dau_ra
   dau_ra="$(PATH="${TMP_BIN}" /bin/bash "${HELPER_SRC}" --cli --lam "$1" "${TMP_TEST_DIR}/ZaloSetup-23.01.01.exe" 2>&1)" || return 1
