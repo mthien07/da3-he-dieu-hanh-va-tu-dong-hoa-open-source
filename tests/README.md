@@ -25,6 +25,7 @@ Các bài unit mới: `test_onebee_ca.py` (CA, ràng buộc tên bằng openssl/
 `tests/box/check-rag-prompts.sh` và `tests/box/test_onebee_rag_prompts.py`: kiểm tra kho mẫu prompt hành chính NĐ 30/2020/NĐ-CP (Tờ trình, Biên bản, Hợp đồng HTX, Báo cáo) và bộ tri thức RAG Open WebUI.
 `tests/box/check-alerts.sh`: kiểm tra tính năng cảnh báo chủ động qua Telegram Bot và n8n Webhook.
 `tests/box/check-offline-bundle.sh`: kiểm tra kịch bản đóng gói và cài đặt OneBee Box offline từ USB.
+`tests/desktop/test_onebee_giao_dien_windows.py` (lớp `PhienLamViecMint`): kiểm tra các mặc định phiên làm việc trên Linux Mint 22.x (nguồn bộ gõ Cinnamon 6.6 và IBus, đồng hồ ngày/tháng/năm Việt Nam, nút Bắt đầu logo OneBee, chuyển hướng file gói Mint bằng `dpkg-divert` có điều kiện, tắt cửa sổ tự bật của trình cập nhật, chỉ bật timer dọn gói thừa khi có, hình nền màn hình đăng nhập LightDM).
 
 ## Chưa kiểm được bằng container (phải thử máy ảo / máy thật)
 - Phiên đăng nhập Cinnamon thật: thanh bộ gõ, hình nền hiển thị, phím tắt đổi bộ gõ (Super + Space) có đụng phím của Cinnamon không.
