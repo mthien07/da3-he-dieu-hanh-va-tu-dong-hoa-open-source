@@ -1,0 +1,38 @@
+{
+  "phien_ban": 1,
+  "ghi_chu": "Một nguồn cho phím tắt và tên gọi của OneBee OS. Sửa ở đây trước, rồi chạy test để biết bề mặt nào phải sửa theo.",
+  "ten_goi": {
+    "tro_ly_ai": "Trợ lý AI OneBee",
+    "thu_muc_chung": "Chia sẻ nội bộ (OneBee Box)",
+    "bao_ho_tro": "Báo cần hỗ trợ (OneBee)",
+    "ho_tro_tu_xa": "Cho phép hỗ trợ từ xa (OneBee)"
+  },
+  "ten_sai": ["Thư mục chung OneBee", "Hỗ trợ từ xa OneBee", "Trợ lý AI trên Desktop"],
+  "phim_tat": [
+    {"ma": "doi-bo-go", "nhom": "go-tieng-viet", "viec": "Đổi gõ tiếng Việt ⇄ tiếng Anh", "phim": "Super + Space",
+     "ghi_chu": "Super là phím có logo Windows",
+     "tu_khoa": ["đổi gõ", "đổi bộ gõ", "đổi kiểu gõ", "đổi việt/anh"], "cam": ["Ctrl \\+ Shift(?! \\+)", "Alt \\+ Shift"]},
+    {"ma": "menu-bat-dau", "nhom": "man-hinh", "viec": "Mở menu Bắt đầu", "phim": "Super"},
+    {"ma": "thu-muc-ca-nhan", "nhom": "man-hinh", "viec": "Mở thư mục cá nhân", "phim": "Super + E",
+     "tu_khoa": ["mở thư mục cá nhân"], "kiem": {"tep": "override", "khoa": "home", "chuoi": "'<Super>e'"}},
+    {"ma": "man-hinh-nen", "nhom": "man-hinh", "viec": "Hiện màn hình nền / quay lại", "phim": "Super + D",
+     "tu_khoa": ["hiện màn hình nền"], "kiem": {"tep": "override", "khoa": "show-desktop", "chuoi": "'<Super>d'"}},
+    {"ma": "khoa-man-hinh", "nhom": "man-hinh", "viec": "Khóa màn hình khi rời máy", "phim": "Super + L",
+     "phim_khac": ["Ctrl + Alt + L"], "tu_khoa": ["khóa màn hình"],
+     "kiem": {"tep": "override", "khoa": "screensaver", "chuoi": "'<Super>l'"}},
+    {"ma": "chay-lenh", "nhom": "man-hinh", "viec": "Chạy lệnh / mở nhanh chương trình", "phim": "Super + R",
+     "phim_khac": ["Alt + F2"], "tu_khoa": ["chạy lệnh"],
+     "kiem": {"tep": "override", "khoa": "panel-run-dialog", "chuoi": "'<Super>r'"}},
+    {"ma": "chuyen-cua-so", "nhom": "man-hinh", "viec": "Chuyển giữa các cửa sổ", "phim": "Alt + Tab"},
+    {"ma": "quan-ly-tac-vu", "nhom": "man-hinh", "viec": "Quản lý tác vụ — xem, tắt chương trình bị treo",
+     "phim": "Ctrl + Shift + Esc", "tu_khoa": ["quản lý tác vụ"],
+     "kiem": {"tep": "dconf", "khoa": "binding", "chuoi": "'<Primary><Shift>Escape'"}},
+    {"ma": "chup-man-hinh", "nhom": "chup", "viec": "Chụp màn hình", "phim": "Print Screen", "tu_khoa": ["chụp màn hình"]},
+    {"ma": "chup-vung", "nhom": "chup", "viec": "Chụp một vùng màn hình rồi dán bằng Ctrl + V", "phim": "Super + Shift + S",
+     "tu_khoa": ["chụp một vùng"], "kiem": {"tep": "override", "khoa": "area-screenshot-clip", "chuoi": "'<Super><Shift>s'"}},
+    {"ma": "sao-chep-dan", "nhom": "soan-thao", "viec": "Sao chép / Dán / Cắt / Hoàn tác",
+     "phim": "Ctrl + C / Ctrl + V / Ctrl + X / Ctrl + Z"},
+    {"ma": "luu-in", "nhom": "soan-thao", "viec": "Lưu / Lưu thành file khác / In", "phim": "Ctrl + S / Ctrl + Shift + S / Ctrl + P"},
+    {"ma": "chinh-ta", "nhom": "soan-thao", "viec": "Kiểm tra chính tả", "phim": "F7"}
+  ]
+}

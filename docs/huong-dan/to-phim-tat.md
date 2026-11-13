@@ -27,6 +27,6 @@
 | Kỹ thuật cần xem màn hình | Menu → **"Cho phép hỗ trợ từ xa (OneBee)"** → đọc địa chỉ + mã → máy hỏi thì bấm **Cho phép** |
 | Mở thư mục chung của đơn vị | Biểu tượng **"Chia sẻ nội bộ (OneBee Box)"** trên màn hình nền |
 | Lỡ xóa file | Báo hỗ trợ loại "Sao lưu / mất file" — máy tự sao lưu lên Box 12:00 hằng ngày |
-| Hỏi Trợ lý AI | Mở trình duyệt: `http://____________:3000` → chọn "Trợ lý OneBee" (AI có thể sai — đọc lại) |
+| Hỏi Trợ lý AI | Bấm biểu tượng **"Trợ lý AI OneBee"** trên thanh tác vụ (AI có thể sai — đọc lại) |
 
 **Không** bấm "Cho phép hỗ trợ từ xa" khi có người lạ gọi điện yêu cầu. Kỹ thuật OneBee không bao giờ hỏi mật khẩu của bạn.
