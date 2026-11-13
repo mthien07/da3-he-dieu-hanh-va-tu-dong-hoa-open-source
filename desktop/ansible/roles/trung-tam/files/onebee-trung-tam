@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""onebee-trung-tam — cửa sổ "Trung tâm OneBee": lối vào các việc chính, bảng phím tắt và trang "Cần giúp đỡ".
+"""onebee-trung-tam — cửa sổ "Trung tâm OneBee": lối vào các việc chính, bảng phím tắt, tự kiểm tra máy và trang "Cần giúp đỡ".
 
 Cách dùng:
   onebee-trung-tam                  Mở cửa sổ ở trang Bắt đầu
-  onebee-trung-tam --trang phim-tat Mở thẳng một trang (bat-dau, phim-tat, tro-giup)
+  onebee-trung-tam --trang phim-tat Mở thẳng một trang (bat-dau, phim-tat, kiem-tra, tro-giup)
   onebee-trung-tam --lan-dau        Chỉ mở nếu người này chưa từng đóng cửa sổ (dùng khi tự mở lúc đăng nhập)
   onebee-trung-tam --tu-kiem        Dựng đủ cửa sổ và mọi trang rồi thoát, in TU-KIEM-DAT (không mở chương trình nào)
 Dấu "đã xem": ~/.config/onebee/trung-tam-da-xem (theo XDG_CONFIG_HOME nếu có), tạo khi đóng cửa sổ trừ khi người dùng
@@ -17,9 +17,10 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 
 # Bảng khai báo các trang theo thứ tự hiện trên thanh chuyển trang. Thêm trang: thêm một dòng ở đây và một hàm dựng trang.
-TRANG = [("bat-dau", "Bắt đầu"), ("phim-tat", "Phím tắt"), ("tro-giup", "Cần giúp đỡ")]
+TRANG = [("bat-dau", "Bắt đầu"), ("phim-tat", "Phím tắt"), ("kiem-tra", "Kiểm tra máy"), ("tro-giup", "Cần giúp đỡ")]
 
 NHOM_PHIM_TAT = [
     ("go-tieng-viet", "Gõ tiếng Việt"),
@@ -35,6 +36,10 @@ TEN_TEP_DAU = "trung-tam-da-xem"
 TEP_CHIA_SE = "/usr/share/applications/onebee-chia-se-noi-bo.desktop"
 TEP_BAO_HO_TRO = "/usr/share/applications/onebee-bao-ho-tro.desktop"
 MA_SAI_THAM_SO = 64   # EX_USAGE
+GIO_CHAN_DOAN = 90   # giây chờ tối đa cho onebee-chan-doan --json
+TOM_TAT_TOI_DA = 600   # ký tự tối đa của phần mô tả gửi kèm yêu cầu hỗ trợ
+TRANG_THAI_CHAN_DOAN = ("ok", "canh_bao", "loi")
+BIEU_TUONG_TRANG_THAI = {"ok": "emblem-ok-symbolic", "canh_bao": "dialog-warning-symbolic", "loi": "dialog-error-symbolic"}
 
 # Sáu ô của trang Bắt đầu. "can_lenh"/"can_tep": điều kiện có sẵn; thiếu thì ô vẫn hiện, bấm vào báo "ly_do_thieu".
 # "lenh" là danh sách tham số cố định (không qua shell); "~" được thay bằng thư mục cá nhân. "trang": chuyển trang thay vì chạy lệnh.
@@ -111,6 +116,43 @@ def doc_don_vi(duong_dan):
     if isinstance(du_lieu, dict) and isinstance(du_lieu.get("dien_thoai_ho_tro"), str):
         return du_lieu["dien_thoai_ho_tro"].strip()
     return ""
+
+
+def doc_ket_qua_chan_doan(chuoi):
+    """Đọc đầu ra của `onebee-chan-doan --json`. Trả (ket_luan, danh_sach_muc); mỗi mục có đủ nhom, ten, trang_thai,
+    chi_tiet, goi_y (chuỗi). Chuỗi rỗng, không phải JSON, thiếu ket_luan/muc hợp lệ → (None, []). Mục hỏng (không phải dict, thiếu tên, trạng thái lạ) bị bỏ."""
+    try:
+        du_lieu = json.loads(chuoi)
+    except (TypeError, ValueError):
+        return None, []
+    if not isinstance(du_lieu, dict) or du_lieu.get("ket_luan") not in TRANG_THAI_CHAN_DOAN or not isinstance(du_lieu.get("muc"), list):
+        return None, []
+    muc = []
+    for m in du_lieu["muc"]:
+        if not isinstance(m, dict) or not _la_chuoi(m.get("ten")) or m.get("trang_thai") not in TRANG_THAI_CHAN_DOAN:
+            continue
+        muc.append({k: m[k] if isinstance(m.get(k), str) else "" for k in ("nhom", "ten", "trang_thai", "chi_tiet", "goi_y")})
+    return du_lieu["ket_luan"], muc
+
+
+def tom_tat_loi(muc):
+    """Một dòng mô tả các mục không đạt (canh_bao, loi) để điền vào yêu cầu hỗ trợ; tối đa TOM_TAT_TOI_DA ký tự."""
+    tien_to = "Tự kiểm tra máy: "
+    khong_dat = [f"{m['ten']}: {m['chi_tiet']}" for m in muc if m.get("trang_thai") in ("canh_bao", "loi")]
+    if not khong_dat:
+        return tien_to + "mọi mục đạt"
+    tom_tat = tien_to + "; ".join(khong_dat)
+    return tom_tat if len(tom_tat) <= TOM_TAT_TOI_DA else tom_tat[:TOM_TAT_TOI_DA - 1] + "…"
+
+
+def kiem_tra_may():
+    """Chạy `onebee-chan-doan --json` (tối đa GIO_CHAN_DOAN giây) → (ket_luan, danh_sach_muc), hoặc (None, []) khi
+    không có lệnh, quá giờ hoặc đầu ra không đọc được. Mã thoát 1/2 của lệnh là kết quả bình thường, không phải lỗi."""
+    try:
+        ket_qua = subprocess.run(["onebee-chan-doan", "--json"], capture_output=True, text=True, timeout=GIO_CHAN_DOAN, check=False)
+    except (OSError, ValueError, subprocess.SubprocessError):   # ValueError: đầu ra không giải mã được UTF-8
+        return None, []
+    return doc_ket_qua_chan_doan(ket_qua.stdout)
 
 
 def thu_muc_cau_hinh():
@@ -337,9 +379,102 @@ def chay_giao_dien(tham_so):
         cuon.add(khung)
         return cuon
 
+    def dung_trang_kiem_tra():
+        khung = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        khung.set_border_width(8)
+        ket_qua_cuoi = []   # danh sách mục của lần kiểm tra gần nhất, để gửi kèm yêu cầu hỗ trợ
+
+        nut_kiem = Gtk.Button.new_with_label("Kiểm tra ngay")
+        nut_kiem.set_halign(Gtk.Align.START)
+        khung.pack_start(nut_kiem, False, False, 0)
+
+        danh_sach = Gtk.ListBox()
+        danh_sach.set_selection_mode(Gtk.SelectionMode.NONE)
+        cuon = Gtk.ScrolledWindow()
+        cuon.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        cuon.set_vexpand(True)
+        cuon.add(danh_sach)
+        khung.pack_start(cuon, True, True, 0)
+
+        nhan_ket_luan = Gtk.Label(label="Bấm \"Kiểm tra ngay\" để xem máy và kết nối tới OneBee Box có bình thường không.")
+        nhan_ket_luan.set_xalign(0)
+        nhan_ket_luan.set_line_wrap(True)
+        khung.pack_start(nhan_ket_luan, False, False, 0)
+
+        nut_gui = Gtk.Button.new_with_label("Báo cần hỗ trợ kèm kết quả này")
+        nut_gui.set_halign(Gtk.Align.START)
+        nut_gui.set_no_show_all(True)   # ẩn cho tới khi có kết quả (show_all của cửa sổ không làm hiện)
+        khung.pack_start(nut_gui, False, False, 0)
+
+        def them_dong(m):
+            dong = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            dong.set_border_width(6)
+            dong.pack_start(Gtk.Image.new_from_icon_name(BIEU_TUONG_TRANG_THAI[m["trang_thai"]], Gtk.IconSize.LARGE_TOOLBAR),
+                            False, False, 0)
+            chu = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            ten = Gtk.Label()
+            ten.set_markup("<b>" + GLib.markup_escape_text(m["ten"]) + "</b>: " + GLib.markup_escape_text(m["chi_tiet"]))
+            ten.set_xalign(0)
+            ten.set_line_wrap(True)
+            chu.pack_start(ten, False, False, 0)
+            if m["goi_y"]:
+                goi_y = Gtk.Label(label="→ " + m["goi_y"])
+                goi_y.set_xalign(0)
+                goi_y.set_line_wrap(True)
+                chu.pack_start(goi_y, False, False, 0)
+            dong.pack_start(chu, True, True, 0)
+            dong.show_all()
+            danh_sach.add(dong)
+
+        def hien_ket_qua(ket_luan, muc):
+            nut_kiem.set_sensitive(True)
+            ket_qua_cuoi[:] = muc
+            for con in danh_sach.get_children():
+                danh_sach.remove(con)
+            if ket_luan is None:   # không có kết quả mới: bỏ kết quả cũ để không gửi nhầm
+                nut_gui.hide()
+                nhan_ket_luan.set_text("Chưa kiểm tra được. Bấm Báo cần hỗ trợ để kỹ thuật xem giúp.")
+                return False
+            for m in muc:
+                them_dong(m)
+            so_loi = sum(1 for m in muc if m["trang_thai"] == "loi")
+            so_cb = sum(1 for m in muc if m["trang_thai"] == "canh_bao")
+            if so_loi:
+                nhan_ket_luan.set_text(f"Có {so_loi} mục lỗi. Làm theo gợi ý (→) hoặc bấm nút dưới đây để báo kỹ thuật.")
+            elif so_cb:
+                nhan_ket_luan.set_text(f"Máy vẫn dùng được, có {so_cb} cảnh báo — xem gợi ý (→).")
+            else:
+                nhan_ket_luan.set_text("Máy và kết nối tới OneBee Box bình thường.")
+            nut_gui.show()
+            return False   # False: GLib.idle_add chỉ gọi một lần
+
+        def chay_nen():
+            ket_luan, muc = kiem_tra_may()
+            GLib.idle_add(hien_ket_qua, ket_luan, muc)
+
+        def bam_kiem_tra(_nut):
+            nut_kiem.set_sensitive(False)
+            nhan_ket_luan.set_text("Đang kiểm tra, vui lòng chờ khoảng nửa phút...")
+            threading.Thread(target=chay_nen, daemon=True).start()
+
+        def bam_gui(_nut):
+            if not shutil.which("onebee-bao-ho-tro"):
+                bao_loi("Máy này chưa cài lệnh báo hỗ trợ. Hãy báo kỹ thuật OneBee.")
+                return
+            chay_lenh(["onebee-bao-ho-tro", "--mo-ta", tom_tat_loi(ket_qua_cuoi)], "Báo cần hỗ trợ")
+
+        nut_kiem.connect("clicked", bam_kiem_tra)
+        nut_gui.connect("clicked", bam_gui)
+        return khung
+
     def dung_trang_tro_giup():
         khung = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         khung.set_border_width(8)
+
+        nut_kiem_may = Gtk.Button.new_with_label("Kiểm tra máy")
+        nut_kiem_may.set_halign(Gtk.Align.START)
+        nut_kiem_may.connect("clicked", lambda _nut: ngan_trang.set_visible_child_name("kiem-tra"))
+        khung.pack_start(nut_kiem_may, False, False, 0)
 
         nut_bao = Gtk.Button.new_with_label("Báo cần hỗ trợ")
         nut_bao.set_halign(Gtk.Align.START)
@@ -380,6 +515,7 @@ def chay_giao_dien(tham_so):
     bo_dung_trang = {
         "bat-dau": dung_trang_bat_dau,
         "phim-tat": dung_trang_phim_tat,
+        "kiem-tra": dung_trang_kiem_tra,
         "tro-giup": dung_trang_tro_giup,
     }
     for ma, tieu_de in TRANG:

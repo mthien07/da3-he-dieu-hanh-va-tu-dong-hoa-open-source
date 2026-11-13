@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Kiểm thử phần logic của Trung tâm OneBee (onebee-trung-tam): đọc cẩm nang phím tắt, đọc thông tin đơn vị, dấu "đã xem"
-của lần đăng nhập đầu, 6 ô của trang Bắt đầu, tham số dòng lệnh. Phần logic không cần GTK nên test chạy được cả trên máy
+của lần đăng nhập đầu, 6 ô của trang Bắt đầu, tham số dòng lệnh, đọc kết quả tự kiểm tra máy. Phần logic không cần GTK nên test chạy được cả trên máy
 không có màn hình (macOS, CI lint); giao diện thật được kiểm trong container Linux Mint.
 Chạy: python3 -m unittest tests/desktop/test_onebee_trung_tam.py"""
 import importlib.machinery
@@ -47,7 +47,7 @@ class TrungTamOneBee(unittest.TestCase):
         with mock.patch.dict(sys.modules, {"gi": None}):
             m = nap_trung_tam()
             self.assertIsNone(sys.modules["gi"], "nạp module không được import gi")
-        self.assertEqual([ma for ma, _ in m.TRANG], ["bat-dau", "phim-tat", "tro-giup"])
+        self.assertEqual([ma for ma, _ in m.TRANG], ["bat-dau", "phim-tat", "kiem-tra", "tro-giup"])
 
     def test_nhom_phim_tat_dung_thu_tu_va_du_muc(self):
         cam_nang = self.tt.doc_cam_nang(CAM_NANG)
@@ -134,6 +134,55 @@ class TrungTamOneBee(unittest.TestCase):
             with self.assertRaises(SystemExit) as loi:
                 self.tt.doc_tham_so(["--trang", "khong-co-trang-nay"])
         self.assertEqual(loi.exception.code, 64)
+        self.assertEqual(self.tt.doc_tham_so(["--trang", "kiem-tra"]).trang, "kiem-tra")
+
+    def test_doc_ket_qua_chan_doan(self):
+        mau = json.dumps({
+            "phien_ban": 1, "thoi_diem": "2026-11-13T09:00:00+07:00", "may": "ketoan-01", "ket_luan": "loi",
+            "dem": {"ok": 1, "canh_bao": 0, "loi": 1},
+            "muc": [
+                {"nhom": "Mạng", "ten": "Cổng mạng (router)", "trang_thai": "ok", "chi_tiet": "Router 192.168.1.1 trả lời sau 0.5 ms", "goi_y": ""},
+                {"nhom": "Mạng", "ten": "OneBee Box", "trang_thai": "loi", "chi_tiet": "Box 192.168.1.10 không trả lời",
+                 "goi_y": "Kiểm tra Box có điện"},
+            ],
+        }, ensure_ascii=False)
+        ket_luan, muc = self.tt.doc_ket_qua_chan_doan(mau)
+        self.assertEqual(ket_luan, "loi")
+        self.assertEqual([m["trang_thai"] for m in muc], ["ok", "loi"])
+        self.assertEqual(muc[1]["ten"], "OneBee Box")
+        self.assertEqual(muc[1]["goi_y"], "Kiểm tra Box có điện")
+        for rac in ("", "abc", "[]", "null", '{"ket_luan": "ok"}', '{"ket_luan": "la", "muc": []}', '{"ket_luan": "ok", "muc": "x"}'):
+            self.assertEqual(self.tt.doc_ket_qua_chan_doan(rac), (None, []), rac)
+        self.assertEqual(self.tt.doc_ket_qua_chan_doan(None), (None, []))
+        # Mục hỏng (không phải dict, thiếu tên, trạng thái lạ) bị bỏ, mục tốt còn lại
+        lan = json.dumps({"ket_luan": "ok", "muc": [1, {"ten": "A"}, {"ten": "B", "trang_thai": "la"},
+                                                      {"ten": "C", "trang_thai": "ok", "chi_tiet": "tốt"}]})
+        self.assertEqual([m["ten"] for m in self.tt.doc_ket_qua_chan_doan(lan)[1]], ["C"])
+
+    def test_tom_tat_loi_chi_gom_muc_khong_dat(self):
+        muc = [
+            {"ten": "Cổng mạng (router)", "trang_thai": "ok", "chi_tiet": "Router trả lời", "goi_y": ""},
+            {"ten": "OneBee Box", "trang_thai": "loi", "chi_tiet": "Box không trả lời", "goi_y": "x"},
+            {"ten": "Ổ chứa /home", "trang_thai": "canh_bao", "chi_tiet": "Đã dùng 85%", "goi_y": ""},
+        ]
+        self.assertEqual(self.tt.tom_tat_loi(muc), "Tự kiểm tra máy: OneBee Box: Box không trả lời; Ổ chứa /home: Đã dùng 85%")
+        self.assertEqual(self.tt.tom_tat_loi([muc[0]]), "Tự kiểm tra máy: mọi mục đạt")
+        self.assertEqual(self.tt.tom_tat_loi([]), "Tự kiểm tra máy: mọi mục đạt")
+        dai = [{"ten": f"Mục {i}", "trang_thai": "loi", "chi_tiet": "rất dài " * 20, "goi_y": ""} for i in range(20)]
+        tom_tat = self.tt.tom_tat_loi(dai)
+        self.assertLessEqual(len(tom_tat), 600)
+        self.assertTrue(tom_tat.startswith("Tự kiểm tra máy: Mục 0: "))
+
+    def test_kiem_tra_may_khi_khong_chay_duoc_lenh(self):
+        with mock.patch.object(self.tt.subprocess, "run", side_effect=FileNotFoundError("onebee-chan-doan")):
+            self.assertEqual(self.tt.kiem_tra_may(), (None, []))
+        with mock.patch.object(self.tt.subprocess, "run", return_value=mock.Mock(stdout="không phải JSON")):
+            self.assertEqual(self.tt.kiem_tra_may(), (None, []))
+        mau = json.dumps({"ket_luan": "ok", "muc": [{"ten": "A", "trang_thai": "ok", "chi_tiet": "tốt"}]})
+        with mock.patch.object(self.tt.subprocess, "run", return_value=mock.Mock(stdout=mau)) as chay:
+            ket_luan, muc = self.tt.kiem_tra_may()
+        self.assertEqual((ket_luan, len(muc)), ("ok", 1))
+        self.assertEqual(chay.call_args.args[0], ["onebee-chan-doan", "--json"])
 
 
 if __name__ == "__main__":

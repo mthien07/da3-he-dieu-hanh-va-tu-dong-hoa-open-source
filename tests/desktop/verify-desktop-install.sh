@@ -151,6 +151,9 @@ check "Thư mục cấu hình /etc/onebee chỉ root vào (700)" bash -c "[ \"\$
 check "Có lệnh hỏi Trợ lý AI (hoi)" test -x /usr/local/bin/hoi
 check "Có lệnh báo tình trạng về Box" test -x /usr/local/sbin/onebee-bao-tinh-trang
 check "Có lệnh tự chẩn đoán máy trạm (onebee-chan-doan)" test -x /usr/local/bin/onebee-chan-doan
+check "Có lệnh mở biểu mẫu Báo cần hỗ trợ (onebee-bao-ho-tro)" test -x /usr/local/bin/onebee-bao-ho-tro
+check "Có nhắc sao lưu trễ cho người dùng (lệnh + lịch mức người dùng)" bash -c \
+  "test -x /usr/local/lib/onebee/onebee-nhac-sao-luu && test -L /etc/systemd/user/timers.target.wants/onebee-nhac-sao-luu.timer"
 check "Có hỗ trợ từ xa (onebee-ho-tro + x11vnc + mục menu)" bash -c \
   "test -x /usr/local/bin/onebee-ho-tro && command -v x11vnc && test -f /usr/share/applications/onebee-ho-tro.desktop"
 check "Có trợ lý tập tin Windows (.exe helper + desktop entry)" bash -c \
