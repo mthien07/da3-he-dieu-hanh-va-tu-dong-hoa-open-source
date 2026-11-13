@@ -225,6 +225,19 @@ class DocFile(unittest.TestCase):
         self.assertIn("chưa từng sao lưu", rows[1]["canh_bao"][0])
         self.assertIn("ngày tương lai", rows[2]["canh_bao"][0])  # bản giả mạo không được coi là "vừa sao lưu"
 
+    def test_dem_chi_in_tong_va_so_may_trong_han(self):
+        with tempfile.TemporaryDirectory() as d:
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                self.assertEqual(mt.main(["x", "dem", d, "a=5", "b=100", "c=null", "d=loi"]), 0)
+        kq = json.loads(buf.getvalue())
+        self.assertEqual(kq["tong"], 4)
+        self.assertEqual(kq["sao_luu_trong_han"], 1)   # chỉ a (5 giờ); b quá 72 giờ, c chưa có bản, d không đọc được kho
+        self.assertIsInstance(kq["luc"], int)
+        self.assertEqual(set(kq), {"tong", "sao_luu_trong_han", "luc"})
+        for ten in ('"a"', '"b"', '"c"', '"d"'):
+            self.assertNotIn(ten, buf.getvalue())      # tệp này công khai trong LAN: không lộ tên máy
+
     def test_payload_thu_khong_doc_may(self):
         buf = io.StringIO()
         with redirect_stdout(buf):

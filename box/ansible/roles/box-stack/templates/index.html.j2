@@ -70,6 +70,7 @@
       <span>Trợ lý AI: <b id="dv-tro_ly_ai">…</b></span>
       <span>Thư mục chung: <b id="dv-thu_muc_chung">…</b></span>
       <span>Sao lưu: <b id="dv-sao_luu">…</b></span>
+      <span id="dv-may_tram-o" hidden>Máy trạm đã sao lưu: <b id="dv-may_tram">…</b></span>
     </div>
     <div id="tt-cap-nhat">Đang tải số liệu…</div>
   </section>
@@ -82,6 +83,13 @@
       <small>Linux Mint, macOS: thanh địa chỉ trình quản lý tệp, gõ</small><br><code id="smb">smb://{{ onebee_box_ten_mdns }}.local/{{ onebee_box_samba_share }}</code></div>
     <a class="card" data-port="{{ onebee_box_ports.n8n }}" data-path="form/onebee-ho-tro" href="#"><span class="bieu-tuong" aria-hidden="true">🛠️</span><b>Yêu cầu hỗ trợ kỹ thuật</b><span>Gửi kỹ thuật OneBee: máy lỗi, cần cài đặt, cần hướng dẫn</span></a>
     <a class="card" href="#cam-nang"><span class="bieu-tuong" aria-hidden="true">📖</span><b>Cẩm nang sử dụng</b><span>Phím tắt, in ấn, lưu trữ và sao lưu</span></a>
+  </div>
+
+  <h2>Soạn văn bản bằng Trợ lý AI</h2>
+  <div class="grid phu">
+{% for g in onebee_goi_y %}
+    <a class="card" data-port="{{ onebee_box_ports.open_webui }}" data-q="{{ g.content | e }}" href="#"><b>{{ g.title[0] | e }}</b><span>{{ (g.title[1] if g.title | length > 1 else '') | e }}</span></a>
+{% endfor %}
   </div>
 
   <h2>Biểu mẫu và quản trị (tài khoản do quản trị cấp)</h2>
@@ -97,12 +105,12 @@
     <details>
       <summary>Phím tắt hay dùng</summary>
       <ul>
-        <li><kbd>Super + Space</kbd> — đổi bộ gõ tiếng Việt / tiếng Anh (Super là phím có logo Windows)</li>
-        <li><kbd>Ctrl + C</kbd> / <kbd>Ctrl + V</kbd> — sao chép / dán; <kbd>Ctrl + Z</kbd> — hoàn tác</li>
-        <li><kbd>Ctrl + S</kbd> — lưu tệp; <kbd>Ctrl + Shift + S</kbd> — lưu thành tệp khác</li>
-        <li><kbd>Ctrl + F</kbd> — tìm chữ trong tài liệu, trang web</li>
-        <li><kbd>Print Screen</kbd> — chụp màn hình</li>
-        <li><kbd>Super + L</kbd> — khóa màn hình khi rời chỗ ngồi (Super là phím có logo Windows)</li>
+{% for nhom in onebee_cam_nang_nhom %}
+        <li><b>{{ nhom.ten | e }}</b></li>
+{% for p in onebee_cam_nang.phim_tat | selectattr('nhom', 'equalto', nhom.ma) %}
+        <li><kbd>{{ p.phim | e }}</kbd> — {{ p.viec | e }}{% if p.ghi_chu is defined %} ({{ p.ghi_chu | e }}){% endif %}{% if p.phim_khac is defined %} (hoặc {{ p.phim_khac | join(', ') | e }}){% endif %}</li>
+{% endfor %}
+{% endfor %}
       </ul>
     </details>
     <details>
@@ -125,7 +133,7 @@
     <details>
       <summary>Hỏi Trợ lý AI ngay từ máy văn phòng</summary>
       <ul>
-        <li>Mở Terminal, gõ <code>hoi "Soạn thông báo họp xã viên ngày thứ Sáu"</code></li>
+        <li>Bấm biểu tượng <b>Trợ lý AI OneBee</b> trên thanh tác vụ của máy văn phòng</li>
         <li>Câu hỏi và tài liệu chỉ đi tới Box trong đơn vị, không gửi ra Internet</li>
       </ul>
     </details>
@@ -138,6 +146,11 @@
   var host = window.location.hostname;
   document.querySelectorAll("a.card[data-port]").forEach(function (a) {
     a.href = window.location.protocol + "//" + host + ":" + a.getAttribute("data-port") + "/" + (a.getAttribute("data-path") || "");
+    // Thẻ mẫu soạn văn bản: mở Trợ lý với câu mở đầu điền sẵn, người dùng bổ sung rồi tự bấm gửi (submit=false)
+    if (a.hasAttribute("data-q")) {
+      a.href = window.location.protocol + "//" + host + ":" + a.getAttribute("data-port") + "/?models=onebee-tro-ly&q=" +
+        encodeURIComponent(a.getAttribute("data-q")) + "&submit=false";
+    }
   });
   document.getElementById("ten-box").textContent = host;
   document.getElementById("smb-win").textContent = "\\\\" + host + "\\{{ onebee_box_samba_share }}";
@@ -163,6 +176,15 @@
       b.textContent = NHAN[v] || "Không rõ";
       b.setAttribute("data-muc", MUC[v] || "canh-bao");
     });
+    // Ô máy trạm: chỉ hiện khi lệnh sao lưu đêm đã ghi hai con số (không có tên máy)
+    var mt = d.may_tram, oMt = document.getElementById("dv-may_tram-o"), bMt = document.getElementById("dv-may_tram");
+    if (mt && mt.tong > 0) {
+      bMt.textContent = mt.sao_luu_trong_han + "/" + mt.tong + " máy (trong 3 ngày)";
+      bMt.setAttribute("data-muc", mt.sao_luu_trong_han === mt.tong ? "tot" : "canh-bao");
+      oMt.hidden = false;
+    } else {
+      oMt.hidden = true;
+    }
     var t = new Date(d.cap_nhat), e = document.getElementById("tt-cap-nhat");
     e.textContent = "Cập nhật lúc " + t.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
     e.setAttribute("data-muc", Date.now() - t.getTime() > 5 * 60000 ? "loi" : "tot");   // số liệu cũ: lịch cập nhật trên Box đã ngừng
