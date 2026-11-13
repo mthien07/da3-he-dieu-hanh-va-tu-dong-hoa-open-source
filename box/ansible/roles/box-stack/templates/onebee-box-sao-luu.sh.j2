@@ -113,6 +113,12 @@ bao_cao_n8n() {
   local trang_thai="$1" noi_dung="$2" payload hdr
   local -a may=()
   [[ "${trang_thai}" == THU ]] || mapfile -t may < <(gio_sao_luu_may)   # email thử: không cần đọc kho máy trạm
+  # Hai con số cho ô "Máy trạm đã sao lưu" trên trang chủ (không có tên máy); email thử thì bỏ qua
+  if [[ "${trang_thai}" != THU ]]; then
+    { may_tram_py dem "${may[@]}" >/var/lib/onebee-box/may-tram-tong-hop.moi \
+        && mv /var/lib/onebee-box/may-tram-tong-hop.moi /var/lib/onebee-box/may-tram-tong-hop; } \
+      || warn "Không ghi được tổng hợp máy trạm cho trang chủ"
+  fi
   payload="$(mktemp)"; hdr="$(mktemp)"
   trap 'rm -f "${payload}" "${hdr}"; trap - RETURN' RETURN
   may_tram_py payload "${trang_thai}" "${noi_dung}" "${may[@]}" >"${payload}"
