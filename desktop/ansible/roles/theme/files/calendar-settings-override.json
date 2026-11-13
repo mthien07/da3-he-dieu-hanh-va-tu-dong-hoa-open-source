@@ -1,0 +1,5 @@
+{
+  "use-custom-format": {"override-props": true, "default": true},
+  "custom-format": {"override-props": true, "default": "%H:%M  %d/%m/%Y"},
+  "custom-tooltip-format": {"override-props": true, "default": "%A, %d/%m/%Y"}
+}

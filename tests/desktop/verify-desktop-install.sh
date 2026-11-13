@@ -31,6 +31,12 @@ done
 check "IBus là bộ gõ mặc định (im-config)" grep -q '^IM_CONFIG_DEFAULT_MODE=ibus$' /etc/default/im-config
 check "Bộ gõ ${ime_engine} được nạp sẵn trong IBus (gsettings org.freedesktop.ibus.general)" \
   bash -c "GSETTINGS_BACKEND=memory gsettings get org.freedesktop.ibus.general preload-engines | grep -q \"'${ime_engine}'\""
+if has_schema org.cinnamon.desktop.input-sources; then
+  check "Cinnamon có sẵn nguồn nhập IBus (gsettings org.cinnamon.desktop.input-sources)" \
+    bash -c "GSETTINGS_BACKEND=memory gsettings get org.cinnamon.desktop.input-sources sources | grep -qF \"'ibus'\""
+else
+  printf 'PASS  %s\n' "Cinnamon có sẵn nguồn nhập IBus (bỏ qua: Cinnamon cũ hơn 6.6)"
+fi
 if [[ ${ime_pkg} == ibus-bamboo ]]; then
   check "PPA ibus-bamboo chỉ cấp được gói ibus-bamboo (gói khác bị chặn)" \
     bash -c "apt-cache policy | grep -Eq -- '^ +-1 https://ppa.launchpadcontent.net/bamboo-engine/' \
@@ -117,16 +123,28 @@ if [[ -f /usr/share/cinnamon/applets/menu@cinnamon.org/settings-schema.json ]]; 
   check "Phím Super mở menu bắt đầu (applet menu mặc định)" \
     grep -qF 'Super_L::Super_R' /usr/share/cinnamon/applets/menu@cinnamon.org/settings-schema.json
 fi
+if [[ -d /usr/share/cinnamon/applets/menu@cinnamon.org ]]; then
+  check "Nút Bắt đầu dùng logo OneBee (mặc định của applet menu)" \
+    grep -qF '"onebee-logo"' /usr/share/cinnamon/applets/menu@cinnamon.org/settings-override.json
+else
+  printf 'PASS  %s\n' "Nút Bắt đầu dùng logo OneBee (bỏ qua: máy không có applet menu)"
+fi
 
 check "LibreOffice mở mặc định giao diện Ribbon (tab) cho Writer, Calc, Impress" bash -c \
   "[ \$(grep -c '<value>Tabbed</value>' /usr/lib/libreoffice/share/registry/onebee-office-ribbon.xcd) -eq 3 ]"
 
 if [[ -x /usr/bin/mintupdate-automation ]]; then
   check "Bật tự động nâng cấp mintupdate" test -e /etc/systemd/system/timers.target.wants/mintupdate-automation-upgrade.timer
-  check "Bật tự động dọn gói thừa mintupdate" test -e /etc/systemd/system/timers.target.wants/mintupdate-automation-autoremove.timer
+  # Bản mintupdate mới có thể không còn timer dọn gói thừa (bộ cài chỉ bật khi file timer tồn tại)
+  if [[ -f /usr/lib/systemd/system/mintupdate-automation-autoremove.timer ]]; then
+    check "Bật tự động dọn gói thừa mintupdate" test -e /etc/systemd/system/timers.target.wants/mintupdate-automation-autoremove.timer
+  fi
 else
   check "Bật unattended-upgrades" grep -q 'Unattended-Upgrade "1"' /etc/apt/apt.conf.d/20auto-upgrades
 fi
+
+check "Trình quản lý cập nhật không tự bật cửa sổ" \
+  grep -qxF 'show-welcome-page=false' /usr/share/glib-2.0/schemas/zz_onebee-updates.gschema.override
 
 check "Có lệnh sao lưu onebee-sao-luu + restic" bash -c "test -x /usr/local/sbin/onebee-sao-luu && command -v restic"
 check "Thư mục cấu hình /etc/onebee chỉ root vào (700)" bash -c "[ \"\$(stat -c %a /etc/onebee)\" = 700 ]"

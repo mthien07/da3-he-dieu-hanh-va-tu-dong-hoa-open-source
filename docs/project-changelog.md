@@ -8,10 +8,16 @@ Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài ch�
   "phần mềm Windows"; lời gợi ý chỉ nêu ứng dụng thật sự có trên máy.
 - Trang chủ Box, tờ phím tắt, sổ tay A4, giáo án và kịch bản video dùng cùng một phím khóa màn hình (Super + L) và cùng tên gọi
   như trên máy ("Trợ lý AI OneBee", "Chia sẻ nội bộ (OneBee Box)", "Cho phép hỗ trợ từ xa (OneBee)").
+- Máy trạm (Mint 22.3): chỉ bật `mintupdate-automation-autoremove.timer` khi file timer tồn tại trên máy, tránh lỗi bộ cài trên bản mintupdate mới đã bỏ timer này.
 ### Thêm
 - `desktop/ansible/roles/theme/files/onebee-cam-nang.json`: một nguồn cho phím tắt và tên gọi; test
   `tests/desktop/test_onebee_cam_nang.py` báo lỗi khi cấu hình máy hoặc tài liệu lệch nguồn này.
 - `tests/desktop/check-exe-handler.sh` được chạy trong CI.
+- Máy trạm (Cinnamon 6.6 / Mint 22.3): nạp sẵn bộ gõ tiếng Việt (mặc định tiếng Việt trước, `Super + Space` sang tiếng Anh) ở cả khóa `sources` của `org.cinnamon.desktop.input-sources` và `preload-engines` của IBus.
+- Nút **Bắt đầu** trên máy có `mint-artwork`: gộp `menu-settings-override.json` (`menu-custom=true`, biểu tượng `onebee-logo`, nhãn `Bắt đầu`) vào mặc định của applet menu sau khi chuyển hướng file gốc bằng `dpkg-divert`.
+- Tắt cửa sổ chào (`mintwelcome`) và báo cáo hệ thống (`mintreport`) lúc đăng nhập bằng `dpkg-divert --local --rename` (bền qua cập nhật gói); trình quản lý cập nhật (`com.linuxmint.updates`) không tự bật cửa sổ hay thông báo cho nhân viên.
+- Đồng hồ thanh tác vụ Cinnamon hiển thị giờ và ngày/tháng/năm kiểu Việt Nam (`%H:%M  %d/%m/%Y`) qua `calendar-settings-override.json`.
+- Màn hình đăng nhập LightDM (`slick-greeter.conf`) dùng hình nền OneBee (`force: false`, giữ nguyên nếu quản trị đã tự chỉnh).
 - **Trung tâm OneBee** (`onebee-trung-tam`, role `trung-tam`): tự mở ở lần đăng nhập đầu của mỗi người và ghim đầu menu Bắt đầu; gồm trang Bắt đầu (6 ô lớn dẫn tới Soạn văn bản, Bảng tính, Thư mục của tôi, Thư mục chung, Trợ lý AI, Cần giúp đỡ), trang Phím tắt (đọc từ `onebee-cam-nang.json`) và trang Cần giúp đỡ.
 - Biến `onebee_dien_thoai_ho_tro` trong `desktop/ansible/group_vars/all.yml`: số điện thoại hỗ trợ khẩn cấp hiển thị ở trang Cần giúp đỡ của Trung tâm OneBee (để trống thì ẩn).
 - Trang **Kiểm tra máy** trong Trung tâm OneBee: bấm "Kiểm tra ngay" để thấy từng mục đạt hay lỗi kèm gợi ý tiếng Việt, rồi gửi yêu cầu hỗ trợ kèm kết quả, không cần mở Terminal. `onebee-chan-doan` có thêm `--json` (đầu ra chữ giữ nguyên).
