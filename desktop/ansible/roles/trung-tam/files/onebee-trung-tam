@@ -1,0 +1,441 @@
+#!/usr/bin/env python3
+"""onebee-trung-tam — cửa sổ "Trung tâm OneBee": lối vào các việc chính, bảng phím tắt và trang "Cần giúp đỡ".
+
+Cách dùng:
+  onebee-trung-tam                  Mở cửa sổ ở trang Bắt đầu
+  onebee-trung-tam --trang phim-tat Mở thẳng một trang (bat-dau, phim-tat, tro-giup)
+  onebee-trung-tam --lan-dau        Chỉ mở nếu người này chưa từng đóng cửa sổ (dùng khi tự mở lúc đăng nhập)
+  onebee-trung-tam --tu-kiem        Dựng đủ cửa sổ và mọi trang rồi thoát, in TU-KIEM-DAT (không mở chương trình nào)
+Dấu "đã xem": ~/.config/onebee/trung-tam-da-xem (theo XDG_CONFIG_HOME nếu có), tạo khi đóng cửa sổ trừ khi người dùng
+chọn "Hiện cửa sổ này ở lần đăng nhập sau".
+Dữ liệu: /usr/share/onebee/cam-nang.json (biến ONEBEE_CAM_NANG), /usr/share/onebee/don-vi.json (biến ONEBEE_DON_VI).
+Thiếu hoặc hỏng dữ liệu thì cửa sổ vẫn mở. Chạy bằng quyền người dùng thường.
+"""
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+
+# Bảng khai báo các trang theo thứ tự hiện trên thanh chuyển trang. Thêm trang: thêm một dòng ở đây và một hàm dựng trang.
+TRANG = [("bat-dau", "Bắt đầu"), ("phim-tat", "Phím tắt"), ("tro-giup", "Cần giúp đỡ")]
+
+NHOM_PHIM_TAT = [
+    ("go-tieng-viet", "Gõ tiếng Việt"),
+    ("man-hinh", "Màn hình và cửa sổ"),
+    ("chup", "Chụp màn hình"),
+    ("soan-thao", "Soạn thảo"),
+]
+DONG_TELEX = "Telex: aa=â, aw=ă, ee=ê, oo=ô, ow=ơ, uw=ư, dd=đ; dấu: s=sắc, f=huyền, r=hỏi, x=ngã, j=nặng, z=xóa dấu"
+
+CAM_NANG_MAC_DINH = "/usr/share/onebee/cam-nang.json"
+DON_VI_MAC_DINH = "/usr/share/onebee/don-vi.json"
+TEN_TEP_DAU = "trung-tam-da-xem"
+TEP_CHIA_SE = "/usr/share/applications/onebee-chia-se-noi-bo.desktop"
+TEP_BAO_HO_TRO = "/usr/share/applications/onebee-bao-ho-tro.desktop"
+MA_SAI_THAM_SO = 64   # EX_USAGE
+
+# Sáu ô của trang Bắt đầu. "can_lenh"/"can_tep": điều kiện có sẵn; thiếu thì ô vẫn hiện, bấm vào báo "ly_do_thieu".
+# "lenh" là danh sách tham số cố định (không qua shell); "~" được thay bằng thư mục cá nhân. "trang": chuyển trang thay vì chạy lệnh.
+O_BAT_DAU = [
+    {"ma": "soan-van-ban", "ten": "Soạn văn bản", "mo_ta": "Như Word — lưu sẵn đuôi .docx",
+     "bieu_tuong": "libreoffice-writer", "lenh": ["libreoffice", "--writer"], "can_lenh": "libreoffice",
+     "ly_do_thieu": "Máy này chưa cài LibreOffice nên chưa soạn được văn bản. Hãy báo kỹ thuật OneBee."},
+    {"ma": "bang-tinh", "ten": "Bảng tính", "mo_ta": "Như Excel — lưu sẵn đuôi .xlsx",
+     "bieu_tuong": "libreoffice-calc", "lenh": ["libreoffice", "--calc"], "can_lenh": "libreoffice",
+     "ly_do_thieu": "Máy này chưa cài LibreOffice nên chưa mở được bảng tính. Hãy báo kỹ thuật OneBee."},
+    {"ma": "thu-muc-cua-toi", "ten": "Thư mục của tôi", "mo_ta": "Tài liệu, Tải xuống, Hình ảnh",
+     "bieu_tuong": "user-home", "lenh": ["xdg-open", "~"]},
+    {"ma": "thu-muc-chung", "ten": "Thư mục chung của đơn vị", "mo_ta": "File dùng chung trên OneBee Box",
+     "bieu_tuong": "folder-remote", "lenh": ["gtk-launch", "onebee-chia-se-noi-bo"], "can_tep": TEP_CHIA_SE,
+     "ly_do_thieu": "Máy này chưa nối OneBee Box nên chưa có thư mục chung. Hãy báo kỹ thuật OneBee."},
+    {"ma": "tro-ly-ai", "ten": "Trợ lý AI", "mo_ta": "Soạn công văn, tóm tắt văn bản — AI có thể sai, hãy đọc lại",
+     "bieu_tuong": "onebee-logo", "lenh": ["onebee-mo-tro-ly-ai"], "can_lenh": "onebee-mo-tro-ly-ai",
+     "ly_do_thieu": "Máy này chưa cài Trợ lý AI OneBee. Hãy báo kỹ thuật OneBee."},
+    {"ma": "can-giup-do", "ten": "Cần giúp đỡ", "mo_ta": "Báo kỹ thuật, cho xem màn hình",
+     "bieu_tuong": "help-browser", "trang": "tro-giup"},
+]
+
+
+def doc_json(duong_dan):
+    """Đọc một file JSON. Thiếu file, không đọc được hoặc nội dung hỏng → None."""
+    try:
+        with open(duong_dan, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):   # ValueError gồm cả JSONDecodeError và UnicodeDecodeError
+        return None
+
+
+def doc_cam_nang(duong_dan):
+    """Cẩm nang phím tắt và tên gọi (dict) hoặc None nếu thiếu/hỏng."""
+    du_lieu = doc_json(duong_dan)
+    return du_lieu if isinstance(du_lieu, dict) else None
+
+
+def _la_chuoi(x):
+    return isinstance(x, str) and x.strip() != ""
+
+
+def nhom_phim_tat(cam_nang):
+    """Chia các mục phim_tat theo 4 nhóm, đúng thứ tự NHOM_PHIM_TAT. Trả [{"ma", "ten", "muc": [...]}, ...];
+    bỏ mục thiếu trường hoặc thuộc nhóm lạ, bỏ nhóm rỗng. Không có dữ liệu dùng được → []."""
+    if not isinstance(cam_nang, dict) or not isinstance(cam_nang.get("phim_tat"), list):
+        return []
+    hop_le = [m for m in cam_nang["phim_tat"]
+              if isinstance(m, dict) and all(_la_chuoi(m.get(k)) for k in ("ma", "nhom", "viec", "phim"))]
+    ket_qua = []
+    for ma, ten in NHOM_PHIM_TAT:
+        muc = [dict(m) for m in hop_le if m["nhom"] == ma]
+        if muc:
+            ket_qua.append({"ma": ma, "ten": ten, "muc": muc})
+    return ket_qua
+
+
+def ghi_chu_phim(muc):
+    """Cột ghi chú của một dòng phím tắt: ghi_chu và các phím khác (nếu có)."""
+    phan = []
+    if _la_chuoi(muc.get("ghi_chu")):
+        phan.append(muc["ghi_chu"].strip())
+    phim_khac = muc.get("phim_khac")
+    if isinstance(phim_khac, list):
+        khac = [p.strip() for p in phim_khac if _la_chuoi(p)]
+        if khac:
+            phan.append("Phím khác: " + ", ".join(khac))
+    return ". ".join(phan)
+
+
+def doc_don_vi(duong_dan):
+    """Số điện thoại hỗ trợ của đơn vị; thiếu, hỏng hoặc không phải chuỗi → ""."""
+    du_lieu = doc_json(duong_dan)
+    if isinstance(du_lieu, dict) and isinstance(du_lieu.get("dien_thoai_ho_tro"), str):
+        return du_lieu["dien_thoai_ho_tro"].strip()
+    return ""
+
+
+def thu_muc_cau_hinh():
+    """Thư mục cấu hình của người dùng: XDG_CONFIG_HOME (chỉ nhận đường dẫn tuyệt đối, theo chuẩn XDG) hoặc ~/.config."""
+    xdg = os.environ.get("XDG_CONFIG_HOME", "")
+    return xdg if os.path.isabs(xdg) else os.path.join(os.path.expanduser("~"), ".config")
+
+
+def _tep_dau(thu_muc):
+    return os.path.join(thu_muc, "onebee", TEN_TEP_DAU)
+
+
+def can_hien_lan_dau(thu_muc):
+    """True nếu người này chưa từng đóng Trung tâm OneBee (chưa có file dấu)."""
+    return not os.path.exists(_tep_dau(thu_muc))
+
+
+def danh_dau_da_xem(thu_muc):
+    """Tạo file dấu "đã xem". Lỗi ghi (OSError) để người gọi xử lý."""
+    tep = _tep_dau(thu_muc)
+    os.makedirs(os.path.dirname(tep), exist_ok=True)
+    with open(tep, "a", encoding="utf-8"):
+        pass
+
+
+def cac_o_bat_dau(co_lenh, co_tep):
+    """Sáu ô của trang Bắt đầu theo thứ tự O_BAT_DAU. co_lenh(tên lệnh) và co_tep(đường dẫn) trả True/False.
+    Mỗi ô: ma, ten, mo_ta, bieu_tuong, lenh (danh sách tham số hoặc None), trang (mã trang hoặc None), co_san, ly_do."""
+    nha = os.path.expanduser("~")
+    ket_qua = []
+    for o in O_BAT_DAU:
+        co_san = True
+        if "can_lenh" in o and not co_lenh(o["can_lenh"]):
+            co_san = False
+        if "can_tep" in o and not co_tep(o["can_tep"]):
+            co_san = False
+        lenh = [nha if t == "~" else t for t in o["lenh"]] if "lenh" in o else None
+        ket_qua.append({
+            "ma": o["ma"], "ten": o["ten"], "mo_ta": o["mo_ta"], "bieu_tuong": o["bieu_tuong"],
+            "lenh": lenh, "trang": o.get("trang"),
+            "co_san": co_san, "ly_do": "" if co_san else o["ly_do_thieu"],
+        })
+    return ket_qua
+
+
+class _BoDocThamSo(argparse.ArgumentParser):
+    """Sai tham số thì thoát mã 64 (EX_USAGE) thay vì mã 2 mặc định của argparse."""
+    def error(self, message):
+        self.print_usage(sys.stderr)
+        self.exit(MA_SAI_THAM_SO, f"{self.prog}: {message}\n")
+
+
+def doc_tham_so(argv):
+    """Đọc tham số dòng lệnh. Trả Namespace có che_do ("binh-thuong", "lan-dau", "tu-kiem") và trang (mã trang)."""
+    ma_trang = [ma for ma, _ in TRANG]
+    bo_doc = _BoDocThamSo(prog="onebee-trung-tam", add_help=False,
+                          description="Trung tâm OneBee: bắt đầu dùng máy, phím tắt, báo cần hỗ trợ.")
+    bo_doc.add_argument("-h", "--help", action="help", help="hiện hướng dẫn này rồi thoát")
+    nhom = bo_doc.add_mutually_exclusive_group()
+    nhom.add_argument("--lan-dau", action="store_true", help="chỉ mở nếu người này chưa từng đóng cửa sổ")
+    nhom.add_argument("--tu-kiem", action="store_true", help="dựng đủ cửa sổ và mọi trang rồi thoát, in TU-KIEM-DAT")
+    bo_doc.add_argument("--trang", metavar="MÃ", default=ma_trang[0],
+                        help="mở đúng trang: " + ", ".join(ma_trang))
+    tham_so = bo_doc.parse_args(argv)
+    if tham_so.trang not in ma_trang:
+        bo_doc.error(f"không có trang '{tham_so.trang}'; các trang: {', '.join(ma_trang)}")
+    tham_so.che_do = "lan-dau" if tham_so.lan_dau else "tu-kiem" if tham_so.tu_kiem else "binh-thuong"
+    return tham_so
+
+
+def chay_giao_dien(tham_so):
+    """Dựng và chạy cửa sổ Trung tâm OneBee. Chỉ import gi bên trong hàm này."""
+    thu_muc = thu_muc_cau_hinh()
+    if tham_so.che_do == "lan-dau" and not can_hien_lan_dau(thu_muc):
+        return 0
+    try:
+        import gi
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk, GLib
+        co_man_hinh, _ = Gtk.init_check([])
+    except Exception:
+        co_man_hinh = False
+    if not co_man_hinh:
+        print("Trung tâm OneBee cần chạy trong phiên làm việc có màn hình.", file=sys.stderr)
+        return 1
+
+    cam_nang = doc_cam_nang(os.environ.get("ONEBEE_CAM_NANG") or CAM_NANG_MAC_DINH)
+    dien_thoai = doc_don_vi(os.environ.get("ONEBEE_DON_VI") or DON_VI_MAC_DINH)
+
+    cua_so = Gtk.Window(title="Trung tâm OneBee")
+    cua_so.set_default_size(780, 540)
+    cua_so.set_position(Gtk.WindowPosition.CENTER)
+    cua_so.set_icon_name("onebee-logo")
+
+    bo_bieu_tuong = Gtk.IconTheme.get_default()
+
+    def bieu_tuong_48(ten):
+        ten_dung = ten if (bo_bieu_tuong and bo_bieu_tuong.has_icon(ten)) else "application-x-executable"
+        anh = Gtk.Image.new_from_icon_name(ten_dung, Gtk.IconSize.DIALOG)
+        anh.set_pixel_size(48)
+        return anh
+
+    def bao_loi(thong_bao):
+        hop = Gtk.MessageDialog(
+            transient_for=cua_so,
+            flags=0,
+            message_type=Gtk.MessageType.INFO,
+            buttons=Gtk.ButtonsType.OK,
+            text=thong_bao,
+        )
+        hop.set_title("Trung tâm OneBee")
+        hop.run()
+        hop.destroy()
+
+    def chay_lenh(lenh, ten):
+        if tham_so.che_do == "tu-kiem":
+            return
+        try:
+            subprocess.Popen(lenh, start_new_session=True)
+        except OSError:
+            bao_loi(f"Không mở được {ten}. Hãy báo kỹ thuật OneBee.")
+
+    ngan_trang = Gtk.Stack()
+    ngan_trang.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+    ngan_trang.set_vexpand(True)
+    ngan_trang.set_hexpand(True)
+
+    def dung_trang_bat_dau():
+        khung = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        khung.set_border_width(8)
+        loi_chao = Gtk.Label()
+        loi_chao.set_markup("<b>Chào mừng anh/chị đến với máy tính OneBee</b>")
+        loi_chao.set_xalign(0)
+        khung.pack_start(loi_chao, False, False, 0)
+
+        luoi_o = Gtk.FlowBox()
+        luoi_o.set_valign(Gtk.Align.START)
+        luoi_o.set_max_children_per_line(3)
+        luoi_o.set_min_children_per_line(2)
+        luoi_o.set_selection_mode(Gtk.SelectionMode.NONE)
+        luoi_o.set_homogeneous(True)
+        luoi_o.set_row_spacing(10)
+        luoi_o.set_column_spacing(10)
+
+        def bam_o(_nut, thong_tin):
+            if not thong_tin["co_san"]:
+                bao_loi(thong_tin["ly_do"])
+            elif thong_tin["trang"]:
+                ngan_trang.set_visible_child_name(thong_tin["trang"])
+            elif thong_tin["lenh"]:
+                chay_lenh(thong_tin["lenh"], thong_tin["ten"])
+
+        for o in cac_o_bat_dau(lambda k: shutil.which(k) is not None, os.path.isfile):
+            nut = Gtk.Button()
+            nut.set_can_focus(True)
+            hop_trong = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            hop_trong.set_border_width(10)
+            hop_trong.pack_start(bieu_tuong_48(o["bieu_tuong"]), False, False, 0)
+            nhan_ten = Gtk.Label()
+            nhan_ten.set_markup("<b>" + GLib.markup_escape_text(o["ten"]) + "</b>")
+            nhan_ten.set_justify(Gtk.Justification.CENTER)
+            nhan_ten.set_line_wrap(True)
+            hop_trong.pack_start(nhan_ten, False, False, 0)
+            nhan_mo_ta = Gtk.Label(label=o["mo_ta"])
+            nhan_mo_ta.set_justify(Gtk.Justification.CENTER)
+            nhan_mo_ta.set_line_wrap(True)
+            nhan_mo_ta.set_max_width_chars(28)
+            hop_trong.pack_start(nhan_mo_ta, False, False, 0)
+            nut.add(hop_trong)
+            nut.set_tooltip_text(f"{o['ten']}: {o['mo_ta']}")
+            nut.connect("clicked", bam_o, o)
+            luoi_o.add(nut)
+            phan_tu = nut.get_parent()
+            if phan_tu is not None:
+                phan_tu.set_can_focus(False)
+
+        cuon = Gtk.ScrolledWindow()
+        cuon.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        cuon.set_vexpand(True)
+        cuon.add(luoi_o)
+        khung.pack_start(cuon, True, True, 0)
+        return khung
+
+    def dung_trang_phim_tat():
+        cuon = Gtk.ScrolledWindow()
+        cuon.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        cuon.set_vexpand(True)
+        khung = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        khung.set_border_width(8)
+        cac_nhom = nhom_phim_tat(cam_nang)
+        if not cac_nhom:
+            trong = Gtk.Label(label="Chưa có dữ liệu phím tắt")
+            trong.set_xalign(0)
+            khung.pack_start(trong, False, False, 0)
+        else:
+            for nhom in cac_nhom:
+                tieu_de = Gtk.Label()
+                tieu_de.set_markup("<b>" + GLib.markup_escape_text(nhom["ten"]) + "</b>")
+                tieu_de.set_xalign(0)
+                khung.pack_start(tieu_de, False, False, 0)
+                bang = Gtk.Grid(column_spacing=16, row_spacing=6)
+                for hang, muc in enumerate(nhom["muc"]):
+                    nhan_phim = Gtk.Label()
+                    nhan_phim.set_markup("<b>" + GLib.markup_escape_text(muc["phim"]) + "</b>")
+                    nhan_phim.set_xalign(0)
+                    bang.attach(nhan_phim, 0, hang, 1, 1)
+                    nhan_viec = Gtk.Label(label=muc["viec"])
+                    nhan_viec.set_xalign(0)
+                    nhan_viec.set_hexpand(True)
+                    nhan_viec.set_line_wrap(True)
+                    bang.attach(nhan_viec, 1, hang, 1, 1)
+                    ghi_chu = ghi_chu_phim(muc)
+                    if ghi_chu:
+                        nhan_ghi_chu = Gtk.Label(label=ghi_chu)
+                        nhan_ghi_chu.set_xalign(0)
+                        nhan_ghi_chu.set_line_wrap(True)
+                        bang.attach(nhan_ghi_chu, 2, hang, 1, 1)
+                khung.pack_start(bang, False, False, 0)
+                if nhom["ma"] == "go-tieng-viet":
+                    nhan_telex = Gtk.Label(label=DONG_TELEX)
+                    nhan_telex.set_xalign(0)
+                    nhan_telex.set_line_wrap(True)
+                    khung.pack_start(nhan_telex, False, False, 0)
+        cuon.add(khung)
+        return cuon
+
+    def dung_trang_tro_giup():
+        khung = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        khung.set_border_width(8)
+
+        nut_bao = Gtk.Button.new_with_label("Báo cần hỗ trợ")
+        nut_bao.set_halign(Gtk.Align.START)
+
+        def bam_bao_ho_tro(_nut):
+            if not os.path.isfile(TEP_BAO_HO_TRO) or not shutil.which("gtk-launch"):
+                bao_loi("Máy này chưa nối OneBee Box nên chưa mở được biểu mẫu báo hỗ trợ. Hãy báo kỹ thuật OneBee.")
+                return
+            chay_lenh(["gtk-launch", "onebee-bao-ho-tro"], "Báo cần hỗ trợ")
+
+        nut_bao.connect("clicked", bam_bao_ho_tro)
+        khung.pack_start(nut_bao, False, False, 0)
+
+        nut_xem = Gtk.Button.new_with_label("Cho phép kỹ thuật xem màn hình")
+        nut_xem.set_halign(Gtk.Align.START)
+
+        def bam_xem_man_hinh(_nut):
+            if not shutil.which("onebee-ho-tro"):
+                bao_loi("Máy này chưa cài công cụ hỗ trợ từ xa. Hãy báo kỹ thuật OneBee.")
+                return
+            chay_lenh(["onebee-ho-tro"], "Cho phép kỹ thuật xem màn hình")
+
+        nut_xem.connect("clicked", bam_xem_man_hinh)
+        khung.pack_start(nut_xem, False, False, 0)
+
+        luu_y = Gtk.Label(label="Chỉ bấm khi chính anh/chị vừa gọi kỹ thuật OneBee")
+        luu_y.set_xalign(0)
+        luu_y.set_line_wrap(True)
+        khung.pack_start(luu_y, False, False, 0)
+
+        if dien_thoai:
+            nhan_gap = Gtk.Label(label=f"Gấp: gọi {dien_thoai}")
+            nhan_gap.set_xalign(0)
+            khung.pack_start(nhan_gap, False, False, 0)
+
+        return khung
+
+    bo_dung_trang = {
+        "bat-dau": dung_trang_bat_dau,
+        "phim-tat": dung_trang_phim_tat,
+        "tro-giup": dung_trang_tro_giup,
+    }
+    for ma, tieu_de in TRANG:
+        ngan_trang.add_titled(bo_dung_trang[ma](), ma, tieu_de)
+
+    thanh_chuyen = Gtk.StackSwitcher()
+    thanh_chuyen.set_stack(ngan_trang)
+    thanh_chuyen.set_halign(Gtk.Align.CENTER)
+
+    o_hien_lan_sau = Gtk.CheckButton.new_with_label("Hiện cửa sổ này ở lần đăng nhập sau")
+    o_hien_lan_sau.set_active(False)
+    nhan_mo_lai = Gtk.Label(label="Mở lại bất cứ lúc nào: menu Bắt đầu → Trung tâm OneBee")
+    nhan_mo_lai.set_halign(Gtk.Align.END)
+    nhan_mo_lai.set_hexpand(True)
+
+    chan = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+    chan.pack_start(o_hien_lan_sau, False, False, 0)
+    chan.pack_end(nhan_mo_lai, False, False, 0)
+
+    khung_chinh = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+    khung_chinh.set_border_width(16)
+    khung_chinh.pack_start(thanh_chuyen, False, False, 0)
+    khung_chinh.pack_start(ngan_trang, True, True, 0)
+    khung_chinh.pack_start(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), False, False, 0)
+    khung_chinh.pack_start(chan, False, False, 0)
+    cua_so.add(khung_chinh)
+
+    cua_so.show_all()
+    ngan_trang.set_visible_child_name(tham_so.trang)
+
+    if tham_so.che_do == "tu-kiem":
+        for ma, _ in TRANG:
+            ngan_trang.set_visible_child_name(ma)
+            while Gtk.events_pending():
+                Gtk.main_iteration_do(False)
+        cua_so.destroy()
+        print("TU-KIEM-DAT")
+        return 0
+
+    def khi_dong(_cua_so):
+        if not o_hien_lan_sau.get_active():
+            try:
+                danh_dau_da_xem(thu_muc)
+            except OSError:
+                pass
+        Gtk.main_quit()
+
+    cua_so.connect("destroy", khi_dong)
+    Gtk.main()
+    return 0
+
+
+def main(argv=None):
+    tham_so = doc_tham_so(sys.argv[1:] if argv is None else argv)
+    return chay_giao_dien(tham_so)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
