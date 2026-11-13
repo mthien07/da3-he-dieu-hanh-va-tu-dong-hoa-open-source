@@ -137,6 +137,9 @@ check "Có hỗ trợ từ xa (onebee-ho-tro + x11vnc + mục menu)" bash -c \
   "test -x /usr/local/bin/onebee-ho-tro && command -v x11vnc && test -f /usr/share/applications/onebee-ho-tro.desktop"
 check "Có trợ lý tập tin Windows (.exe helper + desktop entry)" bash -c \
   "test -x /usr/local/bin/onebee-windows-app-helper && test -f /usr/share/applications/onebee-exe-handler.desktop"
+check "Có Trung tâm OneBee (lệnh, dữ liệu, mục menu, tự mở lần đầu)" bash -c \
+  "test -x /usr/local/bin/onebee-trung-tam && test -s /usr/share/onebee/cam-nang.json \
+   && test -f /usr/share/applications/onebee-trung-tam.desktop && test -f /etc/xdg/autostart/onebee-trung-tam.desktop"
 
 echo "----"
 if [[ ${fails} -eq 0 ]]; then echo "KẾT QUẢ: tất cả mục đạt"; else echo "KẾT QUẢ: ${fails} mục KHÔNG đạt"; exit 1; fi
