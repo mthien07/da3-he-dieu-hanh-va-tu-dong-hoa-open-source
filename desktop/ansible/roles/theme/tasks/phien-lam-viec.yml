@@ -55,3 +55,20 @@
     group: root
     mode: "0644"
   when: onebee_menu_applet.stat.isdir | default(false)
+
+# Schema com.linuxmint.updates không có trên máy thì glib-compile-schemas bỏ qua. Ẩn lời nhắc không tắt việc cập nhật:
+# timer tự nâng cấp chạy bằng root, không phụ thuộc giao diện; biểu tượng "cần khởi động lại" vẫn hiện.
+- name: Trình quản lý cập nhật không tự bật cửa sổ, chỉ hiện biểu tượng khi cần
+  ansible.builtin.copy:
+    dest: /usr/share/glib-2.0/schemas/zz_onebee-updates.gschema.override
+    content: |
+      # Quản lý bởi OneBee OS — máy đã tự cập nhật; nhân viên không có quyền cài nên không cần cửa sổ và lời nhắc
+      [com.linuxmint.updates]
+      show-welcome-page=false
+      hide-systray=true
+      tracker-disable-notifications=true
+      default-repo-is-ok=true
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Biên dịch lại gsettings schema
