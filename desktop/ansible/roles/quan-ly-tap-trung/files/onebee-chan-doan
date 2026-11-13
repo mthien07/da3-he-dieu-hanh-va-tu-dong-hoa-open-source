@@ -3,21 +3,39 @@
 # sao lưu của máy này (restic, lịch, lần cuối), ổ đĩa. In [OK] / [CẢNH BÁO] / [LỖI] kèm gợi ý — biết lỗi ở dây mạng/router, ở Box hay ở máy.
 # Chỉ đọc, không sửa gì. Nhân viên chạy được không cần sudo (địa chỉ Box lấy từ /etc/onebee-hoi.conf);
 # chạy bằng sudo thì đọc thêm /etc/onebee/may-tram.env (cổng nhận sao lưu của Box). Mã thoát: 0 = mọi mục OK, 1 = có cảnh báo, 2 = có lỗi.
+# Cách dùng: onebee-chan-doan [--json]. Có --json thì chỉ in một đối tượng JSON (cho Trung tâm OneBee đọc), mã thoát giữ nguyên; tham số lạ: mã 64.
 set -uo pipefail
+JSON=0
+if [[ $# -eq 1 && "$1" == "--json" ]]; then JSON=1
+elif [[ $# -gt 0 ]]; then echo "Cách dùng: onebee-chan-doan [--json]" >&2; exit 64; fi
 CONF="${ONEBEE_CONF:-/etc/onebee/may-tram.env}"
 HOI_CONF="${ONEBEE_HOI_CONF:-/etc/onebee-hoi.conf}"
 SAO_LUU_CUOI="${ONEBEE_VAR:-/var/lib/onebee}/sao-luu-cuoi"   # onebee-sao-luu ghi giây epoch sau mỗi lần sao lưu xong
-NGUONG_SAO_LUU_GIO=26   # sao lưu 12:00 hằng ngày (+ 2 giờ dự phòng)
+NGUONG_SAO_LUU_GIO=72   # cùng ngưỡng với Box (onebee-may-tram.py): máy tắt cuối tuần không bị báo nhầm
 N_OK=0 N_CB=0 N_LOI=0
+NHOM="" MUC=()   # MUC: mỗi mục một dòng "trạng-thái<TAB>nhóm<TAB>tên<TAB>chi-tiết<TAB>gợi-ý" (cho --json)
 XANH="" VANG="" DO="" DAM="" TAT=""
 if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then XANH=$'\e[32m'; VANG=$'\e[33m'; DO=$'\e[31m'; DAM=$'\e[1m'; TAT=$'\e[0m'; fi
 
+# nhom <số> <tên>: mở một hạng mục (chỉ in tiêu đề khi không phải --json)
+nhom() {
+  NHOM="$2"
+  [[ ${JSON} -eq 1 ]] || { echo; echo "${DAM}$1. $2${TAT}"; }
+}
+
 # ket_qua <ok|canh_bao|loi> <tên> <chi tiết> [gợi ý]
 ket_qua() {
+  MUC+=("$1"$'\t'"${NHOM}"$'\t'"$2"$'\t'"$3"$'\t'"${4:-}")
   case "$1" in
-    ok) printf '  %s[OK]       %s %s: %s\n' "${XANH}" "${TAT}" "$2" "$3"; N_OK=$((N_OK + 1)); return ;;
-    canh_bao) printf '  %s[CẢNH BÁO] %s %s: %s\n' "${VANG}" "${TAT}" "$2" "$3"; N_CB=$((N_CB + 1)) ;;
-    *) printf '  %s[LỖI]      %s %s: %s\n' "${DO}" "${TAT}" "$2" "$3"; N_LOI=$((N_LOI + 1)) ;;
+    ok) N_OK=$((N_OK + 1)) ;;
+    canh_bao) N_CB=$((N_CB + 1)) ;;
+    *) N_LOI=$((N_LOI + 1)) ;;
+  esac
+  [[ ${JSON} -eq 0 ]] || return 0
+  case "$1" in
+    ok) printf '  %s[OK]       %s %s: %s\n' "${XANH}" "${TAT}" "$2" "$3"; return ;;
+    canh_bao) printf '  %s[CẢNH BÁO] %s %s: %s\n' "${VANG}" "${TAT}" "$2" "$3" ;;
+    *) printf '  %s[LỖI]      %s %s: %s\n' "${DO}" "${TAT}" "$2" "$3" ;;
   esac
   [[ -z "${4:-}" ]] || printf '              → %s\n' "$4"
 }
@@ -53,9 +71,9 @@ ai_cong="${ai_cong:-3000}"
 sl_cong=8000   # cổng nhận sao lưu mặc định (HTTP và HTTPS cùng cổng)
 [[ -z "${kho}" ]] || read -r _ sl_cong <<<"$(dia_chi_cong "${kho}" 8000)"
 
-echo "${DAM}OneBee — tự chẩn đoán máy $(hostname) lúc $(date '+%H:%M %d/%m/%Y')${TAT}"
+[[ ${JSON} -eq 1 ]] || echo "${DAM}OneBee — tự chẩn đoán máy $(hostname) lúc $(date '+%H:%M %d/%m/%Y')${TAT}"
 
-echo; echo "${DAM}1. Mạng${TAT}"
+nhom 1 "Mạng"
 gw="$(ip -4 route show default 2>/dev/null | awk '{print $3; exit}')"
 if [[ -z "${gw}" ]]; then
   ket_qua loi "Cổng mạng (router)" "Máy chưa có mạng" "Kiểm tra dây mạng (đèn ở cổng mạng) hoặc kết nối Wi-Fi của máy"
@@ -76,7 +94,7 @@ else
     "Box tắt hoặc mất mạng: kiểm tra Box có điện, đèn mạng. Máy khác vào được Box thì lỗi ở máy này; không máy nào vào được thì lỗi ở Box/router"
 fi
 
-echo; echo "${DAM}2. Dịch vụ trên Box${TAT}"
+nhom 2 "Dịch vụ trên Box"
 if [[ ${box_song} -eq 0 ]]; then
   ket_qua loi "Dịch vụ trên Box" "Không kiểm được (không tới được Box)" "Sửa phần Mạng ở trên trước"
 else
@@ -86,7 +104,7 @@ else
   done
 fi
 
-echo; echo "${DAM}3. Sao lưu của máy này${TAT}"
+nhom 3 "Sao lưu của máy này"
 if command -v restic >/dev/null; then ket_qua ok "Phần mềm sao lưu (restic)" "Đã cài"
 else ket_qua loi "Phần mềm sao lưu (restic)" "Chưa cài" "Chạy lại bộ cài OneBee OS: sudo ./desktop/onebee-install.sh"; fi
 if systemctl is-active --quiet onebee-sao-luu.timer; then ket_qua ok "Lịch sao lưu hằng ngày" "Đang bật (12 giờ trưa)"
@@ -104,12 +122,27 @@ else
   fi
 fi
 
-echo; echo "${DAM}4. Ổ đĩa${TAT}"
+nhom 4 "Ổ đĩa"
 pt="$(df -P /home 2>/dev/null | awk 'NR == 2 {sub(/%/, "", $5); print $5}')"
 if [[ ! "${pt}" =~ ^[0-9]+$ ]]; then ket_qua canh_bao "Ổ chứa /home" "Không đọc được dung lượng" "Kiểm tra: df -h /home"
 elif (( pt > 90 )); then ket_qua loi "Ổ chứa /home" "Đã dùng ${pt}% — sắp đầy" "Dọn thùng rác, thư mục Tải về (Downloads); file lớn không cần trên máy thì chép vào thư mục chung trên Box"
 elif (( pt > 80 )); then ket_qua canh_bao "Ổ chứa /home" "Đã dùng ${pt}%" "Dọn thùng rác, thư mục Tải về (Downloads)"
 else ket_qua ok "Ổ chứa /home" "Đã dùng ${pt}%"; fi
+
+if [[ ${JSON} -eq 1 ]]; then
+  ket_luan=ok ma_thoat=0
+  if (( N_LOI > 0 )); then ket_luan=loi ma_thoat=2; elif (( N_CB > 0 )); then ket_luan=canh_bao ma_thoat=1; fi
+  printf '%s\n' "${MUC[@]}" | python3 -c 'import datetime, json, sys
+muc = []
+for dong in sys.stdin.read().splitlines():
+    trang_thai, nhom, ten, chi_tiet, goi_y = dong.split("\t")
+    muc.append({"nhom": nhom, "ten": ten, "trang_thai": trang_thai, "chi_tiet": chi_tiet, "goi_y": goi_y})
+dem = {k: sum(1 for m in muc if m["trang_thai"] == k) for k in ("ok", "canh_bao", "loi")}
+print(json.dumps({"phien_ban": 1, "thoi_diem": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+                  "may": sys.argv[1], "ket_luan": sys.argv[2], "dem": dem, "muc": muc}, ensure_ascii=False))' \
+    "$(hostname)" "${ket_luan}" || { echo "Không tạo được JSON (cần python3)" >&2; exit 70; }
+  exit "${ma_thoat}"
+fi
 
 echo
 if (( N_LOI > 0 )); then
