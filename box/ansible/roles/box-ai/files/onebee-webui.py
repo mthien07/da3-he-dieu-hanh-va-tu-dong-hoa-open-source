@@ -31,6 +31,9 @@ ADMIN_CONFIG = {"ENABLE_SIGNUP": False, "ENABLE_API_KEYS": True, "ENABLE_API_KEY
                 "API_KEYS_ALLOWED_ENDPOINTS": "/api/chat/completions,/api/models",
                 "ENABLE_COMMUNITY_SHARING": False,  # Box chạy offline, không chia sẻ lên cộng đồng (GHSA-vpq8-f445-hcq7)
                 "JWT_EXPIRES_IN": "30d"}            # phiên đăng nhập 1 tháng (mặc định của Open WebUI: 4w)
+GOI_Y = os.environ.get("ONEBEE_GOI_Y", os.path.join(os.path.dirname(os.path.abspath(__file__)), "goi-y.json"))
+GIAO_DIEN = os.environ.get("ONEBEE_GIAO_DIEN",
+                           os.path.join(os.path.dirname(os.path.abspath(__file__)), "giao-dien-tieng-viet.json"))
 # Quyền mặc định của người dùng thường: (nhóm, quyền) → giá trị. Nhân viên tạo được khóa API (cho lệnh hoi) nhưng không
 # chia sẻ đoạn chat cho nhau.
 DEFAULT_PERMISSIONS = {("features", "api_keys"): True, ("chat", "share"): False}
@@ -69,8 +72,22 @@ def admin_token():
     return token
 
 
+def ban_dich_giao_dien(dang_luu):
+    """I18N muốn có: bản dịch đang lưu (giữ phần quản trị tự thêm) gộp bản dịch bổ sung của OneBee (ghi đè khóa trùng)."""
+    try:
+        with open(GIAO_DIEN, encoding="utf-8") as f:
+            cua_onebee = json.load(f)
+    except (OSError, ValueError) as e:
+        sys.exit(f"LỖI: không đọc được bản dịch giao diện {GIAO_DIEN}: {e}")
+    gop = {ngon_ngu: dict(muc) for ngon_ngu, muc in (dang_luu or {}).items()}
+    for ngon_ngu, muc in cua_onebee.items():
+        gop.setdefault(ngon_ngu, {}).update(muc)
+    return gop
+
+
 def enforce_settings(token):
-    """Tắt đăng ký tự do, bật + giới hạn khóa API, tắt chia sẻ cộng đồng, đặt thời hạn phiên, chỉnh quyền mặc định của người dùng."""
+    """Tắt đăng ký tự do, bật + giới hạn khóa API, tắt chia sẻ cộng đồng, đặt thời hạn phiên, bổ sung bản dịch tiếng Việt
+    cho giao diện, chỉnh quyền mặc định của người dùng."""
     changed = False
     status, cfg = call("GET", "/api/v1/auths/admin/config", token)
     if status != 200:
@@ -78,6 +95,9 @@ def enforce_settings(token):
     # WEBUI_URL (địa chỉ công khai: https://<IP>:3000 khi Box bật HTTPS, rỗng khi còn HTTP) lưu trong CSDL → đặt qua API như các cài đặt khác
     muon = {**ADMIN_CONFIG, "WEBUI_URL": os.environ.get("ONEBEE_WEBUI_PUBLIC_URL", "")}
     muon["DEFAULT_INTERFACE_SETTINGS"] = {**(cfg.get("DEFAULT_INTERFACE_SETTINGS") or {}), "insertSuggestionPrompt": True}
+    # Bản vi-VN của Open WebUI còn thiếu chuỗi → chữ tiếng Anh. I18N ghi đè bản dịch gốc, khóa là đúng chuỗi giao diện gọi
+    # $i18n.t(...): chữ tiếng Anh gốc, riêng trang Cài đặt là khóa "settings.…". /api/config trả I18N cả trước khi đăng nhập.
+    muon["I18N"] = ban_dich_giao_dien(cfg.get("I18N"))
     if any(cfg.get(k) != v for k, v in muon.items()):
         # bỏ trường rỗng (vd I18N=null) — gửi lại null bị Open WebUI từ chối
         payload = {k: v for k, v in {**cfg, **muon}.items() if v is not None}
@@ -120,7 +140,6 @@ def luu_model(token, form):
 
 PROMPTS_DIR = os.environ.get("ONEBEE_PROMPTS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts"))
 KNOWLEDGE_DIR = os.environ.get("ONEBEE_KNOWLEDGE_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "knowledge"))
-GOI_Y = os.environ.get("ONEBEE_GOI_Y", os.path.join(os.path.dirname(os.path.abspath(__file__)), "goi-y.json"))
 BANG_NHAC = {
     "id": "onebee-ai-co-the-sai",
     "type": "info",
