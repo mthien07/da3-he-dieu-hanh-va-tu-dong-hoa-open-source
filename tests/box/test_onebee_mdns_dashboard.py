@@ -173,6 +173,14 @@ class TrangChu(unittest.TestCase):
         self.assertIn("submit=false", h)          # mở trang chỉ điền sẵn câu mở đầu, không tự chạy model
         self.assertIn("models=onebee-tro-ly", h)
 
+    def test_cach_xuat_pdf_dung_chu_tren_man_hinh(self):
+        # Chữ đúng như LibreOffice 24.2 tiếng Việt trên Mint 22.3 hiện (menu và chữ gợi ý của nút trộn Việt – Anh)
+        h = self.html
+        self.assertIn("<b>Tập tin → Export As → Xuất dạng PDF...</b>", h)
+        self.assertIn("Export Directly as PDF", h)
+        for sai in ("Xuất ra PDF", "Tệp →", "Xuất thành PDF"):
+            self.assertNotIn(sai, h)
+
     def test_o_may_tram_da_sao_luu(self):
         self.assertIn('id="dv-may_tram"', self.html)
 

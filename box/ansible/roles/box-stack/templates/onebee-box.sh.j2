@@ -290,7 +290,8 @@ chay_playbook_chon() {
   log="/var/log/onebee-box/${ten_log}-$(date +%Y%m%d-%H%M%S).log"
   (umask 077; : >"${log}")
   set +e
-  ANSIBLE_SSH_ARGS="-o UserKnownHostsFile=${SSH_DIR}/known_hosts -o StrictHostKeyChecking=yes -o UpdateHostKeys=no -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -o ControlMaster=auto -o ControlPersist=60s" \
+  # LC_ALL: Ansible đòi locale UTF-8; quản trị SSH từ máy trạm Mint mang theo LANG=vi_VN (bảng mã TCVN với Python)
+  LC_ALL=C.UTF-8 ANSIBLE_SSH_ARGS="-o UserKnownHostsFile=${SSH_DIR}/known_hosts -o StrictHostKeyChecking=yes -o UpdateHostKeys=no -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=6 -o ControlMaster=auto -o ControlPersist=60s" \
   ANSIBLE_ROLES_PATH="${LIB}/roles" ANSIBLE_PYTHON_INTERPRETER=/usr/bin/python3 ANSIBLE_RETRY_FILES_ENABLED=False ANSIBLE_NOCOLOR=1 ANSIBLE_LOCAL_TEMP=/root/.ansible/tmp \
     ansible-playbook -i "${inv}" -u onebee-quantri --private-key "${SSH_DIR}/quan-tri" "$@" "${LIB}/${playbook}" 9>&- 2>&1 | tee -a "${log}"
   st=${PIPESTATUS[0]}

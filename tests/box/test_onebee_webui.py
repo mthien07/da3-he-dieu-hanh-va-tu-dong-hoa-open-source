@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Kiểm thử đơn vị cho công cụ quản lý Open WebUI (box-ai/files/onebee-webui.py) bằng máy chủ Open WebUI giả.
-Kiểm: enforce_settings đặt đúng cài đặt bảo mật + quyền mặc định, chạy lần 2 không đổi gì. Chạy: python3 -m unittest"""
+Kiểm: enforce_settings đặt đúng cài đặt bảo mật + quyền mặc định + bản dịch giao diện tiếng Việt bổ sung, chạy lần 2 không đổi gì. Chạy: python3 -m unittest"""
 import importlib.util
 import io
 import json
 import os
+import re
 import tempfile
 import threading
 import unittest
@@ -12,8 +13,14 @@ import urllib.parse
 from contextlib import redirect_stdout
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+import yaml
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 DUONG_DAN = os.path.join(HERE, "../../box/ansible/roles/box-ai/files/onebee-webui.py")
+
+
+def bien_noi_suy(chu):
+    return {m.strip() for m in re.findall(r"\{\{\s*-?\s*([^},]+)(?:,[^}]+)?\s*\}\}", chu)}
 
 
 class WebuiGia(BaseHTTPRequestHandler):
@@ -71,6 +78,26 @@ class WebuiGia(BaseHTTPRequestHandler):
             # Open WebUI từ chối giá trị null cho các trường bắt buộc
             if any(v is None for k, v in body.items() if k not in ("ADMIN_EMAIL", "I18N", "DEFAULT_INTERFACE_SETTINGS")):
                 return self._gui(422, {"detail": "null"})
+            # Như AdminConfig.validate_i18n + update_admin_config của v0.11.4 (routers/auths.py): không gửi I18N thì giữ
+            # bản đang lưu; gửi null thì 422; bản dịch rỗng bị bỏ; {{biến}} của khóa và bản dịch phải khớp
+            if "I18N" not in body:
+                body["I18N"] = (self.state.get("config") or {}).get("I18N")
+            else:
+                if not isinstance(body["I18N"], dict):
+                    return self._gui(422, {"detail": "I18N must be a dictionary"})
+                sach = {}
+                for loc, muc in body["I18N"].items():
+                    giu = {}
+                    for khoa, chu in muc.items():
+                        if not isinstance(chu, str):
+                            return self._gui(422, {"detail": "StrictStr"})
+                        if chu.strip():
+                            if bien_noi_suy(khoa) != bien_noi_suy(chu):
+                                return self._gui(422, {"detail": "Interpolation placeholders do not match"})
+                            giu[khoa] = chu
+                    if giu:
+                        sach[loc] = giu
+                body["I18N"] = sach
             self.state["config"] = body
             return self._gui(200, body)
         if self.path == "/api/v1/users/default/permissions":
@@ -232,6 +259,60 @@ class EnforceSettings(unittest.TestCase):
             WebuiGia.state["config"].get("DEFAULT_INTERFACE_SETTINGS"),
             {"chatDirection": "auto", "insertSuggestionPrompt": True},
         )
+
+    def test_tep_giao_dien_tieng_viet_hop_le(self):
+        with open(self.w.GIAO_DIEN, encoding="utf-8") as f:
+            bd = json.load(f)
+        self.assertEqual(list(bd), ["vi-VN"])            # chỉ bổ sung bản dịch tiếng Việt
+        self.assertTrue(bd["vi-VN"])
+        for khoa, chu in bd["vi-VN"].items():
+            self.assertTrue(isinstance(khoa, str) and khoa.strip() and khoa not in ("__proto__", "prototype", "constructor"))
+            self.assertTrue(isinstance(chu, str) and chu.strip(), khoa)
+            self.assertNotEqual(chu, khoa)
+            self.assertEqual(bien_noi_suy(khoa), bien_noi_suy(chu), khoa)
+
+    def test_gui_ban_dich_giao_dien_va_chay_lai_khong_doi(self):
+        with open(self.w.GIAO_DIEN, encoding="utf-8") as f:
+            bd = json.load(f)
+        self.assertTrue(self.w.enforce_settings("tok"))
+        self.assertEqual(WebuiGia.state["config"]["I18N"], bd)
+        self.assertFalse(WebuiGia.state["config"]["ENABLE_SIGNUP"])     # vẫn gửi đủ cài đặt bảo mật cùng lần
+        WebuiGia.state["posts"] = []
+        self.assertFalse(self.w.enforce_settings("tok"))
+        self.assertEqual(WebuiGia.state["posts"], [])
+
+    def test_giu_ban_dich_quan_tri_tu_them_va_sua_lai_ban_dich_bi_doi(self):
+        with open(self.w.GIAO_DIEN, encoding="utf-8") as f:
+            bd = json.load(f)["vi-VN"]
+        khoa = sorted(bd)[0]
+        WebuiGia.state["config"]["I18N"] = {"vi-VN": {"Library": "Thư viện", khoa: "bị sửa trên giao diện"},
+                                            "fr-FR": {"Library": "Bibliothèque"}}
+        self.assertTrue(self.w.enforce_settings("tok"))
+        luu = WebuiGia.state["config"]["I18N"]
+        self.assertEqual(luu["vi-VN"], {"Library": "Thư viện", **bd})
+        self.assertEqual(luu["fr-FR"], {"Library": "Bibliothèque"})
+        WebuiGia.state["posts"] = []
+        self.assertFalse(self.w.enforce_settings("tok"))
+        self.assertEqual(WebuiGia.state["posts"], [])
+
+    def test_thieu_tep_giao_dien_thi_dung_ro_rang(self):
+        cu = self.w.GIAO_DIEN
+        self.w.GIAO_DIEN = os.path.join(tempfile.gettempdir(), "khong-co-giao-dien-tieng-viet.json")
+        try:
+            with self.assertRaises(SystemExit) as loi:
+                self.w.enforce_settings("tok")
+            self.assertIn("giao-dien-tieng-viet", str(loi.exception.code))
+        finally:
+            self.w.GIAO_DIEN = cu
+        self.assertNotIn("/api/v1/auths/admin/config", WebuiGia.state.get("posts", []))
+
+    def test_ansible_cai_tep_giao_dien_canh_cong_cu(self):
+        with open(os.path.join(HERE, "../../box/ansible/roles/box-ai/tasks/main.yml"), encoding="utf-8") as f:
+            tasks = yaml.safe_load(f)
+        cai = next(t for t in tasks if t.get("name") == "Cài lời dặn và công cụ quản lý Open WebUI")
+        self.assertEqual(cai["ansible.builtin.copy"]["dest"], "/usr/local/lib/onebee-box/{{ item.src }}")
+        self.assertIn("giao-dien-tieng-viet.json", [m["src"] for m in cai["loop"]])
+        self.assertEqual(os.path.basename(self.w.GIAO_DIEN), "giao-dien-tieng-viet.json")
 
     def test_bang_nhac_them_mot_lan_va_giu_bang_cua_quan_tri(self):
         khac = {

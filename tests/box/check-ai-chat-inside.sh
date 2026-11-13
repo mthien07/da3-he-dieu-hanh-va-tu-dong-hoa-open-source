@@ -97,4 +97,15 @@ assert ui.get("insertSuggestionPrompt") is True, "chưa bật insertSuggestionPr
   || { echo "FAIL  Chưa bật mặc định chèn gợi ý vào ô nhập"; exit 1; }
 echo "PASS  Mặc định chèn gợi ý vào ô nhập để người dùng viết tiếp"
 
+# Bản dịch bổ sung nằm trong /api/config, đọc được cả khi chưa đăng nhập (trang đăng nhập cũng dùng)
+curl -s -m 30 "${API}/api/config" | python3 -c '
+import json, sys
+i18n = json.load(sys.stdin).get("i18n") or {}
+mong = json.load(open("/usr/local/lib/onebee-box/giao-dien-tieng-viet.json"))["vi-VN"]
+vi = i18n.get("vi-VN") or {}
+thieu = [k for k, v in mong.items() if vi.get(k) != v]
+assert not thieu, f"thiếu bản dịch: {thieu[:5]}"' \
+  || { echo "FAIL  Open WebUI chưa có bản dịch giao diện tiếng Việt bổ sung"; exit 1; }
+echo "PASS  Giao diện Trợ lý có bản dịch tiếng Việt bổ sung (cả trang đăng nhập)"
+
 curl -s -m 30 -X DELETE "${API}/api/v1/users/${id_nv}" -H "Authorization: Bearer ${token}" >/dev/null
