@@ -1,6 +1,7 @@
 # Nhật ký thay đổi
 
-## [1.2.0] — (đang làm)
+## [1.2.0] — 14/11/2026 — Trải nghiệm người dùng: Trung tâm OneBee, tự phục vụ, Trợ lý AI dùng được ngay
+Đã chạy phiếu kiểm trải nghiệm tự động trên máy ảo Linux Mint 22.3 kèm một Box thử (`reports/trai-nghiem/261113-may-ao-vmware-mint-22-3.md`): các mục không đạt đã sửa hoặc ghi là giới hạn đã biết. Chưa có người xác nhận lại các mục về cảm nhận và chưa thử trên máy thật hay từ điện thoại.
 Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài chưa được nâng). Bản 1.2.0 là bản có file tải kế tiếp.
 ### Sửa
 - Bộ cài Desktop và Box ghi đúng phiên bản; thêm test chặn việc phát hành khi phiên bản trong mã thấp hơn tag.

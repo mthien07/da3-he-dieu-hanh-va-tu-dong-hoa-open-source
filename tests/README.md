@@ -43,6 +43,9 @@ của Open WebUI v0.11.4, giữ bản dịch quản trị tự thêm, chạy l�
 - Quản lý tập trung trên máy thật: SSH bật kiểu socket (ssh.socket) sau khi cài, cập nhật qua Wi-Fi, hỗ trợ từ xa qua Tailscale, phiên Cinnamon thật (hộp thoại, thông báo).
 - Cài hàng loạt / Clonezilla (chỉ có tài liệu, chưa làm thử).
 
+## Kiểm trải nghiệm trên máy thật
+Phiếu `docs/kiem-thu-trai-nghiem-may-that.md` (nhóm A–J) dành cho người ngồi trước máy Linux Mint 22.3 đã cài OneBee; kết quả lưu ở `reports/trai-nghiem/` theo mẫu trong `reports/trai-nghiem/README.md`.
+
 ## Đóng gói bản phát hành
 ```bash
 scripts/dong-goi-ban-phat-hanh.sh 0.6.0     # cần: đã commit hết, phiên bản trong group_vars + changelog khớp
