@@ -31,6 +31,12 @@ done
 check "IBus là bộ gõ mặc định (im-config)" grep -q '^IM_CONFIG_DEFAULT_MODE=ibus$' /etc/default/im-config
 check "Bộ gõ ${ime_engine} được nạp sẵn trong IBus (gsettings org.freedesktop.ibus.general)" \
   bash -c "GSETTINGS_BACKEND=memory gsettings get org.freedesktop.ibus.general preload-engines | grep -q \"'${ime_engine}'\""
+if has_schema org.cinnamon.desktop.input-sources; then
+  check "Cinnamon có sẵn nguồn nhập IBus (gsettings org.cinnamon.desktop.input-sources)" \
+    bash -c "GSETTINGS_BACKEND=memory gsettings get org.cinnamon.desktop.input-sources sources | grep -qF \"'ibus'\""
+else
+  printf 'PASS  %s\n' "Cinnamon có sẵn nguồn nhập IBus (bỏ qua: Cinnamon cũ hơn 6.6)"
+fi
 if [[ ${ime_pkg} == ibus-bamboo ]]; then
   check "PPA ibus-bamboo chỉ cấp được gói ibus-bamboo (gói khác bị chặn)" \
     bash -c "apt-cache policy | grep -Eq -- '^ +-1 https://ppa.launchpadcontent.net/bamboo-engine/' \
