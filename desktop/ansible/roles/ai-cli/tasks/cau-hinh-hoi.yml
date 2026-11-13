@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # /etc/onebee-hoi.conf sinh từ cấu hình máy trạm (onebee_may_tram). Dùng chung với playbook dong-bo-may-tram.yml của Box.
 # Khóa Trợ lý AI của TỪNG NHÂN VIÊN nằm ở ~/.config/onebee/hoi-khoa (lệnh 'hoi --dang-nhap'), không ở đây.
 # Dòng HOI_API_KEY (khóa của MÁY, mọi tài khoản trên máy đọc được — rà soát bảo mật F10) chỉ còn ở giai đoạn chuyển tiếp:

@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Bộ dịch vụ OneBee Box chạy bằng Docker Compose
 
 # Mã đơn vị, IP, CA riêng — trước mọi thứ khác (chốt onebee_box_ip cho cấu hình sinh bên dưới)

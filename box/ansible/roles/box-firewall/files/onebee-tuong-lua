@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Tường lửa OneBee Box: chỉ máy trong mạng LAN cho phép mới vào được dịch vụ của Box
 # (trang giới thiệu, Trợ lý AI, n8n, giám sát, kho sao lưu — chạy trong Docker; thư mục chung + NetBIOS, SSH — chạy thẳng trên Box).
 # Docker mở cổng bằng iptables riêng, đi vòng qua ufw → chặn ở chuỗi DOCKER-USER (gói đi tới container)

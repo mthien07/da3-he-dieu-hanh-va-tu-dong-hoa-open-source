@@ -84,7 +84,7 @@ cd onebee && sudo ./desktop/onebee-install.sh
 | Chạy thử tại đơn vị, đào tạo, tờ phím tắt | [chay-thu-tai-don-vi.md](docs/huong-dan/chay-thu-tai-don-vi.md) · [dao-tao-buoi-1-3.md](docs/huong-dan/dao-tao-buoi-1-3.md) · [to-phim-tat.md](docs/huong-dan/to-phim-tat.md) |
 | Đo trước/sau | [do-truoc-sau.md](docs/huong-dan/do-truoc-sau.md) |
 | Kinh doanh: cách tính giá, mẫu hợp đồng (nháp), khảo sát khách | [docs/kinh-doanh/](docs/kinh-doanh/) |
-| Quyết định kiến trúc | [docs/adr/](docs/adr/) · Thay đổi: [project-changelog.md](docs/project-changelog.md) |
+| Quyết định kiến trúc | [docs/adr/](docs/adr/) · Thay đổi: [CHANGELOG.md](CHANGELOG.md) |
 
 ## 📌 Trạng thái (1.0.0 — bản phát hành đầu tiên, chưa thử trên máy thật)
 - ✅ Đủ tính năng cho 1 đơn vị: máy trạm, Box, Trợ lý AI, quy trình email, quản lý máy trạm, hỗ trợ từ xa, sổ hỗ trợ + khảo sát,

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử đơn vị cho báo cáo tình trạng máy trạm (box-fleet/files/onebee-may-tram.py). Chạy: python3 -m unittest"""
 import importlib.util
 import io

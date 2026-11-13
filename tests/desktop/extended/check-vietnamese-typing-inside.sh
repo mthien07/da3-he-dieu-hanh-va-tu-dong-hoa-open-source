@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Chạy BÊN TRONG máy/container đã cài OneBee OS, bằng tài khoản người dùng thường (không phải root).
 # Mở màn hình ảo Xvfb + phiên D-Bus mới + IBus, gõ phím giả lập kiểu Telex vào ô nhập GTK,
 # rồi so sánh chữ nhận được với chữ tiếng Việt mong đợi.

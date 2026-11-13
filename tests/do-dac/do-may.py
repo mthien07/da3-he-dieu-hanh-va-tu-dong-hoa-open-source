@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Đo 1 máy trạm Linux (trước/sau khi cài OneBee OS) → thêm 1 dòng vào file CSV. Máy Windows: đo tay theo
 docs/huong-dan/do-truoc-sau.md, ghi vào cùng file với cùng các cột. Chỉ so sánh số đo trên CÙNG một máy.
 

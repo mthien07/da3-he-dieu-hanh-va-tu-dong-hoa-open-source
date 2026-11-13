@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra quy trình n8n trên Box (chạy trên Box bằng root, sau check-ai-chat-inside.sh):
 # hộp thư giả lập Mailpit nhận email; chủ n8n tạo sẵn; nhắc hạn; nhập + tổng hợp đơn hàng; tóm tắt PDF bằng AI.
 set -euo pipefail

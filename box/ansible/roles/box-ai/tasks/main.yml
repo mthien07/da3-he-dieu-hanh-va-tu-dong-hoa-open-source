@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Trợ lý AI: tải model Gemma, cài công cụ quản lý Open WebUI, tạo/cập nhật "Trợ lý OneBee" (lời dặn tiếng Việt)
 
 - name: Cài lời dặn và công cụ quản lý Open WebUI

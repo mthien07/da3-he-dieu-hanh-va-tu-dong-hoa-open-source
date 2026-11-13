@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # cai-tu-usb-offline.sh — Tự động cài đặt OneBee Box từ gói offline (USB)
 # Không cần kết nối Internet.
 set -euo pipefail

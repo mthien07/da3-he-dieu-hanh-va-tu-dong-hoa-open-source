@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 blank_issues_enabled: false
 contact_links:
   - name: 🔒 Báo lỗ hổng bảo mật (riêng tư)

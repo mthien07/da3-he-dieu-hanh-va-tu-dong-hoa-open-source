@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Chạy BÊN TRONG máy đã cài OneBee OS (người dùng thường). Cần: poppler-utils, hunspell.
 # 1) Mở file Word mẫu (Times New Roman/Arial/Calibri/Cambria) bằng LibreOffice, xuất PDF:
 #    font được thay đúng (Liberation/Carlito/Noto Serif), chữ tiếng Việt giữ nguyên dấu, không lẫn font.

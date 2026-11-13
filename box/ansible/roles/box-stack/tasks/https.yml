@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Quyết định bật HTTPS cho lần chạy này (rà soát bảo mật F3, Pha 4).
 # onebee_box_https là ý muốn; onebee_https_hieu_luc là kết quả sau chốt chặn.
 # Chốt chặn: lần BẬT đầu tiên, mọi máy đã cấp phải đã nhận CA (dấu ${SECRETS}/ca-da-dong-bo/<tên> do 'dong-bo-may' ghi) —

@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 - name: Khởi động lại Samba
   ansible.builtin.systemd_service:
     name: smbd

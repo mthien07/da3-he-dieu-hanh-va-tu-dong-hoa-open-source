@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Chấm Trợ lý OneBee: chạy bộ câu hỏi tiếng Việt qua từng model trên Ollama, so với ngưỡng, xuất báo cáo.
 
 Ví dụ (trên OneBee Box, Ollama chạy trong container onebee-ollama):

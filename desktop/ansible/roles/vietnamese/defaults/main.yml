@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Tên engine IBus theo từng bộ gõ (US để vẫn gõ được tiếng Anh)
 onebee_ibus_engines:
   bamboo: "['BambooUs', 'Bamboo']"

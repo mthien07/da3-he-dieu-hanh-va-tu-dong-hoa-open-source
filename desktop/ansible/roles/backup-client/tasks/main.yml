@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Sao lưu /home lên OneBee Box hằng ngày. Chỉ bật khi đã có /etc/onebee/may-tram.env (RESTIC_*)
 # (lấy từ lệnh 'sudo onebee-box them-may <tên-máy>' trên Box).
 
