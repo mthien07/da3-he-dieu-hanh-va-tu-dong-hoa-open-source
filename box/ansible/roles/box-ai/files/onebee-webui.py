@@ -121,6 +121,14 @@ def luu_model(token, form):
 PROMPTS_DIR = os.environ.get("ONEBEE_PROMPTS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts"))
 KNOWLEDGE_DIR = os.environ.get("ONEBEE_KNOWLEDGE_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "knowledge"))
 GOI_Y = os.environ.get("ONEBEE_GOI_Y", os.path.join(os.path.dirname(os.path.abspath(__file__)), "goi-y.json"))
+BANG_NHAC = {
+    "id": "onebee-ai-co-the-sai",
+    "type": "info",
+    "title": "",
+    "content": "Trợ lý AI có thể sai. Hãy đọc lại số liệu, tên, ngày tháng trước khi dùng. Không nhập mật khẩu hay số tài khoản vào đây.",
+    "dismissible": True,
+    "timestamp": 1762905600,
+}
 
 
 def dong_bo_prompts(token=None):
@@ -212,6 +220,19 @@ def dong_bo_tri_thuc(token=None):
     return d["id"]
 
 
+def dong_bo_bang_nhac(token):
+    st, ds = call("GET", "/api/v1/configs/banners", token)
+    if st != 200 or not isinstance(ds, list):
+        sys.exit(f"LỖI: không đọc được danh sách băng nhắc ({st}): {ds}")
+    if any(b == BANG_NHAC for b in ds):
+        return
+    moi = [b for b in ds if isinstance(b, dict) and b.get("id") != BANG_NHAC["id"]] + [BANG_NHAC]
+    st, d = call("POST", "/api/v1/configs/banners", token, {"banners": moi})
+    if st != 200:
+        sys.exit(f"LỖI: không lưu được băng nhắc ({st}): {d}")
+    print("Băng nhắc: đã cập nhật")
+
+
 def dong_bo_tro_ly():
     with open(os.environ["ONEBEE_LOI_DAN"], encoding="utf-8") as f:
         loi_dan = f.read()
@@ -238,6 +259,7 @@ def dong_bo_tro_ly():
     else:
         print("Trợ lý OneBee: đã cập nhật cài đặt quản trị" if settings_changed else "Trợ lý OneBee: không đổi")
     dong_bo_prompts(token)
+    dong_bo_bang_nhac(token)
 
 
 def cap_khoa(ten):
