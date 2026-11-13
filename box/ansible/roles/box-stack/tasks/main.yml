@@ -233,6 +233,15 @@
 - name: Quyết định bật HTTPS
   ansible.builtin.include_tasks: https.yml
 
+# Trang chủ dựng cẩm nang và lối vào mẫu soạn văn bản từ 2 file dữ liệu dùng chung với máy trạm và Trợ lý AI
+- name: Đọc nguồn chung cẩm nang và gợi ý của Trợ lý cho trang chủ
+  ansible.builtin.set_fact:
+    onebee_cam_nang: >-
+      {{ lookup('ansible.builtin.file', playbook_dir ~ '/../../desktop/ansible/roles/theme/files/onebee-cam-nang.json')
+         | from_json }}
+    onebee_goi_y: >-
+      {{ lookup('ansible.builtin.file', playbook_dir ~ '/roles/box-ai/files/goi-y.json') | from_json }}
+
 - name: Sinh cấu hình dịch vụ
   ansible.builtin.template:
     src: "{{ item.src }}"
