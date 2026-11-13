@@ -24,7 +24,7 @@ Các bài unit mới: `test_onebee_ca.py` (CA, ràng buộc tên bằng openssl/
 `tests/desktop/check-exe-handler.sh`: kiểm tra bộ trợ lý bắt file Windows `.exe` / `.msi` (onebee-windows-app-helper), đăng ký MIME handler hệ thống và nhận diện gợi ý ứng dụng thay thế (Zalo, Chrome, Unikey, Foxit, VLC, Ultraviewer, WINE/máy ảo).
 `tests/desktop/test_onebee_phien_ban.py`: phiên bản trong bộ cài Desktop, bộ cài Box và mục đầu nhật ký thay đổi phải trùng nhau và không thấp hơn tag mới nhất.
 `tests/desktop/test_onebee_cam_nang.py`: phím tắt và tên gọi trong `onebee-cam-nang.json` khớp cấu hình máy (gschema, dconf, mục menu) và 5 tài liệu phát cho người dùng.
-`tests/box/check-rag-prompts.sh` và `tests/box/test_onebee_rag_prompts.py`: kiểm tra kho mẫu prompt hành chính NĐ 30/2020/NĐ-CP (Tờ trình, Biên bản, Hợp đồng HTX, Báo cáo) và bộ tri thức RAG Open WebUI.
+`tests/box/check-rag-prompts.sh` và `tests/box/test_onebee_rag_prompts.py`: kiểm mẫu soạn văn bản gửi đúng trường của Open WebUI v0.11.4, mọi nhân viên đọc được, chạy lại không đổi; bộ tri thức không tạo trùng.
 `tests/box/check-alerts.sh`: kiểm tra tính năng cảnh báo chủ động qua Telegram Bot và n8n Webhook.
 `tests/box/check-offline-bundle.sh`: kiểm tra kịch bản đóng gói và cài đặt OneBee Box offline từ USB.
 
