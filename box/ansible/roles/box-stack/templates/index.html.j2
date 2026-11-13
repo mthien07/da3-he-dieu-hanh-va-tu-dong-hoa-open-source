@@ -105,9 +105,9 @@
     <details>
       <summary>Phím tắt hay dùng</summary>
       <ul>
-{% for ma, ten in [('go-tieng-viet', 'Gõ tiếng Việt'), ('man-hinh', 'Màn hình và cửa sổ'), ('chup', 'Chụp màn hình'), ('soan-thao', 'Soạn thảo')] %}
-        <li><b>{{ ten }}</b></li>
-{% for p in onebee_cam_nang.phim_tat | selectattr('nhom', 'equalto', ma) %}
+{% for nhom in onebee_cam_nang_nhom %}
+        <li><b>{{ nhom.ten | e }}</b></li>
+{% for p in onebee_cam_nang.phim_tat | selectattr('nhom', 'equalto', nhom.ma) %}
         <li><kbd>{{ p.phim | e }}</kbd> — {{ p.viec | e }}{% if p.ghi_chu is defined %} ({{ p.ghi_chu | e }}){% endif %}{% if p.phim_khac is defined %} (hoặc {{ p.phim_khac | join(', ') | e }}){% endif %}</li>
 {% endfor %}
 {% endfor %}
