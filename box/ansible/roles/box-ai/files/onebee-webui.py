@@ -126,15 +126,16 @@ def dong_bo_prompts(token=None):
     if token is None:
         token = admin_token()
     if not os.path.isdir(PROMPTS_DIR):
-        print(f"Kho prompt: thư mục {PROMPTS_DIR} không tồn tại")
+        print(f"Kho mẫu soạn văn bản: thư mục {PROMPTS_DIR} không tồn tại")
         return 0
     status, current_prompts = call("GET", "/api/v1/prompts/", token)
+    if status != 200 or not isinstance(current_prompts, list):
+        sys.exit(f"LỖI: không đọc được danh sách mẫu soạn văn bản ({status}): {current_prompts}")
     existing_cmds = {}
-    if status == 200 and isinstance(current_prompts, list):
-        for p in current_prompts:
-            if isinstance(p, dict) and "command" in p:
-                existing_cmds[p["command"]] = p
-    count = 0
+    for p in current_prompts:
+        if isinstance(p, dict) and "command" in p:
+            existing_cmds[p["command"].lstrip("/")] = p
+    count, tao, cap_nhat = 0, 0, 0
     for fname in sorted(os.listdir(PROMPTS_DIR)):
         if not fname.endswith(".json"):
             continue
@@ -150,14 +151,26 @@ def dong_bo_prompts(token=None):
         content = data.get("content")
         if not cmd or not title or not content:
             continue
-        clean_cmd = cmd.lstrip("/")
-        payload = {"command": f"/{clean_cmd}", "title": title, "content": content}
-        if f"/{clean_cmd}" in existing_cmds:
-            call("POST", f"/api/v1/prompts/command/{urllib.parse.quote(clean_cmd)}/update", token, payload)
-        else:
-            call("POST", "/api/v1/prompts/create", token, payload)
+        lenh = cmd.lstrip("/")
+        ten = title
+        body = {"command": lenh, "name": ten, "content": content, "tags": [], "access_grants": PUBLIC_READ}
+        cur = existing_cmds.get(lenh)
+        if cur is None:
+            st, d = call("POST", "/api/v1/prompts/create", token, body)
+            if st != 200:
+                sys.exit(f"LỖI: không lưu được mẫu soạn văn bản {lenh} ({st}): {d}")
+            tao += 1
+        elif (cur.get("name") != ten or cur.get("content") != content
+              or not any(g.get("principal_id") == "*" for g in (cur.get("access_grants") or []))):
+            st, d = call("POST", f"/api/v1/prompts/id/{urllib.parse.quote(str(cur['id']))}/update", token, body)
+            if st != 200:
+                sys.exit(f"LỖI: không lưu được mẫu soạn văn bản {lenh} ({st}): {d}")
+            cap_nhat += 1
         count += 1
-    print(f"Kho mẫu prompt hành chính: đã đồng bộ {count} mẫu chuẩn (NĐ 30/2020/NĐ-CP, Luật HTX)")
+    if tao or cap_nhat:
+        print(f"Kho mẫu soạn văn bản: đã tạo {tao}, đã cập nhật {cap_nhat} (tổng {count} mẫu)")
+    else:
+        print(f"Kho mẫu soạn văn bản: {count} mẫu, không đổi")
     return count
 
 
