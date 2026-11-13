@@ -23,6 +23,7 @@
 
 | Cần giúp | Làm gì |
 |---|---|
+| Không biết bắt đầu từ đâu | Menu **Bắt đầu** → **Trung tâm OneBee** |
 | Gặp sự cố | Menu → **"Báo cần hỗ trợ (OneBee)"** → chọn loại, mô tả, Gửi. Gấp: gọi ☎ ____________ |
 | Kỹ thuật cần xem màn hình | Menu → **"Cho phép hỗ trợ từ xa (OneBee)"** → đọc địa chỉ + mã → máy hỏi thì bấm **Cho phép** |
 | Mở thư mục chung của đơn vị | Biểu tượng **"Chia sẻ nội bộ (OneBee Box)"** trên màn hình nền |
