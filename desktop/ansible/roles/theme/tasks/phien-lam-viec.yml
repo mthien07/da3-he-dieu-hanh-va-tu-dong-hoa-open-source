@@ -22,3 +22,36 @@
     label: "{{ item.item }}"
   when: item.stdout == item.item
   changed_when: true
+
+# Gói mint-artwork cài settings-override.json của applet menu đặt menu-custom=true, khi đó applet bỏ qua app-menu-icon-name
+# và app-menu-label. File gốc đã chuyển hướng sang .distrib ở trên; ghi bản mới = bản của Mint + khóa của OneBee, nên các
+# mặc định khác của Mint vẫn giữ. Chỉ có tác dụng với người dùng chưa từng đăng nhập (chưa có file cấu hình applet).
+- name: Kiểm tra máy có applet menu của Cinnamon không
+  ansible.builtin.stat:
+    path: /usr/share/cinnamon/applets/menu@cinnamon.org
+  register: onebee_menu_applet
+
+- name: Kiểm tra bản mặc định của Mint cho nút menu (đã chuyển hướng)
+  ansible.builtin.stat:
+    path: /usr/share/cinnamon/applets/menu@cinnamon.org/settings-override.json.distrib
+  register: onebee_menu_goc
+
+- name: Đọc bản mặc định của Mint cho nút menu
+  ansible.builtin.slurp:
+    src: /usr/share/cinnamon/applets/menu@cinnamon.org/settings-override.json.distrib
+  register: onebee_menu_goc_noi_dung
+  when: onebee_menu_goc.stat.exists
+
+- name: Nút Bắt đầu — logo OneBee và chữ "Bắt đầu" (giữ các mặc định khác của Mint)
+  ansible.builtin.copy:
+    dest: /usr/share/cinnamon/applets/menu@cinnamon.org/settings-override.json
+    content: >-
+      {{
+        ((onebee_menu_goc_noi_dung.content | b64decode | from_json) if onebee_menu_goc.stat.exists else {})
+        | combine(lookup('ansible.builtin.file', 'menu-settings-override.json') | from_json)
+        | to_nice_json
+      }}
+    owner: root
+    group: root
+    mode: "0644"
+  when: onebee_menu_applet.stat.isdir | default(false)

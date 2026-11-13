@@ -123,6 +123,12 @@ if [[ -f /usr/share/cinnamon/applets/menu@cinnamon.org/settings-schema.json ]]; 
   check "Phím Super mở menu bắt đầu (applet menu mặc định)" \
     grep -qF 'Super_L::Super_R' /usr/share/cinnamon/applets/menu@cinnamon.org/settings-schema.json
 fi
+if [[ -d /usr/share/cinnamon/applets/menu@cinnamon.org ]]; then
+  check "Nút Bắt đầu dùng logo OneBee (mặc định của applet menu)" \
+    grep -qF '"onebee-logo"' /usr/share/cinnamon/applets/menu@cinnamon.org/settings-override.json
+else
+  printf 'PASS  %s\n' "Nút Bắt đầu dùng logo OneBee (bỏ qua: máy không có applet menu)"
+fi
 
 check "LibreOffice mở mặc định giao diện Ribbon (tab) cho Writer, Calc, Impress" bash -c \
   "[ \$(grep -c '<value>Tabbed</value>' /usr/lib/libreoffice/share/registry/onebee-office-ribbon.xcd) -eq 3 ]"
