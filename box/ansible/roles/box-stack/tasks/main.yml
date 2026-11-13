@@ -241,6 +241,12 @@
          | from_json }}
     onebee_goi_y: >-
       {{ lookup('ansible.builtin.file', playbook_dir ~ '/roles/box-ai/files/goi-y.json') | from_json }}
+    # Thứ tự và tên 4 nhóm phím tắt trên trang chủ (mã nhóm khớp trường "nhom" của cẩm nang)
+    onebee_cam_nang_nhom:
+      - {ma: go-tieng-viet, ten: "Gõ tiếng Việt"}
+      - {ma: man-hinh, ten: "Màn hình và cửa sổ"}
+      - {ma: chup, ten: "Chụp màn hình"}
+      - {ma: soan-thao, ten: "Soạn thảo"}
 
 - name: Sinh cấu hình dịch vụ
   ansible.builtin.template:

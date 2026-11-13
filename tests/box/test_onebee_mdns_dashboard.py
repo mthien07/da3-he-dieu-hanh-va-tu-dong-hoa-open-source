@@ -31,6 +31,15 @@ TRANG_THAI_PY = os.path.join(ROLES, "box-stack/files/onebee-trang-thai-web.py")
 CADDY = os.environ.get("ONEBEE_TEST_CADDY") or shutil.which("caddy")
 
 
+def nhom_cam_nang():
+    with open(os.path.join(ROLES, "box-stack/tasks/main.yml"), encoding="utf-8") as f:
+        for t in yaml.safe_load(f):
+            facts = t.get("ansible.builtin.set_fact") or {}
+            if "onebee_cam_nang_nhom" in facts:
+                return facts["onebee_cam_nang_nhom"]
+    raise AssertionError("tasks box-stack thiếu onebee_cam_nang_nhom")
+
+
 def bien(**them):
     v = yaml.safe_load(open(os.path.join(ROOT, "box/ansible/group_vars/all.yml"), encoding="utf-8"))
     v.update(onebee_box_ip="192.168.1.10", onebee_box_ma_don_vi="anphu", onebee_https_hieu_luc=False,
@@ -40,6 +49,7 @@ def bien(**them):
                             ("onebee_goi_y", "box/ansible/roles/box-ai/files/goi-y.json")):
         with open(os.path.join(ROOT, duong_dan), encoding="utf-8") as f:
             v[khoa] = json.load(f)
+    v["onebee_cam_nang_nhom"] = nhom_cam_nang()   # bảng tên nhóm do bộ cài đặt (tasks), test không chép lần hai
     v.update(them)
     return v
 
@@ -142,6 +152,15 @@ class TrangChu(unittest.TestCase):
         for muc in bien()["onebee_cam_nang"]["phim_tat"]:
             self.assertIn(muc["phim"], self.html, muc["ma"])
         self.assertNotIn("Mở Terminal", self.html)   # nhân viên không phải mở Terminal: bấm biểu tượng Trợ lý trên thanh tác vụ
+
+    def test_cam_nang_du_bon_nhom_dung_thu_tu(self):
+        nhom = bien()["onebee_cam_nang_nhom"]
+        self.assertEqual([n["ten"] for n in nhom], ["Gõ tiếng Việt", "Màn hình và cửa sổ", "Chụp màn hình", "Soạn thảo"])
+        tieu_de = re.findall(r"<li><b>([^<]+)</b></li>", self.html.split('<summary>Phím tắt hay dùng</summary>', 1)[1].split("</details>", 1)[0])
+        self.assertEqual(tieu_de, [n["ten"] for n in nhom])
+        ma_nhom = {n["ma"] for n in nhom}
+        for muc in bien()["onebee_cam_nang"]["phim_tat"]:
+            self.assertIn(muc["nhom"], ma_nhom, muc["ma"])   # thêm nhóm mới vào cẩm nang mà quên bảng tên thì báo ngay
 
     def test_loi_vao_mau_soan_van_ban(self):
         h = self.html
