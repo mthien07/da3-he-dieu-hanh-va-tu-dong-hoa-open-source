@@ -11,6 +11,8 @@ import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 
+import yaml
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 THEME_FILES = os.path.join(HERE, "../../desktop/ansible/roles/theme/files")
 ROLES = os.path.join(HERE, "../../desktop/ansible/roles")
@@ -19,6 +21,12 @@ PIN_JSON = os.path.join(ROLES, "theme/files/grouped-window-list-settings-overrid
 LAUNCHER = os.path.join(ROLES, "theme/files/onebee-mo-tro-ly-ai")
 THEME_TASKS = os.path.join(ROLES, "theme/tasks/main.yml")
 RIBBON_XCD = os.path.join(ROLES, "office/files/onebee-office-ribbon.xcd")
+VI_DEFAULTS = os.path.join(ROLES, "vietnamese/defaults/main.yml")
+VI_TASKS = os.path.join(ROLES, "vietnamese/tasks/main.yml")
+PHIEN_TASKS = os.path.join(ROLES, "theme/tasks/phien-lam-viec.yml")
+MINTUPDATE_TASKS = os.path.join(ROLES, "updates/tasks/mintupdate.yml")
+CALENDAR_JSON = os.path.join(ROLES, "theme/files/calendar-settings-override.json")
+MENU_JSON = os.path.join(ROLES, "theme/files/menu-settings-override.json")
 
 # Chỉ những khóa này được phép có trong override: schema:khóa -> kiểu GVariant (đã đối chiếu với gói cinnamon-desktop-data,
 # cinnamon, nemo trên Mint 22.x; khóa thêm 19/10/2026 đối chiếu mã nguồn nhánh master.mint22 của cinnamon, cinnamon-desktop, nemo:
@@ -205,6 +213,107 @@ class RibbonLibreOffice(unittest.TestCase):
     def test_nap_sau_cac_module_goc(self):
         goc = ET.parse(RIBBON_XCD).getroot()
         self.assertEqual({d.get("file") for d in goc.findall("dependency")}, {"main", "writer", "calc", "impress"})
+
+
+def doc_yaml(duong_dan):
+    with open(duong_dan, encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def doc_json(duong_dan):
+    with open(duong_dan, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def tim_tac_vu(tac_vu, dieu_kien):
+    return [t for t in tac_vu if dieu_kien(t)]
+
+
+def noi_dung_tai(tac_vu, dich):
+    """Nội dung `content` của task ansible.builtin.copy ghi ra đường dẫn `dich`."""
+    kq = tim_tac_vu(tac_vu, lambda t: (t.get("ansible.builtin.copy") or {}).get("dest") == dich)
+    assert len(kq) == 1, f"cần đúng 1 task ghi {dich}, thấy {len(kq)}"
+    return kq[0]["ansible.builtin.copy"]["content"]
+
+
+class PhienLamViecMint(unittest.TestCase):
+    """Mặc định của phiên làm việc trên Linux Mint 22.x: bộ gõ, đồng hồ, nút Bắt đầu, màn hình chào, cập nhật, màn hình đăng nhập."""
+
+    def test_bo_go_dat_ca_nguon_cua_cinnamon(self):
+        mac_dinh = doc_yaml(VI_DEFAULTS)
+        self.assertEqual(set(mac_dinh["onebee_ibus_sources"]), {"bamboo", "unikey"})
+        nguon = mac_dinh["onebee_ibus_sources"]["bamboo"]
+        self.assertTrue(nguon.startswith("[('ibus', 'Bamboo')"), nguon)
+        self.assertIn("('ibus', 'BambooUs')", nguon)
+        self.assertTrue(mac_dinh["onebee_ibus_engines"]["bamboo"].startswith("['Bamboo'"))
+        noi_dung = noi_dung_tai(doc_yaml(VI_TASKS), "/usr/share/glib-2.0/schemas/zz_onebee-ibus.gschema.override")
+        dong = noi_dung.splitlines()
+        self.assertIn("[org.cinnamon.desktop.input-sources]", dong)
+        self.assertTrue(any(d.startswith("sources=") for d in dong), noi_dung)
+
+    def test_dong_ho_hien_ngay_kieu_viet_nam(self):
+        khoa = doc_json(CALENDAR_JSON)
+        self.assertEqual(set(khoa), {"use-custom-format", "custom-format", "custom-tooltip-format"})
+        self.assertIs(khoa["use-custom-format"]["default"], True)
+        self.assertEqual(khoa["custom-format"]["default"], "%H:%M  %d/%m/%Y")
+        for ten, gia_tri in khoa.items():
+            self.assertIs(gia_tri["override-props"], True, ten)
+
+    def test_nut_bat_dau_dung_logo_onebee(self):
+        khoa = doc_json(MENU_JSON)
+        self.assertIs(khoa["menu-custom"]["default"], True)
+        self.assertEqual(khoa["menu-icon"]["default"], "onebee-logo")
+        self.assertEqual(khoa["menu-label"]["default"], "Bắt đầu")
+
+    def test_chuyen_huong_tep_cua_goi_co_dieu_kien(self):
+        tac_vu = doc_yaml(PHIEN_TASKS)
+        lenh = lambda t: str(t.get("ansible.builtin.command", ""))  # noqa: E731
+        them = tim_tac_vu(tac_vu, lambda t: "dpkg-divert" in lenh(t) and "--add" in lenh(t))
+        self.assertTrue(them, "thiếu task chuyển hướng bằng dpkg-divert --add")
+        for t in them:
+            self.assertIn("when", t, t.get("name"))
+        duong_dan = set()
+        for t in tac_vu:
+            if "dpkg-divert" in lenh(t) and isinstance(t.get("loop"), list):
+                duong_dan.update(t["loop"])
+        self.assertEqual(duong_dan, {
+            "/etc/xdg/autostart/mintwelcome.desktop",
+            "/etc/xdg/autostart/mintreport.desktop",
+            "/usr/share/cinnamon/applets/menu@cinnamon.org/settings-override.json",
+        })
+
+    def test_cap_nhat_khong_tu_bat_cua_so(self):
+        noi_dung = noi_dung_tai(doc_yaml(PHIEN_TASKS), "/usr/share/glib-2.0/schemas/zz_onebee-updates.gschema.override")
+        dong = noi_dung.splitlines()
+        for mong_doi in ("[com.linuxmint.updates]", "show-welcome-page=false", "hide-systray=true",
+                         "tracker-disable-notifications=true"):
+            self.assertIn(mong_doi, dong)
+
+    def test_timer_don_goi_thua_chi_bat_khi_co(self):
+        tac_vu = doc_yaml(MINTUPDATE_TASKS)
+        kiem_tra = tim_tac_vu(tac_vu, lambda t: (t.get("ansible.builtin.stat") or {}).get("path")
+                              == "/usr/lib/systemd/system/mintupdate-automation-autoremove.timer")
+        self.assertEqual(len(kiem_tra), 1)
+        dang_ky = kiem_tra[0]["register"]
+        bat_timer = tim_tac_vu(tac_vu, lambda t: "systemctl" in str(t.get("ansible.builtin.command", "")))
+        self.assertEqual(len(bat_timer), 2)
+        for t in bat_timer:
+            vong = t["loop"]
+            if isinstance(vong, list):
+                self.assertNotIn("mintupdate-automation-autoremove.timer", vong, t["name"])
+            else:
+                self.assertIn(dang_ky, vong, t["name"])
+
+    def test_man_hinh_dang_nhap_dung_hinh_nen_onebee(self):
+        tac_vu = doc_yaml(PHIEN_TASKS)
+        kq = tim_tac_vu(tac_vu, lambda t: (t.get("ansible.builtin.copy") or {}).get("dest") == "/etc/lightdm/slick-greeter.conf")
+        self.assertEqual(len(kq), 1)
+        copy = kq[0]["ansible.builtin.copy"]
+        self.assertIs(copy["force"], False)
+        dong = copy["content"].splitlines()
+        self.assertIn("[Greeter]", dong)
+        self.assertTrue(any(d.startswith("background=") and d.endswith("onebee-wallpaper.png") for d in dong), copy["content"])
+        self.assertIn("draw-user-backgrounds=false", dong)
 
 
 if __name__ == "__main__":
