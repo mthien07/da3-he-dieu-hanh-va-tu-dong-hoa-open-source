@@ -2,6 +2,7 @@
 """Số liệu tình trạng Box cho trang chủ (ô "Tình trạng hệ thống"): CPU, RAM, ổ dữ liệu còn trống, Trợ lý AI / thư mục chung / sao lưu.
 Ghi 1 tệp JSON tĩnh trong thư mục trang chủ để Caddy phục vụ (không mở thêm cổng hay API nào). Chỉ số phần trăm và trạng thái —
 không có tên máy, IP, tên người dùng. Lịch onebee-trang-thai-web.timer chạy mỗi phút.
+Thêm khóa may_tram = {tong, sao_luu_trong_han} (hai số nguyên) hoặc null khi lệnh sao lưu đêm chưa ghi tệp may-tram-tong-hop.
 Cách dùng: onebee-trang-thai-web.py <tệp-json-ra> <thư-mục-dữ-liệu> <tệp-kết-quả-sao-lưu-lần-cuối>"""
 import datetime
 import json
@@ -76,6 +77,22 @@ def sao_luu(tep, bay_gio):
     return "tot" if bay_gio - luc <= SAO_LUU_QUA_HAN else "qua_han"
 
 
+def may_tram(tep):
+    """Hai con số cho ô "Máy trạm đã sao lưu": {"tong", "sao_luu_trong_han"} từ tệp lệnh sao lưu đêm ghi; thiếu hoặc sai định dạng → None.
+    Chỉ chép đúng hai số nguyên: tệp tổng hợp có thêm gì cũng không lọt ra trang công khai trong LAN."""
+    try:
+        with open(tep, encoding="utf-8") as f:
+            d = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(d, dict):
+        return None
+    tong, trong_han = d.get("tong"), d.get("sao_luu_trong_han")
+    if not all(isinstance(x, int) and not isinstance(x, bool) and x >= 0 for x in (tong, trong_han)) or trong_han > tong:
+        return None
+    return {"tong": tong, "sao_luu_trong_han": trong_han}
+
+
 def ghi_nguyen_tu(duong_dan, du_lieu):
     """Ghi tệp tạm cùng thư mục rồi đổi tên: Caddy không bao giờ đọc phải tệp ghi dở."""
     fd, tam = tempfile.mkstemp(dir=os.path.dirname(duong_dan), prefix=".trang-thai-")
@@ -106,6 +123,7 @@ def main(argv):
             "thu_muc_chung": "chay" if dich_vu_chay("smbd") else "dung",
             "sao_luu": sao_luu(tep_sao_luu, time.time()),
         },
+        "may_tram": may_tram(os.path.join(os.path.dirname(tep_sao_luu), "may-tram-tong-hop")),
     })
 
 

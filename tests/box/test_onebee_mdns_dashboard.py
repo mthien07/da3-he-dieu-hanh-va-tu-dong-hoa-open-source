@@ -221,8 +221,9 @@ class TrangThaiWeb(unittest.TestCase):
     def test_ghi_json_day_du_nguyen_tu_va_khong_lo_thong_tin_mang(self):
         ra = self.chay('echo true; echo true', 0)
         d = json.load(open(ra))
-        self.assertEqual(set(d), {"cap_nhat", "cpu_phan_tram", "ram_phan_tram", "o_dia", "dich_vu"})
+        self.assertEqual(set(d), {"cap_nhat", "cpu_phan_tram", "ram_phan_tram", "o_dia", "dich_vu", "may_tram"})
         self.assertEqual(d["ram_phan_tram"], 25)
+        self.assertIsNone(d["may_tram"])   # chưa có lần sao lưu đêm nào ghi tổng hợp
         self.assertEqual(set(d["o_dia"]), {"con_trong_gb", "da_dung_phan_tram"})
         self.assertGreater(d["o_dia"]["con_trong_gb"], 0)
         self.assertEqual(d["dich_vu"], {"tro_ly_ai": "chay", "thu_muc_chung": "chay", "sao_luu": "tot"})
