@@ -88,6 +88,16 @@ class GiayPhepTungTep(unittest.TestCase):
             % (len(thieu), len(cac_tep), SPDX_CHUAN, "\n".join(thieu)),
         )
 
+    def test_ci_chay_kiem_tra_giay_phep(self):
+        ci_yml = os.path.join(GOC, ".github/workflows/ci.yml")
+        with open(ci_yml, encoding="utf-8") as f:
+            noi_dung = f.read()
+        self.assertIn(
+            "python3 scripts/chen-giay-phep.py --kiem",
+            noi_dung,
+            ".github/workflows/ci.yml chưa chạy python3 scripts/chen-giay-phep.py --kiem",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

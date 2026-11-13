@@ -12,6 +12,10 @@ Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài ch�
 - `desktop/ansible/roles/theme/files/onebee-cam-nang.json`: một nguồn cho phím tắt và tên gọi; test
   `tests/desktop/test_onebee_cam_nang.py` báo lỗi khi cấu hình máy hoặc tài liệu lệch nguồn này.
 - `tests/desktop/check-exe-handler.sh` được chạy trong CI.
+- Chèn dòng giấy phép `SPDX-License-Identifier: MIT` vào đầu mọi tệp mã (`scripts/chen-giay-phep.py`); thêm
+  `tests/desktop/test_onebee_giay_phep.py` và bước kiểm trong CI chặn tệp mã mới thiếu giấy phép.
+- Chuyển nhật ký thay đổi ra gốc repo (`CHANGELOG.md`, giữ tệp trỏ tại `docs/project-changelog.md`); gói phát hành
+  (`scripts/dong-goi-ban-phat-hanh.sh`) đóng kèm `LICENSE`, `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`.
 
 ## [1.1.0] — 22/10/2026 — Năm tính năng mới và bộ cài USB offline
 Phiên bản 1.0.0 chuyển hóa OneBee OS (DA3) thành sản phẩm thương mại hoàn chỉnh, hấp thụ tinh hoa kiến trúc từ các dự án mã nguồn mở hàng đầu thế giới (CasaOS, YunoHost, Zorin OS, Nextcloud, Synology/TrueNAS).
