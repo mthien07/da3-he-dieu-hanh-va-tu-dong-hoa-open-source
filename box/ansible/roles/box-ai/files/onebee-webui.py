@@ -77,6 +77,7 @@ def enforce_settings(token):
         sys.exit(f"LỖI: không đọc được cài đặt quản trị ({status}): {cfg}")
     # WEBUI_URL (địa chỉ công khai: https://<IP>:3000 khi Box bật HTTPS, rỗng khi còn HTTP) lưu trong CSDL → đặt qua API như các cài đặt khác
     muon = {**ADMIN_CONFIG, "WEBUI_URL": os.environ.get("ONEBEE_WEBUI_PUBLIC_URL", "")}
+    muon["DEFAULT_INTERFACE_SETTINGS"] = {**(cfg.get("DEFAULT_INTERFACE_SETTINGS") or {}), "insertSuggestionPrompt": True}
     if any(cfg.get(k) != v for k, v in muon.items()):
         # bỏ trường rỗng (vd I18N=null) — gửi lại null bị Open WebUI từ chối
         payload = {k: v for k, v in {**cfg, **muon}.items() if v is not None}
@@ -119,6 +120,15 @@ def luu_model(token, form):
 
 PROMPTS_DIR = os.environ.get("ONEBEE_PROMPTS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts"))
 KNOWLEDGE_DIR = os.environ.get("ONEBEE_KNOWLEDGE_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "knowledge"))
+GOI_Y = os.environ.get("ONEBEE_GOI_Y", os.path.join(os.path.dirname(os.path.abspath(__file__)), "goi-y.json"))
+BANG_NHAC = {
+    "id": "onebee-ai-co-the-sai",
+    "type": "info",
+    "title": "",
+    "content": "Trợ lý AI có thể sai. Hãy đọc lại số liệu, tên, ngày tháng trước khi dùng. Không nhập mật khẩu hay số tài khoản vào đây.",
+    "dismissible": True,
+    "timestamp": 1762905600,
+}
 
 
 def dong_bo_prompts(token=None):
@@ -126,15 +136,16 @@ def dong_bo_prompts(token=None):
     if token is None:
         token = admin_token()
     if not os.path.isdir(PROMPTS_DIR):
-        print(f"Kho prompt: thư mục {PROMPTS_DIR} không tồn tại")
+        print(f"Kho mẫu soạn văn bản: thư mục {PROMPTS_DIR} không tồn tại")
         return 0
     status, current_prompts = call("GET", "/api/v1/prompts/", token)
+    if status != 200 or not isinstance(current_prompts, list):
+        sys.exit(f"LỖI: không đọc được danh sách mẫu soạn văn bản ({status}): {current_prompts}")
     existing_cmds = {}
-    if status == 200 and isinstance(current_prompts, list):
-        for p in current_prompts:
-            if isinstance(p, dict) and "command" in p:
-                existing_cmds[p["command"]] = p
-    count = 0
+    for p in current_prompts:
+        if isinstance(p, dict) and "command" in p:
+            existing_cmds[p["command"].lstrip("/")] = p
+    count, tao, cap_nhat = 0, 0, 0
     for fname in sorted(os.listdir(PROMPTS_DIR)):
         if not fname.endswith(".json"):
             continue
@@ -150,50 +161,84 @@ def dong_bo_prompts(token=None):
         content = data.get("content")
         if not cmd or not title or not content:
             continue
-        clean_cmd = cmd.lstrip("/")
-        payload = {"command": f"/{clean_cmd}", "title": title, "content": content}
-        if f"/{clean_cmd}" in existing_cmds:
-            call("POST", f"/api/v1/prompts/command/{urllib.parse.quote(clean_cmd)}/update", token, payload)
-        else:
-            call("POST", "/api/v1/prompts/create", token, payload)
+        lenh = cmd.lstrip("/")
+        ten = title
+        body = {"command": lenh, "name": ten, "content": content, "tags": [], "access_grants": PUBLIC_READ}
+        cur = existing_cmds.get(lenh)
+        if cur is None:
+            st, d = call("POST", "/api/v1/prompts/create", token, body)
+            if st != 200:
+                sys.exit(f"LỖI: không lưu được mẫu soạn văn bản {lenh} ({st}): {d}")
+            tao += 1
+        elif (cur.get("name") != ten or cur.get("content") != content
+              or not any(g.get("principal_id") == "*" for g in (cur.get("access_grants") or []))):
+            st, d = call("POST", f"/api/v1/prompts/id/{urllib.parse.quote(str(cur['id']))}/update", token, body)
+            if st != 200:
+                sys.exit(f"LỖI: không lưu được mẫu soạn văn bản {lenh} ({st}): {d}")
+            cap_nhat += 1
         count += 1
-    print(f"Kho mẫu prompt hành chính: đã đồng bộ {count} mẫu chuẩn (NĐ 30/2020/NĐ-CP, Luật HTX)")
+    if tao or cap_nhat:
+        print(f"Kho mẫu soạn văn bản: đã tạo {tao}, đã cập nhật {cap_nhat} (tổng {count} mẫu)")
+    else:
+        print(f"Kho mẫu soạn văn bản: {count} mẫu, không đổi")
     return count
+
+
+def tim_bo_tri_thuc(token, ten):
+    page, da_gom = 1, 0
+    while True:
+        st, d = call("GET", f"/api/v1/knowledge/search?query={urllib.parse.quote(ten)}&page={page}", token)
+        if st != 200 or not isinstance(d, dict):
+            sys.exit(f"LỖI: không liệt kê được bộ tri thức ({st}): {d}")
+        for it in d["items"]:
+            if it.get("name") == ten:
+                return it
+        da_gom += len(d["items"])
+        if not d["items"] or da_gom >= d["total"]:
+            return None
+        page += 1
 
 
 def dong_bo_tri_thuc(token=None):
     """Tạo hoặc cập nhật Bộ tri thức cơ sở RAG (Thư viện Pháp lý HTX) trên Open WebUI."""
     if token is None:
         token = admin_token()
-    status, collections = call("GET", "/api/v1/knowledge/", token)
-    col_id = None
-    target_name = "Thư viện Pháp lý HTX"
-    if status == 200 and isinstance(collections, list):
-        for c in collections:
-            if isinstance(c, dict) and c.get("name") == target_name:
-                col_id = c.get("id")
-                break
-    if not col_id:
-        payload = {
-            "name": target_name,
-            "description": "Bộ văn bản pháp luật và quy chuẩn hành chính cơ sở (Luật HTX 2023, Nghị định 30/2020/NĐ-CP)",
-            "data": {}
-        }
-        c_status, c_data = call("POST", "/api/v1/knowledge/create", token, payload)
-        if c_status in (200, 201) and isinstance(c_data, dict):
-            col_id = c_data.get("id")
-            print(f"Bộ tri thức RAG: đã tạo mới danh mục '{target_name}' (id: {col_id})")
-        else:
-            print(f"Bộ tri thức RAG: Open WebUI chưa sẵn sàng module Knowledge ({c_status})")
-            return None
-    else:
-        print(f"Bộ tri thức RAG: danh mục '{target_name}' đã tồn tại (id: {col_id})")
-    return col_id
+    ten = "Thư viện Pháp lý HTX"
+    cur = tim_bo_tri_thuc(token, ten)
+    if cur:
+        print(f"Bộ tri thức: '{ten}' đã có, không đổi")
+        return cur["id"]
+    payload = {
+        "name": ten,
+        "description": "Bộ văn bản pháp luật và quy chuẩn hành chính cơ sở (Luật HTX 2023, Nghị định 30/2020/NĐ-CP)",
+        "access_grants": PUBLIC_READ,
+    }
+    st, d = call("POST", "/api/v1/knowledge/create", token, payload)
+    if st != 200 or not isinstance(d, dict):
+        sys.exit(f"LỖI: không tạo được bộ tri thức '{ten}' ({st}): {d}")
+    print(f"Bộ tri thức: đã tạo '{ten}'")
+    return d["id"]
+
+
+def dong_bo_bang_nhac(token):
+    st, ds = call("GET", "/api/v1/configs/banners", token)
+    if st != 200 or not isinstance(ds, list):
+        sys.exit(f"LỖI: không đọc được danh sách băng nhắc ({st}): {ds}")
+    # Chỉ so các trường OneBee đặt: Open WebUI lưu qua BannerModel nên trả thêm trường mặc định (vd i18n=None)
+    if any(isinstance(b, dict) and all(b.get(k) == v for k, v in BANG_NHAC.items()) for b in ds):
+        return
+    moi = [b for b in ds if isinstance(b, dict) and b.get("id") != BANG_NHAC["id"]] + [BANG_NHAC]
+    st, d = call("POST", "/api/v1/configs/banners", token, {"banners": moi})
+    if st != 200:
+        sys.exit(f"LỖI: không lưu được băng nhắc ({st}): {d}")
+    print("Băng nhắc: đã cập nhật")
 
 
 def dong_bo_tro_ly():
     with open(os.environ["ONEBEE_LOI_DAN"], encoding="utf-8") as f:
         loi_dan = f.read()
+    with open(GOI_Y, encoding="utf-8") as f:
+        goi_y = json.load(f)
     base = os.environ["ONEBEE_AI_MODEL"]
     # Open WebUI (từ v0.11): người dùng thường chỉ dùng được Trợ lý khi model nền cũng có bản ghi + quyền đọc.
     # Ẩn model nền khỏi danh sách chọn để nhân viên luôn dùng "Trợ lý OneBee" (có lời dặn tiếng Việt).
@@ -203,7 +248,8 @@ def dong_bo_tro_ly():
             # Tắt "công cụ có sẵn" của Open WebUI (lịch, ghi chú, tìm kiếm…): model nhỏ hay gọi nhầm (vd tạo lịch thay vì
             # soạn thông báo) rồi trả lời tiếng Anh; lệnh hoi (API) vốn không dùng công cụ → web và hoi trả lời như nhau
             "meta": {"description": "Trợ lý AI chạy tại chỗ trên OneBee Box — trả lời tiếng Việt, không bịa số liệu.",
-                     "capabilities": {"builtin_tools": False}},
+                     "capabilities": {"builtin_tools": False},
+                     "suggestion_prompts": goi_y},
             "params": {**PARAMS, "system": loi_dan}, "access_grants": PUBLIC_READ, "is_active": True}
     token = admin_token()
     settings_changed = enforce_settings(token)
@@ -214,7 +260,7 @@ def dong_bo_tro_ly():
     else:
         print("Trợ lý OneBee: đã cập nhật cài đặt quản trị" if settings_changed else "Trợ lý OneBee: không đổi")
     dong_bo_prompts(token)
-    dong_bo_tri_thuc(token)
+    dong_bo_bang_nhac(token)
 
 
 def cap_khoa(ten):

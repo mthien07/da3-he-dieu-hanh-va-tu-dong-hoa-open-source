@@ -16,8 +16,8 @@ Bấm biểu tượng **Trợ lý AI OneBee** trên thanh tác vụ (hoặc mở
   - 📑 **`/bien-ban`** : Lập Biên bản cuộc họp Hội đồng quản trị / Đại hội xã viên.
   - 📜 **`/hop-dong`** : Soạn hợp đồng liên kết bao tiêu nông sản theo **Luật Hợp tác xã 2023**.
   - 📊 **`/bao-cao`**  : Lập báo cáo hoạt động và phân phối quỹ tài chính định kỳ.
-- **Hỏi đáp chính sách & Quy chế:**
-  - Đặt câu hỏi trực tiếp: *"Quy trình kết nạp thành viên mới HTX theo luật hiện hành thế nào?"* hoặc *"Quy định về trích quỹ chung không chia tối thiểu bao nhiêu %?"*.
+- **Bấm gợi ý có sẵn** trên màn hình trò chuyện mới (Soạn tờ trình, Lập biên bản họp, Soạn thông báo, Tóm tắt văn bản) rồi viết tiếp nội dung của mình.
+- **Trợ lý AI có thể sai.** Việc liên quan luật, thuế, tiền: đối chiếu lại với văn bản gốc hoặc hỏi kế toán.
 
 ---
 

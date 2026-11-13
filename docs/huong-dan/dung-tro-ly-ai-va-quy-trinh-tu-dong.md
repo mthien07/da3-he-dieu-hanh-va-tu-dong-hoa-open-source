@@ -15,6 +15,9 @@
   Lệnh `hoi` dùng khóa của **từng nhân viên** (mục 2); khóa theo từng **máy** chỉ còn là giai đoạn chuyển tiếp.
 - Chọn **"Trợ lý OneBee"**: model Gemma chạy trên Box + lời dặn tiếng Việt (không bịa số liệu, hướng dẫn máy OneBee,
   biết ngày hôm nay, được nhờ soạn văn bản thì soạn ngay, chỗ thiếu để [trong ngoặc vuông]).
+- **Gợi ý và mẫu soạn văn bản:** trên màn hình trò chuyện mới, bấm một trong 4 gợi ý tiếng Việt (Soạn tờ trình, Lập biên bản họp,
+  Soạn thông báo, Tóm tắt văn bản) để chèn câu mở đầu vào ô nhập rồi viết tiếp, hoặc gõ `/` trong ô nhập để chọn 4 mẫu
+  (`to-trinh`, `bien-ban`, `hop-dong`, `bao-cao`). Bộ tri thức pháp lý chưa được nạp: Trợ lý chưa trả lời theo văn bản luật.
 
 ![Trợ lý OneBee soạn thông báo](anh/02-tro-ly-ai-tieng-viet.png)
 - Model đang dùng: `gemma4:e2b-it-qat` (Gemma 4 của Google, giấy phép Apache-2.0, tải 4,3 GB) — bản Gemma nhẹ nhất vượt
