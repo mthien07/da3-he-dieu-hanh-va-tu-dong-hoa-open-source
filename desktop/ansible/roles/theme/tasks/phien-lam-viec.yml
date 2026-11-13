@@ -1,0 +1,24 @@
+---
+# Mặc định của phiên làm việc trên Linux Mint: màn hình chào, cập nhật, đồng hồ, nút Bắt đầu, màn hình đăng nhập.
+#
+# Cập nhật tự động của Mint chạy apt với --force-confnew, nên file của gói trong /etc hoặc /usr mà ta sửa trực tiếp có thể bị ghi đè.
+# `dpkg-divert --local --rename` chuyển file của gói sang tên .distrib; bản cập nhật sau của gói cũng được ghi vào tên đó,
+# còn tên gốc không còn thuộc gói nào nữa nên không bị đụng tới. Hoàn tác: dpkg-divert --local --rename --remove <đường dẫn>.
+
+- name: Xem file của gói Mint đã được chuyển hướng chưa
+  ansible.builtin.command: "dpkg-divert --truename {{ item }}"
+  loop:
+    - /etc/xdg/autostart/mintwelcome.desktop
+    - /etc/xdg/autostart/mintreport.desktop
+    - /usr/share/cinnamon/applets/menu@cinnamon.org/settings-override.json
+  register: onebee_divert
+  changed_when: false
+
+# Chưa chuyển hướng thì --truename in lại đúng đường dẫn gốc; sau lần đầu nó in tên .distrib nên lần chạy sau bỏ qua.
+- name: Chuyển hướng file của gói Mint (màn hình chào, báo cáo hệ thống, mặc định nút menu)
+  ansible.builtin.command: "dpkg-divert --local --rename --add {{ item.item }}"
+  loop: "{{ onebee_divert.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: item.stdout == item.item
+  changed_when: true
