@@ -92,8 +92,9 @@ Cần máy đã nối Box **[cần Box]**: máy chưa nối thì dịch vụ nh�
 - [ ] F3 `systemctl --user list-timers | grep onebee` → có `onebee-nhac-sao-luu.timer`. Không thấy thì thử `systemctl --user list-timers --all | grep onebee` và ghi lại cả hai kết quả.
 
 ## G. Trợ lý AI (cần Box)
-- [ ] G1 **[cần Box]** Bấm biểu tượng Trợ lý AI OneBee trên thanh tác vụ, đăng nhập tài khoản nhân viên → màn hình trò chuyện mới có 4 gợi ý tiếng Việt
-  (Soạn tờ trình, công văn; Lập biên bản họp; Soạn thông báo; Tóm tắt văn bản) và dòng nhắc "Trợ lý AI có thể sai".
+- [ ] G1 **[cần Box]** Bấm biểu tượng Trợ lý AI OneBee trên thanh tác vụ, đăng nhập tài khoản nhân viên → màn hình trò chuyện mới hiện các gợi ý
+  tiếng Việt của OneBee (Open WebUI hiện ngẫu nhiên một phần mỗi lần tải, trong 4 gợi ý: Soạn tờ trình, công văn; Lập biên bản họp;
+  Soạn thông báo; Tóm tắt văn bản), bấm được, và dòng nhắc "Trợ lý AI có thể sai".
 - [ ] G2 **[cần Box]** Bấm một gợi ý → câu mở đầu được chèn vào ô nhập, chưa gửi; viết tiếp rồi gửi → nhận văn bản tiếng Việt.
 - [ ] G3 **[cần Box]** Gõ `/` trong ô nhập → thấy 4 mẫu `to-trinh`, `bien-ban`, `hop-dong`, `bao-cao`.
 - [ ] G5 Trợ lý "Tra cứu Luật HTX và Nghị định 30": **chưa có trong bản này, bỏ qua** (ghi "bỏ qua" ở mục này).
