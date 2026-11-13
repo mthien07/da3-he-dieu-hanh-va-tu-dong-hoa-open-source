@@ -10,6 +10,7 @@
     mode: "{{ item.mode }}"
   loop:
     - {src: tro-ly-onebee-loi-dan.md, mode: "0644"}
+    - {src: goi-y.json, mode: "0644"}
     - {src: onebee-webui.py, mode: "0750"}
 
 - name: Cài đặt kho mẫu prompt hành chính và tri thức RAG

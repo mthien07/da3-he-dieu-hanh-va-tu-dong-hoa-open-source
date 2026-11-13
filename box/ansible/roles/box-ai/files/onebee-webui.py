@@ -77,6 +77,7 @@ def enforce_settings(token):
         sys.exit(f"LỖI: không đọc được cài đặt quản trị ({status}): {cfg}")
     # WEBUI_URL (địa chỉ công khai: https://<IP>:3000 khi Box bật HTTPS, rỗng khi còn HTTP) lưu trong CSDL → đặt qua API như các cài đặt khác
     muon = {**ADMIN_CONFIG, "WEBUI_URL": os.environ.get("ONEBEE_WEBUI_PUBLIC_URL", "")}
+    muon["DEFAULT_INTERFACE_SETTINGS"] = {**(cfg.get("DEFAULT_INTERFACE_SETTINGS") or {}), "insertSuggestionPrompt": True}
     if any(cfg.get(k) != v for k, v in muon.items()):
         # bỏ trường rỗng (vd I18N=null) — gửi lại null bị Open WebUI từ chối
         payload = {k: v for k, v in {**cfg, **muon}.items() if v is not None}
@@ -119,6 +120,7 @@ def luu_model(token, form):
 
 PROMPTS_DIR = os.environ.get("ONEBEE_PROMPTS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts"))
 KNOWLEDGE_DIR = os.environ.get("ONEBEE_KNOWLEDGE_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "knowledge"))
+GOI_Y = os.environ.get("ONEBEE_GOI_Y", os.path.join(os.path.dirname(os.path.abspath(__file__)), "goi-y.json"))
 
 
 def dong_bo_prompts(token=None):
@@ -213,6 +215,8 @@ def dong_bo_tri_thuc(token=None):
 def dong_bo_tro_ly():
     with open(os.environ["ONEBEE_LOI_DAN"], encoding="utf-8") as f:
         loi_dan = f.read()
+    with open(GOI_Y, encoding="utf-8") as f:
+        goi_y = json.load(f)
     base = os.environ["ONEBEE_AI_MODEL"]
     # Open WebUI (từ v0.11): người dùng thường chỉ dùng được Trợ lý khi model nền cũng có bản ghi + quyền đọc.
     # Ẩn model nền khỏi danh sách chọn để nhân viên luôn dùng "Trợ lý OneBee" (có lời dặn tiếng Việt).
@@ -222,7 +226,8 @@ def dong_bo_tro_ly():
             # Tắt "công cụ có sẵn" của Open WebUI (lịch, ghi chú, tìm kiếm…): model nhỏ hay gọi nhầm (vd tạo lịch thay vì
             # soạn thông báo) rồi trả lời tiếng Anh; lệnh hoi (API) vốn không dùng công cụ → web và hoi trả lời như nhau
             "meta": {"description": "Trợ lý AI chạy tại chỗ trên OneBee Box — trả lời tiếng Việt, không bịa số liệu.",
-                     "capabilities": {"builtin_tools": False}},
+                     "capabilities": {"builtin_tools": False},
+                     "suggestion_prompts": goi_y},
             "params": {**PARAMS, "system": loi_dan}, "access_grants": PUBLIC_READ, "is_active": True}
     token = admin_token()
     settings_changed = enforce_settings(token)
