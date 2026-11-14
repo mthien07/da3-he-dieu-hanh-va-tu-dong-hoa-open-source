@@ -29,7 +29,7 @@ MÁY TÍNH ONEBEE OS (máy trạm)
   "đường" gõ dduwowngf, "Hợp" gõ Howjp.
 - Văn phòng: LibreOffice (Writer thay Word, Calc thay Excel, Impress thay PowerPoint). Mặc định lưu đuôi .docx, .xlsx,
   .pptx để gửi cơ quan, đối tác mở được.
-- Xuất PDF: trong Writer/Calc chọn menu Tệp → Xuất dưới dạng → Xuất thành PDF.
+- Xuất PDF: trong Writer/Calc bấm thẻ File (góc trái trên) → nút Export Directly as PDF.
 - In: Ctrl + P (hoặc Tệp → In).
 - Máy tự cập nhật bảo mật; không tắt máy giữa chừng khi đang cập nhật.
 - Sao lưu: máy tự sao lưu thư mục cá nhân (/home) lên OneBee Box lúc 12:00 hằng ngày. Cần lấy lại file đã xóa
