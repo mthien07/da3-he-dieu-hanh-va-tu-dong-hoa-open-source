@@ -135,7 +135,7 @@ Mã nguồn repo: **MIT** ([LICENSE](LICENSE)). Thành phần giữ giấy phép
 - 📍 45 đường số 6, KDC Thái Dương, Phường Long An, Tây Ninh
 - 📱 0385 944 909
 - 🔢 MST: 1102128064
-- 👤 Người đại diện: HUỲNH TRỌNG HIẾU
+- 👤 Người đại diện: DUONG MINH THIEN
 
 ---
 
