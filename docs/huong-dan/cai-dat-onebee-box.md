@@ -19,7 +19,8 @@ Khi đã bật HTTPS, `http://onebee.local` mở trang hướng dẫn cài chứ
 Kiểm tra trên Box: `avahi-resolve-host-name -4 onebee.local`, hoặc chạy `sudo tests/box/check-mdns-dashboard.sh`.
 
 **Mở Trợ lý AI đúng địa chỉ:** dùng IP LAN của Box (`http://<ip-box>:3000`; `https://` khi đã bật HTTPS) hoặc, với kỹ thuật qua Tailscale,
-`box.<mã đơn vị>.onebee.internal`. Mở bằng tên/IP khác (tên DNS của router, IP Tailscale trần, đường hầm SSH `localhost`) thì trang vẫn hiện nhưng
+`box.<mã đơn vị>.onebee.internal`. Đây cũng là địa chỉ mà biểu tượng Trợ lý AI trên máy trạm và các thẻ dịch vụ ở trang chủ Box dùng
+(vào trang chủ bằng `onebee.local` thì thẻ vẫn mở bằng IP; vào bằng tên Tailscale thì thẻ giữ tên đó) — một địa chỉ nên đăng nhập một lần. Mở bằng tên/IP khác (tên DNS của router, IP Tailscale trần, đường hầm SSH `localhost`) thì trang vẫn hiện nhưng
 chat thời gian thực bị chặn im lặng. Cần dùng địa chỉ đó thì khai trong `box/ansible/group_vars/all.yml`:
 `onebee_box_cors_them: ["http://onebee-box.lan:3000"]` (đầy đủ giao thức + tên + cổng, không đường dẫn, không `*`) rồi chạy lại bộ cài.
 ## 1. Chuẩn bị
