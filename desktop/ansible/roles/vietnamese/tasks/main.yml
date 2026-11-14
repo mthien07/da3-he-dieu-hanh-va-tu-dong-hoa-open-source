@@ -44,3 +44,29 @@
     group: root
     mode: "0644"
   notify: Biên dịch lại gsettings schema
+
+# Chính sách Firefox dùng chung của máy nằm ở /usr/lib/firefox/distribution/policies.json (gói firefox của Mint không có file này).
+# Khi đã nối Box, /etc/firefox/policies/policies.json (role ket-noi-box) THAY file này nhưng được trộn từ nó → khóa vẫn còn.
+# Trộn vào nội dung sẵn có thay vì ghi đè; role này chạy trước ket-noi-box nên lần cài đầu /etc đã có khóa.
+- name: Kiểm tra Firefox (bản .deb) có trên máy
+  ansible.builtin.stat:
+    path: /usr/lib/firefox/distribution
+  register: onebee_ff_phan_phoi
+
+- name: Đọc chính sách Firefox dùng chung đang có
+  ansible.builtin.slurp:
+    src: /usr/lib/firefox/distribution/policies.json
+  register: onebee_ff_chinh_sach_cu
+  failed_when: false
+  when: onebee_ff_phan_phoi.stat.isdir | default(false)
+
+- name: Firefox không cho bộ gõ thêm dấu vào ô mật khẩu
+  ansible.builtin.copy:
+    dest: /usr/lib/firefox/distribution/policies.json
+    content: "{{ onebee_ff_cu | combine(onebee_firefox_chinh_sach_o_mat_khau, recursive=True) | to_nice_json(indent=2) }}\n"
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    onebee_ff_cu: "{{ (onebee_ff_chinh_sach_cu.content | b64decode | from_json) if onebee_ff_chinh_sach_cu.content is defined else {} }}"
+  when: onebee_ff_phan_phoi.stat.isdir | default(false)

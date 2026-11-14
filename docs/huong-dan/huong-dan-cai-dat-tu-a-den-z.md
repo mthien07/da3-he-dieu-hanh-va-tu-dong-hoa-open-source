@@ -79,6 +79,8 @@ flowchart TD
 - **Mở cửa sổ lệnh (Terminal)**: trên máy trạm Linux Mint bấm **Ctrl + Alt + T**. Trên Box (Ubuntu Server) thì màn hình đen chính là cửa sổ lệnh.
 - **Dán lệnh** vào Terminal: **Ctrl + Shift + V** (không phải Ctrl + V). Gõ xong bấm **Enter**.
 - Lệnh có chữ `sudo` sẽ hỏi **mật khẩu của tài khoản bạn đang dùng**. Khi gõ mật khẩu, màn hình **không hiện gì** (kể cả dấu *) — cứ gõ rồi Enter.
+  Trên máy trạm OneBee, **bấm Super + Space sang tiếng Anh trước khi gõ mật khẩu** (khay hệ thống hiện `en`): cửa sổ lệnh không biết đó là mật khẩu,
+  bộ gõ Telex sẽ biến `ee`, `aa`, `s`, `f`… thành chữ có dấu và báo sai mật khẩu. Hộp thoại **Yêu cầu Xác thực** cũng vậy.
 - Chỗ nào ghi trong dấu `< >` (ví dụ `<ip-box>`) là **bạn phải thay** bằng giá trị thật, và **bỏ cả dấu `< >`**.
 - Sửa file bằng `nano`: dùng phím mũi tên để di chuyển, sửa chữ như bình thường. **Lưu: Ctrl + O rồi Enter. Thoát: Ctrl + X.**
 
