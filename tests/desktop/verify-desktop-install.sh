@@ -131,7 +131,7 @@ else
 fi
 
 check "LibreOffice mở mặc định giao diện Ribbon (tab) cho Writer, Calc, Impress" bash -c \
-  "[ \$(grep -c '<value>Tabbed</value>' /usr/lib/libreoffice/share/registry/onebee-office-ribbon.xcd) -eq 3 ]"
+  "[ \$(grep -c '<value>notebookbar.ui</value>' /usr/lib/libreoffice/share/registry/onebee-office-ribbon.xcd) -eq 3 ]"
 
 if [[ -x /usr/bin/mintupdate-automation ]]; then
   check "Bật tự động nâng cấp mintupdate" test -e /etc/systemd/system/timers.target.wants/mintupdate-automation-upgrade.timer
