@@ -38,6 +38,20 @@ def read(provider, path, prop):
     return node.getPropertyValue(prop)
 
 
+def che_do_dang_bat(provider, app):
+    """(giá trị Active, chế độ đó có hiện Ribbon không) — so như LibreOffice: Active phải trùng CommandArg của một chế độ
+    trong Modes của chính bản đang cài, và chế độ đó có HasNotebookbar. Active không khớp chế độ nào → LibreOffice mở thanh công cụ cũ."""
+    duong = f"/org.openoffice.Office.UI.ToolbarMode/Applications/org.openoffice.Office.UI.ToolbarMode:Application['{app}']"
+    active = read(provider, duong, "Active")
+    arg = PropertyValue(Name="nodepath", Value=duong + "/Modes")
+    modes = provider.createInstanceWithArguments("com.sun.star.configuration.ConfigurationAccess", (arg,))
+    for ten in modes.getElementNames():
+        m = modes.getByName(ten)
+        if m.getPropertyValue("CommandArg") == active:
+            return active, bool(m.getPropertyValue("HasNotebookbar"))
+    return active, False
+
+
 def main():
     profile = tempfile.mkdtemp(prefix="onebee-lo-")  # hồ sơ người dùng sạch, như người dùng mới
     proc = subprocess.Popen(
@@ -57,9 +71,8 @@ def main():
             fails += not ok
             print(f"{'PASS' if ok else 'FAIL'}  LibreOffice {factory.split('.')[-1]} lưu mặc định: {got}")
         for app in ("Writer", "Calc", "Impress"):
-            got = read(provider, f"/org.openoffice.Office.UI.ToolbarMode/Applications/org.openoffice.Office.UI.ToolbarMode:Application['{app}']",
-                       "Active")
-            ok = got == "Tabbed"
+            got, co_ribbon = che_do_dang_bat(provider, app)
+            ok = co_ribbon and got == "notebookbar.ui"
             fails += not ok
             print(f"{'PASS' if ok else 'FAIL'}  LibreOffice {app} mở mặc định giao diện Ribbon (Tabbed): {got}")
         warn = read(provider, "/org.openoffice.Office.Common/Save/Document", "WarnAlienFormat")

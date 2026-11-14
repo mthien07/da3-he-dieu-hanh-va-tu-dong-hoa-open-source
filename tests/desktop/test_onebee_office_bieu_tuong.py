@@ -45,6 +45,17 @@ class BieuTuongColibre(unittest.TestCase):
         comps = {c.get(f"{OOR}name") for c in goc.findall(f"{OOR}component-data")}
         self.assertEqual(comps, {"ToolbarMode", "Common"})
 
+    def test_ribbon_ghi_commandarg_khong_ghi_ten_che_do(self):
+        # LibreOffice so ToolbarMode/Applications/<app>/Active với CommandArg của từng chế độ trong Modes. Chế độ Tabbed có
+        # CommandArg "notebookbar.ui"; ghi tên nút "Tabbed" thì không khớp chế độ nào → Writer/Calc vẫn mở thanh công cụ cũ.
+        goc = ET.parse(RIBBON_XCD).getroot()
+        comp = [c for c in goc.findall(f"{OOR}component-data") if c.get(f"{OOR}name") == "ToolbarMode"][0]
+        gia_tri = {n.get(f"{OOR}name"): n.find("prop").find("value").text for n in comp.find("node").findall("node")}
+        self.assertEqual(set(gia_tri), {"Writer", "Calc", "Impress"})
+        for app, v in gia_tri.items():
+            self.assertNotIn(v, {"Tabbed", "TabbedCompact", "Default", "Single", "Sidebar"}, app)
+            self.assertEqual(v, "notebookbar.ui", app)
+
     def test_task_apt_cai_goi_colibre(self):
         with open(OFFICE_TASKS, encoding="utf-8") as f:
             dong = [d.strip() for d in f]
