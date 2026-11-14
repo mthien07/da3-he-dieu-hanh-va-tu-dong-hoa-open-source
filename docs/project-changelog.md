@@ -15,9 +15,27 @@ Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài ch�
 - Bộ cài Desktop, bộ cài Box (cả đường cài từ USB) và `onebee-box cap-nhat-may` / `dong-bo-may` chạy Ansible bằng `LC_ALL=C.UTF-8`:
   Mint cài bằng tiếng Việt đặt `LANG=vi_VN` làm bộ cài dừng ngay với "Ansible requires the locale encoding to be UTF-8; Detected TCVN".
   Test `tests/desktop/test_onebee_locale_ansible.py`; lần cài đầu trong test container Desktop và Box chạy với `LANG=vi_VN`.
-- Trang chủ Box ghi cách xuất PDF đúng chữ LibreOffice hiện trên màn hình: nút PDF (chữ gợi ý `Export Directly as PDF`) hoặc
-  menu "Tập tin → Export As → Xuất dạng PDF...". Lời dặn của Trợ lý (`tro-ly-onebee-loi-dan.md`) vẫn ghi cách cũ: sửa lời dặn
-  phải chấm lại chất lượng Trợ lý bằng Ollama, chưa làm.
+- Trang chủ Box, tờ phím tắt, giáo án, kịch bản video và phiếu kiểm ghi cách xuất PDF đúng chữ trên màn hình của giao diện thẻ:
+  thẻ **File** → **Export Directly as PDF** (Writer, Calc).
+- Lời dặn của Trợ lý (`tro-ly-onebee-loi-dan.md`) chỉ cách xuất PDF theo giao diện thẻ (thẻ File → nút Export Directly as PDF) thay cho
+  đường menu cũ mà giao diện thẻ đã ẩn. Chấm lại trên máy ảo Box, `gemma4:e2b-it-qat`, 40 câu × 1 lần: trước 100%, sau 99% (hụt 1 ý ở câu
+  soạn biên bản `n2-04`, không liên quan dòng sửa), vẫn vượt mọi ngưỡng; câu hỏi xuất PDF nay trả lời đúng đường mới
+  (`reports/ai/261114-luot4-…`, `261114-luot5-…`).
+- LibreOffice mở giao diện thẻ (Ribbon) thật sự: `onebee-office-ribbon.xcd` ghi `notebookbar.ui` (CommandArg của chế độ Tabbed) thay cho
+  tên chế độ `Tabbed` mà LibreOffice không nhận nên vẫn mở thanh công cụ cũ. Bước kiểm qua UNO đối chiếu với danh sách chế độ của chính bản
+  LibreOffice đang cài. Đã kiểm trên Mint 22.3 (LibreOffice 24.2) với người dùng cũ và người dùng mới.
+- Trang chủ Box mở Trợ lý AI và các dịch vụ bằng IP Box — cùng địa chỉ với biểu tượng Trợ lý AI, lệnh `hoi` và dấu trang trên máy trạm —
+  kể cả khi vào trang chủ bằng `onebee.local`, nên đăng nhập một lần là dùng được từ mọi lối (trước đây phải đăng nhập lại; khi bật HTTPS
+  tên `.local` còn không có chứng chỉ). Vào trang chủ bằng tên Tailscale `box.<mã>.onebee.internal` thì thẻ giữ tên đó.
+- Firefox không để bộ gõ Telex thêm dấu vào ô mật khẩu trên trang web: chính sách Firefox `intl.ime.use_simple_context_on_password_field`
+  (khóa) đặt trong `/usr/lib/firefox/distribution/policies.json`, còn nguyên khi máy đã nối Box. Màn hình đăng nhập, màn hình khóa và
+  ô mật khẩu của ứng dụng GTK3 vốn không bị. **Giới hạn đã biết:** hộp thoại "Yêu cầu Xác thực" (xin quyền quản trị) và cửa sổ dòng lệnh
+  (`sudo`, `su`) vẫn nhận Telex vì ibus-bamboo không phân biệt ô mật khẩu — bấm `Super + Space` sang tiếng Anh trước khi gõ mật khẩu
+  (ghi trong hướng dẫn cài Desktop, hướng dẫn từ A đến Z và tờ phím tắt).
+- Bộ cài Desktop nâng Firefox cùng gói tiếng Việt cho khớp phiên bản: máy cài từ ISO còn Firefox cũ không nạp được gói tiếng Việt mới,
+  Firefox chạy tiếng Anh và Trợ lý AI chọn tiếng Anh theo trình duyệt ở lần mở đầu rồi ghi nhớ, nên chữ đã Việt hóa vẫn hiện tiếng Anh.
+  Trình duyệt đã lỡ ghi nhớ thì đổi một lần trong Cài đặt của Trợ lý AI (hướng dẫn dùng Trợ lý AI).
+- Sổ tay hướng dẫn nhanh A4 rút gọn cho vừa đúng một trang khi in (trước đây tràn sang trang 2); bỏ câu cảnh báo Telegram tự động mà bộ cài chưa có.
 ### Thêm
 - Trợ lý AI trên Box: bản dịch tiếng Việt bổ sung (`box-ai/files/giao-dien-tieng-viet.json`) cho chữ tiếng Anh còn sót ở trang đăng nhập,
   khi hỏi, thanh bên và trang Cài đặt → Tài khoản; gửi qua trường `I18N` của cài đặt quản trị Open WebUI, giữ bản dịch quản trị tự thêm,

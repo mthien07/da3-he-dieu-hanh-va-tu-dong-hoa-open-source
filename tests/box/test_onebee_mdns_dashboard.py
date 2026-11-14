@@ -174,11 +174,12 @@ class TrangChu(unittest.TestCase):
         self.assertIn("models=onebee-tro-ly", h)
 
     def test_cach_xuat_pdf_dung_chu_tren_man_hinh(self):
-        # Chữ đúng như LibreOffice 24.2 tiếng Việt trên Mint 22.3 hiện (menu và chữ gợi ý của nút trộn Việt – Anh)
+        # LibreOffice 24.2 trên Mint 22.3 mở giao diện thẻ (không còn thanh công cụ cũ có nút PDF, thanh menu ẩn):
+        # chữ trên màn hình là thẻ "File" → nút "Export Directly as PDF" (bản dịch tiếng Việt chưa dịch hai chữ này)
         h = self.html
-        self.assertIn("<b>Tập tin → Export As → Xuất dạng PDF...</b>", h)
-        self.assertIn("Export Directly as PDF", h)
-        for sai in ("Xuất ra PDF", "Tệp →", "Xuất thành PDF"):
+        self.assertIn("thẻ <b>File</b>", h)
+        self.assertIn("<b>Export Directly as PDF</b>", h)
+        for sai in ("Xuất ra PDF", "Tệp →", "Xuất thành PDF", "trên thanh công cụ", "Tập tin → Export As"):
             self.assertNotIn(sai, h)
 
     def test_o_may_tram_da_sao_luu(self):
@@ -306,6 +307,27 @@ class TrienKhai(unittest.TestCase):
         self.assertIn("http://192.168.1.10:3000", nguon)
         s = yaml.safe_load(ve("box-stack/templates/docker-compose.yml.j2", onebee_https_hieu_luc=True))["services"]
         self.assertNotIn("onebee.local", s["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"])   # chứng chỉ không cấp cho .local
+
+    def test_dich_vu_tren_trang_chu_mo_bang_ip_box_trung_loi_tat_may_tram(self):
+        # Trang chủ mở bằng onebee.local mà Trợ lý AI cũng theo tên đó thì là origin khác với biểu tượng máy trạm (HOI_URL theo IP)
+        # → người dùng phải đăng nhập lại. Mọi thẻ dịch vụ phải theo IP Box, chỉ giữ tên Tailscale của kỹ thuật.
+        js = ve("box-stack/templates/index.html.j2").split("<script>", 1)[1]
+        self.assertIn('var hostDichVu = host === "box.anphu.onebee.internal" ? host : "192.168.1.10";', js)
+        self.assertNotRegex(js, r'"//"\s*\+\s*host\s*\+')                # không còn dựng dịch vụ theo tên đang gõ
+        self.assertIn('"//" + hostDichVu + ":" + a.getAttribute("data-port")', js)
+        self.assertIn('getElementById("smb").textContent = "smb://" + host', js)   # thư mục chung vẫn theo tên .local
+        # HOI_URL (biểu tượng Trợ lý AI, lệnh hoi trên máy trạm) cũng dựng từ IP Box
+        with open(os.path.join(ROLES, "box-stack/templates/onebee-box.sh.j2"), encoding="utf-8") as f:
+            sh = f.read()
+        self.assertIn('echo "HOI_URL=${esq}://${ip}:${AI_PORT}"', sh)
+
+    def test_dia_chi_thong_nhat_nam_trong_origin_cho_phep_ca_http_lan_https(self):
+        # Open WebUI chặn WebSocket (chat thời gian thực) của origin không khai báo mà không báo lỗi
+        for https, giao_thuc in ((False, "http"), (True, "https")):
+            s = yaml.safe_load(ve("box-stack/templates/docker-compose.yml.j2", onebee_https_hieu_luc=https))["services"]
+            nguon = s["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"].split(";")
+            self.assertIn(f"{giao_thuc}://192.168.1.10:3000", nguon)
+            self.assertIn(f"{giao_thuc}://box.anphu.onebee.internal:3000", nguon)
 
     def test_caddy_https_cung_khong_luu_dem_so_lieu(self):
         nd = ve("box-stack/templates/Caddyfile.j2", onebee_https_hieu_luc=True)

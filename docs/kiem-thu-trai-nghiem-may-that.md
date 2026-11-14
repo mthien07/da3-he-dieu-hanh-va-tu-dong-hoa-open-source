@@ -53,7 +53,7 @@ Bấm thử từng dòng của bảng đầu trong `docs/huong-dan/to-phim-tat.m
 - [ ] C9 Quản lý tác vụ: Ctrl + Shift + Esc.
 - [ ] C10 Sao chép / Dán / Cắt / Hoàn tác: Ctrl + C / V / X / Z.
 - [ ] C11 Lưu / Lưu thành file khác / In: Ctrl + S / Ctrl + Shift + S / Ctrl + P.
-- [ ] C12 Xuất PDF (Writer, Calc): nút PDF trên thanh công cụ (đối chiếu với kết quả nhóm I).
+- [ ] C12 Xuất PDF (Writer, Calc): thẻ File → Export Directly as PDF (đối chiếu với kết quả nhóm I).
 - [ ] C13 Kiểm tra chính tả: F7.
 - [ ] C14 Chụp màn hình: phím Print Screen.
 - [ ] C15 Chụp một vùng vào clipboard: Super + Shift + S, kéo chọn vùng, dán bằng Ctrl + V (Shift + Print Screen: chụp vùng lưu thành file).
@@ -66,7 +66,7 @@ Mục D5–D7 cần máy đã nối Box **[cần Box]**: chưa nối Box thì l�
 - [ ] D1 Bấm lần lượt 6 ô của trang Bắt đầu (Soạn văn bản, Bảng tính, Thư mục của tôi, Thư mục chung của đơn vị, Trợ lý AI, Cần giúp đỡ) → mở đúng thứ ghi trên ô.
   Làm lần đầu khi máy chưa nối Box: ô thư mục chung báo rõ lý do. Làm lại sau khi nối Box: ô thư mục chung mở thư mục chung.
 - [ ] D2 Trang Phím tắt → có đủ 13 mục của nguồn chung `onebee-cam-nang.json`, mỗi dòng đúng chữ của dòng tương ứng trên tờ phím tắt.
-  Trang cố ý **không** có 2 dòng của tờ: "Xuất PDF — Nút PDF trên thanh công cụ" (không phải phím tắt) và
+  Trang cố ý **không** có 2 dòng của tờ: "Xuất PDF — Thẻ File → Export Directly as PDF" (không phải phím tắt) và
   "Mở cửa sổ dòng lệnh — Ctrl + Alt + T" (không đưa cho nhân viên); ghi chú phụ của tờ (Shift + Print Screen, nút Bắt đầu) không bắt buộc có.
 - [ ] D3 Trang Kiểm tra máy → bấm "Kiểm tra ngay", trong khoảng 1 phút hiện lần lượt từng mục có biểu tượng đạt/cảnh báo/lỗi (9 mục khi máy tới được Box;
   Box không trả lời thì ít mục hơn). Ghi lại bố cục có bị cắt chữ, tràn khung hay chồng nút không, nhất là trên màn hình 1366×768.
@@ -108,8 +108,8 @@ Cần máy đã nối Box **[cần Box]**: máy chưa nối thì dịch vụ nh�
 - [ ] H3 Sau lần sao lưu đêm đầu tiên (hoặc sau `sudo onebee-box sao-luu`) → ô "Máy trạm đã sao lưu: x/y máy (trong 3 ngày)"; trang không lộ tên máy.
 
 ## I. Xuất PDF
-Trong LibreOffice Writer (giao diện tab) thử 3 cách: nút PDF trên thanh công cụ; menu Tệp → Xuất dưới dạng → Xuất thành PDF; Tệp → Xuất ra PDF.
-- [ ] I1 Ghi lại **cách nào có thật và tên đúng từng chữ trên màn hình**. (Tờ phím tắt ghi "nút PDF trên thanh công cụ"; trang chủ Box ghi nút PDF và "Tập tin → Export As → Xuất dạng PDF...".)
+Trong LibreOffice Writer và Calc (giao diện thẻ: không còn thanh công cụ cũ, thanh menu ẩn) thử: thẻ File → Export Directly as PDF; thẻ File → Xuất.
+- [ ] I1 Ghi lại **cách nào có thật và tên đúng từng chữ trên màn hình**. (Tờ phím tắt và trang chủ Box ghi "thẻ File → Export Directly as PDF".)
 
 ## J. Năm việc đầu tiên với người dùng thật (không bắt buộc, làm khi có 1–3 nhân viên)
 Không hướng dẫn trước, bấm giờ từng việc, ghi "tự làm được / cần gợi ý / không làm được":
