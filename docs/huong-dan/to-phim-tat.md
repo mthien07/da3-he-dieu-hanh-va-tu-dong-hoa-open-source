@@ -15,7 +15,7 @@
 | Quản lý tác vụ (Task Manager) — xem/tắt chương trình bị treo | **Ctrl + Shift + Esc** |
 | Sao chép / Dán / Cắt / Hoàn tác | Ctrl + C / Ctrl + V / Ctrl + X / Ctrl + Z (như Windows) |
 | Lưu / Lưu thành file khác / In | Ctrl + S / Ctrl + Shift + S / Ctrl + P |
-| Xuất PDF (Writer, Calc) | Nút **PDF** trên thanh công cụ |
+| Xuất PDF (Writer, Calc) | Thẻ **File** (góc trái trên) → **Export Directly as PDF** |
 | Kiểm tra chính tả | **F7** |
 | Chụp màn hình | Phím **Print Screen** |
 | Chụp một vùng màn hình vào clipboard (như Snipping Tool) | **Super + Shift + S** → kéo chuột chọn vùng → dán bằng **Ctrl + V** (Shift + Print Screen: chụp vùng lưu thành file) |

@@ -17,7 +17,7 @@ Kiểm tra cuối buổi: mỗi người tự mở 1 file Word cũ của mình v
 
 ## Buổi 2 — Văn phòng (2–3 ngày sau)
 Mục tiêu: làm được việc hằng ngày với file Word/Excel, gửi đi bên ngoài không lỗi.
-1. (20') LibreOffice Writer: mở .docx, sửa, lưu (mặc định vẫn là .docx), **xuất PDF** (nút PDF trên thanh công cụ), in.
+1. (20') LibreOffice Writer: mở .docx, sửa, lưu (mặc định vẫn là .docx), **xuất PDF** (thẻ File → Export Directly as PDF), in.
 2. (20') LibreOffice Calc: mở .xlsx, công thức SUM, lọc, định dạng số tiền; lưu .xlsx.
 3. (10') Gửi file ra ngoài: gửi .docx/.xlsx như cũ; văn bản chính thức gửi PDF để bên nhận thấy đúng bố cục.
 4. (10') Máy in, máy quét của đơn vị. Chụp màn hình (phím Print Screen).
