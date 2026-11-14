@@ -16,8 +16,11 @@ Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài ch�
   Mint cài bằng tiếng Việt đặt `LANG=vi_VN` làm bộ cài dừng ngay với "Ansible requires the locale encoding to be UTF-8; Detected TCVN".
   Test `tests/desktop/test_onebee_locale_ansible.py`; lần cài đầu trong test container Desktop và Box chạy với `LANG=vi_VN`.
 - Trang chủ Box, tờ phím tắt, giáo án, kịch bản video và phiếu kiểm ghi cách xuất PDF đúng chữ trên màn hình của giao diện thẻ:
-  thẻ **File** → **Export Directly as PDF** (Writer, Calc). Lời dặn của Trợ lý (`tro-ly-onebee-loi-dan.md`) vẫn ghi cách cũ
-  ("menu Tệp → Xuất dưới dạng → Xuất thành PDF", mà giao diện thẻ ẩn thanh menu): sửa lời dặn phải chấm lại chất lượng Trợ lý bằng Ollama, chưa làm.
+  thẻ **File** → **Export Directly as PDF** (Writer, Calc).
+- Lời dặn của Trợ lý (`tro-ly-onebee-loi-dan.md`) chỉ cách xuất PDF theo giao diện thẻ (thẻ File → nút Export Directly as PDF) thay cho
+  đường menu cũ mà giao diện thẻ đã ẩn. Chấm lại trên máy ảo Box, `gemma4:e2b-it-qat`, 40 câu × 1 lần: trước 100%, sau 99% (hụt 1 ý ở câu
+  soạn biên bản `n2-04`, không liên quan dòng sửa), vẫn vượt mọi ngưỡng; câu hỏi xuất PDF nay trả lời đúng đường mới
+  (`reports/ai/261114-luot4-…`, `261114-luot5-…`).
 - LibreOffice mở giao diện thẻ (Ribbon) thật sự: `onebee-office-ribbon.xcd` ghi `notebookbar.ui` (CommandArg của chế độ Tabbed) thay cho
   tên chế độ `Tabbed` mà LibreOffice không nhận nên vẫn mở thanh công cụ cũ. Bước kiểm qua UNO đối chiếu với danh sách chế độ của chính bản
   LibreOffice đang cài. Đã kiểm trên Mint 22.3 (LibreOffice 24.2) với người dùng cũ và người dùng mới.

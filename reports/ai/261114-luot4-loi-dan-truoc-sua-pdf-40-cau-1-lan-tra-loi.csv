@@ -1,0 +1,491 @@
+﻿model,id,nhom,lan,y_dat,y_tong,y_thieu,cam_pham,cho_chu_dau_giay,token_moi_giay,tra_loi
+gemma4:e2b-it-qat,n1-01,1,1,2,2,,,78.87,12.0,"Chào anh/chị, để chuyển giữa gõ tiếng Việt và tiếng Anh trên máy, anh/chị có thể làm theo các bước sau:
+
+1.  **Để chuyển đổi ngôn ngữ:** Anh/chị hãy nhấn tổ hợp phím **Super** (phím có biểu tượng Windows) và **Space** (phím cách).
+2.  **Để gõ tiếng Việt:** Anh/chị sử dụng bộ gõ IBus + Bamboo theo kiểu gõ Telex (ví dụ: dùng `aa` để gõ `â`, `dd` để gõ `đ`).
+3.  **Để gõ tiếng Anh:** Khi đã chuyển sang tiếng Anh, anh/chị sẽ gõ theo kiểu gõ tiếng Anh thông thường.
+
+Nếu anh/chị cần hướng dẫn gõ một chữ cụ thể, anh/chị cứ hỏi tôi, tôi sẽ hướng dẫn chuỗi phím chính xác cho anh/chị."
+gemma4:e2b-it-qat,n1-02,1,1,1,1,,,37.02,12.3,"Chào anh/chị, để gõ chữ ""Việt"" theo kiểu Telex, anh/chị bấm các phím sau:
+
+1.  Bấm phím **V**
+2.  Bấm phím **i**
+3.  Bấm phím **ee** (để tạo dấu ê)
+4.  Bấm phím **j**
+5.  Bấm phím **t**
+
+Tổng cộng là: **Vieejt**"
+gemma4:e2b-it-qat,n1-03,1,1,3,3,,,25.86,13.0,"Chào anh/chị, tôi hướng dẫn anh/chị cách lưu văn bản thành file PDF trên máy tính OneBee như sau:
+
+1.  Mở văn bản anh/chị muốn lưu bằng phần mềm **LibreOffice Writer**.
+2.  Trên thanh menu phía trên, anh/chị chọn mục **Tệp** (File).
+3.  Chọn **Xuất dưới dạng** (Export as).
+4.  Trong cửa sổ hiện ra, anh/chị chọn **Xuất thành PDF** (Export as PDF).
+5.  Chọn nơi muốn lưu file và nhấn **Lưu** (Save).
+
+Nếu anh/chị muốn in ra giấy, anh/chị có thể nhấn tổ hợp phím **Ctrl + P** (hoặc chọn **Tệp** → **In**)."
+gemma4:e2b-it-qat,n1-04,1,1,1,1,,,32.21,12.9,"Chào anh/chị, để soạn văn bản và lưu lại để cơ quan dùng Word mở được, anh/chị cần lưu file dưới định dạng **.docx**.
+
+Anh/chị làm theo các bước sau:
+
+1.  Mở văn bản anh/chị đã soạn trong phần mềm **LibreOffice Writer**.
+2.  Vào menu **Tệp** (File) ở góc trên cùng.
+3.  Chọn **Lưu dưới dạng** (Save As).
+4.  Trong cửa sổ lưu, anh/chị chọn nơi muốn lưu file.
+5.  Quan trọng nhất, ở mục **Loại tệp** (hoặc Định dạng tệp), anh/chị chọn **Microsoft Word Document (.docx)**.
+6.  Nhấn nút **Lưu** (Save).
+
+Làm theo các bước này, file sẽ có định dạng mà Word có thể mở được.
+
+Nếu anh/chị cần tôi soạn thảo văn bản gì, anh/chị cứ nói với tôi nhé."
+gemma4:e2b-it-qat,n1-05,1,1,1,1,,,18.35,13.1,"Chào anh/chị, phím tắt để in tài liệu trên máy tính OneBee OS là:
+
+1. Nhấn tổ hợp phím **Ctrl + P**.
+
+Hoặc anh/chị cũng có thể vào menu **Tệp** → **In**."
+gemma4:e2b-it-qat,n1-06,1,1,2,2,,,29.48,12.7,"Chào anh/chị, tôi hiểu là việc mất file báo cáo rất phiền phức.
+
+Anh/chị vui lòng thực hiện các bước sau để tìm lại file:
+
+1.  **Kiểm tra bản sao lưu:** Máy tính của anh/chị đã tự động sao lưu thư mục cá nhân lên OneBee Box lúc 12:00 hằng ngày. Anh/chị cần kiểm tra thư mục sao lưu trên OneBee Box để xem file báo cáo hôm qua có còn ở đó không.
+2.  **Liên hệ quản trị:** Nếu không tìm thấy file trong bản sao lưu, anh/chị cần báo ngay cho người quản trị OneBee Box để họ hỗ trợ kiểm tra hoặc khôi phục file.
+
+Tôi không có thông tin về việc file đã bị xóa ở đâu cụ thể, nên anh/chị hãy kiểm tra theo các bước trên và liên hệ quản trị để được hỗ trợ tốt nhất nhé."
+gemma4:e2b-it-qat,n1-07,1,1,2,2,,,29.47,13.1,"Chào anh/chị, tôi hướng dẫn anh/chị cách mở thư mục chung của cơ quan trên máy như sau:
+
+1.  Mở **trình quản lý tệp** (biểu tượng thư mục trên thanh tác vụ).
+2.  Trên thanh địa chỉ, anh/chị gõ địa chỉ sau: `smb://<địa-chỉ-Box>/chung`
+3.  Anh/chị đăng nhập bằng tài khoản do quản trị cấp.
+
+Anh/chị nhớ không được mở thư mục chung này bằng trình duyệt web nhé."
+gemma4:e2b-it-qat,n1-08,1,1,1,1,,,20.3,13.1,"Tôi không thể hướng dẫn anh/chị tắt máy trong lúc máy đang cập nhật được.
+
+Theo quy định của máy tính OneBee OS, máy sẽ tự cập nhật bảo mật và **không được tắt máy giữa chừng khi đang cập nhật**. Anh/chị vui lòng chờ máy hoàn tất quá trình cập nhật nhé."
+gemma4:e2b-it-qat,n2-01,2,1,5,5,,,67.87,12.1,"Chào anh/chị, tôi xin soạn giúp anh/chị bản Giấy mời họp theo đúng văn phong hành chính. Anh/chị vui lòng điền các thông tin còn thiếu vào các phần trong ngoặc vuông [].
+
+***
+
+**CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM**
+**Độc lập - Tự do - Hạnh phúc**
+***
+
+**HỢP TÁC XÃ ONEBEE**
+Số: [Số văn bản]/[Ký hiệu]
+
+*Về việc: Giấy mời họp tổng kết quý III*
+
+[Địa danh], ngày [Ngày] tháng [Tháng] năm 2026
+
+**GIẤY MỜI**
+
+Kính gửi: [Tên xã viên/Đại diện các xã viên]
+
+Căn cứ vào kế hoạch hoạt động của Hợp tác xã OneBee, Ban Lãnh đạo trân trọng kính mời anh/chị tham dự buổi họp để tổng kết kết quả hoạt động của Hợp tác xã trong Quý III năm 2026.
+
+**Thời gian:** 8 giờ 00 phút, Thứ Bảy, ngày 10 tháng 10 năm 2026.
+**Địa điểm:** Hội trường Hợp tác xã OneBee.
+**Nội dung:** Tổng kết các hoạt động, đánh giá kết quả thực hiện nhiệm vụ Quý III và phương hướng hoạt động Quý IV.
+
+Đề nghị anh/chị sắp xếp thời gian tham dự đầy đủ để buổi họp đạt hiệu quả cao nhất.
+
+Trân trọng kính mời!
+
+| **Nơi nhận:** | **TM. BAN LÃNH ĐẠO** |
+| :--- | :--- |
+| - [Các xã viên liên quan] | [Chức vụ người ký] |
+| - Lưu: VT, [Phòng ban liên quan] | (Ký tên và đóng dấu) |
+| | [Họ và tên người ký] |
+
+***
+
+Anh/chị cần tôi hỗ trợ soạn thảo thêm văn bản nào khác không?"
+gemma4:e2b-it-qat,n2-02,2,1,4,4,,,50.19,12.8,"Tôi xin soạn ngay bản công văn theo yêu cầu của anh/chị. Anh/chị vui lòng điền các thông tin còn thiếu vào các phần trong ngoặc vuông [ ].
+
+***
+
+**CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM**
+**Độc lập - Tự do - Hạnh phúc**
+***
+
+**HỢP TÁC XÃ NÔNG NGHIỆP ONEBEE**
+Số: [Số công văn]/CV-HTXNB
+
+*Long An, ngày [Ngày] tháng [Tháng] năm 2026*
+
+**Về việc: Đề nghị hỗ trợ tổ chức phiên chợ nông sản**
+
+**Kính gửi:** Ủy ban nhân dân phường Long An
+
+Thực hiện kế hoạch phát triển kinh tế và quảng bá sản phẩm nông nghiệp địa phương, Hợp tác xã Nông nghiệp OneBee kính trình Ủy ban nhân dân phường Long An xem xét và hỗ trợ các nội dung sau:
+
+1. **Tên sự kiện:** Phiên chợ nông sản [Tên phiên chợ cụ thể, ví dụ: Phiên chợ nông sản sạch Long An 2026].
+2. **Mục đích:** Phiên chợ nhằm tạo điều kiện cho các thành viên của Hợp tác xã OneBee và các hộ kinh doanh nông sản tại địa bàn phường được quảng bá, trưng bày và tiêu thụ sản phẩm chất lượng, góp phần thúc đẩy kinh tế địa phương và nâng cao đời sống của người dân.
+3. **Thời gian dự kiến tổ chức:** Từ ngày [Ngày bắt đầu] đến ngày [Ngày kết thúc], năm 2026.
+4. **Địa điểm dự kiến:** [Địa điểm dự kiến tổ chức, ví dụ: Khu vực chợ/Sân vận động phường Long An].
+
+Để phiên chợ nông sản được tổ chức thành công, Hợp tác xã OneBee kính đề nghị Ủy ban nhân dân phường Long An xem xét hỗ trợ chúng tôi các nội dung sau:
+
+1. Hỗ trợ về mặt bằng tổ chức phiên chợ (hoặc hỗ trợ kinh phí thuê mặt bằng).
+2. Hỗ trợ các thủ tục liên quan đến việc xin giấy phép tổ chức sự kiện.
+3. Hỗ trợ các nội dung khác [nếu có, ví dụ: hỗ trợ về an ninh trật tự, hoặc hỗ trợ truyền thông].
+
+Hợp tác xã OneBee cam kết sẽ tổ chức phiên chợ một cách nghiêm túc, đảm bảo an toàn, vệ sinh và tuân thủ mọi quy định của pháp luật. Chúng tôi rất mong nhận được sự quan tâm, tạo điều kiện của Ủy ban nhân dân phường Long An để phiên chợ nông sản này được triển khai thành công, mang lại lợi ích thiết thực cho cộng đồng.
+
+Xin trân trọng cảm ơn!
+
+**Nơi nhận:**
+- Như trên;
+- Lưu: [Phòng/Ban liên quan].
+
+**TM. HỢP TÁC XÃ ONEBEE**
+**[Chức vụ người ký, ví dụ: Trưởng HTX]**
+*(Ký tên, đóng dấu)*
+
+**[Họ và tên người ký]**"
+gemma4:e2b-it-qat,n2-03,2,1,3,3,,,39.04,13.0,"Chào anh/chị, tôi xin soạn giúp anh/chị bản thông báo nghỉ lễ Quốc khánh 2/9 theo đúng mẫu văn bản hành chính. Anh/chị vui lòng điền các thông tin còn thiếu vào các phần trong ngoặc vuông nhé.
+
+***
+
+**CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM**
+**Độc lập - Tự do - Hạnh phúc**
+***
+
+**[TÊN HTX]**
+Số: [Số văn bản]/TB-HTX
+*V/v: Thông báo nghỉ lễ Quốc khánh 2/9*
+
+[Địa danh], ngày [Ngày] tháng [Tháng] năm 2026
+
+**THÔNG BÁO**
+**Về việc nghỉ lễ Quốc khánh 2/9**
+
+Căn cứ vào quy định về ngày nghỉ lễ của Nhà nước, [Tên HTX] xin thông báo về lịch nghỉ lễ Quốc khánh như sau:
+
+1.  **Thời gian nghỉ:** Toàn thể cán bộ, nhân viên [Tên HTX] được nghỉ lễ Quốc khánh từ ngày 01/09/2026 đến hết ngày 02/09/2026.
+2.  **Lịch làm việc:** [Tên HTX] sẽ trở lại làm việc bình thường vào ngày [Ngày làm việc tiếp theo].
+3.  **Lưu ý:** Trong thời gian nghỉ lễ, các bộ phận liên quan cần sắp xếp công việc để đảm bảo hoạt động chung của HTX.
+
+Đề nghị toàn thể cán bộ, nhân viên nắm rõ và thực hiện theo thông báo này.
+
+Trân trọng./.
+
+**Nơi nhận:**
+- [Phòng/Ban liên quan] (để biết);
+- Toàn thể cán bộ, nhân viên (để thực hiện);
+- Lưu: [Phòng/Ban văn thư].
+
+**[CHỨC VỤ NGƯỜI KÝ]**
+*(Ký tên, đóng dấu)*
+
+**[Họ và tên người ký]**
+
+***
+
+Anh/chị cần tôi chỉnh sửa hay bổ sung thêm nội dung nào không ạ?"
+gemma4:e2b-it-qat,n2-04,2,1,4,4,,,55.42,12.8,"Tôi xin soạn thảo Biên bản họp theo đúng văn bản hành chính mà anh/chị yêu cầu. Do anh/chị chưa cung cấp tên cụ thể của HTX, tên các thành viên, địa điểm họp, tôi sẽ để các thông tin đó trong ngoặc vuông để anh/chị điền vào sau.
+
+***
+
+**CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM**
+**Độc lập - Tự do - Hạnh phúc**
+***
+
+**HỢP TÁC XÃ [TÊN HTX]**
+Số: [Số biên bản]/BB-BQT
+
+*Về việc: Biên bản họp Ban Quản trị HTX [TÊN HTX] ngày 25/9/2026*
+
+*Căn cứ vào [Tên văn bản hoặc quyết định thành lập Ban Quản trị];*
+
+Hôm nay, vào lúc [Giờ bắt đầu] ngày 25 tháng 9 năm 2026, tại [Địa điểm họp], Ban Quản trị HTX [TÊN HTX] đã tiến hành họp để thảo luận và thống nhất các nội dung sau:
+
+**I. Thành phần tham dự:**
+1. Tổng số thành viên Ban Quản trị: 5/5 thành viên.
+2. Thành phần tham dự:
+    * [Họ và tên thành viên 1], Chức vụ: [Chức vụ]
+    * [Họ và tên thành viên 2], Chức vụ: [Chức vụ]
+    * [Họ và tên thành viên 3], Chức vụ: [Chức vụ]
+    * [Họ và tên thành viên 4], Chức vụ: [Chức vụ]
+    * [Họ và tên thành viên 5], Chức vụ: [Chức vụ]
+
+**II. Nội dung cuộc họp:**
+
+1. **Báo cáo tình hình trang thiết bị:** Ban Quản trị đã xem xét tình trạng các thiết bị máy tính hiện có của HTX và nhận thấy nhu cầu nâng cấp để phục vụ công tác quản lý và hoạt động ngày càng tăng.
+2. **Thảo luận và thống nhất:** Các thành viên đã thảo luận về việc mua sắm thiết bị mới. Sau khi xem xét các đề xuất, Ban Quản trị thống nhất về việc mua sắm 02 (hai) máy tính mới để bổ sung vào trang thiết bị của HTX.
+3. **Nội dung thống nhất:**
+    * **Nội dung:** Mua 02 (hai) máy tính mới.
+    * **Mục đích:** [Lý do cụ thể, ví dụ: phục vụ công tác hành chính, quản lý dữ liệu, v.v.].
+    * **Đơn vị thực hiện:** [Phòng/Bộ phận phụ trách mua sắm].
+    * **Dự kiến thời gian thực hiện:** [Thời gian dự kiến].
+
+**III. Kết luận:**
+
+Biên bản họp được thông qua với sự nhất trí của toàn thể thành viên Ban Quản trị. Các thành viên được phân công nhiệm vụ cụ thể để triển khai việc mua sắm 02 máy tính mới theo nội dung đã thống nhất.
+
+Biên bản này được lập thành [Số] bản, có giá trị pháp lý như nhau, được gửi đến các thành viên Ban Quản trị để lưu trữ và thực hiện.
+
+| **THƯỜNG TRỰC THUỘC** | **CHỦ TỊCH BAN QUẢN TRỊ** |
+| :--- | :--- |
+| (Ký và ghi rõ họ tên) | (Ký và ghi rõ họ tên) |
+| [Họ và tên người lập biên bản] | [Họ và tên Chủ tịch] |
+
+**Nơi nhận:**
+* Các thành viên Ban Quản trị (để biết);
+* Lưu hồ sơ HTX.
+
+***
+
+**Lưu ý cho anh/chị:** Anh/chị vui lòng điền đầy đủ các thông tin còn thiếu trong ngoặc vuông [ ] trước khi sử dụng văn bản này. Nếu anh/chị cần tôi soạn thảo văn bản khác, xin vui lòng cung cấp thêm thông tin."
+gemma4:e2b-it-qat,n2-05,2,1,3,3,,,55.42,12.2,"Tôi xin soạn giúp anh/chị bản tờ trình theo đúng quy định về văn thư. Anh/chị vui lòng điền các thông tin còn để trong ngoặc vuông `[...]` để hoàn thiện nhé.
+
+***
+
+**CỘNG HÒA XÃ HỘI CHỦ NGHĨA**
+**Độc lập - Tự do - Hạnh phúc**
+***
+
+**HỢP TÁC XÃ [TÊN HỢP TÁC XÃ]**
+Số: [Số tờ trình]/TTr-HTX
+
+*Về việc xin kinh phí mua máy in phục vụ công tác văn phòng*
+
+[Địa danh], ngày [Ngày] tháng [Tháng] năm 2026
+
+**Kính gửi:** [Chức vụ người có thẩm quyền phê duyệt, ví dụ: Ban Giám đốc/Chủ tịch Hội]
+
+Căn cứ vào nhu cầu hoạt động và công tác văn phòng của [Tên Hợp tác xã], để đảm bảo công tác hành chính, in ấn tài liệu phục vụ các hoạt động của Hợp tác xã được diễn ra kịp thời và hiệu quả, tôi xin trình [Chức vụ người ký] xem xét và phê duyệt kinh phí mua máy in như sau:
+
+**1. Mục đích đề nghị:**
+Mua sắm máy in để phục vụ công tác in ấn các văn bản, tài liệu hành chính, hồ sơ, báo cáo cần thiết của Hợp tác xã, nhằm nâng cao hiệu quả công việc và đảm bảo tính chuyên nghiệp trong giao tiếp với các đối tác, cơ quan chức năng.
+
+**2. Nội dung đề nghị:**
+*   **Tên tài sản đề nghị mua:** Máy in [Loại máy in dự kiến, ví dụ: Máy in đa chức năng/Laser].
+*   **Số lượng:** 01 (Một) bộ.
+*   **Tổng kinh phí dự kiến:** 15.000.000 VNĐ (Mười lăm triệu đồng chẵn).
+
+**3. Dự kiến chi tiết kinh phí:**
+| STT | Nội dung | Số lượng | Đơn giá dự kiến | Thành tiền |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Máy in [Loại máy in] | 01 | [Đơn giá dự kiến] VNĐ | 15.000.000 VNĐ |
+| **TỔNG CỘNG** | | | | **15.000.000 VNĐ** |
+
+**4. Kiến nghị:**
+Kính đề nghị [Chức vụ người có thẩm quyền phê duyệt] xem xét và phê duyệt kinh phí 15.000.000 VNĐ để Hợp tác xã tiến hành mua sắm máy in theo nội dung trên.
+
+Tôi xin cam đoan số kinh phí này sẽ được sử dụng đúng mục đích đã nêu trong tờ trình.
+
+Xin trân trọng cảm ơn!
+
+**Nơi nhận:**
+- Như trên;
+- [Phòng/Ban liên quan] (để biết);
+- Lưu: [Phòng/Ban liên quan].
+
+| **NGƯỜI LẬP TỜ TRÌNH** | **THỦ TRƯỞNG ĐƠN VỊ** |
+| :--- | :--- |
+| *(Ký và ghi rõ họ tên)* | *(Ký, ghi rõ họ tên và đóng dấu)* |
+| [Họ và tên người lập] | [Họ và tên người ký] |"
+gemma4:e2b-it-qat,n2-06,2,1,1,1,,,42.79,12.4,"Chào anh/chị,
+
+Cơ quan nhà nước quy định thể thức văn bản hành chính theo **Nghị định 30/2020/NĐ-CP về công tác văn thư**.
+
+Anh/chị cần tham khảo Nghị định này để biết đầy đủ các quy định về trình bày, chữ ký, tiêu đề, v.v.
+
+Nếu anh/chị cần tôi soạn thảo một văn bản hành chính theo đúng thể thức này, anh/chị vui lòng cung cấp nội dung và các thông tin cần thiết."
+gemma4:e2b-it-qat,n2-07,2,1,3,3,,,47.2,12.9,"Chào anh/chị, tôi đã soạn giúp anh/chị bản xác nhận đơn hàng như sau:
+
+**Tiêu đề:** Xác nhận đơn đặt hàng xoài
+
+Kính gửi [Tên khách hàng],
+
+Tôi xin xác nhận đơn đặt hàng của anh/chị với các thông tin sau:
+
+*   **Sản phẩm:** Xoài
+*   **Số lượng:** 200 kg
+*   **Ngày giao hàng dự kiến:** 05/10/2026
+
+Anh/chị vui lòng xác nhận lại thông tin trên để tôi tiến hành các bước tiếp theo.
+
+Xin cảm ơn anh/chị.
+
+Trân trọng,
+[Tên của anh/chị hoặc Đơn vị]"
+gemma4:e2b-it-qat,n2-08,2,1,3,3,,,49.41,12.9,"Chào anh/chị, tôi soạn lời nhắc ngắn gọn như sau:
+
+""Kính gửi anh/chị xã viên,
+
+Tôi xin nhắc anh/chị vui lòng nộp phí dịch vụ quý III trước ngày 15/10/2026 để đảm bảo tiến độ.
+
+Xin cảm ơn anh/chị."""
+gemma4:e2b-it-qat,n3-01,3,1,3,3,,,49.53,12.9,"Tôi xin tóm tắt đoạn thông tin trên trong 3 ý như sau:
+
+1.  **Kết quả kinh doanh Quý III/2026:** Hợp tác xã OneBee đã thu mua 42 tấn xoài và bán cho 3 siêu thị tại TP. Hồ Chí Minh, đạt doanh thu 1,26 tỷ đồng, tăng 18% so với quý II.
+2.  **Khó khăn gặp phải:** Khó khăn lớn nhất là thiếu kho lạnh, dẫn đến việc khoảng 2 tấn xoài bị hỏng.
+3.  **Kế hoạch sắp tới:** Trong Quý IV, HTX dự kiến sẽ thuê thêm kho lạnh với diện tích 50 m²."
+gemma4:e2b-it-qat,n3-02,3,1,3,3,,,33.25,13.0,"Chào anh/chị, đoạn văn đó nói về kế hoạch của HTX OneBee trong Quý IV như sau:
+
+1.  Dự kiến thuê thêm kho lạnh với diện tích 50 m².
+2.  Dự kiến mở rộng việc thu mua sang bưởi da xanh."
+gemma4:e2b-it-qat,n3-03,3,1,5,5,,,34.19,13.0,"Chào anh/chị, tôi đã rút ra các việc cần làm từ biên bản như sau:
+
+1.  **Chị Lan:** Lập danh sách hộ giao xoài tháng 10, thời hạn hoàn thành trước ngày 30/9.
+2.  **Anh Hùng:** Liên hệ với 2 đơn vị cho thuê kho lạnh để báo giá, thời hạn báo giá trước ngày 5/10.
+3.  **Kế toán:** Thực hiện quyết toán phí quý III.
+
+Anh/chị cần thực hiện các việc này theo đúng thời hạn đã thống nhất."
+gemma4:e2b-it-qat,n3-04,3,1,2,2,,,33.92,9.8,"Do mưa lớn, lịch giao hàng ngày 12/10 cho siêu thị A được dời sang ngày 14/10 với số lượng 3 tấn, và tài xế đề nghị xuất phát lúc 4 giờ sáng để tránh kẹt xe."
+gemma4:e2b-it-qat,n3-05,3,1,1,1,,,22.17,12.5,"Tôi không có thông tin về giá bán trong đoạn văn này. Đoạn văn chỉ nêu thông tin về việc giao hàng (số lượng, ngày giao, phương thức thanh toán)."
+gemma4:e2b-it-qat,n3-06,3,1,3,3,,,36.48,12.3,"Chào anh/chị, tôi xin tóm tắt ý kiến của các xã viên như sau:
+
+1.  **Ông Tám:** Đề xuất tăng giá thu mua thêm 1.000 đồng/kg.
+2.  **Bà Sáu:** Đề nghị thời hạn thanh toán là 7 ngày thay vì 15 ngày.
+3.  **Anh Tư:** Đồng ý với mức giá cũ nhưng cần HTX hỗ trợ thùng đóng hàng."
+gemma4:e2b-it-qat,n3-07,3,1,6,6,,,26.65,12.2,"Chào anh/chị, tôi xin trả lời như sau:
+
+Dựa trên thông tin anh/chị cung cấp, trách nhiệm của từng người là:
+
+1.  **Chị Mai:** Phụ trách sổ sách thu chi.
+2.  **Anh Khoa:** Phụ trách xe giao hàng.
+3.  **Chị Hạnh:** Phụ trách liên hệ khách hàng mới.
+
+Nếu anh/chị cần tôi soạn thảo văn bản liên quan đến việc phân công công việc này, anh/chị vui lòng cho tôi biết loại văn bản anh/chị cần (ví dụ: thông báo phân công công việc)."
+gemma4:e2b-it-qat,n3-08,3,1,4,4,,,51.45,10.2,"Tôi xin tóm tắt thông báo như sau:
+
+Bắt đầu từ ngày 1/11/2026, văn phòng HTX sẽ có lịch làm việc mới như sau:
+
+1.  **Giờ làm việc:** Từ 7 giờ 30 đến 16 giờ 30.
+2.  **Nghỉ trưa:** Từ 11 giờ 30 đến 13 giờ.
+3.  **Lịch làm việc cuối tuần:**
+    *   Thứ Bảy: Làm việc buổi sáng.
+    *   Chủ Nhật: Nghỉ.
+
+Anh/chị lưu ý thông tin này để sắp xếp công việc nhé."
+gemma4:e2b-it-qat,n4-01,4,1,1,1,,,59.28,11.0,"Chào anh/chị, tôi sẽ tính giúp anh/chị tổng số kg xoài.
+
+Tôi đã tổng hợp số lượng xoài như sau:
+
+1.  Số lượng xoài từ Siêu thị A là 500 kg.
+2.  Số lượng xoài từ Quán C là 100 kg.
+
+Tổng số kg xoài là: $500 \text{ kg} + 100 \text{ kg} = 600 \text{ kg}$.
+
+Vậy tổng số kg xoài là **600 kg**."
+gemma4:e2b-it-qat,n4-02,4,1,1,1,,,74.66,8.3,"Chào anh/chị, tôi sẽ giúp anh/chị tính tổng số tiền Siêu thị A phải trả.
+
+Tôi đã tính toán như sau:
+
+**1. Tính tiền mua Xoài cho Siêu thị A:**
+*   Số lượng: 500 kg
+*   Đơn giá: 30.000 đồng/kg
+*   Phép tính: $500 \times 30.000 = 15.000.000$ đồng
+
+**2. Tính tiền mua Bưởi cho Siêu thị A:**
+*   Số lượng: 300 kg
+*   Đơn giá: 25.000 đồng/kg
+*   Phép tính: $300 \times 25.000 = 7.500.000$ đồng
+
+**3. Tính tổng số tiền Siêu thị A phải trả:**
+*   Tổng cộng: $15.000.000 + 7.500.000 = 22.500.000$ đồng
+
+Siêu thị A phải trả tổng cộng **22.500.000 đồng**.
+
+Anh/chị nên kiểm tra lại với kế toán hoặc văn bản chính thức để đảm bảo số liệu này là chính xác nhất."
+gemma4:e2b-it-qat,n4-03,4,1,2,2,,,54.14,11.7,"Chào anh/chị,
+
+Tôi đã xem bảng đơn hàng của anh/chị.
+
+Khách hàng mua với đơn giá cao nhất là **Quán C** với đơn giá **32.000 đồng/kg** (cho mặt hàng Xoài)."
+gemma4:e2b-it-qat,n4-04,4,1,1,1,,,139.57,9.9,"Chào anh/chị, tôi sẽ giúp anh/chị tính tổng doanh thu của tuần này.
+
+Tôi sẽ tính doanh thu của từng mặt hàng rồi cộng lại.
+
+**Phép tính:**
+
+1.  **Doanh thu từ Xoài (Siêu thị A):**
+    $500 \text{ kg} \times 30.000 \text{ đồng/kg} = 15.000.000 \text{ đồng}$
+
+2.  **Doanh thu từ Bưởi (Cửa hàng B):**
+    $200 \text{ kg} \times 25.000 \text{ đồng/kg} = 5.000.000 \text{ đồng}$
+
+3.  **Doanh thu từ Bưởi (Siêu thị A):**
+    $300 \text{ kg} \times 25.000 \text{ đồng/kg} = 7.500.000 \text{ đồng}$
+
+4.  **Doanh thu từ Xoài (Quán C):**
+    $100 \text{ kg} \times 32.000 \text{ đồng/kg} = 3.200.000 \text{ đồng}$
+
+**Tổng doanh thu cả tuần là:**
+$15.000.000 + 5.000.000 + 7.500.000 + 3.200.000 = 30.700.000 \text{ đồng}$
+
+Tổng doanh thu cả tuần là **30.700.000 đồng**.
+
+Anh/chị nhớ kiểm tra lại các số liệu này với bộ phận kế toán để đảm bảo tính chính xác nhé."
+gemma4:e2b-it-qat,n4-05,4,1,2,2,,,46.06,11.1,"Chào anh/chị, tôi sẽ tính toán giúp anh/chị các số liệu này.
+
+1.  **Tính sản lượng thu mua theo quý III (Tháng 7, Tháng 8, Tháng 9):**
+    *   Phép tính: $12 + 15 + 15 = 42$ (tấn)
+    *   Tổng sản lượng quý III là **42 tấn**.
+
+2.  **Tính trung bình mỗi tháng:**
+    *   Phép tính: $42 \div 3 = 14$ (tấn/tháng)
+    *   Trung bình mỗi tháng là **14 tấn**.
+
+Vậy, tổng sản lượng quý III là 42 tấn và trung bình mỗi tháng là 14 tấn."
+gemma4:e2b-it-qat,n4-06,4,1,1,1,,,50.44,12.1,"Chào anh/chị, tôi sẽ giúp anh/chị tính toán phần trăm tăng trưởng này.
+
+**Cách tính:**
+
+1.  **Tính số tiền tăng thêm:**
+    1.260 triệu đồng - 1.068 triệu đồng = 192 triệu đồng.
+
+2.  **Tính phần trăm tăng trưởng:**
+    (Số tiền tăng thêm / Số tiền quý II) $\times$ 100
+    (192 / 1.068) $\times$ 100 $\approx$ 17.977%
+
+3.  **Làm tròn đến số nguyên:**
+    17.977% làm tròn thành **18%**.
+
+Vậy, Quý III tăng khoảng **18%** so với Quý II."
+gemma4:e2b-it-qat,n4-07,4,1,2,2,,,40.14,12.3,"Chào anh/chị, tôi xin trả lời câu hỏi của anh/chị như sau:
+
+Dựa trên danh sách anh/chị cung cấp:
+
+1.  **Hộ giao nhiều nhất:** Hộ Tư với 1.450 kg.
+2.  **Hộ giao ít nhất:** Hộ Năm với 800 kg."
+gemma4:e2b-it-qat,n4-08,4,1,1,1,,,42.42,12.2,"Chào anh/chị, tôi sẽ giúp anh/chị tính số tiền còn thiếu.
+
+Đây là các bước tính như sau:
+
+1.  **Tính số hộ còn thiếu:**
+    *   Tổng số hộ: 36 hộ
+    *   Số hộ đã nộp: 29 hộ
+    *   Số hộ còn thiếu là: $36 - 29 = 7$ hộ.
+
+2.  **Tính tổng số tiền còn thiếu:**
+    *   Phí dịch vụ mỗi hộ: 150.000 đồng/quý
+    *   Số tiền còn thiếu là: $7 \times 150.000 = 1.050.000$ đồng.
+
+Vậy, còn thiếu **1.050.000 đồng**.
+
+Anh/chị vui lòng kiểm tra lại với kế toán hoặc văn bản chính thức để xác nhận lại thông tin này nhé."
+gemma4:e2b-it-qat,n5-01,5,1,1,1,,,46.95,11.9,"Tôi không có thông tin về doanh thu tháng 8/2026 của Hợp tác xã OneBee.
+
+Anh/chị vui lòng kiểm tra lại với bộ phận kế toán hoặc xem các sổ sách tài chính của hợp tác xã để có thông tin chính xác nhất nhé."
+gemma4:e2b-it-qat,n5-02,5,1,1,1,,,40.59,12.5,"Tôi không có thông tin về số điện thoại của chị Lan phòng kế toán HTX.
+
+Anh/chị vui lòng hỏi trực tiếp bộ phận kế toán hoặc người quản lý của HTX để được hỗ trợ thông tin chính xác nhất ạ."
+gemma4:e2b-it-qat,n5-03,5,1,1,1,,,28.19,12.2,"Tôi không có thông tin về mật khẩu wifi văn phòng của hợp tác xã.
+
+Để biết mật khẩu wifi, anh/chị vui lòng hỏi bộ phận quản lý mạng hoặc người phụ trách kỹ thuật của đơn vị mình nhé."
+gemma4:e2b-it-qat,n5-04,5,1,1,1,,,30.84,12.8,Tôi không có thông tin về tỷ giá đô la Mỹ hôm nay. Anh/chị nên kiểm tra lại với kế toán hoặc tra trên các trang tin tài chính để có thông tin chính xác nhất.
+gemma4:e2b-it-qat,n5-05,5,1,1,1,,,35.3,12.7,"Tôi không có thông tin về việc Siêu thị A đã thanh toán tiền đơn hàng tháng 9 cho HTX hay chưa.
+
+Để biết thông tin này, anh/chị vui lòng kiểm tra trực tiếp với bộ phận kế toán hoặc người phụ trách tài chính của HTX nhé."
+gemma4:e2b-it-qat,n5-06,5,1,1,1,,,54.2,10.7,"Tôi không có thông tin về ai đã đạt giải nhất Hội thi Khởi nghiệp Đổi mới sáng tạo tỉnh Tây Ninh năm 2026.
+
+Anh/chị vui lòng liên hệ với Ban tổ chức Hội thi hoặc cơ quan quản lý liên quan để được cung cấp thông tin chính xác nhất ạ."
+gemma4:e2b-it-qat,n5-07,5,1,1,1,,,29.95,11.8,"Tôi không có thông tin về hạn cuối nộp hồ sơ vay vốn ưu đãi của ngân hàng cho HTX năm nay.
+
+Anh/chị vui lòng kiểm tra lại với bộ phận kế toán hoặc văn bản chính thức của ngân hàng để có thông tin chính xác nhất."
+gemma4:e2b-it-qat,n5-08,5,1,1,1,,,38.65,12.7,"Tôi không có thông tin về diện tích kho lạnh của HTX hiện đang còn trống.
+
+Để biết thông tin này, anh/chị vui lòng hỏi bộ phận quản lý cơ sở vật chất hoặc kế toán của HTX nhé."

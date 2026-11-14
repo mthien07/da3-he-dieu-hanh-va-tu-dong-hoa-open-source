@@ -416,5 +416,23 @@ class TaiKhoanMay(unittest.TestCase):
         self.assertIn("Không có", self.chay(self.w.xoa_tai_khoan, "a"))  # chạy lại không lỗi
 
 
+class LoiDanXuatPdf(unittest.TestCase):
+    """Lời dẫn của Trợ lý chỉ cách xuất PDF đúng chữ trên màn hình giao diện thẻ của LibreOffice, khớp trang chủ Box.
+    Giao diện thẻ ẩn thanh menu nên đường "Tệp → Xuất…" không còn bấm được."""
+
+    def test_cach_xuat_pdf_khop_giao_dien_the_va_trang_chu(self):
+        with open(os.path.join(HERE, "../../box/ansible/roles/box-ai/files/tro-ly-onebee-loi-dan.md"), encoding="utf-8") as f:
+            dong = [d for d in f.read().splitlines() if d.startswith("- Xuất PDF:")]
+        self.assertEqual(len(dong), 1)
+        self.assertIn("thẻ File", dong[0])
+        self.assertIn("Export Directly as PDF", dong[0])
+        for sai in ("Tệp →", "Xuất thành PDF", "Xuất dưới dạng", "thanh công cụ"):
+            self.assertNotIn(sai, dong[0])
+        with open(os.path.join(HERE, "../../box/ansible/roles/box-stack/templates/index.html.j2"), encoding="utf-8") as f:
+            trang_chu = f.read()
+        self.assertIn("thẻ <b>File</b>", trang_chu)
+        self.assertIn("<b>Export Directly as PDF</b>", trang_chu)
+
+
 if __name__ == "__main__":
     unittest.main()
