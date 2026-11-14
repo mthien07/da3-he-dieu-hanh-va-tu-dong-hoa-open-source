@@ -13,6 +13,13 @@
   được), và người có quyền root trên Box vẫn đọc được file dữ liệu (`/srv/onebee/open-webui`) và bản sao lưu của nó; thư mục `/home` trên máy trạm cũng nằm trong bản
   sao lưu mà quản trị Box đọc được (xem "Quyền riêng tư" trong hướng dẫn cài Box).
   Lệnh `hoi` dùng khóa của **từng nhân viên** (mục 2); khóa theo từng **máy** chỉ còn là giai đoạn chuyển tiếp.
+- **Mở cùng một địa chỉ:** biểu tượng Trợ lý AI trên máy trạm, lệnh `hoi` và các thẻ dịch vụ ở trang chủ Box đều mở `http(s)://<ip-box>:3000`
+  (kể cả khi vào trang chủ bằng `http://onebee.local`), nên đăng nhập một lần là dùng được từ mọi lối. Gõ tay tên khác (vd `onebee.local:3000`)
+  là một trang khác với trình duyệt → phải đăng nhập lại; bật HTTPS thì tên `.local` không có chứng chỉ.
+- **Giao diện tiếng Việt:** Trợ lý AI chọn ngôn ngữ theo trình duyệt **ở lần mở đầu tiên rồi ghi nhớ**. Bộ cài máy trạm nâng Firefox cùng gói
+  tiếng Việt cho khớp phiên bản (Firefox cũ không nạp được gói tiếng Việt mới nên chạy tiếng Anh). Trình duyệt đã lỡ mở Trợ lý AI khi còn
+  tiếng Anh thì đổi một lần: ảnh đại diện góc trái dưới → **Settings** → **General** → **Language** chọn **Vietnamese (Tiếng Việt)** →
+  **Save**, rồi bấm F5 tải lại trang (vài tiêu đề nhóm chỉ đổi sau khi tải lại).
 - Chọn **"Trợ lý OneBee"**: model Gemma chạy trên Box + lời dặn tiếng Việt (không bịa số liệu, hướng dẫn máy OneBee,
   biết ngày hôm nay, được nhờ soạn văn bản thì soạn ngay, chỗ thiếu để [trong ngoặc vuông]).
 - **Gợi ý và mẫu soạn văn bản:** trên màn hình trò chuyện mới, bấm một trong 4 gợi ý tiếng Việt (Soạn tờ trình, Lập biên bản họp,

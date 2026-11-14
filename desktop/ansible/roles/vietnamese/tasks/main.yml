@@ -10,6 +10,21 @@
       - libglib2.0-bin  # glib-compile-schemas
     state: present
 
+- name: Kiểm tra Firefox (bản .deb) có trên máy
+  ansible.builtin.stat:
+    path: /usr/lib/firefox/distribution
+  register: onebee_ff_phan_phoi
+
+# Gói tiếng Việt của Firefox (firefox-locale-vi) chỉ nạp được vào ĐÚNG phiên bản Firefox của nó, mà kho chỉ giữ bản mới nhất. Máy cài từ ISO
+# còn Firefox cũ → Firefox chạy tiếng Anh tới lần tự cập nhật đầu, và Trợ lý AI (Open WebUI) chọn ngôn ngữ theo trình duyệt ở lần mở đầu
+# rồi ghi nhớ luôn tiếng Anh. Nâng Firefox cùng gói tiếng Việt lên bản mới nhất để hai bản khớp nhau ngay khi cài.
+- name: Nâng Firefox cùng gói tiếng Việt cho khớp phiên bản
+  ansible.builtin.apt:  # noqa: package-latest — cố ý: hai gói phải cùng phiên bản, kho chỉ có bản mới nhất
+    name: [firefox, firefox-locale-vi]
+    state: latest
+    only_upgrade: true
+  when: onebee_ff_phan_phoi.stat.isdir | default(false)
+
 - name: Cài bộ gõ ibus-bamboo
   ansible.builtin.include_tasks: ibus-bamboo.yml
   when: onebee_input_method == 'bamboo'
@@ -48,11 +63,6 @@
 # Chính sách Firefox dùng chung của máy nằm ở /usr/lib/firefox/distribution/policies.json (gói firefox của Mint không có file này).
 # Khi đã nối Box, /etc/firefox/policies/policies.json (role ket-noi-box) THAY file này nhưng được trộn từ nó → khóa vẫn còn.
 # Trộn vào nội dung sẵn có thay vì ghi đè; role này chạy trước ket-noi-box nên lần cài đầu /etc đã có khóa.
-- name: Kiểm tra Firefox (bản .deb) có trên máy
-  ansible.builtin.stat:
-    path: /usr/lib/firefox/distribution
-  register: onebee_ff_phan_phoi
-
 - name: Đọc chính sách Firefox dùng chung đang có
   ansible.builtin.slurp:
     src: /usr/lib/firefox/distribution/policies.json
