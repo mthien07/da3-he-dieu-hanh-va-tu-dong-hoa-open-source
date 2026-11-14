@@ -208,7 +208,8 @@ class RibbonLibreOffice(unittest.TestCase):
         for node in comp.find("node").findall("node"):
             prop = node.find("prop")
             ung_dung[node.get(f"{oor}name")] = (prop.get(f"{oor}name"), prop.find("value").text)
-        self.assertEqual(ung_dung, {a: ("Active", "Tabbed") for a in ("Writer", "Calc", "Impress")})
+        # Active là CommandArg của chế độ Tabbed ("notebookbar.ui"), không phải tên nút "Tabbed" (ghi "Tabbed" thì vẫn mở thanh công cụ cũ)
+        self.assertEqual(ung_dung, {a: ("Active", "notebookbar.ui") for a in ("Writer", "Calc", "Impress")})
 
     def test_nap_sau_cac_module_goc(self):
         goc = ET.parse(RIBBON_XCD).getroot()

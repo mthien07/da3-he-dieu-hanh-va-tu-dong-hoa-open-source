@@ -131,7 +131,16 @@ else
 fi
 
 check "LibreOffice mở mặc định giao diện Ribbon (tab) cho Writer, Calc, Impress" bash -c \
-  "[ \$(grep -c '<value>Tabbed</value>' /usr/lib/libreoffice/share/registry/onebee-office-ribbon.xcd) -eq 3 ]"
+  "[ \$(grep -c '<value>notebookbar.ui</value>' /usr/lib/libreoffice/share/registry/onebee-office-ribbon.xcd) -eq 3 ]"
+
+if [[ -d /usr/lib/firefox/distribution ]]; then
+  # /etc/firefox/policies/policies.json (khi đã nối Box) thay file dùng chung → phải có khóa ở file Firefox thực sự đọc
+  check "Firefox: bộ gõ tiếng Việt không thêm dấu vào ô mật khẩu" python3 -c \
+    "import json,os; p='/etc/firefox/policies/policies.json'; p=p if os.path.exists(p) else '/usr/lib/firefox/distribution/policies.json'; \
+assert json.load(open(p))['policies']['Preferences']['intl.ime.use_simple_context_on_password_field']['Value'] is True"
+else
+  printf 'PASS  %s\n' "Firefox: bộ gõ không thêm dấu vào ô mật khẩu (bỏ qua: máy không có Firefox bản .deb)"
+fi
 
 if [[ -x /usr/bin/mintupdate-automation ]]; then
   check "Bật tự động nâng cấp mintupdate" test -e /etc/systemd/system/timers.target.wants/mintupdate-automation-upgrade.timer

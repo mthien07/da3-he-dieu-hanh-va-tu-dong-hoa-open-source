@@ -4,7 +4,7 @@
 
 | Việc | Phím / cách làm |
 |---|---|
-| Đổi gõ tiếng Việt ⇄ tiếng Anh | **Super + Space** (Super = phím có logo Windows) |
+| Đổi gõ tiếng Việt ⇄ tiếng Anh | **Super + Space** (Super = phím có logo Windows). Gõ mật khẩu ở hộp **Yêu cầu Xác thực** hay cửa sổ dòng lệnh: sang tiếng Anh trước |
 | Gõ Telex | aa=â, aw=ă, ee=ê, oo=ô, ow=ơ, uw=ư, dd=đ · s=sắc, f=huyền, r=hỏi, x=ngã, j=nặng · z=xóa dấu |
 | Mở menu Bắt đầu | Phím **Super** (hoặc bấm nút **Bắt đầu** có logo OneBee, góc trái dưới) |
 | Chạy lệnh / mở nhanh chương trình (như Run) | **Super + R** (hoặc Alt + F2) |
@@ -15,7 +15,7 @@
 | Quản lý tác vụ (Task Manager) — xem/tắt chương trình bị treo | **Ctrl + Shift + Esc** |
 | Sao chép / Dán / Cắt / Hoàn tác | Ctrl + C / Ctrl + V / Ctrl + X / Ctrl + Z (như Windows) |
 | Lưu / Lưu thành file khác / In | Ctrl + S / Ctrl + Shift + S / Ctrl + P |
-| Xuất PDF (Writer, Calc) | Nút **PDF** trên thanh công cụ |
+| Xuất PDF (Writer, Calc) | Thẻ **File** (góc trái trên) → **Export Directly as PDF** |
 | Kiểm tra chính tả | **F7** |
 | Chụp màn hình | Phím **Print Screen** |
 | Chụp một vùng màn hình vào clipboard (như Snipping Tool) | **Super + Shift + S** → kéo chuột chọn vùng → dán bằng **Ctrl + V** (Shift + Print Screen: chụp vùng lưu thành file) |

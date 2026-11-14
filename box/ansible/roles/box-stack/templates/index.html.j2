@@ -1,5 +1,7 @@
 {# Trang chủ OneBee Box (cổng 80; HTTPS: cổng 443). Một tệp, không tải gì từ Internet: Box trong LAN có thể không ra mạng được.
-   Lối tắt dựng theo tên đang gõ (IP hoặc {{ onebee_box_ten_mdns }}.local). Số liệu: /trang-thai.json (onebee-trang-thai-web.timer). #}
+   Lối tắt dịch vụ (Trợ lý AI, n8n, giám sát) luôn mở bằng IP của Box — cùng địa chỉ với biểu tượng Trợ lý AI và dấu trang trên máy trạm
+   (HOI_URL), để phiên đăng nhập là MỘT origin; trừ khi trang được mở bằng tên Tailscale box.<mã>.onebee.internal (kỹ thuật ở xa không tới
+   được IP LAN). Tên {{ onebee_box_ten_mdns }}.local chỉ dùng để vào trang chủ và thư mục chung. Số liệu: /trang-thai.json (onebee-trang-thai-web.timer). #}
 <!doctype html>
 <html lang="vi">
 <head>
@@ -117,8 +119,8 @@
       <summary>In ấn và xuất PDF</summary>
       <ul>
         <li><kbd>Ctrl + P</kbd> — mở hộp in; chọn đúng máy in, số bản, in 2 mặt (nếu máy in hỗ trợ)</li>
-        <li>Xuất PDF trong LibreOffice: nút <b>PDF</b> trên thanh công cụ (chữ gợi ý: Export Directly as PDF) hoặc menu
-          <b>Tập tin → Export As → Xuất dạng PDF...</b> — gửi đi không lệch bố cục</li>
+        <li>Xuất PDF trong Writer, Calc (giao diện thẻ): thẻ <b>File</b> ở góc trái trên → nút <b>Export Directly as PDF</b>
+          — gửi đi không lệch bố cục</li>
         <li>Máy in không in: kiểm tra giấy, dây/mạng của máy in, rồi bấm <b>Yêu cầu hỗ trợ kỹ thuật</b> ở trên</li>
       </ul>
     </details>
@@ -145,12 +147,15 @@
 </main>
 <script>
   var host = window.location.hostname;
+  // Mở trang chủ bằng onebee.local mà dịch vụ cũng theo tên đó thì Trợ lý AI là origin khác với biểu tượng trên máy trạm (mở bằng IP)
+  // → đăng nhập lại; HTTPS còn hỏng hẳn (chứng chỉ không cấp cho .local). Dịch vụ luôn theo IP Box, trừ tên Tailscale của kỹ thuật.
+  var hostDichVu = host === "box.{{ onebee_box_ma_don_vi }}.onebee.internal" ? host : "{{ onebee_box_ip }}";
   document.querySelectorAll("a.card[data-port]").forEach(function (a) {
-    a.href = window.location.protocol + "//" + host + ":" + a.getAttribute("data-port") + "/" + (a.getAttribute("data-path") || "");
+    var goc = window.location.protocol + "//" + hostDichVu + ":" + a.getAttribute("data-port") + "/";
+    a.href = goc + (a.getAttribute("data-path") || "");
     // Thẻ mẫu soạn văn bản: mở Trợ lý với câu mở đầu điền sẵn, người dùng bổ sung rồi tự bấm gửi (submit=false)
     if (a.hasAttribute("data-q")) {
-      a.href = window.location.protocol + "//" + host + ":" + a.getAttribute("data-port") + "/?models=onebee-tro-ly&q=" +
-        encodeURIComponent(a.getAttribute("data-q")) + "&submit=false";
+      a.href = goc + "?models=onebee-tro-ly&q=" + encodeURIComponent(a.getAttribute("data-q")) + "&submit=false";
     }
   });
   document.getElementById("ten-box").textContent = host;
