@@ -4,7 +4,7 @@
 
 | Việc | Phím / cách làm |
 |---|---|
-| Đổi gõ tiếng Việt ⇄ tiếng Anh | **Super + Space** (Super = phím có logo Windows) |
+| Đổi gõ tiếng Việt ⇄ tiếng Anh | **Super + Space** (Super = phím có logo Windows). Gõ mật khẩu ở hộp **Yêu cầu Xác thực** hay cửa sổ dòng lệnh: sang tiếng Anh trước |
 | Gõ Telex | aa=â, aw=ă, ee=ê, oo=ô, ow=ơ, uw=ư, dd=đ · s=sắc, f=huyền, r=hỏi, x=ngã, j=nặng · z=xóa dấu |
 | Mở menu Bắt đầu | Phím **Super** (hoặc bấm nút **Bắt đầu** có logo OneBee, góc trái dưới) |
 | Chạy lệnh / mở nhanh chương trình (như Run) | **Super + R** (hoặc Alt + F2) |
