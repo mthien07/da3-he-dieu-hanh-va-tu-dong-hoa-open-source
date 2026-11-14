@@ -174,11 +174,12 @@ class TrangChu(unittest.TestCase):
         self.assertIn("models=onebee-tro-ly", h)
 
     def test_cach_xuat_pdf_dung_chu_tren_man_hinh(self):
-        # Chữ đúng như LibreOffice 24.2 tiếng Việt trên Mint 22.3 hiện (menu và chữ gợi ý của nút trộn Việt – Anh)
+        # LibreOffice 24.2 trên Mint 22.3 mở giao diện thẻ (không còn thanh công cụ cũ có nút PDF, thanh menu ẩn):
+        # chữ trên màn hình là thẻ "File" → nút "Export Directly as PDF" (bản dịch tiếng Việt chưa dịch hai chữ này)
         h = self.html
-        self.assertIn("<b>Tập tin → Export As → Xuất dạng PDF...</b>", h)
-        self.assertIn("Export Directly as PDF", h)
-        for sai in ("Xuất ra PDF", "Tệp →", "Xuất thành PDF"):
+        self.assertIn("thẻ <b>File</b>", h)
+        self.assertIn("<b>Export Directly as PDF</b>", h)
+        for sai in ("Xuất ra PDF", "Tệp →", "Xuất thành PDF", "trên thanh công cụ", "Tập tin → Export As"):
             self.assertNotIn(sai, h)
 
     def test_o_may_tram_da_sao_luu(self):
