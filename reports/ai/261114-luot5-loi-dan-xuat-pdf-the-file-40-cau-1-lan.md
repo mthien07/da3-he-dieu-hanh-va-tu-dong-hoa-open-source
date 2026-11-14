@@ -34,5 +34,6 @@ Cùng máy ảo Box (4 vCPU, 10 GB RAM, không GPU), cùng model `gemma4:e2b-it-
 - Câu đích `n1-03` ("Làm thế nào để lưu văn bản thành file PDF?"): lượt 4 trả lời theo đường menu cũ (Tệp → Xuất dưới dạng → Xuất thành PDF),
   không còn bấm được vì giao diện thẻ ẩn thanh menu; lượt 5 trả lời "Tệp (File) ở góc trái → Export Directly as PDF", khớp màn hình.
 - **Chưa kiểm:** không chạy lặp lại để phân biệt dao động ngẫu nhiên với ảnh hưởng thật của dòng sửa. Một lượt nhóm 2 × 3 lần đã bắt đầu
-  nhưng bị dừng theo quyết định của người điều phối khi mới chạy 8/24 lần với lời dặn cũ (chưa tới `n2-04`), không dùng làm kết luận.
+  nhưng bị dừng theo quyết định của người điều phối khi mới chạy 8/24 lần với lời dặn cũ: `n2-01` × 3, `n2-02` × 3, `n2-03` × 2, cả 8 lần
+  đủ ý bắt buộc, không phạm ý cấm. Chưa chạy tới `n2-04`, chưa chạy lần nào với lời dặn mới — số liệu từng phần, chưa đủ, không suy rộng.
 - Người điều phối chấp nhận kết quả này: tiêu chí "không thấp hơn mốc" được nới cho trường hợp này vì lý do trên.
