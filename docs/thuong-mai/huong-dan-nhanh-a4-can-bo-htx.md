@@ -1,46 +1,32 @@
-# SỔ TAY HƯỚNG DẪN NHANH DÀNH CHO CÁN BỘ VĂN PHÒNG HTX
-*(In vừa vặn 1 trang A4 — dán tại bàn làm việc)*
+# HƯỚNG DẪN NHANH CÁN BỘ HTX
+*(In 1 trang A4 — dán tại bàn làm việc)*
 
----
+### 1. 🌐 Trang chủ OneBee Box
+- Mở trình duyệt, gõ **`http://onebee.local`** (hoặc địa chỉ IP được cấp, vd `http://192.168.1.xxx`).
+- Trang chủ có lối vào Trợ lý AI, thư mục chung, tình trạng máy chủ; mục **"Soạn văn bản bằng Trợ lý AI"**: bấm một thẻ là mở Trợ lý với câu mở đầu điền sẵn.
 
-### 1. 🌐 Truy cập Hệ thống Máy chủ OneBee Box
-- **Địa chỉ vào thẳng:** Mở trình duyệt web gõ: **`http://onebee.local`** (hoặc địa chỉ IP được cấp: `http://192.168.1.xxx`).
-- **Trang chủ Dashboard:** Cung cấp liên kết nhanh tới Trợ lý AI, Thư mục tài liệu chung, Báo cáo và Trạng thái máy chủ; mục **"Soạn văn bản bằng Trợ lý AI"**: bấm một thẻ là mở Trợ lý với câu mở đầu điền sẵn.
+### 2. 🤖 Trợ lý AI soạn văn bản (chạy nội bộ 100%)
+Bấm biểu tượng **Trợ lý AI OneBee** trên thanh tác vụ (hoặc chọn **Trợ lý AI nội bộ** ở trang chủ):
+- Gõ lệnh mẫu: 📝 **`/to-trinh`** tờ trình, công văn đúng thể thức **Nghị định 30/2020/NĐ-CP** · 📑 **`/bien-ban`** biên bản họp
+  Hội đồng quản trị, Đại hội xã viên · 📜 **`/hop-dong`** hợp đồng liên kết bao tiêu theo **Luật Hợp tác xã 2023** ·
+  📊 **`/bao-cao`** báo cáo hoạt động, phân phối quỹ.
+- Hoặc bấm gợi ý trên màn hình trò chuyện mới (Soạn tờ trình, Lập biên bản họp, Soạn thông báo, Tóm tắt văn bản) rồi viết tiếp.
+- **Trợ lý AI có thể sai.** Việc liên quan luật, thuế, tiền: đối chiếu văn bản gốc hoặc hỏi kế toán.
 
----
+### 3. 📁 Thư mục dùng chung
+- **Máy Windows:** bấm `Windows + R`, gõ `\\onebee.local\chung` rồi Enter.
+- **Máy Linux Mint:** nhấp đúp biểu tượng **"Chia sẻ nội bộ (OneBee Box)"** trên màn hình nền.
+- ⚠️ Không xóa nhầm tài liệu của phòng ban khác trong thư mục `chung`.
 
-### 2. 🤖 Trợ lý AI Soạn thảo Văn bản Cơ sở (Chạy nội bộ 100%)
-Bấm biểu tượng **Trợ lý AI OneBee** trên thanh tác vụ (hoặc mở `http://onebee.local` rồi chọn **Trợ lý AI nội bộ**):
-- **Gõ mẫu lệnh nhanh 1-Click:**
-  - 📝 **`/to-trinh`** : Tự động lập Tờ trình / Công văn đúng thể thức **Nghị định 30/2020/NĐ-CP**.
-  - 📑 **`/bien-ban`** : Lập Biên bản cuộc họp Hội đồng quản trị / Đại hội xã viên.
-  - 📜 **`/hop-dong`** : Soạn hợp đồng liên kết bao tiêu nông sản theo **Luật Hợp tác xã 2023**.
-  - 📊 **`/bao-cao`**  : Lập báo cáo hoạt động và phân phối quỹ tài chính định kỳ.
-- **Bấm gợi ý có sẵn** trên màn hình trò chuyện mới (Soạn tờ trình, Lập biên bản họp, Soạn thông báo, Tóm tắt văn bản) rồi viết tiếp nội dung của mình.
-- **Trợ lý AI có thể sai.** Việc liên quan luật, thuế, tiền: đối chiếu lại với văn bản gốc hoặc hỏi kế toán.
+### 4. ⌨️ Gõ tiếng Việt & văn phòng
+- **Đổi kiểu gõ:** **`Super + Space`** (phím Windows + phím cách) bật/tắt gõ tiếng Việt.
+- **Soạn thảo:** **LibreOffice Writer** (Word), **Calc** (Excel), **Impress** (PowerPoint); tự lưu dạng `.docx`, `.xlsx`, `.pptx`.
 
----
+### 5. 🛡️ Sao lưu tự động
+- Máy văn phòng tự sao lưu về Box lúc **12:00 trưa mỗi ngày** (để máy bật; máy tắt thì chạy bù khi bật lại).
+- Box tự sao lưu ra ổ ngoài lúc **23:00** hằng ngày.
 
-### 3. 📁 Lưu trữ & Chia sẻ Dữ liệu Dùng chung (Samba)
-- **Trên máy tính Windows:** Nhấn tổ hợp phím `Windows + R`, gõ: `\\onebee.local\chung` rồi nhấn Enter.
-- **Trên máy trạm Linux Mint:** Nhấn đúp chuột vào biểu tượng **"Chia sẻ nội bộ (OneBee Box)"** trên màn hình nền.
-- ⚠️ **Lưu ý:** Tuyệt đối không xóa nhầm tài liệu của các phòng ban khác trong thư mục `chung`.
-
----
-
-### 4. ⌨️ Bộ gõ Tiếng Việt & Bộ ứng dụng Văn phòng
-- **Đổi kiểu gõ:** Nhấn phím **`Super + Space`** (phím Windows + phím cách) để bật/tắt gõ tiếng Việt.
-- **Soạn thảo văn bản:** Sử dụng **LibreOffice Writer** (Word), **Calc** (Excel), **Impress** (PowerPoint). Hệ thống đã tự động cấu hình lưu định dạng chuẩn quốc tế `.docx`, `.xlsx`, `.pptx`.
-
----
-
-### 5. 🛡️ Tự động Sao lưu Dữ liệu & Cảnh báo Sự cố
-- **Sao lưu tự động:** Dữ liệu máy trạm được tự động sao lưu an toàn về Box vào lúc **12:00 trưa mỗi ngày**.
-- **Cảnh báo qua điện thoại:** Quản trị viên HTX sẽ nhận được tin nhắn Telegram tự động mỗi khi sao lưu hoàn tất hoặc khi máy chủ phát hiện lỗi.
-
----
-
-### 6. 🆘 Hỗ trợ Kỹ thuật & Sự cố Khẩn cấp
+### 6. 🆘 Hỗ trợ kỹ thuật
 - Mở **Trung tâm OneBee** (menu **Bắt đầu**) → **Cần giúp đỡ** (báo kỹ thuật) hoặc **Kiểm tra máy** (tự xem máy trục trặc gì).
-- Mở menu **Bắt đầu** → **"Cho phép hỗ trợ từ xa (OneBee)"** để cấp mã kết nối cho kỹ thuật viên. Chỉ bấm khi chính mình vừa gọi kỹ thuật OneBee.
-- Số điện thoại kỹ thuật hỗ trợ: **0777 794 089** (HTX OneBee).
+- Menu **Bắt đầu** → **"Cho phép hỗ trợ từ xa (OneBee)"** để cấp mã cho kỹ thuật viên. Chỉ bấm khi chính mình vừa gọi kỹ thuật OneBee.
+- Điện thoại kỹ thuật: **0777 794 089** (HTX OneBee).
