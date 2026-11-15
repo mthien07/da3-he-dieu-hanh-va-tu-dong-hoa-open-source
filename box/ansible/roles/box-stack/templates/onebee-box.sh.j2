@@ -97,6 +97,8 @@ in_cau_hinh_may() {
   fi
   echo "MAY_TRAM=${ten}"
   echo "BOX_IP=${ip}"
+  # Tên Box (nằm trong ràng buộc tên của CA): máy trạm thêm dòng /etc/hosts "<BOX_IP> <BOX_TEN>" — đăng nhập một lần chỉ mở bằng tên
+  echo "BOX_TEN=box.${BOX_MA_DON_VI}.onebee.internal"
   esq="$(giao_thuc_may)"
   echo "RESTIC_REPOSITORY=rest:${esq}://${ten}:${http_pw}@${ip}:${REST_PORT}/${ten}/"
   echo "RESTIC_PASSWORD=${repo_pw}"
