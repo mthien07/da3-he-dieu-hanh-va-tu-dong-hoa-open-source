@@ -385,6 +385,79 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertNotEqual(open(f"{self.t}/secrets/n8n-webhook-key").read(), "wh-cu")
         self.assertTrue(os.path.exists(f"{self.t}/out/bo-cai.log"))                            # đã chạy bộ cài để áp dụng
 
+    def docker_csdl_gia(self, loi_exec=False, ket_xuat="BAN-KET-XUAT"):
+        """docker giả ghi lại cả stdin và mật khẩu đang nằm trong tệp bí mật lúc gọi (để kiểm ALTER ROLE chạy TRƯỚC khi ghi tệp mới)."""
+        nd = (f'#!/bin/bash\necho "docker $*" >> "$ONEBEE_OUT/docker.log"\n'
+              f'if [[ "$1" == exec && " $* " == *" -i "* ]]; then {{ echo "--- $*"; cat; '
+              f'echo "tep: $(cat {self.t}/secrets/postgres-password 2>/dev/null) $(cat {self.t}/secrets/postgrest-password 2>/dev/null)"; }} >> "$ONEBEE_OUT/docker-stdin.log"; fi\n'
+              + ('[[ "$1" != exec ]] || exit 1\n' if loi_exec else "")
+              + f'[[ "$1 $2 $3" != "exec onebee-postgres pg_dump" ]] || printf %s {ket_xuat}\n')
+        open(f"{self.t}/bin/docker", "w").write(nd)
+
+    def test_xoay_khoa_box_doi_mat_khau_csdl_trong_csdl_truoc_roi_moi_ghi_tep(self):
+        for f, nd in (("postgres-password", "pgcu0123456789abcdef"), ("postgrest-password", "apicu0123456789abcdef")):
+            open(f"{self.t}/secrets/{f}", "w").write(nd)
+        self.bo_cai_gia()
+        self.docker_csdl_gia()
+        self.chay("xoay-khoa", "--box", "--dong-y")
+        pg, api = (open(f"{self.t}/secrets/{f}").read() for f in ("postgres-password", "postgrest-password"))
+        self.assertRegex(pg, r"^[A-Za-z0-9]{32}$")
+        self.assertRegex(api, r"^[A-Za-z0-9]{32}$")
+        vao = open(f"{self.t}/out/docker-stdin.log").read()
+        # postgres đổi khi cả hai tệp còn cũ; xac_thuc đổi khi tệp postgres đã mới, tệp postgrest còn cũ
+        self.assertIn(f"ALTER ROLE postgres PASSWORD '{pg}';\ntep: pgcu0123456789abcdef apicu0123456789abcdef", vao)
+        self.assertIn(f"ALTER ROLE xac_thuc PASSWORD '{api}';\ntep: {pg} apicu0123456789abcdef", vao)
+        self.assertNotIn(pg, self.docker_log())                                                  # mật khẩu không nằm trên dòng lệnh
+        self.assertNotIn(api, self.docker_log())
+        self.assertTrue(os.path.exists(f"{self.t}/out/bo-cai.log"))                            # bộ cài dựng lại PostgREST (.env mới)
+
+    def test_xoay_khoa_box_csdl_loi_thi_giu_mat_khau_cu_va_dung(self):
+        for f, nd in (("postgres-password", "pgcu0123456789abcdef"), ("postgrest-password", "apicu0123456789abcdef")):
+            open(f"{self.t}/secrets/{f}", "w").write(nd)
+        self.bo_cai_gia()
+        self.docker_csdl_gia(loi_exec=True)
+        r = self.chay("xoay-khoa", "--box", "--dong-y", kiem=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Không đổi được mật khẩu CSDL", r.stderr)
+        self.assertEqual(open(f"{self.t}/secrets/postgres-password").read(), "pgcu0123456789abcdef")
+        self.assertEqual(open(f"{self.t}/secrets/postgrest-password").read(), "apicu0123456789abcdef")
+        self.assertFalse(os.path.exists(f"{self.t}/out/bo-cai.log"))
+
+    def chuan_bi_sao_luu(self):
+        """Ổ sao lưu đã gắn, kho Box đã tạo (restic giả ghi lại tham số)."""
+        for ten, nd in (("mountpoint", "#!/bin/sh\nexit 0\n"),
+                        ("restic", '#!/bin/sh\necho "restic $*" >> "$ONEBEE_OUT/restic.log"\n[ "$1" != snapshots ] || echo "[]"\n'),
+                        ("curl", "#!/bin/sh\nexit 7\n")):
+            open(f"{self.t}/bin/{ten}", "w").write(nd)
+            os.chmod(f"{self.t}/bin/{ten}", 0o755)
+        open(f"{self.t}/secrets/restic-box", "w").write("mk-kho-box")
+
+    def test_sao_luu_ket_xuat_csdl_truoc_khi_tam_dung_va_dua_vao_ban_csdl(self):
+        self.chuan_bi_sao_luu()
+        self.docker_csdl_gia()
+        self.chay("sao-luu", kiem=False)
+        kx = f"{self.t}/data/postgres-ket-xuat"
+        self.assertEqual(open(f"{kx}/onebee.dump").read(), "BAN-KET-XUAT")
+        self.assertEqual(sorted(os.listdir(kx)), ["onebee.dump"])                              # không còn tệp tạm
+        log = self.docker_log().splitlines()
+        dump = [i for i, d in enumerate(log) if "exec onebee-postgres pg_dump -U postgres -d onebee -Fc" in d]
+        pause = [i for i, d in enumerate(log) if d.endswith(" pause open-webui n8n uptime-kuma authelia")]
+        self.assertTrue(dump and pause, log)
+        self.assertLess(dump[0], pause[0])                                                       # không exec được trong container đang dừng
+        ban_csdl = [d for d in open(f"{self.t}/out/restic.log").read().splitlines() if d.startswith("restic backup") and "--tag csdl" in d][0]
+        self.assertIn(f" {kx} ", ban_csdl + " ")
+        self.assertNotIn(f"{self.t}/data/postgres ", ban_csdl + " ")                             # không chụp thư mục sống
+
+    def test_sao_luu_dung_khi_ket_xuat_csdl_loi(self):
+        self.chuan_bi_sao_luu()
+        self.docker_csdl_gia(ket_xuat="")                                                        # pg_dump không ra gì
+        r = self.chay("sao-luu", kiem=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Không kết xuất được CSDL", r.stdout + r.stderr)
+        self.assertNotIn(" pause ", self.docker_log())
+        self.assertNotIn("restic backup", open(f"{self.t}/out/restic.log").read())
+        self.assertFalse(os.path.exists(f"{self.t}/data/postgres-ket-xuat/onebee.dump"))
+
     def bo_cai_gia(self):
         """Bộ cài giả: như Ansible thật, sinh lại khóa gửi tình trạng dùng chung mà xoay-khoa --box vừa xóa."""
         bo_cai = f"{self.t}/bo-cai.sh"

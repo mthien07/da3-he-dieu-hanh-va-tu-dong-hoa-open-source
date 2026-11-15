@@ -14,13 +14,15 @@ NGUONG_RAM_TRONG_KB=1572864  # 1,5 GB: ít hơn thì Ollama dễ bị hệ đi�
 NGUONG_AI_GIAY=5
 NGUONG_SAO_LUU_GIO=26        # sao lưu chạy 23:00 hằng đêm (+ 2 giờ dự phòng)
 NGUONG_CHUNG_CHI_NGAY=15
+NGUONG_KET_XUAT_GIO=48       # kết xuất CSDL chạy cùng sao lưu đêm: quá 2 ngày là sao lưu đêm đã hỏng ít nhất 1 lần
 
 CHAN_DOAN_HM_MA=(mang tai_nguyen docker ai samba sao_luu ssl)
 CHAN_DOAN_HM_TEN=("Mạng" "Tài nguyên (ổ đĩa, RAM, CPU)" "Dịch vụ Docker" "Trợ lý AI" "Thư mục chung (Samba)" "Bản sao lưu" "Chứng chỉ bảo mật (SSL)")
 # Container của Box và tên dễ hiểu (cùng thứ tự)
-CHAN_DOAN_CT=(onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server onebee-authelia onebee-cau-noi)
+CHAN_DOAN_CT=(onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server onebee-authelia onebee-cau-noi
+  onebee-postgres onebee-postgrest)
 CHAN_DOAN_CT_TEN=("Cổng web" "Bộ chạy model AI" "Giao diện Trợ lý AI" "Tự động hóa" "Giám sát" "Nhận sao lưu máy trạm" "Đăng nhập một lần"
-  "Cầu nối danh tính")
+  "Cầu nối danh tính" "Cơ sở dữ liệu" "Dịch vụ dữ liệu (API)")
 CHAN_DOAN_KQ=()   # mỗi phần tử: hạng mục, mã, trạng thái, tên, chi tiết, gợi ý — ngăn cách bằng \x1f (không bị gộp ô trống như tab)
 
 # ghi_kq <hạng mục> <mã> <ok|canh_bao|loi> <tên> <chi tiết> [gợi ý]
@@ -158,6 +160,20 @@ for d in ds:
       ghi_kq docker "${c}" ok "${ten}" "Đang chạy$([[ "${he}" == healthy ]] && echo ' (khỏe)')"
     fi
   done
+  if timeout 15 docker exec onebee-postgres pg_isready -q -h 127.0.0.1 -U postgres -d onebee >/dev/null 2>&1; then
+    ghi_kq docker postgres_ket_noi ok "PostgreSQL nhận kết nối" "Cơ sở dữ liệu onebee trả lời"
+  else
+    ghi_kq docker postgres_ket_noi loi "PostgreSQL nhận kết nối" "Không nối được cơ sở dữ liệu onebee — API dữ liệu (/api/) và báo cáo tuần ngừng" \
+      "Xem lỗi: sudo docker logs --tail 50 onebee-postgres; khởi động lại: sudo docker restart onebee-postgres"
+  fi
+  # Image PostgREST không có shell: hỏi cổng quản trị /ready từ cầu nối danh tính (cùng mạng riêng) — 200 = đã nối được CSDL
+  if timeout 15 docker exec onebee-cau-noi python3 -I -c "import urllib.request; urllib.request.urlopen('http://postgrest:3001/ready', timeout=10)" \
+       >/dev/null 2>&1; then
+    ghi_kq docker postgrest_tra_loi ok "Dịch vụ dữ liệu (PostgREST) trả lời" "Sẵn sàng, đã nối cơ sở dữ liệu"
+  else
+    ghi_kq docker postgrest_tra_loi loi "Dịch vụ dữ liệu (PostgREST) trả lời" "Không trả lời hoặc chưa nối được cơ sở dữ liệu — /api/ trả lỗi" \
+      "Xem lỗi: sudo docker logs --tail 50 onebee-postgrest; khởi động lại: sudo docker restart onebee-postgrest (cần PostgreSQL chạy trước)"
+  fi
 }
 
 # Gửi 1 câu hỏi ngắn tới Ollama (cổng 11434 trong mạng Docker — Ollama không mở cổng ra LAN) qua container Open WebUI, đo thời gian
@@ -205,7 +221,21 @@ kiem_samba() {
 }
 
 kiem_sao_luu() {
-  local gio
+  local gio kx="${KET_XUAT_DIR}/onebee.dump"
+  # Kết xuất CSDL nằm trên ổ dữ liệu (sao lưu đêm làm trước khi chụp) — kiểm cả khi chưa gắn ổ sao lưu
+  if [[ ! -s "${kx}" ]]; then
+    ghi_kq sao_luu ket_xuat_csdl canh_bao "Kết xuất cơ sở dữ liệu gần nhất" "Chưa có tệp kết xuất ${kx} (sao lưu đêm chưa chạy lần nào hoặc đã lỗi)" \
+      "Sao lưu ngay: sudo onebee-box sao-luu"
+  else
+    gio=$(( ($(date +%s) - $(stat -c %Y "${kx}")) / 3600 ))
+    if (( gio > NGUONG_KET_XUAT_GIO )); then
+      ghi_kq sao_luu ket_xuat_csdl canh_bao "Kết xuất cơ sở dữ liệu gần nhất" "Cách đây ${gio} giờ (quá ${NGUONG_KET_XUAT_GIO} giờ — sao lưu đêm có thể đã lỗi)" \
+        "Xem nhật ký: sudo journalctl -u onebee-box-sao-luu -n 50; sao lưu ngay: sudo onebee-box sao-luu"
+    else
+      ghi_kq sao_luu ket_xuat_csdl ok "Kết xuất cơ sở dữ liệu gần nhất" "Cách đây ${gio} giờ"
+    fi
+  fi
+  gio=""
   if ! mountpoint -q "${BACKUP_MOUNT}"; then
     ghi_kq sao_luu o_sao_luu loi "Ổ sao lưu" "Chưa gắn ổ vào ${BACKUP_MOUNT} — sao lưu đêm không chạy" \
       "Gắn ổ sao lưu ngoài theo hướng dẫn cài Box (mục ổ sao lưu)"

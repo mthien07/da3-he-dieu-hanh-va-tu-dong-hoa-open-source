@@ -181,5 +181,25 @@ dong_bo_mat_khau_csdl() {
   done
   [[ ${doi} -eq 0 ]] || echo "đã đổi"
 }
+# Kết xuất toàn bộ CSDL (pg_dump -Fc) ra ${KET_XUAT_DIR}/onebee.dump: ghi tệp tạm rồi đổi tên (bản cũ còn nguyên nếu lỗi)
+ket_xuat_csdl() {
+  local f="${KET_XUAT_DIR}/onebee.dump"
+  install -d -m 0700 "${KET_XUAT_DIR}"
+  if docker exec onebee-postgres pg_dump -U postgres -d onebee -Fc >"${f}.moi" && [[ -s "${f}.moi" ]]; then
+    mv "${f}.moi" "${f}"
+  else
+    rm -f "${f}.moi"
+    return 1
+  fi
+}
+# Chờ PostgreSQL nhận kết nối TCP (tối đa ~2 phút; lần đầu image khởi tạo bằng máy chủ tạm chỉ nghe socket)
+cho_csdl() {
+  local lan
+  for lan in $(seq 60); do
+    docker exec onebee-postgres pg_isready -q -h 127.0.0.1 -U postgres -d onebee >/dev/null 2>&1 && return 0
+    sleep 2
+  done
+  return 1
+}
 # Chuyển sổ cũ (CSV n8n còn ghi, JSON tình trạng máy) vào CSDL: chạy lại nhiều lần, chỉ nạp dòng mới
 chuyen_du_lieu() { python3 -I /usr/local/lib/onebee-box/onebee-chuyen-du-lieu.py "${DATA}"; }

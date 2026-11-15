@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2015,SC2016,SC2329  # pass luôn thành công (A && pass || fail đúng nghĩa); lệnh docker giả viết trong nháy đơn; don chạy qua trap
+# shellcheck disable=SC2015,SC2016,SC2317,SC2329  # pass luôn thành công (A && pass || fail đúng nghĩa); lệnh docker giả viết trong nháy đơn; don chạy qua trap
 # Kiểm lược đồ và phân quyền tới cấp dòng (RLS) của OneBee Box trên PostgreSQL THẬT: dựng một container từ đúng image đã ghim
 # trong group_vars/all.yml (không mạng, không công bố cổng), áp dụng lược đồ bằng chính công cụ của bộ cài (onebee-luoc-do.sh),
 # rồi đóng vai từng người dùng như dịch vụ dữ liệu làm (SET ROLE + set_config('request.jwt.claims', ...)).
