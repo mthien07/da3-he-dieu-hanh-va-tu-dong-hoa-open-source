@@ -211,7 +211,7 @@ class CauNoi(unittest.TestCase):
     def test_than_lon_hon_1mb_tra_413_khong_goi_phia_sau(self):
         s = socket.create_connection(("127.0.0.1", self.cong), 10)
         s.sendall(b"POST /api/ghi_chu HTTP/1.1\r\nHost: x\r\nRemote-User: an\r\nRemote-Groups: nhan_vien\r\n"
-                  b"Content-Length: %d\r\n\r\n" % (MOT_MB + 1))
+                  b"Content-Length: %d\r\n\r\n" % (MOT_MB + 1) + b"x" * (MOT_MB + 1))
         self.assertIn(b" 413 ", s.recv(4096).split(b"\r\n")[0])
         s.close()
         # Không có Content-Length (chunked, Caddy chuyển tiếp thân HTTP/2 như vậy): đếm khi đọc
