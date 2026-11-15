@@ -237,7 +237,7 @@ services:
     cap_drop: [ALL]
     read_only: true
     tmpfs: [/tmp]
-    networks: [sso]
+    networks: [sso, api]   # api: chỉ cầu nối nối được tới dịch vụ dữ liệu (PostgREST)
     command: ["python3", "-I", "/app/onebee-cau-noi-danh-tinh.py"]
     environment:
       TZ: {{ onebee_timezone }}
@@ -248,6 +248,63 @@ services:
       - ./cau-noi:/app:ro
       - {{ onebee_box_secrets }}/cau-noi-jwt-secret:/run/secrets/cau-noi-jwt-secret:ro
 
+  # Dữ liệu cấu trúc (ADR 0006): PostgreSQL + pgvector. Chỉ PostgREST nối tới được (mạng csdl); không công bố cổng.
+  # Bộ cài (role box-du-lieu) chạy dịch vụ này, áp dụng lược đồ có ghi sổ rồi đặt mật khẩu vai trò. Mật khẩu chủ CSDL chỉ dùng
+  # lúc khởi tạo thư mục dữ liệu (đổi về sau bằng ALTER ROLE: onebee-box xoay-khoa --box). Không sao lưu thư mục sống này:
+  # onebee-box sao-luu kết xuất (pg_dump) ra {{ onebee_box_data }}/postgres-ket-xuat rồi mới chụp.
+  postgres:
+    image: {{ onebee_box_images.postgres }}
+    container_name: onebee-postgres
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ["no-new-privileges:true"]
+    # Bước khởi động của image chạy bằng root: sửa chủ thư mục dữ liệu rồi chuyển sang tài khoản postgres (gosu) — chỉ giữ đúng các quyền đó
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    networks: [csdl]
+    environment:
+      TZ: {{ onebee_timezone }}
+      POSTGRES_DB: onebee
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres-password
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-h", "127.0.0.1", "-U", "postgres", "-d", "onebee"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    volumes:
+      - {{ onebee_box_data }}/postgres:/var/lib/postgresql
+      - {{ onebee_box_secrets }}/postgres-password:/run/secrets/postgres-password:ro
+
+  # API tự sinh trên lược đồ onebee (PostgREST). Chỉ cầu nối danh tính gọi tới được (mạng api); không có vai trò ẩn danh: yêu cầu
+  # không mang JWT do cầu nối ký (cùng khóa cau-noi-jwt-secret, khán giả onebee-api) bị từ chối 401. Mọi quyền kiểm bằng RLS trong CSDL.
+  # Image không có shell: sức khỏe kiểm từ ngoài (cổng quản trị 3001, /ready) trong onebee-box chan-doan.
+  postgrest:
+    image: {{ onebee_box_images.postgrest }}
+    container_name: onebee-postgrest
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    read_only: true
+    # root của container (không có quyền đặc biệt nào) để đọc tệp khóa chỉ root đọc được
+    user: "0:0"
+    networks: [api, csdl]
+    depends_on: [postgres]
+    environment:
+      TZ: {{ onebee_timezone }}
+      PGRST_DB_URI: ${PGRST_DB_URI}
+      PGRST_DB_SCHEMAS: onebee
+      PGRST_JWT_SECRET: "@/run/secrets/cau-noi-jwt-secret"
+      PGRST_JWT_AUD: onebee-api
+      PGRST_ADMIN_SERVER_PORT: "3001"
+    volumes:
+      - {{ onebee_box_secrets }}/cau-noi-jwt-secret:/run/secrets/cau-noi-jwt-secret:ro
+
 networks:
   sso:
     internal: true   # không có đường ra ngoài; chỉ các container được khai vào mạng này nói chuyện với nhau
+  api:
+    internal: true   # cầu nối danh tính ↔ PostgREST
+  csdl:
+    internal: true   # PostgREST ↔ PostgreSQL

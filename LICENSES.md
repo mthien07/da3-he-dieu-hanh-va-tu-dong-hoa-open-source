@@ -38,6 +38,9 @@ Clonezilla (sao lưu/nhân bản ổ đĩa, chỉ dùng như công cụ khi cài
 | Caddy | Apache-2.0 | |
 | Authelia 4.39.28 (đăng nhập một lần, hai lớp) | Apache-2.0 | Tệp giấy phép đúng tag: https://raw.githubusercontent.com/authelia/authelia/v4.39.28/LICENSE (ADR 0006) |
 | Python 3.14.10 (image `python:3.14.10-slim-trixie`, chạy cầu nối danh tính — mã cầu nối trong repo, MIT) | PSF-2.0 (Python-2.0) | Gói Debian trong image giữ giấy phép riêng; https://raw.githubusercontent.com/python/cpython/v3.14.10/LICENSE |
+| PostgreSQL 18.7 (image `pgvector/pgvector:0.8.7-pg18-trixie`, CSDL dữ liệu cấu trúc) | PostgreSQL License (kiểu BSD/MIT) | https://raw.githubusercontent.com/postgres/postgres/REL_18_7/COPYRIGHT (ADR 0006); gói Debian trong image giữ giấy phép riêng |
+| pgvector 0.8.7 (mở rộng vector trong cùng image) | PostgreSQL License | https://raw.githubusercontent.com/pgvector/pgvector/v0.8.7/LICENSE (ADR 0006) |
+| PostgREST 16.5 (API tự sinh trên CSDL) | MIT | https://raw.githubusercontent.com/PostgREST/postgrest/v16.5/LICENSE (ADR 0006) |
 
 Giấy phép phần Box ghi theo trang của từng dự án — cần kiểm lại khi nâng phiên bản và trước khi phát hành v1.0.
 

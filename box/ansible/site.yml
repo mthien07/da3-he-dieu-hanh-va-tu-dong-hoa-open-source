@@ -14,6 +14,7 @@
     - samba
     - box-stack
     - box-dinh-danh   # đăng nhập một lần (Authelia): cấu hình, tệp người dùng, bí mật rồi mới chạy dịch vụ
+    - box-du-lieu     # PostgreSQL + API tự sinh (PostgREST) sau cầu nối danh tính: lược đồ có ghi sổ, RLS
     - box-ai
     - box-n8n
     - box-backup
