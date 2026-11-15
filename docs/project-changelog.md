@@ -1,5 +1,18 @@
 # Nhật ký thay đổi
 
+## [1.3.0] — 15/11/2026 — Lõi DX-OS Open-Core 100% chuẩn OSI & Hồ sơ OLP 2026
+Nâng cấp OneBee OS thành nền tảng chuyển đổi số **OneBee DX-OS Open-Core**, hoàn thiện 100% thành phần lõi theo giấy phép nguồn mở được OSI phê duyệt và bổ sung đầy đủ hồ sơ kiến trúc, API, lộ trình và phát hành theo chuẩn Proof-of-Foundation (PoF) OLP 2026.
+
+### Thêm mới
+- Kiến trúc tổng thể 3 tầng & 4 nguyên lý thiết kế DX-OS ([docs/kien-truc-dx-os.md](kien-truc-dx-os.md)), tài liệu API & CLI ([docs/api/openapi-dxos.md](api/openapi-dxos.md)), lộ trình phát triển đến 12/2027 ([ROADMAP.md](../ROADMAP.md)), bảng tự chấm PoF ([docs/olp-2026-tu-cham-pof.md](olp-2026-tu-cham-pof.md)) và nhật ký phiên bản chuẩn [CHANGELOG.md](../CHANGELOG.md).
+- Kịch bản trình diễn Chung khảo 15 phút và thư nộp bài PoF OLP 2026 ([docs/hoi-thi/](hoi-thi/)).
+- Chế độ bản chạy thử công khai `onebee_box_che_do_demo` với dữ liệu giả lập tự động đặt lại lúc 03:00 mỗi ngày.
+- Bộ kiểm thử tự động kiểm chứng hồ sơ OLP 2026 (`tests/box/test_olp_2026_ho_so.py`) và kiểm chứng đóng gói giải nén độc lập ngoài cây Git.
+
+### Thay đổi & Đồng bộ
+- Thay thế các thành phần không đạt chuẩn OSI ở bản trước (`n8n` SUL, `Open WebUI` trademark clause, `libclamunrar`) bằng ngăn xếp **Node-RED (Apache-2.0)**, **onebee-ai-rag.py (MIT)**, **PostgreSQL + PostgREST (PostgreSQL + MIT)**, **Authelia SSO (Apache-2.0)** và **SeaweedFS + ClamAV GPL-2.0-only**.
+- Đồng bộ phiên bản phát hành `1.3.0` trên Desktop, Box, `CHANGELOG.md`, `README.md`, hướng dẫn A-Z và gói `.tar.gz`.
+
 ## [1.2.0] — 14/11/2026 — Trải nghiệm người dùng: Trung tâm OneBee, tự phục vụ, Trợ lý AI dùng được ngay
 Đã chạy phiếu kiểm trải nghiệm tự động trên máy ảo Linux Mint 22.3 kèm một Box thử (`reports/trai-nghiem/261113-may-ao-vmware-mint-22-3.md`): các mục không đạt đã sửa hoặc ghi là giới hạn đã biết. Chưa có người xác nhận lại các mục về cảm nhận và chưa thử trên máy thật hay từ điện thoại.
 Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài chưa được nâng). Bản 1.2.0 là bản có file tải kế tiếp.
