@@ -1,5 +1,5 @@
 {# Trang chủ OneBee Box (cổng 80; HTTPS: cổng 443). Một tệp, không tải gì từ Internet: Box trong LAN có thể không ra mạng được.
-   Lối tắt dịch vụ (Trợ lý AI, n8n, giám sát) luôn mở bằng IP của Box — cùng địa chỉ với biểu tượng Trợ lý AI và dấu trang trên máy trạm
+   Lối tắt dịch vụ (Trợ lý AI, Node-RED, giám sát) luôn mở bằng IP của Box — cùng địa chỉ với biểu tượng Trợ lý AI và dấu trang trên máy trạm
    (HOI_URL), để phiên đăng nhập là MỘT origin; trừ khi trang được mở bằng tên Tailscale box.<mã>.onebee.internal (kỹ thuật ở xa không tới
    được IP LAN). Tên {{ onebee_box_ten_mdns }}.local chỉ dùng để vào trang chủ và thư mục chung. Số liệu: /trang-thai.json (onebee-trang-thai-web.timer). #}
 <!doctype html>
@@ -83,7 +83,7 @@
     <div class="card"><span class="bieu-tuong" aria-hidden="true">📁</span><b>Thư mục dùng chung</b>
       <small>Windows: bấm <kbd>Windows + R</kbd>, gõ</small><br><code id="smb-win">\\{{ onebee_box_ten_mdns }}.local\{{ onebee_box_samba_share }}</code><br>
       <small>Linux Mint, macOS: thanh địa chỉ trình quản lý tệp, gõ</small><br><code id="smb">smb://{{ onebee_box_ten_mdns }}.local/{{ onebee_box_samba_share }}</code></div>
-    <a class="card" data-port="{{ onebee_box_ports.n8n }}" data-path="form/onebee-ho-tro" href="#"><span class="bieu-tuong" aria-hidden="true">🛠️</span><b>Yêu cầu hỗ trợ kỹ thuật</b><span>Gửi kỹ thuật OneBee: máy lỗi, cần cài đặt, cần hướng dẫn</span></a>
+    <a class="card" data-port="{{ onebee_box_ports.quy_trinh }}" data-path="form/onebee-ho-tro" href="#"><span class="bieu-tuong" aria-hidden="true">🛠️</span><b>Yêu cầu hỗ trợ kỹ thuật</b><span>Gửi kỹ thuật OneBee: máy lỗi, cần cài đặt, cần hướng dẫn</span></a>
     <a class="card" href="#cam-nang"><span class="bieu-tuong" aria-hidden="true">📖</span><b>Cẩm nang sử dụng</b><span>Phím tắt, in ấn, lưu trữ và sao lưu</span></a>
   </div>
 
@@ -96,9 +96,9 @@
 
   <h2>Biểu mẫu và quản trị (tài khoản do quản trị cấp)</h2>
   <div class="grid phu">
-    <a class="card" data-port="{{ onebee_box_ports.n8n }}" data-path="form/onebee-don-hang" href="#"><b>Nhập đơn hàng</b><span>Ghi vào thư mục chung</span></a>
-    <a class="card" data-port="{{ onebee_box_ports.n8n }}" data-path="form/onebee-tom-tat" href="#"><b>Tóm tắt văn bản PDF</b><span>Bằng AI tại đơn vị</span></a>
-    <a class="card" data-port="{{ onebee_box_ports.n8n }}" href="#"><b>Tự động hóa (n8n)</b><span>Nhắc việc, báo cáo, chuyển dữ liệu</span></a>
+    <a class="card" data-port="{{ onebee_box_ports.quy_trinh }}" data-path="form/onebee-don-hang" href="#"><b>Nhập đơn hàng</b><span>Ghi vào thư mục chung</span></a>
+    <a class="card" data-port="{{ onebee_box_ports.quy_trinh }}" data-path="form/onebee-tom-tat" href="#"><b>Tóm tắt văn bản PDF</b><span>Bằng AI tại đơn vị</span></a>
+    <a class="card" data-port="{{ onebee_box_ports.quy_trinh }}" data-path="quy-trinh" href="#"><b>Tự động hóa (Node-RED)</b><span>Nhắc việc, báo cáo, chuyển dữ liệu</span></a>
     <a class="card" data-port="{{ onebee_box_ports.uptime_kuma }}" href="#"><b>Giám sát</b><span>Máy chủ và dịch vụ còn chạy hay không</span></a>
   </div>
 

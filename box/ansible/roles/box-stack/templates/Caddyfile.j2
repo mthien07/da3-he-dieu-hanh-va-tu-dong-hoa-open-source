@@ -2,7 +2,7 @@
 {% if onebee_https_hieu_luc | bool %}
 {% set cong = onebee_box_ports %}
 {% set kuma_san_sang = onebee_kuma_dia_chi | default('0.0.0.0') == '0.0.0.0' %}
-{% set cong_tls = [443, cong.open_webui, cong.n8n, cong.rest_server] + ([cong.uptime_kuma] if kuma_san_sang else []) %}
+{% set cong_tls = [443, cong.open_webui, cong.quy_trinh, cong.rest_server] + ([cong.uptime_kuma] if kuma_san_sang else []) %}
 {# Mỗi cổng TLS có 2 địa chỉ: IP của Box (LAN) và box.<mã>.onebee.internal (kỹ thuật vào qua Tailscale, thêm dòng /etc/hosts trỏ tới IP Tailscale của Box) #}
 {% macro dia_chi(c) %}https://{{ onebee_box_ip }}:{{ c }}, https://box.{{ onebee_box_ma_don_vi }}.onebee.internal:{{ c }}{% endmacro %}
 {# HTTPS (Pha 4): CA riêng đặt sẵn (gốc + trung gian, ràng buộc tên); Caddy chỉ cấp chứng chỉ lá cho IP của Box và box.<mã>.onebee.internal #}
@@ -71,10 +71,10 @@
 	}
 }
 
-{# Không thêm tiêu đề CSP ở đây: n8n tự đặt CSP sandbox cho biểu mẫu #}
-{{ dia_chi(cong.n8n) }} {
+{# Động cơ quy trình Node-RED (Apache-2.0) #}
+{{ dia_chi(cong.quy_trinh) }} {
 	import onebee_tls
-	reverse_proxy n8n:5678 {
+	reverse_proxy quy-trinh:1880 {
 		stream_close_delay 5m
 	}
 }

@@ -37,7 +37,7 @@ def lam(thu_muc, khao_sat):
 class BaoCaoTuan(unittest.TestCase):
     def test_nhan_khop_voi_bieu_mau(self):
         import yaml
-        v = yaml.safe_load(open(os.path.join(HERE, "../../box/ansible/roles/box-n8n/vars/main.yml"), encoding="utf-8"))
+        v = yaml.safe_load(open(os.path.join(HERE, "../../box/ansible/roles/box-quy-trinh/vars/main.yml"), encoding="utf-8"))
         self.assertEqual(v["onebee_ho_tro_loai"], bct.LOAI)
         self.assertEqual(v["onebee_ho_tro_cach_xu_ly"], bct.CACH_XU_LY)
 

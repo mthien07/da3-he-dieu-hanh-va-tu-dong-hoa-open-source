@@ -1,5 +1,5 @@
 ---
-# OneBee Box v0.1 — máy chủ nội bộ: AI chạy tại chỗ, tự động hóa n8n, thư mục chung, sao lưu, giám sát
+# OneBee Box v0.1 — máy chủ nội bộ: AI chạy tại chỗ, tự động hóa Node-RED, thư mục chung, sao lưu, giám sát
 - name: OneBee Box
   hosts: box
   become: true
@@ -14,6 +14,6 @@
     - samba
     - box-stack
     - box-ai
-    - box-n8n
+    - box-quy-trinh
     - box-backup
     - box-fleet

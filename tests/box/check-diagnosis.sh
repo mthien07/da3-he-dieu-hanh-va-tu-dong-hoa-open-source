@@ -147,7 +147,7 @@ assert d["thoi_diem"][:2] == "20"' "${OUT}" 2>"${T}/py-loi"; then pass "Mọi d�
 else fail "Mọi dịch vụ sống: JSON sai — $(tail -1 "${T}/py-loi")"; echo "${OUT}" | head -c 600; echo; fi
 if [[ "${RC}" == 0 ]]; then pass "Mọi dịch vụ sống: mã thoát 0"; else fail "Mọi dịch vụ sống: mã thoát ${RC} (mong 0)"; fi
 [[ "$(khong_ok)" == "" ]] || fail "Mọi dịch vụ sống: có mục không OK: $(khong_ok)"
-for c in onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server; do
+for c in onebee-portal onebee-ollama onebee-open-webui onebee-quy-trinh onebee-uptime-kuma onebee-rest-server; do
   [[ "$(trang_thai docker "${c}")" == ok ]] || fail "Thiếu mục container ${c} trong hạng mục Docker"
 done
 if grep -q 'gemma4:e2b-it-qat' "${SIM}/docker-exec.log" && grep -q 'http://ollama:11434/api/generate' "${SIM}/docker-exec.log"; then pass "Thử AI: gửi prompt tới Ollama cổng 11434 bằng đúng model trong group_vars"; else fail "Thử AI không gọi Ollama đúng model/cổng: $(cat "${SIM}/docker-exec.log" 2>/dev/null)"; fi
@@ -159,10 +159,10 @@ else fail "Bảng chữ sai (mã ${RC}):"; echo "${OUT}"; fi
 if grep -q $'\e\[' <<<"${OUT}"; then fail "Có mã màu khi không phải terminal / NO_COLOR"; else pass "Không in mã màu khi ra file / NO_COLOR"; fi
 
 # ===== 2. Tắt đúng 1 dịch vụ → báo đúng chỗ =====
-moi_thu_khoe; echo "exited" >"${SIM}/ct-onebee-n8n"
-kich_ban "Tắt n8n → chỉ container n8n LỖI, mã thoát 2" 2 "docker/onebee-n8n=loi"
+moi_thu_khoe; echo "exited" >"${SIM}/ct-onebee-quy-trinh"
+kich_ban "Tắt quy-trinh → chỉ container quy-trinh LỖI, mã thoát 2" 2 "docker/onebee-quy-trinh=loi"
 chay
-if grep -q '\[LỖI\].*onebee-n8n' <<<"${OUT}" && grep -q 'docker compose' <<<"${OUT}" && grep -q '^KẾT LUẬN.*1 lỗi' <<<"${OUT}"; then pass "Bảng chữ: dòng [LỖI] n8n kèm gợi ý chạy lại, kết luận nêu 1 lỗi"; else fail "Bảng chữ khi tắt n8n thiếu [LỖI]/gợi ý/kết luận"; echo "${OUT}"; fi
+if grep -q '\[LỖI\].*onebee-quy-trinh' <<<"${OUT}" && grep -q 'docker compose' <<<"${OUT}" && grep -q '^KẾT LUẬN.*1 lỗi' <<<"${OUT}"; then pass "Bảng chữ: dòng [LỖI] Node-RED kèm gợi ý chạy lại, kết luận nêu 1 lỗi"; else fail "Bảng chữ khi tắt Node-RED thiếu [LỖI]/gợi ý/kết luận"; echo "${OUT}"; fi
 
 moi_thu_khoe; echo "exited" >"${SIM}/ct-onebee-open-webui"
 kich_ban "Tắt Open WebUI → container LỖI và không thử được AI (LỖI)" 2 "docker/onebee-open-webui=loi ai/ollama=loi"

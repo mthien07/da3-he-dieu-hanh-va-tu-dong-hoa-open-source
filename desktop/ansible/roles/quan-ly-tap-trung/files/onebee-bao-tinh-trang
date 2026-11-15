@@ -7,7 +7,7 @@ KHÔNG gửi tên file, nội dung hay lịch sử dùng máy.
 Cấu hình: /etc/onebee/may-tram.env (MAY_TRAM, BOX_IP, TINH_TRANG_URL, TINH_TRANG_KEY nếu có — lấy từ 'onebee-box them-may').
 
 Báo cáo được KÝ (HMAC-SHA256) bằng khóa suy từ RESTIC_PASSWORD trong cùng file cấu hình — mật khẩu kho sao lưu, restic mã hóa phía máy
-trạm nên mật khẩu này chưa từng đi qua mạng. Box kiểm chữ ký bằng bản mật khẩu của nó; n8n (nơi nhận) không giữ khóa nên không giả được báo cáo.
+trạm nên mật khẩu này chưa từng đi qua mạng. Box kiểm chữ ký bằng bản mật khẩu của nó; Node-RED (nơi nhận) không giữ khóa nên không giả được báo cáo.
 Thiếu RESTIC_PASSWORD thì gửi dạng cũ (không ký) — Box nhận nhưng gắn nhãn "chưa ký".
 """
 import hashlib
@@ -35,7 +35,7 @@ def ky_bao_cao(mat_khau, du_lieu):
 
 
 def dong_goi(tt, mat_khau):
-    """Bao bì gửi n8n: có mật khẩu → {ten, du_lieu (JSON dạng chuỗi), ky}; không có → JSON phẳng như bản cũ."""
+    """Bao bì gửi Node-RED: có mật khẩu → {ten, du_lieu (JSON dạng chuỗi), ky}; không có → JSON phẳng như bản cũ."""
     if not mat_khau:
         return tt
     du_lieu = json.dumps(dict(tt, gui_luc=time.time()), ensure_ascii=False, sort_keys=True)
@@ -167,7 +167,7 @@ def main():
         "khoi_dong_gio": bat_gio, "sao_luu_cuoi": sao_luu, "sudo_so": so_tai_khoan_sudo(),
     }
     tieu_de = {"Content-Type": "application/json"}
-    if conf.get("TINH_TRANG_KEY"):   # khóa lọc chung ở cửa n8n: chỉ còn trong giai đoạn chuyển tiếp (Box đặt onebee_box_khoa_tinh_trang_chung: false thì không có)
+    if conf.get("TINH_TRANG_KEY"):   # khóa lọc chung ở cửa Node-RED: chỉ còn trong giai đoạn chuyển tiếp (Box đặt onebee_box_khoa_tinh_trang_chung: false thì không có)
         tieu_de["X-OneBee-Key"] = conf["TINH_TRANG_KEY"]
     req = urllib.request.Request(conf["TINH_TRANG_URL"], data=json.dumps(dong_goi(tt, conf.get("RESTIC_PASSWORD"))).encode("utf-8"),
                                  method="POST", headers=tieu_de)

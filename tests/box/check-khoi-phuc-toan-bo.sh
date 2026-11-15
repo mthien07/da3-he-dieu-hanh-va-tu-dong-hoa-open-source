@@ -14,7 +14,7 @@ box "onebee-box them-may tam-01 >/dev/null && onebee-box thu-hoi-may tam-01 --do
   ! grep -q '^tam-01:' /srv/onebee/restic/.htpasswd"
 
 box "onebee-box in-khoa > /root/khoa-in-ra-giay.txt
-  cp ${S}/webui-admin-password /root/cu-webui; cp ${S}/n8n-owner-password /root/cu-n8n; cp ${S}/ca/root.sha256 /root/cu-ca-sha
+  cp ${S}/webui-admin-password /root/cu-webui; cp ${S}/quy-trinh-owner-password /root/cu-qt; cp ${S}/ca/root.sha256 /root/cu-ca-sha
   wc -l < /srv/onebee/ho-tro/yeu-cau.csv > /root/cu-so-yeu-cau
   onebee-box sao-luu > /root/sl-truoc-hong.log 2>&1 || { tail -20 /root/sl-truoc-hong.log; exit 1; }
   docker rm -f mailpit >/dev/null 2>&1 || true
@@ -28,7 +28,7 @@ box "/root/onebee-test/box/onebee-box-install.sh > /root/cai-lai.log 2>&1 || { t
   echo 'PASS  Cài lại Box trên ổ mới (khóa bí mật mới, dữ liệu trống)'
   onebee-box khoi-phuc-toan-bo /root/khoa-in-ra-giay.txt > /root/khoi-phuc.log 2>&1 || { tail -20 /root/khoi-phuc.log; exit 1; }
   /root/onebee-test/box/onebee-box-install.sh > /root/cai-lai-2.log 2>&1 || { tail -30 /root/cai-lai-2.log; exit 1; }
-  cmp -s ${S}/webui-admin-password /root/cu-webui && cmp -s ${S}/n8n-owner-password /root/cu-n8n \
+  cmp -s ${S}/webui-admin-password /root/cu-webui && cmp -s ${S}/quy-trinh-owner-password /root/cu-qt \
     || { echo 'FAIL  Khóa bí mật không trở lại như cũ'; exit 1; }
   cmp -s ${S}/ca/root.sha256 /root/cu-ca-sha || { echo 'FAIL  CA riêng sau khôi phục khác CA cũ — máy trạm sẽ không tin Box'; exit 1; }
   openssl verify -CApath /etc/ssl/certs ${S}/ca/inter.crt >/dev/null || { echo 'FAIL  Box không tin CA đã khôi phục'; exit 1; }
@@ -36,15 +36,13 @@ box "/root/onebee-test/box/onebee-box-install.sh > /root/cai-lai.log 2>&1 || { t
     -d \"{\\\"email\\\":\\\"quantri@onebee.lan\\\",\\\"password\\\":\\\"\$(cat /root/cu-webui)\\\"}\")
   [ \"\${code}\" = 200 ] || { echo \"FAIL  Mật khẩu quản trị Trợ lý AI cũ không dùng được (\${code})\"; exit 1; }
   for _ in \$(seq 30); do curl -s -m 5 http://127.0.0.1:5678/healthz | grep -q ok && break; sleep 3; done
-  code=\$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:5678/rest/login -H 'Content-Type: application/json' \
-    -d \"{\\\"emailOrLdapLoginId\\\":\\\"quantri@onebee.lan\\\",\\\"password\\\":\\\"\$(cat /root/cu-n8n)\\\"}\")
-  [ \"\${code}\" = 200 ] || { echo \"FAIL  Mật khẩu chủ n8n cũ không dùng được (\${code})\"; exit 1; }
+  curl -sf -m 5 http://127.0.0.1:5678/healthz | grep -q ok || { echo 'FAIL  Node-RED chưa khỏe sau khôi phục'; exit 1; }
   [ \"\$(wc -l < /srv/onebee/ho-tro/yeu-cau.csv)\" = \"\$(cat /root/cu-so-yeu-cau)\" ] || { echo 'FAIL  Mất sổ yêu cầu hỗ trợ'; exit 1; }
   onebee-box khoi-phuc-thu | tail -1
   ! grep -q '^tam-01:' /srv/onebee/restic/.htpasswd || { echo 'FAIL  Máy đã thu hồi lại có quyền vào kho HTTP sau khôi phục'; exit 1; }
   [ ! -e /srv/onebee/may-da-cap/tam-01 ] && [ -e ${S}/thu-hoi/tam-01 ] || { echo 'FAIL  Máy đã thu hồi lại được nhận báo cáo sau khôi phục'; exit 1; }
   [ -e /srv/onebee/may-da-cap/ketoan-01 ] || { echo 'FAIL  Sau khôi phục, máy ketoan-01 mất chỗ nhận báo cáo tình trạng'; exit 1; }
-  echo 'PASS  khoi-phuc-toan-bo bằng khóa in ra giấy: mật khẩu, tài khoản Trợ lý AI + n8n, sổ hỗ trợ trở lại như cũ'"
+  echo 'PASS  khoi-phuc-toan-bo bằng khóa in ra giấy: mật khẩu, tài khoản Trợ lý AI + bí mật Node-RED, sổ hỗ trợ trở lại như cũ'"
 
 # Máy trạm không cấu hình gì thêm: vẫn sao lưu (kho mới), hỏi AI (khóa cũ), báo tình trạng, nhận cập nhật (khóa SSH cũ)
 tram 'onebee-sao-luu >/dev/null

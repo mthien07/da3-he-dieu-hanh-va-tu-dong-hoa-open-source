@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+---
+onebee_quy_trinh_flows:
+  - ma: 01-bao-cao-sao-luu
+    id: onebeeBaoCaoSL01
+    webhook: /webhook/onebee-bao-cao-sao-luu
+  - ma: 02-nhac-han-bao-cao-thue
+    id: onebeeNhacHan001
+    webhook: ''
+  - ma: 03-tom-tat-van-ban
+    id: onebeeTomTat0001
+    webhook: /webhook/onebee-tom-tat
+  - ma: 04-nhap-don-hang
+    id: onebeeDonHang001
+    webhook: /webhook/onebee-don-hang
+  - ma: 05-tong-hop-don-hang
+    id: onebeeTongHopDH1
+    webhook: ''
+  - ma: 06-nhan-tinh-trang-may-tram
+    id: onebeeTinhTrang1
+    webhook: /webhook/onebee-tinh-trang
+  - ma: 07-yeu-cau-ho-tro
+    id: onebeeYeuCauHT1
+    webhook: /webhook/onebee-ho-tro
+  - ma: 08-xu-ly-yeu-cau
+    id: onebeeXuLyHT001
+    webhook: /webhook/onebee-xu-ly
+  - ma: 09-khao-sat-hai-long
+    id: onebeeKhaoSat001
+    webhook: /webhook/onebee-khao-sat
+  - ma: 10-canh-bao-su-co
+    id: onebeeCanhBao001
+    webhook: /webhook/onebee-canh-bao
+  - ma: 11-phe-duyet-quan-ly
+    id: onebeePheDuyet01
+    webhook: /webhook/onebee-phe-duyet
+onebee_ho_tro_loai:
+  - File không mở được / sai định dạng
+  - Phần mềm chỉ chạy trên Windows
+  - Máy in / máy quét
+  - Mạng / Internet
+  - Gõ tiếng Việt
+  - Máy chậm / treo
+  - Sao lưu / mất file
+  - Khác
+onebee_ho_tro_cach_xu_ly:
+  - Hướng dẫn người dùng
+  - Sửa cấu hình
+  - Cài thêm phần mềm
+  - Thay phần cứng
+  - Quay về Windows (máy/phần mềm)
+  - Chưa xử lý được

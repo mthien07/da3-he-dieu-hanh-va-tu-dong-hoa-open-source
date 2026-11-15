@@ -28,12 +28,12 @@ code_in() { local c; c="$(http_code "$1")"; shift; for want in "$@"; do [[ "${c}
 
 check "Có file phiên bản Box" grep -q '^ONEBEE_EDITION=box$' /etc/onebee-release
 check "Docker đang chạy và bật cùng máy" bash -c "systemctl is-active docker && systemctl is-enabled docker"
-for c in onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server; do
+for c in onebee-portal onebee-ollama onebee-open-webui onebee-quy-trinh onebee-uptime-kuma onebee-rest-server; do
   check "Container ${c} đang chạy" bash -c "[ \"\$(docker inspect -f '{{.State.Running}}' ${c})\" = true ]"
 done
 check "Trang giới thiệu :80 hiển thị OneBee Box" bash -c "curl -s -m 10 http://127.0.0.1/ | grep -q 'OneBee Box'"
 check "Open WebUI :3000 khỏe (/health)" bash -c "curl -s -m 10 http://127.0.0.1:3000/health | grep -q true"
-check "n8n :5678 khỏe (/healthz)" bash -c "curl -s -m 10 http://127.0.0.1:5678/healthz | grep -q ok"
+check "Node-RED :5678 khỏe (/healthz)" bash -c "curl -s -m 10 http://127.0.0.1:5678/healthz | grep -q ok"
 check "Uptime Kuma :3001 trả lời" code_in http://127.0.0.1:3001/ 200 302
 # Uptime Kuma mở cổng web trước khi đọc xong CSDL (vừa khởi động lại) → thử lại tối đa 1 phút
 check "Uptime Kuma: tài khoản quản trị tạo sẵn + 5 mục theo dõi (không còn \"ai mở trước thành quản trị\")" bash -c \
@@ -54,14 +54,11 @@ check "Open WebUI :3000 từ chối bắt tay WebSocket từ Origin lạ (có ph
 check "Kho sao lưu :8000 đòi mật khẩu (401)" code_in http://127.0.0.1:8000/ 401
 check "Trang giới thiệu gửi kèm tiêu đề bảo mật (chống nhúng khung, không lộ tên máy chủ web)" bash -c \
   "h=\$(curl -sI -m 10 http://127.0.0.1/); grep -qi '^x-frame-options: DENY' <<<\"\$h\" && ! grep -qi '^server:' <<<\"\$h\""
-check "n8n khóa chặt: không có nút chạy lệnh hệ thống, nút Code không đọc biến môi trường" bash -c \
-  "docker exec onebee-n8n printenv NODES_EXCLUDE | grep -q executeCommand && docker exec onebee-n8n printenv N8N_BLOCK_ENV_ACCESS_IN_NODE | grep -qx true"
-check "n8n: tắt mô-đun Agents và MCP, chặn nút Git (rà soát bảo mật 10/10)" bash -c \
-  "docker exec onebee-n8n printenv N8N_DISABLED_MODULES | grep -qx agents && docker exec onebee-n8n printenv NODES_EXCLUDE | grep -q n8n-nodes-base.git \
-   && docker exec onebee-n8n printenv N8N_MCP_ACCESS_ENABLED | grep -qx false"
-check "Các image dịch vụ ghim theo digest (@sha256), n8n không còn dòng 2.40.x đã ngừng vá" bash -c \
-  "for c in onebee-portal onebee-ollama onebee-n8n onebee-uptime-kuma onebee-rest-server; do docker inspect -f '{{.Config.Image}}' \$c | grep -q '@sha256:' || exit 1; done; \
-   ! docker inspect -f '{{.Config.Image}}' onebee-n8n | grep -q ':2.40'"
+check "Node-RED khóa chặt: tắt externalModules và cài palette" bash -c \
+  "grep -q 'functionExternalModules: false' /srv/onebee/node-red/settings.js && grep -q 'allowInstall: false' /srv/onebee/node-red/settings.js"
+check "Các image dịch vụ ghim theo digest (@sha256), dùng Node-RED 5.0.x chuẩn OSI" bash -c \
+  "for c in onebee-portal onebee-ollama onebee-quy-trinh onebee-uptime-kuma onebee-rest-server; do docker inspect -f '{{.Config.Image}}' \$c | grep -q '@sha256:' || exit 1; done; \
+   docker inspect -f '{{.Config.Image}}' onebee-quy-trinh | grep -q 'nodered/node-red:5.0'"
 check "Open WebUI: tắt Functions/Tools; quản trị không đọc/xuất chat; tắt chia sẻ chat (biến môi trường)" bash -c \
   "for kv in ENABLE_PLUGINS ENABLE_ADMIN_CHAT_ACCESS ENABLE_ADMIN_EXPORT USER_PERMISSIONS_CHAT_SHARE ENABLE_COMMUNITY_SHARING; do \
      [ \"\$(docker exec onebee-open-webui printenv \$kv)\" = false ] || exit 1; done"
@@ -85,8 +82,8 @@ PY
 }
 check "Open WebUI (CSDL): không đăng ký tự do, không chia sẻ cộng đồng, phiên 30 ngày, nhân viên tạo được khóa API nhưng không chia sẻ chat" \
   webui_cai_dat_dung
-check "n8n chỉ ĐỌC được danh sách máy đã cấp (may-da-cap): gắn read-only, không tự thêm máy để nhận báo cáo giả" bash -c \
-  "[ -d /srv/onebee/may-da-cap ] && [ \"\$(docker inspect -f '{{range .Mounts}}{{if eq .Destination \"/home/node/.n8n-files/may-da-cap\"}}{{.RW}}{{end}}{{end}}' onebee-n8n)\" = false ]"
+check "Node-RED chỉ ĐỌC được danh sách máy đã cấp (may-da-cap): gắn read-only, không tự thêm máy để nhận báo cáo giả" bash -c \
+  "[ -d /srv/onebee/may-da-cap ] && [ \"\$(docker inspect -f '{{range .Mounts}}{{if eq .Destination \"/data/may-da-cap\"}}{{.RW}}{{end}}{{end}}' onebee-quy-trinh)\" = false ]"
 check "Ollama KHÔNG mở cổng ra ngoài (11434)" bash -c "! curl -s -m 3 http://127.0.0.1:11434/ >/dev/null"
 check "Ollama chạy được bên trong (Open WebUI gọi tới)" bash -c "docker exec onebee-open-webui curl -s -m 10 http://ollama:11434/api/version | grep -q version"
 check "Open WebUI không gọi AI đám mây (ENABLE_OPENAI_API=false)" \
@@ -103,7 +100,7 @@ check "onebee-box in-ca in vân tay đúng chứng chỉ gốc" bash -c \
   "onebee-box in-ca | grep -q \"\$(sha256sum < <(openssl x509 -in /etc/onebee-box/secrets/ca/root.crt -outform DER) | cut -d' ' -f1 | tr a-f A-F | sed 's/../&:/g; s/:\$//')\""
 check "File .env chỉ root đọc (600)" bash -c "[ \"\$(stat -c %a /opt/onebee-box/.env)\" = 600 ]"
 check "Thư mục bí mật chỉ root vào (700)" bash -c "[ \"\$(stat -c %a /etc/onebee-box/secrets)\" = 700 ]"
-check "Khóa bí mật đã sinh, không để trống" bash -c "grep -Eq '^WEBUI_SECRET_KEY=[A-Za-z0-9]{48}$' /opt/onebee-box/.env && grep -Eq '^N8N_ENCRYPTION_KEY=[A-Za-z0-9]{48}$' /opt/onebee-box/.env"
+check "Khóa bí mật đã sinh, không để trống" bash -c "grep -Eq '^WEBUI_SECRET_KEY=[A-Za-z0-9]{48}$' /opt/onebee-box/.env && grep -Eq '^NODE_RED_CREDENTIAL_SECRET=[A-Za-z0-9]{48}$' /opt/onebee-box/.env"
 
 pw="$(cat /etc/onebee-box/secrets/samba-onebee 2>/dev/null)"
 check "Samba đang chạy" systemctl is-active smbd

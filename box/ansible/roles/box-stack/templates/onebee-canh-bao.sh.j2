@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# onebee-canh-bao — Gửi cảnh báo sự cố chủ động qua Telegram Bot và Webhook n8n
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# onebee-canh-bao — Gửi cảnh báo sự cố chủ động qua Telegram Bot và Webhook động cơ quy trình (Node-RED)
 # Cú pháp:
 #   onebee-canh-bao INFO "Tiêu đề" "Nội dung"
 #   onebee-canh-bao WARN "Tiêu đề" "Nội dung"
@@ -51,9 +53,9 @@ ${NOI_DUNG}"
   fi
 fi
 
-# 2. Gửi Webhook nội bộ tới n8n (chuyển tiếp Zalo, Email, ghi log)
-N8N_PORT="{{ onebee_box_ports.n8n }}"
-WEBHOOK_SECRET_FILE="${SECRETS}/n8n-webhook-box"
+# 2. Gửi Webhook nội bộ tới động cơ quy trình (chuyển tiếp Zalo, Email, ghi log)
+QUY_TRINH_PORT="{{ onebee_box_ports.quy_trinh }}"
+WEBHOOK_SECRET_FILE="${SECRETS}/quy-trinh-webhook-key"
 WEBHOOK_AUTH_HEADER=""
 if [[ -f "${WEBHOOK_SECRET_FILE}" ]]; then
   WEBHOOK_AUTH_HEADER="X-OneBee-Box-Token: $(cat "${WEBHOOK_SECRET_FILE}")"
@@ -70,7 +72,7 @@ PAYLOAD=$(cat <<EOF
 EOF
 )
 
-curl -s -m 5 -X POST "http://127.0.0.1:${N8N_PORT}/webhook/onebee-canh-bao" \
+curl -s -m 5 -X POST "http://127.0.0.1:${QUY_TRINH_PORT}/webhook/onebee-canh-bao" \
   -H "Content-Type: application/json" \
   ${WEBHOOK_AUTH_HEADER:+-H "${WEBHOOK_AUTH_HEADER}"} \
   -d "${PAYLOAD}" >/dev/null 2>&1 || true

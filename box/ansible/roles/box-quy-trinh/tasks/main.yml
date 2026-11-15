@@ -1,0 +1,55 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Động cơ quy trình chuẩn OSI (Node-RED 5.0.9, Apache-2.0) thay thế công cụ fair-code cũ:
+# báo cáo sao lưu, nhắc hạn thuế/BHXH, đơn hàng, hỗ trợ, khảo sát, cảnh báo và phê duyệt quản lý (Poka-yoke).
+
+- name: Kiểm tra đã đặt mật khẩu email (SMTP) chưa
+  ansible.builtin.stat:
+    path: "{{ onebee_box_secrets }}/smtp-password"
+  register: onebee_smtp_pw_file
+
+- name: Chuẩn bị khóa cho động cơ quy trình
+  ansible.builtin.set_fact:
+    onebee_smtp_password: "{{ lookup('ansible.builtin.file', onebee_box_secrets ~ '/smtp-password')
+                              if onebee_smtp_pw_file.stat.exists else '' }}"
+    onebee_webhook_key: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/quy-trinh-webhook-key',
+                            chars=['ascii_letters', 'digits'], length=32) }}"
+    onebee_tram_key: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/tinh-trang-key',
+                         chars=['ascii_letters', 'digits'], length=32) if (onebee_box_khoa_tinh_trang_chung | bool) else '' }}"
+  no_log: true
+
+- name: Tạo thư mục dữ liệu cho Node-RED
+  ansible.builtin.file:
+    path: "{{ onebee_box_data }}/node-red"
+    state: directory
+    owner: "1000"
+    group: "1000"
+    mode: "0700"
+
+- name: Sinh cấu hình Node-RED (settings.js và flows.json)
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ onebee_box_data }}/node-red/{{ item.dest }}"
+    owner: "1000"
+    group: "1000"
+    mode: "0600"
+  loop:
+    - {src: settings.js.j2, dest: settings.js}
+    - {src: flows.json.j2, dest: flows.json}
+  register: onebee_quy_trinh_cfg
+  no_log: true
+
+- name: Khởi động lại động cơ quy trình khi cấu hình luồng thay đổi
+  ansible.builtin.command: docker restart onebee-quy-trinh
+  when: onebee_quy_trinh_cfg is changed
+  changed_when: true
+
+- name: Chờ động cơ quy trình sẵn sàng
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ onebee_box_ports.quy_trinh }}/healthz"
+  register: onebee_quy_trinh_health
+  until: onebee_quy_trinh_health.status == 200
+  retries: 40
+  delay: 2
+  when: not (onebee_https_hieu_luc | bool)

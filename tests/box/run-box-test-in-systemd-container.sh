@@ -57,7 +57,7 @@ box "sed -i -E 's#^onebee_box_ai_model: .*#onebee_box_ai_model: ${TEST_MODEL}#; 
      /root/onebee-test/box/ansible/group_vars/all.yml"
 # Mã đơn vị bắt buộc (CA riêng của Box); IP lấy tự động từ cổng mạng của container Box
 box "sed -i -E 's#^onebee_box_ma_don_vi: .*#onebee_box_ma_don_vi: kiem-thu#' /root/onebee-test/box/ansible/group_vars/all.yml"
-# Email: gửi vào hộp thư giả lập Mailpit (khởi chạy trong check-n8n-inside.sh)
+# Email: gửi vào hộp thư giả lập Mailpit (khởi chạy trong check-quy-trinh-inside.sh)
 box "sed -i -E 's#^  smtp_host: .*#  smtp_host: \"mailpit\"#; s#^  smtp_port: .*#  smtp_port: 1025#; s#^  smtp_starttls: .*#  smtp_starttls: false#' \
      /root/onebee-test/box/ansible/group_vars/all.yml"
 
@@ -96,8 +96,8 @@ box 'for i in 1 2 3; do apt-get update -q >/dev/null 2>&1 && apt-get install -y 
      echo "PASS  Có khóa quản trị → SSH vào Box chỉ bằng khóa, không cho root; quản trị vào được bằng khóa"'
 echo "===== AI HỎI ĐÁP THẬT ====="
 box "ONEBEE_TEST_MODEL=${TEST_MODEL} /root/onebee-test/tests/box/check-ai-chat-inside.sh"
-echo "===== QUY TRÌNH n8n QUA EMAIL ====="
-box '/root/onebee-test/tests/box/check-n8n-inside.sh'
+echo "===== QUY TRÌNH Node-RED QUA EMAIL ====="
+box '/root/onebee-test/tests/box/check-quy-trinh-inside.sh'
 echo "===== SAO LƯU BOX RA Ổ NGOÀI + KHÔI PHỤC ====="
 box 'if onebee-box sao-luu > /root/sl0.log 2>&1; then echo "FAIL  sao-luu chạy khi chưa tạo kho"; exit 1; fi
      grep -q "Chưa tạo kho" /root/sl0.log || { cat /root/sl0.log; exit 1; }

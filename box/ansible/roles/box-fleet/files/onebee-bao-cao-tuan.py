@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Nhật ký tuần (Markdown) cho đợt chạy thử / gói bảo trì — được lệnh `onebee-box bao-cao-tuan` gọi.
 
   onebee-bao-cao-tuan.py <thu-muc-ho-tro> [YYYY-MM-DD] < tinh-trang-may.json
 
-Đọc sổ do n8n ghi: yeu-cau.csv (mã, giờ, máy, loại, mức độ, người báo, mô tả), xu-ly.csv (mã, giờ, cách xử lý, số phút,
-ghi chú), khao-sat.csv (giờ, 5 điểm, góp ý). Tuần = thứ Hai–Chủ nhật chứa ngày đưa vào (mặc định hôm nay).
+Đọc sổ từ PostgreSQL (qua ONEBEE_BAO_CAO_JSON) hoặc tệp CSV: yeu-cau.csv (mã, giờ, máy, loại, mức độ, người báo, mô tả),
+xu-ly.csv (mã, giờ, cách xử lý, số phút, ghi chú), khao-sat.csv (giờ, 5 điểm, góp ý). Tuần = thứ Hai–Chủ nhật chứa ngày đưa vào (mặc định hôm nay).
 KHÔNG in tên người báo, nội dung mô tả, ghi chú, góp ý (có thể lộ thông tin cá nhân/kinh doanh) → dán được vào báo cáo.
 Khảo sát chỉ hiện điểm khi tuần có từ 3 phiếu (giữ ẩn danh). Số liệu khớp ngưỡng đạt (reports/pilot/nguong-dat.md).
 """
@@ -16,7 +18,7 @@ import statistics
 import sys
 from collections import Counter
 
-# Nhãn phải khớp box-n8n/vars/main.yml (onebee_ho_tro_loai, onebee_ho_tro_cach_xu_ly) — unit test kiểm
+# Nhãn phải khớp box-quy-trinh/vars/main.yml (onebee_ho_tro_loai, onebee_ho_tro_cach_xu_ly) — unit test kiểm
 LOAI = ["File không mở được / sai định dạng", "Phần mềm chỉ chạy trên Windows", "Máy in / máy quét", "Mạng / Internet",
         "Gõ tiếng Việt", "Máy chậm / treo", "Sao lưu / mất file", "Khác"]
 CACH_XU_LY = ["Hướng dẫn người dùng", "Sửa cấu hình", "Cài thêm phần mềm", "Thay phần cứng",
@@ -32,6 +34,15 @@ NGAY_LAM = range(6)  # thứ Hai–thứ Bảy (weekday 0–5)
 
 
 def doc_csv(thu_muc, ten):
+    json_env = os.environ.get("ONEBEE_BAO_CAO_JSON")
+    if json_env and os.path.isfile(json_env):
+        try:
+            with open(json_env, encoding="utf-8") as f:
+                dl = json.load(f)
+            if ten in dl and isinstance(dl[ten], list):
+                return dl[ten]
+        except (OSError, ValueError):
+            pass
     try:
         with open(os.path.join(thu_muc, ten), newline="", encoding="utf-8") as f:
             return [r for r in csv.reader(f) if r]

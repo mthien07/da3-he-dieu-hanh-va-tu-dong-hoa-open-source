@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Kiểm thử docker-compose.yml.j2 ở hai chế độ HTTP / HTTPS (không cần Docker): chỉ Caddy công bố cổng khi HTTPS,
-cấu hình ứng dụng đổi đúng (n8n sau proxy, cookie Secure, CORS), chế độ HTTP giữ nguyên cổng như trước và vẫn giới hạn CORS.
+cấu hình ứng dụng đổi đúng (Node-RED sau proxy, cookie Secure, CORS), chế độ HTTP giữ nguyên cổng như trước và vẫn giới hạn CORS.
 Chạy: python3 -m unittest"""
 import os
 import re
@@ -38,18 +38,17 @@ class ComposeHaiCheDo(unittest.TestCase):
         s = ve(False)
         self.assertEqual(s["portal"]["ports"], ["0.0.0.0:80:80"])
         self.assertEqual(s["open-webui"]["ports"], ["0.0.0.0:3000:8080"])
-        self.assertEqual(s["n8n"]["ports"], ["0.0.0.0:5678:5678"])
+        self.assertEqual(s["quy-trinh"]["ports"], ["0.0.0.0:5678:1880"])
         self.assertEqual(s["rest-server"]["ports"], ["0.0.0.0:8000:8000"])
         self.assertEqual(s["uptime-kuma"]["ports"], ["0.0.0.0:3001:3001"])
-        env = s["n8n"]["environment"]
-        self.assertEqual(env["N8N_SECURE_COOKIE"], "false")
-        self.assertEqual(env["N8N_WEBHOOK_URL"], "http://192.168.1.10:5678/")
-        self.assertNotIn("N8N_PROXY_HOPS", env)
+        env = s["quy-trinh"]["environment"]
+        self.assertEqual(env["WEBHOOK_BASE_URL"], "http://192.168.1.10:5678/")
+        self.assertIn("NODE_RED_CREDENTIAL_SECRET", env)
         self.assertNotIn("WEBUI_SESSION_COOKIE_SECURE", s["open-webui"]["environment"])
 
     def test_https_chi_caddy_cong_bo_cong_va_backend_khong_co_ports(self):
         s = ve(True)
-        for ten in ("open-webui", "n8n", "uptime-kuma", "rest-server", "ollama"):
+        for ten in ("open-webui", "quy-trinh", "uptime-kuma", "rest-server", "ollama"):
             self.assertNotIn("ports", s[ten], ten)
         cong = sorted(s["portal"]["ports"])
         self.assertEqual(cong, sorted(["0.0.0.0:80:80"] + [f"0.0.0.0:{p}:{p}" for p in (443, 3000, 5678, 8000, 3001)]))
@@ -75,11 +74,9 @@ class ComposeHaiCheDo(unittest.TestCase):
 
     def test_https_cau_hinh_ung_dung(self):
         s = ve(True)
-        n = s["n8n"]["environment"]
-        self.assertNotIn("N8N_SECURE_COOKIE", n)
-        self.assertEqual((n["N8N_PROTOCOL"], n["N8N_HOST"], n["N8N_PROXY_HOPS"]), ("https", "192.168.1.10", "1"))
-        self.assertEqual(n["N8N_EDITOR_BASE_URL"], "https://192.168.1.10:5678/")
-        self.assertEqual(n["N8N_WEBHOOK_URL"], "https://192.168.1.10:5678/")
+        n = s["quy-trinh"]["environment"]
+        self.assertEqual(n["WEBHOOK_BASE_URL"], "https://192.168.1.10:5678/")
+        self.assertIn("NODE_RED_CREDENTIAL_SECRET", n)
         w = s["open-webui"]["environment"]
         self.assertEqual((w["WEBUI_SESSION_COOKIE_SECURE"], w["WEBUI_AUTH_COOKIE_SECURE"]), ("true", "true"))
         self.assertEqual(w["CORS_ALLOW_ORIGIN"], "https://192.168.1.10:3000;https://box.anphu.onebee.internal:3000")
