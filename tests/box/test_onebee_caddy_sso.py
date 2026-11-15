@@ -150,7 +150,7 @@ class CaddySso(unittest.TestCase):
         cls.tmp.cleanup()
 
     @classmethod
-    def dung_caddy(cls, sso=True):
+    def dung_caddy(cls, sso=True, authelia_chet=False):
         """Render Caddyfile như Ansible (HTTPS bật) rồi đổi cổng/đường dẫn/dịch vụ phía sau sang cổng thử trên máy này."""
         t, c = cls.t, cls.cong
         v = yaml.safe_load(open(os.path.join(ROOT, "box/ansible/group_vars/all.yml"), encoding="utf-8"))
@@ -165,7 +165,7 @@ class CaddySso(unittest.TestCase):
         nd = nd.replace(":443", f":{c['portal']}").replace("\n:80 {", f"\n:{c['http']} {{")
         nd = nd.replace("/srv-http", f"{t}/srv-http").replace("root * /srv\n", f"root * {t}/srv\n").replace("/pki/", f"{t}/pki/")
         p = {k: s.server_port for k, s in cls.sv.items()}
-        for goc, moi in (("authelia:9091", p["authelia"]), ("cau-noi:8080", cls.cong_cau_noi), ("ollama:11434", p["ollama"]),
+        for goc, moi in (("authelia:9091", cong_trong() if authelia_chet else p["authelia"]), ("cau-noi:8080", cls.cong_cau_noi), ("ollama:11434", p["ollama"]),
                          ("uptime-kuma:3001", p["uptime-kuma"]), ("open-webui:8080", p["khac"]), ("n8n:5678", p["khac"]),
                          ("rest-server:8000", p["khac"])):
             nd = nd.replace(goc, f"127.0.0.1:{moi}")
@@ -329,6 +329,32 @@ class CaddySsoTamTat(CaddySso):
     test_c_may_khach_tu_gui_remote_user_khong_co_tac_dung = test_d_authorization_cua_may_khach_khong_toi_phia_sau = None
     test_e_ai_chi_mo_hai_duong_dan_post = test_f_files_co_phien_nhan_503 = test_j_than_qua_1mb_bi_chan = None
     test_k_giam_sat_chi_ky_thuat_hai_lop = None
+
+
+@unittest.skipUnless(CADDY, "cần caddy (ONEBEE_TEST_CADDY)")
+class CaddyDinhDanhChet(unittest.TestCase):
+    """Dịch vụ định danh không trả lời: tuyến lõi và giám sát đóng (lỗi), không bao giờ cho qua; trang chủ vẫn mở."""
+
+    @classmethod
+    def setUpClass(cls):
+        CaddySso.setUpClass()
+        CaddySso.dung_caddy(sso=True, authelia_chet=True)
+
+    @classmethod
+    def tearDownClass(cls):
+        CaddySso.tearDownClass()
+        CaddySso.caddy = None
+
+    def test_khong_cho_qua_khi_dinh_danh_chet(self):
+        for g in (PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY):
+            g.ds.clear()
+        gia = ("-b", "authelia_session=phien-ql", "-H", "Remote-User: binh", "-H", "Remote-Groups: quan_ly")
+        for duong, them in (("/api/toi", ()), ("/files/x", ()), ("/ai/api/chat", ("-X", "POST", "-d", "{}"))):
+            ma = CaddySso.ten(duong, *them, *gia)[0]
+            self.assertRegex(ma, r"^50[024]$", duong)          # Caddy không gọi được forward_auth → lỗi cổng, không chuyển tiếp
+        self.assertRegex(CaddySso.ten("/dashboard", *gia, cong=CaddySso.cong["uptime_kuma"])[0], r"^50[024]$")
+        self.assertEqual((PHIA_SAU_THAY.ds, OLLAMA_THAY.ds, KUMA_THAY.ds), ([], [], []))
+        self.assertEqual(CaddySso.ten("/")[:2], ("200", "OneBee Box trang chu"))
 
 
 if __name__ == "__main__":
