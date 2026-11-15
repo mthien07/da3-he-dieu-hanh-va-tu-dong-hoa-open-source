@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Mẫu n8n (thông tin đăng nhập + quy trình nhận tình trạng) ở hai chế độ khóa gửi tình trạng dùng chung: JSON hợp lệ, đúng xác thực.
 Chạy: python3 -m unittest"""
 import json

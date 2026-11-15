@@ -26,7 +26,8 @@ Các bài unit mới: `test_onebee_ca.py` (CA, ràng buộc tên bằng openssl/
 `LANG=vi_VN` (Python hiểu là bảng mã TCVN) hay locale chưa tạo trên máy (`ansible-playbook` giả ghi lại locale hiệu lực).
 `tests/box/test_onebee_webui.py` còn kiểm bản dịch giao diện tiếng Việt bổ sung (`giao-dien-tieng-viet.json`) gửi qua trường `I18N`: máy chủ giả làm đúng phép kiểm
 của Open WebUI v0.11.4, giữ bản dịch quản trị tự thêm, chạy lại không đổi; `tests/box/check-ai-chat-inside.sh` kiểm `/api/config` trả bản dịch cả khi chưa đăng nhập.
-`tests/desktop/test_onebee_phien_ban.py`: phiên bản trong bộ cài Desktop, bộ cài Box và mục đầu nhật ký thay đổi phải trùng nhau và không thấp hơn tag mới nhất.
+`tests/desktop/test_onebee_phien_ban.py`: phiên bản trong bộ cài Desktop, bộ cài Box và mục đầu `CHANGELOG.md` phải trùng nhau và không thấp hơn tag mới nhất; gói phát hành có `LICENSE` và `CHANGELOG.md`.
+`tests/desktop/test_onebee_giay_phep.py`: gốc repo có `LICENSE` (MIT) và mọi tệp mã được theo dõi có dòng `SPDX-License-Identifier: MIT` trong 5 dòng đầu (hỗ trợ kiểm tra cả ngoài cây Git khi giải nén gói phát hành).
 `tests/desktop/test_onebee_cam_nang.py`: phím tắt và tên gọi trong `onebee-cam-nang.json` khớp cấu hình máy (gschema, dconf, mục menu) và 5 tài liệu phát cho người dùng.
 `tests/desktop/test_onebee_trung_tam.py`: phần logic của Trung tâm OneBee (`onebee-trung-tam`) không cần GTK: đọc cẩm nang phím tắt, thông tin đơn vị, dấu đã xem lần đầu, 6 ô trang Bắt đầu tham số dòng lệnh, đọc kết quả `onebee-chan-doan --json` và tóm tắt lỗi gửi kèm yêu cầu hỗ trợ.
 `tests/desktop/test_onebee_bao_ho_tro.py`: lệnh `onebee-bao-ho-tro`: đọc địa chỉ biểu mẫu từ file cấu hình (từ chối địa chỉ lạ), điền sẵn tên máy/loại/mô tả có mã hóa phần trăm, cắt mô tả dài, báo rõ khi máy chưa nối Box, mở `xdg-open` giả.

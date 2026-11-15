@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử lệnh `onebee-nhac-sao-luu`: người đang đăng nhập nhận một thông báo (tối đa một lần mỗi ngày) khi máy đã nối Box
 mà quá 72 giờ chưa sao lưu. Đường dẫn được thay bằng biến môi trường, `notify-send` là lệnh giả ghi tham số ra file.
 Chạy: python3 -m unittest tests/desktop/test_onebee_nhac_sao_luu.py"""

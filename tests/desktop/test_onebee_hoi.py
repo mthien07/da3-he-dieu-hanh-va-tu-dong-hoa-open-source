@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử lệnh `hoi` theo từng nhân viên (rà soát bảo mật F10, Pha 4c): đăng nhập → chỉ lưu khóa (0600), dán khóa, đăng xuất, hai tài khoản
 Linux dùng hai khóa khác nhau, khóa máy chỉ là chuyển tiếp, từ chối đăng nhập qua http://. Open WebUI giả chạy sau TLS thật (CA do onebee-ca.sh sinh).
 Chạy: python3 -m unittest"""

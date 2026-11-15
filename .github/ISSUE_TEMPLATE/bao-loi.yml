@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 name: 🐞 Báo lỗi
 description: Bộ cài dừng, dịch vụ không chạy, kết quả sai với tài liệu
 title: "[Lỗi] "

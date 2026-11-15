@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Tình trạng các máy trạm OneBee (được lệnh onebee-box gọi, chỉ thư viện chuẩn).
 
   onebee-may-tram.py bang    <thu-muc-tinh-trang> ten=gio ...        In bảng cho người quản trị

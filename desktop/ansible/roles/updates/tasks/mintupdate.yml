@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Làm đúng như lệnh `mintupdate-automation <loại> enable`: tạo file đánh dấu + bật timer systemd.
 # Tự viết lại để chạy lặp nhiều lần không báo thay đổi (lệnh gốc luôn chạy lại).
 # mintupdate bản mới (Mint 22.3) có thể không còn timer dọn gói thừa; thiếu file timer thì `systemctl enable` báo lỗi, nên chỉ bật khi có.

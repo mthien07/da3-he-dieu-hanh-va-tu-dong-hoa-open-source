@@ -85,7 +85,7 @@ cd onebee && sudo ./desktop/onebee-install.sh
 | Chạy thử tại đơn vị, đào tạo, tờ phím tắt | [chay-thu-tai-don-vi.md](docs/huong-dan/chay-thu-tai-don-vi.md) · [dao-tao-buoi-1-3.md](docs/huong-dan/dao-tao-buoi-1-3.md) · [to-phim-tat.md](docs/huong-dan/to-phim-tat.md) |
 | Đo trước/sau | [do-truoc-sau.md](docs/huong-dan/do-truoc-sau.md) |
 | Kinh doanh: cách tính giá, mẫu hợp đồng (nháp), khảo sát khách | [docs/kinh-doanh/](docs/kinh-doanh/) |
-| Quyết định kiến trúc | [docs/adr/](docs/adr/) · Lõi DX-OS open-core (SSO, cổng API, dữ liệu, kho tệp, quy trình): [ADR 0006](docs/adr/0006-loi-dx-os-open-core.md) · Thay đổi: [project-changelog.md](docs/project-changelog.md) |
+| Quyết định kiến trúc | [docs/adr/](docs/adr/) · Lõi DX-OS open-core (SSO, cổng API, dữ liệu, kho tệp, quy trình): [ADR 0006](docs/adr/0006-loi-dx-os-open-core.md) · Thay đổi: [CHANGELOG.md](CHANGELOG.md) |
 
 ## 📌 Trạng thái (1.0.0 — bản phát hành đầu tiên, chưa thử trên máy thật)
 - ✅ Đủ tính năng cho 1 đơn vị: máy trạm, Box, Trợ lý AI, quy trình email, quản lý máy trạm, hỗ trợ từ xa, sổ hỗ trợ + khảo sát,
@@ -115,7 +115,7 @@ Dải giá trong hồ sơ hội thi là giả định nội bộ, chưa có cơ 
 - Thấy dự án hữu ích? Bấm ⭐ để nhiều HTX biết tới hơn.
 
 ## ⚖️ Giấy phép
-Mã nguồn repo: **MIT** ([LICENSE](LICENSE)). Thành phần giữ giấy phép của tác giả ([LICENSES.md](LICENSES.md)). Lưu ý khi giới thiệu "mã nguồn mở":
+Mã nguồn repo phát hành theo giấy phép **MIT** ([LICENSE](LICENSE)), với mục đích cho phép mọi cá nhân, hợp tác xã, doanh nghiệp, sinh viên và cơ quan tự do sử dụng, nghiên cứu, sửa đổi và phân phối lại (kể cả mục đích thương mại), nhằm bảo đảm chủ quyền số và không bị nhà cung cấp khóa chặt. Thành phần bên thứ ba giữ nguyên giấy phép của tác giả ([LICENSES.md](LICENSES.md)). Lưu ý khi giới thiệu "mã nguồn mở":
 | Thành phần | Giấy phép |
 |---|---|
 | Linux Mint/Ubuntu, LibreOffice, IBus/Bamboo, Ollama, restic, Samba, Caddy, Uptime Kuma, x11vnc | Nguồn mở (chuẩn OSI) |

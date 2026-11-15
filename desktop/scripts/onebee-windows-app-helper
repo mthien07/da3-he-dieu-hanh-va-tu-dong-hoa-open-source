@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # OneBee OS — Trình trợ lý bắt file cài đặt Windows (.exe, .msi) và gợi ý ứng dụng thay thế.
 # Giúp người dùng văn phòng không bị bỡ ngỡ khi tải file Windows về máy Linux.
 # Cách dùng:

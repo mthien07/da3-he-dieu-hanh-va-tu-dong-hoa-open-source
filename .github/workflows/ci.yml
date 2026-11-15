@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 name: CI
 
 on:
@@ -49,6 +51,7 @@ jobs:
           python3 -m unittest discover -s tests/box -p 'test_*.py'
           python3 -m unittest discover -s tests/desktop -p 'test_*.py'
           python3 -m unittest tests/ai/test_scoring_and_report.py
+          python3 scripts/chen-giay-phep.py --kiem
           python3 tests/kiem-tra-mau-jinja.py
           tests/box/check-diagnosis.sh                         # onebee-box chan-doan (lệnh giả, CA thật)
           tests/box/check-rag-prompts.sh                       # kho prompt hành chính NĐ 30 & RAG

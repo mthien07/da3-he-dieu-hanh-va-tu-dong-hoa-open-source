@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử Caddyfile HTTPS của Box (box-stack/templates/Caddyfile.j2) bằng Caddy THẬT chạy trên máy (không cần Docker).
 Cần tệp chạy caddy: đặt biến ONEBEE_TEST_CADDY=/đường/dẫn/caddy (hoặc caddy có trong PATH), nếu không bài này bị bỏ qua.
 Backend là máy chủ HTTP giả; CA là CA riêng do onebee-ca.sh sinh (gốc không kèm khóa gốc ở thư mục của Caddy).
 Kiểm: Caddy nhận gốc không khóa + trung gian có khóa; nối bằng IP KHÔNG SNI (default_sni) và bằng tên; chuỗi đến CA riêng; http:// tới cổng TLS bị chuyển 308;
 cổng 80 chỉ phục vụ CA/hướng dẫn; mỗi cổng tới đúng backend; Kuma chỉ có site khi đã sẵn sàng. Chạy: python3 -m unittest"""
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -88,7 +91,7 @@ class CaddyHttps(unittest.TestCase):
         env = jinja2.Environment(keep_trailing_newline=True, trim_blocks=True)   # Ansible mặc định trim_blocks=True
         env.filters["bool"] = bool
         nd = env.from_string(open(TEMPLATE, encoding="utf-8").read()).render(**v)
-        nd = nd.replace(":443", f":{c['portal']}").replace("\n:80 {", f"\n:{c['http']} {{")
+        nd = re.sub(r":443\b", f":{c['portal']}", nd).replace("\n:80 {", f"\n:{c['http']} {{")
         nd = nd.replace("/srv-http", f"{t}/srv-http").replace("root * /srv\n", f"root * {t}/srv\n").replace("/pki/", f"{t}/pki/")
         for ten, cong_goc in (("open-webui", 8080), ("n8n", 5678), ("rest-server", 8000), ("uptime-kuma", 3001)):
             nd = nd.replace(f"{ten}:{cong_goc}", f"127.0.0.1:{cls.bk[ten].server_port}")

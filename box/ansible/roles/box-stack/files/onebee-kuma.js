@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 // Cấu hình Uptime Kuma của OneBee Box: tạo tài khoản quản trị (lần đầu), email báo khi dịch vụ ngừng, danh sách theo dõi.
 // Chạy bên trong container Uptime Kuma: docker exec -i -w /app -e ... onebee-uptime-kuma node - < onebee-kuma.js
 // Biến: KUMA_USER, KUMA_PASS, KUMA_MONITORS (JSON), KUMA_SMTP (JSON, rỗng = không gửi email),
