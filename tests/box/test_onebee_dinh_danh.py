@@ -361,6 +361,25 @@ class LenhNguoiDung(unittest.TestCase):
         self.assertNotEqual(self.chay("xoa-nguoi", "an", kiem=False).returncode, 0)        # không còn ai tên đó
         self.assertNotEqual(self.chay("xoa-nguoi", "_onebee", kiem=False).returncode, 0)   # tài khoản hệ thống không xóa được
 
+    def test_ghi_giu_khoang_cach_tranh_authelia_watcher_cooldown(self):
+        import importlib.util
+        from unittest.mock import patch
+
+        spec = importlib.util.spec_from_file_location("onebee_nguoi_dung", os.path.join(DINH_DANH, "files/onebee-nguoi-dung.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        d = mod.doc(self.tep)
+        now = 1_700_000_000.0
+        os.utime(self.tep, (now - 0.3, now - 0.3))
+        with patch.object(mod.time, "time", return_value=now), patch.object(mod.time, "sleep") as ngu:
+            mod.ghi(self.tep, d)
+        self.assertEqual(ngu.call_count, 1)
+        self.assertAlmostEqual(ngu.call_args[0][0], mod.COOLDOWN_GIAY - 0.3, delta=0.01)
+        os.utime(self.tep, (now - 10.0, now - 10.0))
+        with patch.object(mod.time, "time", return_value=now), patch.object(mod.time, "sleep") as ngu:
+            mod.ghi(self.tep, d)
+        ngu.assert_not_called()
+
     def test_ma_xac_nhan_in_ma_moi_nhat(self):
         r = self.chay("ma-xac-nhan", kiem=False)
         self.assertNotEqual(r.returncode, 0)
