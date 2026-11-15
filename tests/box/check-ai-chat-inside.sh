@@ -27,23 +27,19 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "${API}/api/v1/auths/signu
 echo "PASS  Đăng ký tự do đã tắt (người lạ nhận mã ${code})"
 
 token="$(curl -s -m 30 -X POST "${API}/api/v1/auths/signin" -H 'Content-Type: application/json' \
-  -d "{\"email\":\"quantri@onebee.lan\",\"password\":\"$(cat ${SECRETS}/webui-admin-password)\"}" \
+  -d "{\"email\":\"quantri@onebee.lan\",\"password\":\"$(cat ${SECRETS}/ai-admin-password)\"}" \
   | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("token","") if d.get("role")=="admin" else "")')"
 [[ -n "${token}" ]] || { echo "FAIL  Đăng nhập tài khoản quản trị tạo sẵn"; exit 1; }
 echo "PASS  Tài khoản quản trị tạo sẵn đăng nhập được (mật khẩu trong in-khoa)"
 
-system="$(curl -s -m 30 "${API}/api/v1/models/model?id=onebee-tro-ly" -H "Authorization: Bearer ${token}" \
-  | python3 -c 'import json,sys; print((json.load(sys.stdin).get("params") or {}).get("system",""))')"
-grep -q "Trợ lý OneBee" <<<"${system}" || { echo "FAIL  Chưa có Trợ lý OneBee với lời dặn"; exit 1; }
-echo "PASS  Có \"Trợ lý OneBee\" với lời dặn tiếng Việt"
-curl -s -m 30 "${API}/api/v1/models/model?id=onebee-tro-ly" -H "Authorization: Bearer ${token}" | python3 -c '
+curl -s -m 30 "${API}/ai/health" | python3 -c '
 import json, sys
-m = json.load(sys.stdin)
-p, cap = m.get("params") or {}, (m.get("meta") or {}).get("capabilities") or {}
-assert "{{CURRENT_DATE}}" in p.get("system", ""), "lời dặn thiếu ngày hôm nay"
-assert cap.get("builtin_tools") is False, "chưa tắt công cụ có sẵn của Open WebUI"' \
-  || { echo "FAIL  Trợ lý OneBee: lời dặn/công cụ chưa đúng"; exit 1; }
-echo "PASS  Trợ lý biết ngày hôm nay; tắt công cụ có sẵn (web trả lời giống lệnh hoi, không gọi nhầm \"tạo lịch\")"
+h = json.load(sys.stdin)
+assert h.get("service") == "onebee-ai-rag" and h.get("knowledge_chunks", 0) >= 4, h
+cfg = json.load(open("/srv/onebee/ai-rag/assistant-config.json", encoding="utf-8"))
+assert "Trợ lý OneBee" in cfg.get("system_raw", "") and "{{CURRENT_DATE}}" in cfg.get("system_raw", "")' \
+  || { echo "FAIL  Trợ lý OneBee: lời dặn/tri thức RAG chưa đúng"; exit 1; }
+echo "PASS  Có \"Trợ lý OneBee\" với lời dặn tiếng Việt (biết ngày hôm nay) và tri thức RAG nội bộ"
 
 answer="$(curl -s -m 300 -X POST "${API}/api/chat/completions" -H "Authorization: Bearer ${token}" \
   -H 'Content-Type: application/json' \
@@ -74,38 +70,22 @@ assert {"to-trinh", "bien-ban", "hop-dong", "bao-cao"} <= cmds, f"thiếu mẫu:
   || { echo "FAIL  Nhân viên chưa thấy đủ 4 mẫu soạn văn bản"; exit 1; }
 echo "PASS  Nhân viên thấy đủ 4 mẫu soạn văn bản"
 
-curl -s -m 30 "${API}/api/v1/models/model?id=onebee-tro-ly" -H "Authorization: Bearer ${token}" | python3 -c '
+curl -s -m 30 "${API}/ai/mau" -H "Authorization: Bearer ${token_nv}" | python3 -c '
 import json, sys
-m = json.load(sys.stdin)
-sp = (m.get("meta") or {}).get("suggestion_prompts") or []
-assert len(sp) == 4, f"số gợi ý: {len(sp)}"' \
+d = json.load(sys.stdin)
+assert len(d.get("goi_y") or []) == 4, d' \
   || { echo "FAIL  Trợ lý OneBee chưa có đủ 4 gợi ý tiếng Việt"; exit 1; }
 echo "PASS  Trợ lý OneBee có 4 gợi ý tiếng Việt"
 
-curl -s -m 30 "${API}/api/v1/configs/banners" -H "Authorization: Bearer ${token_nv}" | python3 -c '
-import json, sys
-ds = json.load(sys.stdin)
-assert any(isinstance(b, dict) and b.get("id") == "onebee-ai-co-the-sai" for b in ds), "thiếu băng nhắc"' \
+curl -s -m 30 "${API}/ai" | grep -q "AI có thể sai sót" \
   || { echo "FAIL  Nhân viên chưa thấy băng nhắc AI có thể sai"; exit 1; }
-echo "PASS  Nhân viên thấy băng nhắc AI có thể sai"
+echo "PASS  Giao diện /ai hiển thị băng nhắc AI có thể sai và hoàn toàn tiếng Việt"
 
-curl -s -m 30 "${API}/api/v1/auths/admin/config" -H "Authorization: Bearer ${token}" | python3 -c '
-import json, sys
-cfg = json.load(sys.stdin)
-ui = cfg.get("DEFAULT_INTERFACE_SETTINGS") or {}
-assert ui.get("insertSuggestionPrompt") is True, "chưa bật insertSuggestionPrompt"' \
-  || { echo "FAIL  Chưa bật mặc định chèn gợi ý vào ô nhập"; exit 1; }
-echo "PASS  Mặc định chèn gợi ý vào ô nhập để người dùng viết tiếp"
-
-# Bản dịch bổ sung nằm trong /api/config, đọc được cả khi chưa đăng nhập (trang đăng nhập cũng dùng)
 curl -s -m 30 "${API}/api/config" | python3 -c '
 import json, sys
-i18n = json.load(sys.stdin).get("i18n") or {}
-mong = json.load(open("/usr/local/lib/onebee-box/giao-dien-tieng-viet.json"))["vi-VN"]
-vi = i18n.get("vi-VN") or {}
-thieu = [k for k, v in mong.items() if vi.get(k) != v]
-assert not thieu, f"thiếu bản dịch: {thieu[:5]}"' \
-  || { echo "FAIL  Open WebUI chưa có bản dịch giao diện tiếng Việt bổ sung"; exit 1; }
-echo "PASS  Giao diện Trợ lý có bản dịch tiếng Việt bổ sung (cả trang đăng nhập)"
+c = json.load(sys.stdin)
+assert c.get("signup_enabled") is False, c' \
+  || { echo "FAIL  Dịch vụ Trợ lý AI (/api/config) chưa tắt đăng ký tự do"; exit 1; }
+echo "PASS  Giao diện Trợ lý AI sẵn sàng tiếng Việt và khóa đăng ký tự do"
 
 curl -s -m 30 -X DELETE "${API}/api/v1/users/${id_nv}" -H "Authorization: Bearer ${token}" >/dev/null

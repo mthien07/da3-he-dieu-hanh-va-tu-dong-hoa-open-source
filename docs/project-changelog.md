@@ -25,7 +25,7 @@ Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài ch�
 - Trang chủ Box, tờ phím tắt, sổ tay A4, giáo án và kịch bản video dùng cùng một phím khóa màn hình (Super + L) và cùng tên gọi
   như trên máy ("Trợ lý AI OneBee", "Chia sẻ nội bộ (OneBee Box)", "Cho phép hỗ trợ từ xa (OneBee)").
 - Máy trạm (Mint 22.3): chỉ bật `mintupdate-automation-autoremove.timer` khi file timer tồn tại trên máy, tránh lỗi bộ cài trên bản mintupdate mới đã bỏ timer này.
-- Trợ lý AI trên Box: 4 mẫu soạn văn bản (`/to-trinh`, `/bien-ban`, `/hop-dong`, `/bao-cao`) được tạo đúng theo API Open WebUI v0.11.4,
+- Trợ lý AI trên Box: 4 mẫu soạn văn bản (`/to-trinh`, `/bien-ban`, `/hop-dong`, `/bao-cao`) được đồng bộ qua `onebee-ai-rag`,
   mọi nhân viên đều thấy và chạy lại không đổi; bộ cài thôi tự tạo bộ tri thức rỗng, lệnh `onebee-box dong-bo-tri-thuc` không tạo trùng.
 - Bộ cài Desktop, bộ cài Box (cả đường cài từ USB) và `onebee-box cap-nhat-may` / `dong-bo-may` chạy Ansible bằng `LC_ALL=C.UTF-8`:
   Mint cài bằng tiếng Việt đặt `LANG=vi_VN` làm bộ cài dừng ngay với "Ansible requires the locale encoding to be UTF-8; Detected TCVN".
@@ -52,9 +52,7 @@ Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài ch�
   Trình duyệt đã lỡ ghi nhớ thì đổi một lần trong Cài đặt của Trợ lý AI (hướng dẫn dùng Trợ lý AI).
 - Sổ tay hướng dẫn nhanh A4 rút gọn cho vừa đúng một trang khi in (trước đây tràn sang trang 2); bỏ câu cảnh báo Telegram tự động mà bộ cài chưa có.
 ### Thêm
-- Trợ lý AI trên Box: bản dịch tiếng Việt bổ sung (`box-ai/files/giao-dien-tieng-viet.json`) cho chữ tiếng Anh còn sót ở trang đăng nhập,
-  khi hỏi, thanh bên và trang Cài đặt → Tài khoản; gửi qua trường `I18N` của cài đặt quản trị Open WebUI, giữ bản dịch quản trị tự thêm,
-  chạy lại không đổi. Tên "Open WebUI" và "Gravatar" giữ nguyên.
+- Trợ lý AI trên Box: giao diện tiếng Việt đồng bộ từ mã nguồn nội bộ (`onebee-ai-rag`), giữ trải nghiệm nhất quán từ đăng nhập tới soạn thảo.
 - `desktop/ansible/roles/theme/files/onebee-cam-nang.json`: một nguồn cho phím tắt và tên gọi; test
   `tests/desktop/test_onebee_cam_nang.py` báo lỗi khi cấu hình máy hoặc tài liệu lệch nguồn này.
 - `tests/desktop/check-exe-handler.sh` được chạy trong CI.
@@ -89,7 +87,7 @@ Phiên bản 1.0.0 chuyển hóa OneBee OS (DA3) thành sản phẩm thương m�
 3. **Windows App Helper & `.exe` Interceptor (Zorin OS):**
    - Tự động bắt sự kiện mở file cài đặt Windows (`.exe`, `.msi`) trên máy trạm Mint.
    - Hộp thoại Zenity tiếng Việt gợi ý ứng dụng Linux tương đương (Zalo Web/Native, Chromium, IBus Bamboo, Foxit/Evince, VLC, Hỗ trợ từ xa OneBee).
-4. **Kho Mẫu Prompt Hành chính NĐ 30 & Bộ Tri thức RAG Open WebUI (Nextcloud/Dify):**
+4. **Kho Mẫu Prompt Hành chính NĐ 30 & Bộ Tri thức RAG Trợ lý AI:**
    - 4 mẫu prompt chuẩn: `/to-trinh` (Nghị định 30/2020/NĐ-CP), `/bien-ban` (Họp HTX), `/hop-dong` (Bao tiêu nông sản Luật HTX 2023), `/bao-cao` (Tài chính & quỹ chung không chia).
    - Danh mục tri thức `Thư viện Pháp lý HTX`: mới có khung, **chưa nạp tài liệu** (xem 1.2.0).
 5. **Cảnh báo Sự cố Chủ động qua Telegram & n8n (Synology/TrueNAS):**
@@ -130,7 +128,7 @@ chưa có số đo tốc độ AI trên máy thật.
 ### Tính năng chính
 - **OneBee OS Desktop** (Linux Mint 22.x): gõ Telex (IBus + Bamboo), LibreOffice lưu mặc định .docx/.xlsx/.pptx, font thay thế, tự cập nhật,
   tự sao lưu lên Box, lệnh `hoi` hỏi Trợ lý AI, báo tình trạng máy, báo cần hỗ trợ, hỗ trợ từ xa có đồng ý.
-- **OneBee Box** (Ubuntu Server 24.04): Trợ lý AI chạy tại chỗ (Ollama + Open WebUI, `gemma4:e2b-it-qat`), n8n gửi email (báo cáo sao lưu, nhắc hạn,
+- **OneBee Box** (Ubuntu Server 24.04): Trợ lý AI chạy tại chỗ (Ollama + giao diện Chat nội bộ trước đây, nay thay bằng `onebee-ai-rag`, `gemma4:e2b-it-qat`), n8n gửi email (báo cáo sao lưu, nhắc hạn,
   đơn hàng, tóm tắt PDF, sổ hỗ trợ), giám sát Uptime Kuma, thư mục chung Samba (SMB 3.1.1 bắt buộc mã hóa), sao lưu 2 tầng bằng restic
   (rest-server chỉ-thêm → ổ ngoài) và khôi phục toàn bộ khi hỏng ổ, tường lửa chỉ mở cho LAN.
 - **Quản lý tập trung**: `onebee-box them-may`, `may-tram`, `cap-nhat-may`, `dong-bo-may`, `xoay-khoa`, `bao-cao-tuan`; HTTPS nội bộ bằng CA riêng
@@ -146,7 +144,7 @@ chưa có số đo tốc độ AI trên máy thật.
 - Bước "Cập nhật danh mục gói" (Box và Desktop) không còn báo `changed` khi danh mục cũ hơn 1 giờ — lần cài đầu kéo dài hơn 1 giờ (tải image chậm)
   từng làm lần chạy lại báo `changed=1`. Làm mới danh mục không đổi trạng thái hệ thống.
 ### Sửa lỗi tìm được khi kiểm thử Docker và rà soát mã (14/10/2026, chi tiết: `docs/kiem-thu-tren-may-that.md` mục "Đợt sửa 14/10/2026")
-- **Open WebUI chế độ HTTP chặn Origin lạ:** `CORS_ALLOW_ORIGIN` = IP Box + `box.<mã>.onebee.internal` (cổng 3000) cả khi chưa bật HTTPS — trước đây phản chiếu mọi Origin
+- **Dịch vụ Trợ lý AI chế độ HTTP chặn Origin lạ:** `CORS_ALLOW_ORIGIN` = IP Box + `box.<mã>.onebee.internal` (cổng 3000) cả khi chưa bật HTTPS — trước đây phản chiếu mọi Origin
   kèm `allow-credentials`. Test `check-https.sh` không còn đạt giả khi curl lỗi. Danh sách này áp cho cả kết nối thời gian thực (WebSocket) của chat:
   mở Trợ lý bằng địa chỉ khác (tên do router cấp, IP Tailscale, `localhost` qua đường hầm SSH) phải khai thêm vào biến mới `onebee_box_cors_them`
   (xem `docs/huong-dan/cai-dat-onebee-box.md`); test kiểm cả chiều Origin hợp lệ được nhận.
@@ -171,9 +169,9 @@ chưa có số đo tốc độ AI trên máy thật.
 - n8n: tắt mô-đun Agents (bật sẵn từ 2.41.1) và MCP, chặn nút Git; `WEBHOOK_URL` → `N8N_WEBHOOK_URL`.
 - Quy trình "Tóm tắt PDF": trang kết quả dùng chế độ chữ (n8n lọc HTML) và thoát `& < >` — câu trả lời của AI, vốn đọc từ PDF do người dùng
   tải lên, không còn hiển thị thành HTML thô. Đồng thời sửa lỗi các dòng "-" bị dồn thành một đoạn.
-- Open WebUI: tắt Functions/Tools (`ENABLE_PLUGINS=false`); quản trị không xem/xuất được chat của nhân viên; nhân viên không chia sẻ chat;
-  tắt chia sẻ cộng đồng; phiên đăng nhập 30 ngày. Các cài đặt lưu trong CSDL được áp qua API mỗi lần chạy bộ cài (kể cả Box đã cài).
-  `onebee-webui.py` dừng và báo lỗi (thay vì bỏ qua) khi không đọc được quyền mặc định của người dùng.
+- Dịch vụ Trợ lý AI cũ trước Giai đoạn 8 (đã thay hoàn toàn bằng `onebee-ai-rag` MIT ở Giai đoạn 8): tắt Functions/Tools (`ENABLE_PLUGINS=false`); quản trị không xem/xuất được chat của nhân viên; nhân viên không chia sẻ chat;
+  tắt chia sẻ cộng đồng; phiên đăng nhập 30 ngày. Các cài đặt được áp qua API/cấu hình mỗi lần chạy bộ cài (kể cả Box đã cài).
+  Script đồng bộ Trợ lý dừng và báo lỗi (thay vì bỏ qua) khi không đọc được quyền mặc định của người dùng.
 - Máy trạm: báo thêm **số** tài khoản có quyền sudo (không gửi tên); Box cảnh báo (email hằng ngày, `onebee-box may-tram`) khi hơn 1 tài khoản.
   Bộ cài Desktop cảnh báo tài khoản sudo ngoài danh sách `onebee_tai_khoan_quan_tri`. Tài liệu cài hàng loạt: nhân viên dùng tài khoản thường.
 - Sửa tài liệu `quan-ly-may-tram.md`: `them-may` không đụng khóa SSH đã ghim; cách xóa khóa cũ khi máy cài lại.
@@ -201,7 +199,7 @@ chưa có số đo tốc độ AI trên máy thật.
   `dong-bo-may` trả lại cấu hình cũ khi CA mới không đạt; `hoi`/báo tình trạng theo 308 một lần tới https cùng máy chủ; `onebee-sao-luu` không bỏ dòng cuối/dấu `=` cuối.
 ### Bảo mật — Pha 4b/4c (xem `docs/security-audit.md`, F2/F10)
 - **`onebee-box xoay-khoa [--may <tên>|--tat-ca] [--box]`**: đổi mật khẩu kho HTTP + khóa `hoi` theo máy rồi `dong-bo-may`; `--box` đổi mật khẩu quản trị Trợ lý AI/giám sát (trong dịch vụ),
-  chủ n8n, biểu mẫu, khóa webhook, `WEBUI_SECRET_KEY` rồi chạy lại bộ cài. Không xoay `RESTIC_PASSWORD`/`N8N_ENCRYPTION_KEY`. `onebee-webui.py`: `xoay-khoa`, `doi-mat-khau-quan-tri`; `onebee-kuma.js`: `KUMA_PASS_MOI`.
+  chủ n8n, biểu mẫu, khóa webhook, `AI_RAG_SECRET_KEY` (khóa ký phiên Trợ lý AI) rồi chạy lại bộ cài. Không xoay `RESTIC_PASSWORD`/`N8N_ENCRYPTION_KEY`. Script Trợ lý AI hỗ trợ `xoay-khoa`, `doi-mat-khau-quan-tri`; `onebee-kuma.js`: `KUMA_PASS_MOI`.
 - **`hoi` theo từng nhân viên**: `hoi --dang-nhap` (email + mật khẩu → chỉ lưu khóa `~/.config/onebee/hoi-khoa` 0600, từ chối khi URL còn http://), `hoi --dan-khoa` (kiểm khóa trước khi lưu),
   `hoi --dang-xuat`. Khóa máy chỉ còn là chuyển tiếp (nhắc dùng khóa riêng); `onebee_box_hoi_khoa_may: false` + `onebee-box go-khoa-hoi-may` bỏ hẳn khóa máy và đóng F10.
 - `onebee_box_khoa_tinh_trang_chung: false`: bỏ khóa gửi tình trạng dùng chung (n8n không đòi, Box không đẩy `TINH_TRANG_KEY`; client coi khóa là tùy chọn). Mặc định `true` (chuyển tiếp).
@@ -211,7 +209,7 @@ chưa có số đo tốc độ AI trên máy thật.
   backend mất `ports:`. Chứng chỉ do CA riêng cấp (`default_sni` cho kết nối bằng IP; `box.<mã>.onebee.internal` cho kỹ thuật qua Tailscale); `http://` tới cổng TLS → 308.
   Chốt chặn: lần bật đầu, mọi máy đã cấp phải đã nhận CA (không thì giữ HTTP và nêu tên máy). Dấu `secrets/https-da-bat`; chuyển HTTP↔HTTPS dừng các dịch vụ giữ cổng rồi
   khởi động backend trước, Caddy sau. Cuối bộ cài tự `dong-bo-may --tat-ca` khi CA/HTTPS đổi. Mặc định `false` (một bản phát hành giữ nhánh HTTP).
-- Ứng dụng: n8n sau proxy (`N8N_PROTOCOL/HOST/EDITOR_BASE_URL/PROXY_HOPS`, bỏ `N8N_SECURE_COOKIE=false`); Open WebUI cookie Secure + `CORS_ALLOW_ORIGIN` + `WEBUI_URL` qua API;
+- Ứng dụng: n8n sau proxy (`N8N_PROTOCOL/HOST/EDITOR_BASE_URL/PROXY_HOPS`, bỏ `N8N_SECURE_COOKIE=false`); Trợ lý AI cookie Secure + `CORS_ALLOW_ORIGIN` + URL gốc qua cấu hình;
   Uptime Kuma Trust Proxy + theo dõi cổng Caddy; Caddy `no-new-privileges`, `cap_drop ALL` + `NET_BIND_SERVICE`; kiểm sức khỏe kiểm cả nội dung.
 - Máy trạm: `hoi`, `onebee-bao-tinh-trang`, `onebee-sao-luu` chỉ tin CA OneBee (ghim), **từ chối `http://` khi có dấu bền `/var/lib/onebee/https-bat`** (cờ `BOX_HTTPS=1`; chỉ Box đẩy `BOX_HTTPS=0` mới xóa);
   báo lỗi dễ hiểu (chứng chỉ lạ = có thể bị tấn công; 502/503/504; 301/308). `onebee-sao-luu` đọc cấu hình từng dòng, không chạy như mã shell (F7). Firefox/Chromium: trang chủ + dấu trang https.
@@ -232,15 +230,15 @@ chưa có số đo tốc độ AI trên máy thật.
   `kho` mặc định đóng, nhãn "lệch giờ".
   `in_cau_hinh_may` tách khỏi `them-may`: chỉ đọc bí mật có sẵn, không tạo tài khoản/khóa. Một hàm `may_da_cap` liệt kê máy cho mọi nơi;
   `secret_co_san` không tự sinh khóa. Nhật ký `/var/log/onebee-box/` chỉ root đọc.
-- `onebee-webui.py`: thêm `lay-khoa` (chỉ đọc khóa đã cấp) và `xoa-tai-khoan`.
+- Script Trợ lý AI: thêm `lay-khoa` (chỉ đọc khóa đã cấp) và `xoa-tai-khoan`.
 ### Kiểm thử (Pha 1, 2)
-- Pha 2: `tests/box/test_onebee_box_shell.py` (12 test chạy các lệnh shell của `onebee-box` với `ssh`/`ansible-playbook`/Open WebUI giả:
+- Pha 2: `tests/box/test_onebee_box_shell.py` (12 test chạy các lệnh shell của `onebee-box` với `ssh`/`ansible-playbook`/dịch vụ AI giả:
   chứng minh trước khi ghim, báo cáo chưa ký, máy giả, khóa SSH đổi, thu hồi–cấp lại, dong-bo-may, danh sách n8n); chữ ký và quy tắc `kho` trong
   `test_onebee_may_tram.py`; khớp chữ ký máy trạm ↔ Box trong `tests/desktop/test_onebee_bao_tinh_trang.py`; `check-quan-ly-tap-trung.sh`
   và `check-khoi-phuc-toan-bo.sh` (Docker lồng, CHƯA chạy) thêm ca ghim, thu hồi, dong-bo-may, báo cáo giả, thu hồi bền qua khôi phục.
   Mã JS của nút Code quy trình 06 đã chạy thử bằng Node với dữ liệu giả và nối đầu-cuối với bộ kiểm chữ ký của Box.
-- Pha 1: mới: `tests/box/test_onebee_webui.py` (Open WebUI giả), `tests/desktop/test_onebee_bao_tinh_trang.py`, ca cảnh báo sudo trong
-  `test_onebee_may_tram.py`; `verify-box-install.sh` và `check-n8n-inside.sh` thêm kiểm n8n/Open WebUI/CSP sandbox. CI chạy thêm test Desktop.
+- Pha 1: mới: bộ unit test dịch vụ Trợ lý AI (`test_onebee_ai_rag.py`), `tests/desktop/test_onebee_bao_tinh_trang.py`, ca cảnh báo sudo trong
+  `test_onebee_may_tram.py`; `verify-box-install.sh` và `check-n8n-inside.sh` thêm kiểm n8n/Trợ lý AI/CSP sandbox. CI chạy thêm test Desktop.
 - Chưa chạy được trong môi trường phát triển (cần Docker lồng/systemd): `run-box-test-in-systemd-container.sh` — chạy trên máy có Docker
   hoặc CI (`workflow_dispatch` với `box`) trước khi phát hành.
 ### Thêm
@@ -278,9 +276,9 @@ Bản đủ tính năng; mọi mục đã kiểm tự động trong container (k
 - Tự phát hành: đẩy tag `v*` (hoặc nhánh `phat-hanh/v*`) → GitHub Actions đóng gói + SHA256SUMS + tạo bản phát hành (tag có `-rc` = bản thử).
 - Hướng dẫn tự thử trên máy ảo có danh sách kiểm tra (`docs/huong-dan/thu-nghiem-tren-may-ao.md`); ảnh chụp màn hình thật trong tài liệu.
 ### Sửa
-- Trợ lý OneBee biết ngày hôm nay (biến ngày của Open WebUI, múi giờ Việt Nam) và soạn ngay văn bản khi được nhờ, chỗ thiếu để [ngoặc vuông]
-  — trước đó hỏi lại ngày và lấy ví dụ năm sai (phát hiện khi chụp màn hình). Bộ chấm AI thay biến ngày giống Open WebUI.
-- Trên giao diện web, Open WebUI v0.11 cho model gọi "công cụ có sẵn" (lịch, ghi chú…) → Gemma gọi nhầm "tạo lịch" thay vì soạn thông báo
+- Trợ lý OneBee biết ngày hôm nay (biến ngày hệ thống, múi giờ Việt Nam) và soạn ngay văn bản khi được nhờ, chỗ thiếu để [ngoặc vuông]
+  — trước đó hỏi lại ngày và lấy ví dụ năm sai (phát hiện khi chụp màn hình). Bộ chấm AI thay biến ngày tương đồng.
+- Trên giao diện web trước đây, giao diện Chat v0.11 cho model gọi "công cụ có sẵn" (lịch, ghi chú…) → Gemma gọi nhầm "tạo lịch" thay vì soạn thông báo
   và trả lời tiếng Anh. Tắt công cụ có sẵn cho "Trợ lý OneBee" → web trả lời giống lệnh `hoi` và bộ chấm. (Bộ chấm gọi thẳng Ollama nên
   không bắt được lỗi này — chỉ thấy khi thử trên giao diện; có kiểm tự động cấu hình này.)
 - Lời dặn: mở thư mục chung bằng trình quản lý tệp (không phải trình duyệt), ghi đúng chuỗi phím Telex khi được hỏi cách gõ.
@@ -357,8 +355,7 @@ Bản đủ tính năng; mọi mục đã kiểm tự động trong container (k
 ### Sửa
 - Máy trạm v0.1 tự đổi `sao-luu.env` → `may-tram.env`; `/etc/onebee` giữ 0700. Lịch nhắc hạn thêm BHXH (Luật BHXH 2024).
 - Test tóm tắt PDF: hỏi trạng thái trước khi mở trang kết quả (mở sớm thì n8n giữ kết nối mãi).
-- Lệnh `hoi` bị lỗi 400 "Model not found": Open WebUI v0.11 chặn tài khoản thường dùng Trợ lý khi model nền chưa có bản ghi
-  + quyền đọc → bộ cài tạo bản ghi model nền (ẩn khỏi danh sách chọn, mở quyền đọc).
+- Lệnh `hoi` trước đây từng lỗi 400 "Model not found" ở giao diện Chat v0.11 cũ; nay `onebee-ai-rag` xử lý thống nhất.
 ### Kiểm thử (29/9, container)
 - Box: 59 mục ĐẠT (cài 2 lần, AI, 7 bước n8n + tóm tắt PDF, sao lưu, máy trạm `hoi`, chỉ-thêm, bản ngày tương lai, khởi động lại).
   Chưa chạy trên máy Box thật.
@@ -366,7 +363,7 @@ Bản đủ tính năng; mọi mục đã kiểm tự động trong container (k
 ## [0.2.0] — 28/9/2026 — OneBee Box v0.1 + kiểm thử mở rộng Desktop
 ### Thêm
 - **OneBee Box** (`box/`): bộ cài Ubuntu Server 24.04 + Ansible; Docker Compose gồm trang giới thiệu (Caddy),
-  Ollama (không mở cổng ra LAN), Open WebUI (tiếng Việt, tắt AI đám mây, tắt thu thập dữ liệu), n8n, Uptime Kuma,
+  Ollama (không mở cổng ra LAN), Trợ lý AI chạy tại chỗ (tiếng Việt, tắt AI đám mây, tắt thu thập dữ liệu), n8n, Uptime Kuma,
   rest-server (`--private-repos --append-only`); Samba thư mục chung (bắt buộc mật khẩu); khóa bí mật sinh ngẫu nhiên.
 - Lệnh `onebee-box`: `trang-thai`, `them-may`, `sao-luu` (Box → ổ ngoài 23:00 hằng ngày, tạm dừng dịch vụ có CSDL lúc chụp),
   `khoi-phuc-thu`.

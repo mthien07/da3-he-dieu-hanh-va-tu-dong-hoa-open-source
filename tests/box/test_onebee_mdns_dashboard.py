@@ -3,7 +3,7 @@
 Kiểm: box-base cài + bật avahi-daemon, cấu hình chỉ quảng bá IPv4 trên cổng mạng chính, không lộ thông tin máy, tệp dịch vụ http cổng 80;
 trang chủ có tên đơn vị (thoát HTML), lối tắt, cẩm nang, ô tình trạng, không tải gì từ Internet;
 onebee-trang-thai-web.py tính CPU/RAM/ổ, trạng thái dịch vụ, ghi JSON nguyên tử;
-Caddy THẬT (nếu có ONEBEE_TEST_CADDY) trả trang chủ cho Host onebee.local và số liệu không bị lưu đệm; Open WebUI nhận Origin onebee.local.
+Caddy THẬT (nếu có ONEBEE_TEST_CADDY) trả trang chủ cho Host onebee.local và số liệu không bị lưu đệm; dịch vụ Trợ lý AI nhận Origin onebee.local.
 Chạy: python3 -m unittest"""
 import configparser
 import importlib.util
@@ -269,7 +269,7 @@ class TrangThaiWeb(unittest.TestCase):
 
     def test_dich_vu_ngung_hoac_khong_co_docker(self):
         d = json.load(open(self.chay('echo true; echo false', 3)))
-        self.assertEqual(d["dich_vu"]["tro_ly_ai"], "dung")       # Ollama hoặc Open WebUI ngừng là Trợ lý không dùng được
+        self.assertEqual(d["dich_vu"]["tro_ly_ai"], "dung")       # Ollama hoặc dịch vụ Trợ lý AI ngừng là Trợ lý không dùng được
         self.assertEqual(d["dich_vu"]["thu_muc_chung"], "dung")
         d = json.load(open(self.chay('echo "Error: No such object" >&2; exit 1', 0)))
         self.assertEqual(d["dich_vu"]["tro_ly_ai"], "dung")
@@ -300,13 +300,13 @@ class TrienKhai(unittest.TestCase):
         self.assertIn("may_tram_py dem", sh)
         self.assertIn("/var/lib/onebee-box/may-tram-tong-hop", sh)
 
-    def test_open_webui_nhan_origin_onebee_local_o_che_do_http(self):
+    def test_ai_rag_nhan_origin_onebee_local_o_che_do_http(self):
         s = yaml.safe_load(ve("box-stack/templates/docker-compose.yml.j2"))["services"]
-        nguon = s["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"].split(";")
-        self.assertIn("http://onebee.local:3000", nguon)   # mở Trợ lý từ trang chủ onebee.local: lệch thì WebSocket chat hỏng
+        nguon = s["ai-rag"]["environment"]["CORS_ALLOW_ORIGIN"].split(";")
+        self.assertIn("http://onebee.local:3000", nguon)   # mở Trợ lý từ trang chủ onebee.local
         self.assertIn("http://192.168.1.10:3000", nguon)
         s = yaml.safe_load(ve("box-stack/templates/docker-compose.yml.j2", onebee_https_hieu_luc=True))["services"]
-        self.assertNotIn("onebee.local", s["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"])   # chứng chỉ không cấp cho .local
+        self.assertNotIn("onebee.local", s["ai-rag"]["environment"]["CORS_ALLOW_ORIGIN"])   # chứng chỉ không cấp cho .local
 
     def test_dich_vu_tren_trang_chu_mo_bang_ip_box_trung_loi_tat_may_tram(self):
         # Trang chủ mở bằng onebee.local mà Trợ lý AI cũng theo tên đó thì là origin khác với biểu tượng máy trạm (HOI_URL theo IP)
@@ -322,10 +322,10 @@ class TrienKhai(unittest.TestCase):
         self.assertIn('echo "HOI_URL=${esq}://${ip}:${AI_PORT}"', sh)
 
     def test_dia_chi_thong_nhat_nam_trong_origin_cho_phep_ca_http_lan_https(self):
-        # Open WebUI chặn WebSocket (chat thời gian thực) của origin không khai báo mà không báo lỗi
+        # Dịch vụ Trợ lý AI chặn origin không khai báo khi bật CORS
         for https, giao_thuc in ((False, "http"), (True, "https")):
             s = yaml.safe_load(ve("box-stack/templates/docker-compose.yml.j2", onebee_https_hieu_luc=https))["services"]
-            nguon = s["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"].split(";")
+            nguon = s["ai-rag"]["environment"]["CORS_ALLOW_ORIGIN"].split(";")
             self.assertIn(f"{giao_thuc}://192.168.1.10:3000", nguon)
             self.assertIn(f"{giao_thuc}://box.anphu.onebee.internal:3000", nguon)
 

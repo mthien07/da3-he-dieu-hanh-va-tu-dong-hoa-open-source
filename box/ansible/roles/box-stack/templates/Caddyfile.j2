@@ -2,7 +2,7 @@
 {% if onebee_https_hieu_luc | bool %}
 {% set cong = onebee_box_ports %}
 {% set kuma_san_sang = onebee_kuma_dia_chi | default('0.0.0.0') == '0.0.0.0' %}
-{% set cong_tls = [443, cong.open_webui, cong.n8n, cong.rest_server] + ([cong.uptime_kuma] if kuma_san_sang else []) %}
+{% set cong_tls = [443, cong.tro_ly_ai, cong.n8n, cong.rest_server] + ([cong.uptime_kuma] if kuma_san_sang else []) %}
 {# Mỗi cổng TLS có 2 địa chỉ: IP của Box (LAN) và box.<mã>.onebee.internal (kỹ thuật vào qua Tailscale, thêm dòng /etc/hosts trỏ tới IP Tailscale của Box) #}
 {% macro dia_chi(c) %}https://{{ onebee_box_ip }}:{{ c }}, https://box.{{ onebee_box_ma_don_vi }}.onebee.internal:{{ c }}{% endmacro %}
 {# HTTPS (Pha 4): CA riêng đặt sẵn (gốc + trung gian, ràng buộc tên); Caddy chỉ cấp chứng chỉ lá cho IP của Box và box.<mã>.onebee.internal #}
@@ -63,13 +63,18 @@
 {% endif %}
 
 {# Danh tính do máy khách tự gửi không bao giờ tới dịch vụ phía sau: xóa ở đầu khối trang (request_header chạy TRƯỚC mọi handle/forward_auth) #}
-(onebee_bo_danh_tinh_may_khach) {
+(onebee_bo_danh_tinh_co_ban) {
 	request_header -Remote-User
 	request_header -Remote-Groups
 	request_header -Remote-Email
 	request_header -Remote-Name
-	request_header -Authorization
+	request_header -X-OneBee-SSO
 	request_header -Proxy-Authorization
+}
+
+(onebee_bo_danh_tinh_may_khach) {
+	import onebee_bo_danh_tinh_co_ban
+	request_header -Authorization
 }
 
 {% macro trang_chu() %}
@@ -89,7 +94,7 @@
 {# Vào bằng IP: chỉ trang chủ (công khai, không có dữ liệu nội bộ). Tuyến lõi chỉ phục vụ trên tên (QĐ2) → chuyển sang tên #}
 https://{{ onebee_box_ip }}:443 {
 	import onebee_tls
-	@tuyen_loi path /dangnhap /dangnhap/* /api/* /files/* /ai/*
+	@tuyen_loi path /dangnhap /dangnhap/* /api/* /files/* /ai/* /ai-cli/*
 	handle @tuyen_loi {
 		redir https://{{ ten_box }}{uri} 308
 	}
@@ -97,7 +102,11 @@ https://{{ onebee_box_ip }}:443 {
 
 https://{{ ten_box }}:443 {
 	import onebee_tls
-	import onebee_bo_danh_tinh_may_khach
+	import onebee_bo_danh_tinh_co_ban
+	@khong_phai_ai_cli {
+		not path /ai-cli/*
+	}
+	request_header @khong_phai_ai_cli -Authorization
 	# Trang đăng nhập (Authelia, đường dẫn con /dangnhap — QĐ3)
 	handle /dangnhap* {
 		reverse_proxy authelia:9091
@@ -114,7 +123,7 @@ https://{{ ten_box }}:443 {
 			reverse_proxy cau-noi:8080
 		}
 	}
-	# AI: chỉ hai đường dẫn hỏi đáp; mọi API khác của Ollama (xóa/tải mô hình, liệt kê…) trả 404, kể cả khi đã đăng nhập
+	# AI: hai đường dẫn gọi thẳng Ollama khi cần + nhóm RAG nội bộ qua SSO; mọi đường dẫn /ai/* khác trả 404
 	@ai_hoi_dap {
 		method POST
 		path /ai/api/chat /ai/api/generate
@@ -132,6 +141,35 @@ https://{{ ten_box }}:443 {
 			}
 		}
 	}
+	@ai_rag {
+		path /ai /ai/ /ai/hoi /ai/tom-tat /ai/mau /ai/health /ai/api/v1/*
+	}
+	handle @ai_rag {
+		route {
+			import onebee_sso
+			request_header -Cookie
+			request_body {
+				max_size 1MB
+			}
+			reverse_proxy ai-rag:8092 {
+				header_up X-OneBee-SSO 1
+				flush_interval -1
+			}
+		}
+	}
+	# CLI `hoi` trên máy trạm: giữ Authorization: Bearer (đã xóa mọi Remote-* và Cookie), onebee-ai-rag tự kiểm tra băm SHA-256
+	handle /ai-cli/* {
+		route {
+			request_header -Cookie
+			request_body {
+				max_size 1MB
+			}
+			uri strip_prefix /ai-cli
+			reverse_proxy ai-rag:8092 {
+				flush_interval -1
+			}
+		}
+	}
 	handle /ai/* {
 		respond 404
 	}
@@ -144,7 +182,7 @@ https://{{ ten_box }}:443 {
 	}
 {% else %}
 	# Đăng nhập một lần đang TẠM TẮT (onebee-box tat-sso-tam): không ai vào được dữ liệu — không mở toang khi định danh hỏng
-	@tuyen_loi path /api/* /files/* /ai/*
+	@tuyen_loi path /api/* /files/* /ai/* /ai-cli/*
 	handle @tuyen_loi {
 		header Content-Type "text/plain; charset=utf-8"
 		respond "Đăng nhập một lần đang tạm tắt để sửa — dữ liệu tạm khóa, thử lại sau" 503
@@ -152,9 +190,10 @@ https://{{ ten_box }}:443 {
 {% endif %}
 {{ trang_chu() }}}
 
-{{ dia_chi(cong.open_webui) }} {
+{{ dia_chi(cong.tro_ly_ai) }} {
 	import onebee_tls
-	reverse_proxy open-webui:8080 {
+	import onebee_bo_danh_tinh_co_ban
+	reverse_proxy ai-rag:8092 {
 		stream_close_delay 5m
 	}
 }

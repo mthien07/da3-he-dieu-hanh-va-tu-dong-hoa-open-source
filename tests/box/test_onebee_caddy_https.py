@@ -64,9 +64,9 @@ class CaddyHttps(unittest.TestCase):
         open(f"{t}/srv/index.html", "w").write("OneBee Box trang chu")
         open(f"{t}/srv-http/index.html", "w").write("huong dan cai CA")
         shutil.copy(f"{t}/ca/root.crt", f"{t}/srv-http/onebee-ca.crt")
-        cls.cong = {"portal": cong_trong(), "open_webui": cong_trong(), "n8n": cong_trong(), "rest_server": cong_trong(),
+        cls.cong = {"portal": cong_trong(), "tro_ly_ai": cong_trong(), "n8n": cong_trong(), "rest_server": cong_trong(),
                     "uptime_kuma": cong_trong(), "http": cong_trong()}
-        cls.bk = {n: backend(n) for n in ("open-webui", "n8n", "rest-server", "uptime-kuma")}
+        cls.bk = {n: backend(n) for n in ("ai-rag", "n8n", "rest-server", "uptime-kuma")}
         cls.caddy = None
 
     @classmethod
@@ -85,14 +85,14 @@ class CaddyHttps(unittest.TestCase):
         # Đăng nhập một lần tắt: các cổng ứng dụng tới thẳng dịch vụ (tuyến SSO kiểm ở test_onebee_caddy_sso.py)
         v.update(onebee_box_ip="127.0.0.1", onebee_box_ma_don_vi="anphu", onebee_https_hieu_luc=True, onebee_kuma_dia_chi=kuma,
                  onebee_sso_hieu_luc=False,
-                 onebee_box_ports={"portal": 80, "open_webui": c["open_webui"], "n8n": c["n8n"], "rest_server": c["rest_server"],
+                 onebee_box_ports={"portal": 80, "tro_ly_ai": c["tro_ly_ai"], "n8n": c["n8n"], "rest_server": c["rest_server"],
                                    "uptime_kuma": c["uptime_kuma"]})
         env = jinja2.Environment(keep_trailing_newline=True, trim_blocks=True)   # Ansible mặc định trim_blocks=True
         env.filters["bool"] = bool
         nd = env.from_string(open(TEMPLATE, encoding="utf-8").read()).render(**v)
         nd = nd.replace(":443", f":{c['portal']}").replace("\n:80 {", f"\n:{c['http']} {{")
         nd = nd.replace("/srv-http", f"{t}/srv-http").replace("root * /srv\n", f"root * {t}/srv\n").replace("/pki/", f"{t}/pki/")
-        for ten, cong_goc in (("open-webui", 8080), ("n8n", 5678), ("rest-server", 8000), ("uptime-kuma", 3001)):
+        for ten, cong_goc in (("ai-rag", 8092), ("n8n", 5678), ("rest-server", 8000), ("uptime-kuma", 3001)):
             nd = nd.replace(f"{ten}:{cong_goc}", f"127.0.0.1:{cls.bk[ten].server_port}")
         open(f"{t}/Caddyfile", "w").write(nd)
         cls.nd = nd
@@ -118,7 +118,7 @@ class CaddyHttps(unittest.TestCase):
         c = self.cong
         r = curl("--cacert", self.goc(), f"https://127.0.0.1:{c['portal']}/")        # nối bằng IP → không gửi SNI
         self.assertEqual((r.returncode, r.stdout), (0, "OneBee Box trang chu"), r.stderr)
-        for cong, ten in ((c["open_webui"], "open-webui"), (c["n8n"], "n8n"), (c["rest_server"], "rest-server"), (c["uptime_kuma"], "uptime-kuma")):
+        for cong, ten in ((c["tro_ly_ai"], "ai-rag"), (c["n8n"], "n8n"), (c["rest_server"], "rest-server"), (c["uptime_kuma"], "uptime-kuma")):
             r = curl("--cacert", self.goc(), f"https://127.0.0.1:{cong}/x")
             self.assertEqual(r.returncode, 0, (ten, r.stderr))
             self.assertIn(f"backend-{ten}", r.stdout)
@@ -126,10 +126,10 @@ class CaddyHttps(unittest.TestCase):
 
     def test_b_ten_phu_cho_ky_thuat_qua_tailscale(self):
         c = self.cong
-        r = curl("--cacert", self.goc(), "--resolve", f"box.anphu.onebee.internal:{c['open_webui']}:127.0.0.1",
-                 f"https://box.anphu.onebee.internal:{c['open_webui']}/x")
+        r = curl("--cacert", self.goc(), "--resolve", f"box.anphu.onebee.internal:{c['tro_ly_ai']}:127.0.0.1",
+                 f"https://box.anphu.onebee.internal:{c['tro_ly_ai']}/x")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("backend-open-webui", r.stdout)
+        self.assertIn("backend-ai-rag", r.stdout)
 
     def test_c_chuoi_chung_chi_la_gui_ra_tu_trung_gian_va_dung_rang_buoc(self):
         c = self.cong
@@ -142,9 +142,9 @@ class CaddyHttps(unittest.TestCase):
 
     def test_d_http_toi_cong_tls_bi_chuyen_308_sang_https(self):
         c = self.cong
-        r = curl("-i", f"http://127.0.0.1:{c['open_webui']}/x?a=1")
+        r = curl("-i", f"http://127.0.0.1:{c['tro_ly_ai']}/x?a=1")
         self.assertIn(" 308 ", r.stdout.splitlines()[0], r.stdout)
-        self.assertIn(f"https://127.0.0.1:{c['open_webui']}/x?a=1", r.stdout)
+        self.assertIn(f"https://127.0.0.1:{c['tro_ly_ai']}/x?a=1", r.stdout)
 
     def test_e_cong_80_chi_phuc_vu_ca_va_huong_dan(self):
         c = self.cong
@@ -162,7 +162,7 @@ class CaddyHttps(unittest.TestCase):
         self.assertNotIn(f":{self.cong['uptime_kuma']}", self.nd.split("(onebee_tls)")[1])
         r = curl("--cacert", self.goc(), f"https://127.0.0.1:{self.cong['uptime_kuma']}/")
         self.assertNotEqual(r.returncode, 0)
-        r = curl("--cacert", self.goc(), f"https://127.0.0.1:{self.cong['open_webui']}/x")
+        r = curl("--cacert", self.goc(), f"https://127.0.0.1:{self.cong['tro_ly_ai']}/x")
         self.assertEqual(r.returncode, 0, r.stderr)   # các cổng khác vẫn chạy
 
 

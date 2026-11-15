@@ -70,7 +70,7 @@ class Ghi:
         self.ds = []
 
 
-AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY = Ghi(), Ghi(), Ghi(), Ghi()
+AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY, AI_RAG_THAY = Ghi(), Ghi(), Ghi(), Ghi(), Ghi()
 
 
 def authelia(h):
@@ -107,6 +107,14 @@ def ghi_va_tra(noi, ten):
     return f
 
 
+def ai_rag_gia(h):
+    if h.path in ("/ai/hoi", "/hoi"):
+        if h.headers.get("X-OneBee-SSO") != "1" and not (h.headers.get("Authorization") or "").startswith("Bearer "):
+            return h.tra(401, b'{"detail":"Chua dang nhap"}', (("Content-Type", "application/json"),))
+    AI_RAG_THAY.ds.append({"method": h.command, "path": h.path, "headers": {k.lower(): v for k, v in h.headers.items()}})
+    h.tra(200, json.dumps({"dich_vu": "ai-rag", "path": h.path}).encode(), (("Content-Type", "application/json"),))
+
+
 def curl(*a):
     r = subprocess.run(["curl", "-sS", "--noproxy", "*", "-m", "15", "-o", "-", "-w", "\n%{http_code} %{redirect_url}", *a],
                        capture_output=True, text=True)
@@ -127,10 +135,10 @@ class CaddySso(unittest.TestCase):
         open(f"{t}/srv/index.html", "w").write("OneBee Box trang chu")
         open(f"{t}/srv/trang-thai.json", "w").write("{}")
         open(f"{t}/srv-http/index.html", "w").write("huong dan cai CA")
-        cls.cong = {k: cong_trong() for k in ("portal", "open_webui", "n8n", "rest_server", "uptime_kuma", "http")}
+        cls.cong = {k: cong_trong() for k in ("portal", "tro_ly_ai", "n8n", "rest_server", "uptime_kuma", "http")}
         cls.sv = {"authelia": may_chu(authelia), "postgrest": may_chu(ghi_va_tra(PHIA_SAU_THAY, "postgrest")),
                   "ollama": may_chu(ghi_va_tra(OLLAMA_THAY, "ollama")), "uptime-kuma": may_chu(ghi_va_tra(KUMA_THAY, "kuma")),
-                  "khac": may_chu(ghi_va_tra(Ghi(), "khac"))}
+                  "ai-rag": may_chu(ai_rag_gia), "khac": may_chu(ghi_va_tra(Ghi(), "khac"))}
         with open(f"{t}/khoa", "w") as f:
             f.write("ab" * 32 + "\n")
         cls.cong_cau_noi = cong_trong()
@@ -156,17 +164,17 @@ class CaddySso(unittest.TestCase):
         v = yaml.safe_load(open(os.path.join(ROOT, "box/ansible/group_vars/all.yml"), encoding="utf-8"))
         v.update(onebee_box_ip="127.0.0.1", onebee_box_ma_don_vi="anphu", onebee_https_hieu_luc=True, onebee_kuma_dia_chi="0.0.0.0",
                  onebee_sso_hieu_luc=sso,
-                 onebee_box_ports={"portal": 80, "open_webui": c["open_webui"], "n8n": c["n8n"], "rest_server": c["rest_server"],
+                 onebee_box_ports={"portal": 80, "tro_ly_ai": c["tro_ly_ai"], "n8n": c["n8n"], "rest_server": c["rest_server"],
                                    "uptime_kuma": c["uptime_kuma"]})
         env = jinja2.Environment(keep_trailing_newline=True, trim_blocks=True)
         env.filters["bool"] = bool
         nd = env.from_string(open(TEMPLATE, encoding="utf-8").read()).render(**v)
         cls.nd_goc = nd
-        nd = nd.replace(":443", f":{c['portal']}").replace("\n:80 {", f"\n:{c['http']} {{")
+        nd = nd.replace(":443 {", f":{c['portal']} {{").replace("\n:80 {", f"\n:{c['http']} {{")
         nd = nd.replace("/srv-http", f"{t}/srv-http").replace("root * /srv\n", f"root * {t}/srv\n").replace("/pki/", f"{t}/pki/")
         p = {k: s.server_port for k, s in cls.sv.items()}
         for goc, moi in (("authelia:9091", cong_trong() if authelia_chet else p["authelia"]), ("cau-noi:8080", cls.cong_cau_noi), ("ollama:11434", p["ollama"]),
-                         ("uptime-kuma:3001", p["uptime-kuma"]), ("open-webui:8080", p["khac"]), ("n8n:5678", p["khac"]),
+                         ("uptime-kuma:3001", p["uptime-kuma"]), ("ai-rag:8092", p["ai-rag"]), ("n8n:5678", p["khac"]),
                          ("rest-server:8000", p["khac"])):
             nd = nd.replace(goc, f"127.0.0.1:{moi}")
         open(f"{t}/Caddyfile", "w").write(nd)
@@ -194,7 +202,7 @@ class CaddySso(unittest.TestCase):
         if not self.caddy or getattr(self, "_sso", True) is not True:
             type(self).dung_caddy(sso=True)
             type(self)._sso = True
-        for g in (AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY):
+        for g in (AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY, AI_RAG_THAY):
             g.ds.clear()
 
     def test_a_chua_co_phien_goi_api_toi_nhan_401(self):
@@ -293,10 +301,56 @@ class CaddySso(unittest.TestCase):
         self.assertEqual((ma, chuyen), ("308", f"https://{TEN}:{k}/dashboard"))
 
     def test_l_cac_cong_khac_giu_nguyen(self):
-        for cong in (self.cong["open_webui"], self.cong["n8n"], self.cong["rest_server"]):
+        for cong in (self.cong["tro_ly_ai"], self.cong["n8n"], self.cong["rest_server"]):
             ma, than, _, _ = curl("--cacert", f"{self.t}/ca/root.crt", f"https://127.0.0.1:{cong}/x")
             self.assertEqual(ma, "200", cong)
         self.assertEqual(AUTHELIA_THAY.ds, [])
+
+    def test_m_ai_hoi_yeu_cau_sso_va_chuyen_tiep_remote_user(self):
+        # /ai/hoi thuộc cổng Portal: bắt buộc phiên Authelia, strip header giả mạo, gắn X-OneBee-SSO: 1
+        gia = ("-H", "Remote-User: quanly", "-H", "X-OneBee-SSO: 1", "-H", "Accept: application/json")
+        self.assertEqual(self.ten("/ai/hoi", "-X", "POST", "-d", '{"cau_hoi":"chao"}', *gia)[0], "401")
+        self.assertEqual(AI_RAG_THAY.ds, [])
+        ma, than, _, _ = self.ten(
+            "/ai/hoi",
+            "-X", "POST",
+            "-d", '{"cau_hoi":"chao"}',
+            "-b", "authelia_session=phien-an",
+            "-H", "Remote-User: quanly",
+            "-H", "Content-Type: application/json",
+        )
+        self.assertEqual(ma, "200", than)
+        self.assertEqual(len(AI_RAG_THAY.ds), 1)
+        yc = AI_RAG_THAY.ds[0]
+        self.assertEqual(yc["path"], "/ai/hoi")
+        self.assertEqual(yc["headers"].get("remote-user"), "an")
+        self.assertEqual(yc["headers"].get("x-onebee-sso"), "1")
+        self.assertNotIn("cookie", yc["headers"])
+
+    def test_n_ai_cli_hoi_giu_bearer_va_tuoc_remote_va_cookie(self):
+        # /ai-cli/hoi cho phép CLI dùng Authorization Bearer; Caddy phải tước Remote-* và Cookie để chống giả mạo SSO
+        self.assertEqual(self.ten("/ai-cli/hoi", "-X", "POST", "-d", '{"cau_hoi":"chao"}')[0], "401")
+        self.assertEqual(AI_RAG_THAY.ds, [])
+        ma, than, _, _ = self.ten(
+            "/ai-cli/hoi",
+            "-X", "POST",
+            "-d", '{"cau_hoi":"chao"}',
+            "-H", "Authorization: Bearer khoa-cli-hop-le",
+            "-H", "Remote-User: quanly",
+            "-H", "Remote-Groups: quan_ly",
+            "-H", "Remote-Name: Ke La",
+            "-H", "Remote-Email: ke@la.example",
+            "-H", "X-OneBee-SSO: 1",
+            "-b", "authelia_session=phien-an",
+            "-H", "Content-Type: application/json",
+        )
+        self.assertEqual(ma, "200", than)
+        self.assertEqual(len(AI_RAG_THAY.ds), 1)
+        yc = AI_RAG_THAY.ds[0]
+        self.assertEqual(yc["path"], "/hoi")
+        self.assertEqual(yc["headers"].get("authorization"), "Bearer khoa-cli-hop-le")
+        for h in ("remote-user", "remote-groups", "remote-name", "remote-email", "x-onebee-sso", "cookie"):
+            self.assertNotIn(h, yc["headers"], h)
 
 
 @unittest.skipUnless(CADDY, "cần caddy (ONEBEE_TEST_CADDY)")
@@ -307,14 +361,15 @@ class CaddySsoTamTat(CaddySso):
         if not self.caddy or getattr(self, "_sso", True) is not False:
             type(self).dung_caddy(sso=False)
             type(self)._sso = False
-        for g in (AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY):
+        for g in (AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY, AI_RAG_THAY):
             g.ds.clear()
 
     def test_tuyen_loi_tra_503_ca_khi_co_phien(self):
-        for duong, them in (("/api/toi", ()), ("/files/x", ()), ("/ai/api/chat", ("-X", "POST", "-d", "{}"))):
+        for duong, them in (("/api/toi", ()), ("/files/x", ()), ("/ai/api/chat", ("-X", "POST", "-d", "{}")),
+                            ("/ai/hoi", ("-X", "POST", "-d", "{}")), ("/ai-cli/hoi", ("-X", "POST", "-d", "{}"))):
             for phien in ((), ("-b", "authelia_session=phien-an"), ("-H", "Remote-User: an", "-H", "Remote-Groups: quan_ly")):
                 self.assertEqual(self.ten(duong, *them, *phien)[0], "503", (duong, phien))
-        self.assertEqual((PHIA_SAU_THAY.ds, OLLAMA_THAY.ds, AUTHELIA_THAY.ds), ([], [], []))
+        self.assertEqual((PHIA_SAU_THAY.ds, OLLAMA_THAY.ds, AUTHELIA_THAY.ds, AI_RAG_THAY.ds), ([], [], [], []))
         self.assertEqual(self.ten("/")[:2], ("200", "OneBee Box trang chu"))
         self.assertNotIn("forward_auth", self.nd_goc)
 
@@ -329,6 +384,7 @@ class CaddySsoTamTat(CaddySso):
     test_c_may_khach_tu_gui_remote_user_khong_co_tac_dung = test_d_authorization_cua_may_khach_khong_toi_phia_sau = None
     test_e_ai_chi_mo_hai_duong_dan_post = test_f_files_co_phien_nhan_503 = test_j_than_qua_1mb_bi_chan = None
     test_k_giam_sat_chi_ky_thuat_hai_lop = None
+    test_m_ai_hoi_yeu_cau_sso_va_chuyen_tiep_remote_user = test_n_ai_cli_hoi_giu_bearer_va_tuoc_remote_va_cookie = None
 
 
 @unittest.skipUnless(CADDY, "cần caddy (ONEBEE_TEST_CADDY)")
@@ -346,14 +402,14 @@ class CaddyDinhDanhChet(unittest.TestCase):
         CaddySso.caddy = None
 
     def test_khong_cho_qua_khi_dinh_danh_chet(self):
-        for g in (PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY):
+        for g in (PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY, AI_RAG_THAY):
             g.ds.clear()
         gia = ("-b", "authelia_session=phien-ql", "-H", "Remote-User: binh", "-H", "Remote-Groups: quan_ly")
         for duong, them in (("/api/toi", ()), ("/files/x", ()), ("/ai/api/chat", ("-X", "POST", "-d", "{}"))):
             ma = CaddySso.ten(duong, *them, *gia)[0]
             self.assertRegex(ma, r"^50[024]$", duong)          # Caddy không gọi được forward_auth → lỗi cổng, không chuyển tiếp
         self.assertRegex(CaddySso.ten("/dashboard", *gia, cong=CaddySso.cong["uptime_kuma"])[0], r"^50[024]$")
-        self.assertEqual((PHIA_SAU_THAY.ds, OLLAMA_THAY.ds, KUMA_THAY.ds), ([], [], []))
+        self.assertEqual((PHIA_SAU_THAY.ds, OLLAMA_THAY.ds, KUMA_THAY.ds, AI_RAG_THAY.ds), ([], [], [], []))
         self.assertEqual(CaddySso.ten("/")[:2], ("200", "OneBee Box trang chu"))
 
 

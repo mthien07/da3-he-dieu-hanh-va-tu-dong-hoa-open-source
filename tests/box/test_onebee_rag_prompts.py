@@ -1,185 +1,171 @@
-#!/usr/bin/env bash
-"""Kiểm thử unit test cho module Prompts và Knowledge Base RAG."""
-import inspect
-import io
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+"""Kiểm thử kho mẫu prompt hành chính NĐ 30 và bộ tri thức RAG trên onebee-ai-rag.py."""
+
+import importlib.util
 import json
 import os
+import tempfile
 import unittest
-from contextlib import redirect_stdout
-from unittest.mock import patch, MagicMock
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import threading
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.join(HERE, "../..")
-SCRIPT_DIR = os.path.join(ROOT, "box/ansible/roles/box-ai/files")
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+AI_FILES = os.path.join(ROOT, "box/ansible/roles/box-ai/files")
+PROMPTS_DIR = os.path.join(AI_FILES, "prompts")
+KNOWLEDGE_DIR = os.path.join(AI_FILES, "knowledge")
 
-import sys
-sys.path.insert(0, SCRIPT_DIR)
-import importlib.util
-spec = importlib.util.spec_from_file_location("onebee_webui", os.path.join(SCRIPT_DIR, "onebee-webui.py"))
-onebee_webui = importlib.util.module_from_spec(spec)
-sys.modules["onebee_webui"] = onebee_webui
-spec.loader.exec_module(onebee_webui)
+spec = importlib.util.spec_from_file_location("onebee_ai_rag", os.path.join(AI_FILES, "onebee-ai-rag.py"))
+onebee_ai_rag = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(onebee_ai_rag)
 
 
-class TestRAGPrompts(unittest.TestCase):
-    def test_prompts_files_exist_and_valid(self):
-        prompts_dir = os.path.join(SCRIPT_DIR, "prompts")
-        self.assertTrue(os.path.isdir(prompts_dir))
-        expected_prompts = ["to-trinh.json", "bien-ban.json", "hop-dong.json", "bao-cao.json"]
-        for p in expected_prompts:
-            p_path = os.path.join(prompts_dir, p)
-            self.assertTrue(os.path.isfile(p_path), f"Thiếu file {p}")
-            with open(p_path, encoding="utf-8") as f:
-                data = json.load(f)
-            self.assertIn("command", data)
-            self.assertIn("title", data)
-            self.assertIn("content", data)
-            self.assertTrue(data["command"].startswith("/"))
+class _EnvTam:
+    def __init__(self, **pairs):
+        self.pairs = pairs
+        self.old = {}
 
-    def test_knowledge_files_exist(self):
-        knowledge_dir = os.path.join(SCRIPT_DIR, "knowledge")
-        self.assertTrue(os.path.isdir(knowledge_dir))
-        self.assertTrue(os.path.isfile(os.path.join(knowledge_dir, "nghi-dinh-30-2020-nd-cp.md")))
-        self.assertTrue(os.path.isfile(os.path.join(knowledge_dir, "luat-hop-tac-xa-2023.md")))
+    def __enter__(self):
+        for k, v in self.pairs.items():
+            self.old[k] = os.environ.get(k)
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
 
-    @patch("onebee_webui.call")
-    def test_tao_mau_gui_dung_truong(self, mock_call):
-        mock_call.side_effect = [
-            (200, []),
-            (200, {"id": "p"}),
-            (200, {"id": "p"}),
-            (200, {"id": "p"}),
-            (200, {"id": "p"}),
-        ]
-        count = onebee_webui.dong_bo_prompts(token="test-token")
-        self.assertEqual(count, 4)
-        posts = [c for c in mock_call.call_args_list if c.args[0] == "POST" and c.args[1] == "/api/v1/prompts/create"]
-        self.assertEqual(len(posts), 4)
-        for c in posts:
-            body = c.args[3] if len(c.args) > 3 else c.kwargs.get("body")
-            self.assertFalse(body["command"].startswith("/"))
-            self.assertTrue(body.get("name"))
-            self.assertTrue(body.get("content"))
-            self.assertEqual(body.get("access_grants"), onebee_webui.PUBLIC_READ)
-            self.assertNotIn("title", body)
+    def __exit__(self, *args):
+        for k, v in self.old.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
 
-    @patch("onebee_webui.call")
-    def test_mau_da_dung_thi_khong_goi_gi_them(self, mock_call):
-        prompts_dir = os.path.join(SCRIPT_DIR, "prompts")
-        existing = []
-        for i, fname in enumerate(sorted(os.listdir(prompts_dir))):
-            if fname.endswith(".json"):
-                with open(os.path.join(prompts_dir, fname), encoding="utf-8") as f:
-                    d = json.load(f)
-                existing.append({
-                    "id": f"p{i}",
-                    "command": d["command"].lstrip("/"),
-                    "name": d["title"],
-                    "content": d["content"],
-                    "access_grants": [{"principal_type": "user", "principal_id": "*", "permission": "read"}],
-                })
-        mock_call.return_value = (200, existing)
-        buf = io.StringIO()
-        with redirect_stdout(buf):
-            onebee_webui.dong_bo_prompts(token="test-token")
-        out = buf.getvalue()
-        self.assertEqual(mock_call.call_count, 1)
-        self.assertNotIn("đã tạo", out)
-        self.assertNotIn("đã cập nhật", out)
 
-    @patch("onebee_webui.call")
-    def test_mau_khac_noi_dung_thi_cap_nhat_theo_id(self, mock_call):
-        mock_call.side_effect = [
-            (200, [{"id": "p1", "command": "to-trinh", "name": "cũ", "content": "cũ", "access_grants": []}]),
-            (200, {"id": "p"}),
-            (200, {"id": "p"}),
-            (200, {"id": "p"}),
-            (200, {"id": "p"}),
-        ]
-        onebee_webui.dong_bo_prompts(token="test-token")
-        paths = [(c.args[0], c.args[1]) for c in mock_call.call_args_list]
-        self.assertIn(("POST", "/api/v1/prompts/id/p1/update"), paths)
-        self.assertFalse(any("/command/" in p for _, p in paths))
+class TestDongBoRagVaPrompts(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.data = os.path.join(self.tmp.name, "data")
+        self.secrets = os.path.join(self.tmp.name, "secrets")
+        os.makedirs(self.data)
+        os.makedirs(self.secrets)
 
-    @patch("onebee_webui.call")
-    def test_loi_tao_mau_thi_dung(self, mock_call):
-        mock_call.side_effect = [
-            (200, []),
-            (422, "thiếu name"),
-        ]
-        with self.assertRaises(SystemExit):
-            onebee_webui.dong_bo_prompts(token="test-token")
+    def test_dong_bo_prompts_day_du_va_idempotent(self):
+        with _EnvTam(
+            ONEBEE_AI_DATA=self.data,
+            ONEBEE_SECRETS=self.secrets,
+            ONEBEE_PROMPTS_DIR=PROMPTS_DIR,
+        ):
+            n1 = onebee_ai_rag.dong_bo_prompts()
+            self.assertEqual(n1, 4)
+            cache_path = os.path.join(self.data, "prompts-cache.json")
+            self.assertTrue(os.path.isfile(cache_path))
+            lan1 = open(cache_path, encoding="utf-8").read()
+            ds = json.loads(lan1)
+            self.assertEqual({d["command"] for d in ds}, {"to-trinh", "bien-ban", "hop-dong", "bao-cao"})
+            for d in ds:
+                self.assertTrue(d["title"] and d["content"])
 
-    @patch("onebee_webui.call")
-    def test_tri_thuc_da_co_thi_khong_tao_trung(self, mock_call):
-        mock_call.return_value = (
-            200,
-            {
-                "items": [
-                    {
-                        "id": "kb1",
-                        "name": "Thư viện Pháp lý HTX",
-                        "access_grants": [{"principal_type": "user", "principal_id": "*", "permission": "read"}],
-                    }
-                ],
-                "total": 1,
-            },
+            n2 = onebee_ai_rag.dong_bo_prompts()
+            self.assertEqual(n2, 4)
+            self.assertEqual(open(cache_path, encoding="utf-8").read(), lan1)
+
+    def test_dong_bo_prompts_bo_qua_file_json_hong(self):
+        thu_mau = os.path.join(self.tmp.name, "prompts")
+        os.makedirs(thu_mau)
+        open(os.path.join(thu_mau, "hop-le.json"), "w", encoding="utf-8").write(
+            json.dumps({"command": "/thu-nghiem", "title": "Thử nghiệm", "content": "Nội dung"})
         )
-        buf = io.StringIO()
-        with redirect_stdout(buf):
-            cid = onebee_webui.dong_bo_tri_thuc(token="test-token")
-        out = buf.getvalue()
-        self.assertEqual(cid, "kb1")
-        paths = [(c.args[0], c.args[1]) for c in mock_call.call_args_list]
-        self.assertNotIn(("POST", "/api/v1/knowledge/create"), paths)
-        self.assertNotIn("đã tạo", out)
+        open(os.path.join(thu_mau, "hong.json"), "w", encoding="utf-8").write("{khong phai json")
+        with _EnvTam(ONEBEE_AI_DATA=self.data, ONEBEE_PROMPTS_DIR=thu_mau):
+            n = onebee_ai_rag.dong_bo_prompts()
+        self.assertEqual(n, 1)
 
-    @patch("onebee_webui.call")
-    def test_tri_thuc_chua_co_thi_tao_mot_lan_va_cho_moi_nguoi_doc(self, mock_call):
-        mock_call.side_effect = [
-            (200, {"items": [], "total": 0}),
-            (200, {"id": "kb2"}),
-        ]
-        cid = onebee_webui.dong_bo_tri_thuc(token="test-token")
-        self.assertEqual(cid, "kb2")
-        posts = [c for c in mock_call.call_args_list if c.args[0] == "POST" and c.args[1] == "/api/v1/knowledge/create"]
-        self.assertEqual(len(posts), 1)
-        body = posts[0].args[3] if len(posts[0].args) > 3 else posts[0].kwargs.get("body")
-        self.assertEqual(body.get("access_grants"), onebee_webui.PUBLIC_READ)
+    def test_dong_bo_tri_thuc_idempotent_khong_trung_lap(self):
+        with _EnvTam(
+            ONEBEE_AI_DATA=self.data,
+            ONEBEE_KNOWLEDGE_DIRS=KNOWLEDGE_DIR,
+            POSTGREST_URL="",
+        ):
+            n1 = onebee_ai_rag.dong_bo_tri_thuc()
+            self.assertGreaterEqual(n1, 4)
+            idx_path = os.path.join(self.data, "knowledge-index.json")
+            raw1 = open(idx_path, encoding="utf-8").read()
+            chunks = json.loads(raw1)["chunks"]
+            self.assertEqual(len(chunks), n1)
+            self.assertEqual(len({c["id"] for c in chunks}), len(chunks))
+            self.assertEqual({c["nguon"] for c in chunks}, {"luat-hop-tac-xa-2023.md", "nghi-dinh-30-2020-nd-cp.md"})
 
-    def test_dong_bo_tro_ly_khong_tu_tao_bo_tri_thuc(self):
-        src = inspect.getsource(onebee_webui.dong_bo_tro_ly)
-        self.assertNotIn("dong_bo_tri_thuc(", src)
+            n2 = onebee_ai_rag.dong_bo_tri_thuc()
+            self.assertEqual(n2, n1)
+            self.assertEqual(open(idx_path, encoding="utf-8").read(), raw1)
+
+    def test_dong_bo_tri_thuc_day_len_postgrest_neu_cau_hinh(self):
+        received = []
+
+        class MockPg(BaseHTTPRequestHandler):
+            def do_POST(self):
+                n = int(self.headers.get("Content-Length", "0"))
+                received.append((self.path, json.loads(self.rfile.read(n).decode("utf-8"))))
+                self.send_response(201)
+                self.end_headers()
+
+            def log_message(self, *args):
+                pass
+
+        sv = ThreadingHTTPServer(("127.0.0.1", 0), MockPg)
+        t = threading.Thread(target=sv.serve_forever, daemon=True)
+        t.start()
+        self.addCleanup(sv.shutdown)
+        self.addCleanup(sv.server_close)
+
+        with _EnvTam(
+            ONEBEE_AI_DATA=self.data,
+            ONEBEE_KNOWLEDGE_DIRS=KNOWLEDGE_DIR,
+            POSTGREST_URL=f"http://127.0.0.1:{sv.server_port}",
+        ):
+            n = onebee_ai_rag.dong_bo_tri_thuc()
+        self.assertGreaterEqual(n, 4)
+        self.assertEqual(len(received), 1)
+        self.assertEqual(received[0][0], "/tai_lieu_tri_thuc")
+        self.assertEqual(len(received[0][1]), n)
+
+    def test_dong_bo_tro_ly_tao_cap_nhat_va_khong_doi(self):
+        loi_dan_tam = os.path.join(self.tmp.name, "loi-dan.md")
+        open(loi_dan_tam, "w", encoding="utf-8").write("Lời dặn v1\n")
+        with _EnvTam(
+            ONEBEE_AI_DATA=self.data,
+            ONEBEE_LOI_DAN=loi_dan_tam,
+            ONEBEE_GOI_Y=os.path.join(AI_FILES, "goi-y.json"),
+        ):
+            self.assertEqual(onebee_ai_rag.dong_bo_tro_ly(), "created")
+            self.assertEqual(onebee_ai_rag.dong_bo_tro_ly(), "unchanged")
+            open(loi_dan_tam, "w", encoding="utf-8").write("Lời dặn v2\n")
+            self.assertEqual(onebee_ai_rag.dong_bo_tro_ly(), "updated")
 
 
 class TestCaiDatTrenBox(unittest.TestCase):
-    """Tệp mẫu phải nằm ngay trong thư mục mà onebee-webui.py đọc trên Box (cạnh script), không lồng thêm một cấp."""
+    def test_ansible_tasks_chay_dong_bo_tro_ly_prompts_va_tri_thuc(self):
+        tasks_path = os.path.join(ROOT, "box/ansible/roles/box-ai/tasks/main.yml")
+        txt = open(tasks_path, encoding="utf-8").read()
+        self.assertIn("onebee-ai-rag.py", txt)
+        for cmd in ("dong-bo-tro-ly", "dong-bo-prompts", "dong-bo-tri-thuc"):
+            self.assertIn(cmd, txt)
 
-    @staticmethod
-    def noi_tep_ve(src, dest):
-        # Quy tắc của ansible.builtin.copy: src là thư mục không có "/" cuối → chép cả thư mục vào trong dest
-        # (dest/<tên src>/...); có "/" cuối → chỉ chép nội dung vào dest
-        return dest.rstrip("/") if src.endswith("/") else os.path.join(dest.rstrip("/"), os.path.basename(src))
+    def test_cli_onebee_box_co_dong_bo_prompts_va_tri_thuc(self):
+        box_sh = os.path.join(ROOT, "box/ansible/roles/box-stack/templates/onebee-box.sh.j2")
+        txt = open(box_sh, encoding="utf-8").read()
+        self.assertIn("dong-bo-prompts) tro_ly_ai dong-bo-prompts ;;", txt)
+        self.assertIn("dong-bo-tri-thuc) tro_ly_ai dong-bo-tri-thuc ;;", txt)
 
-    def test_mau_va_tri_thuc_cai_dung_thu_muc_script_doc(self):
-        import yaml
-        with open(os.path.join(ROOT, "box/ansible/roles/box-ai/tasks/main.yml"), encoding="utf-8") as f:
-            tasks = yaml.safe_load(f)
-        noi = {}
-        for t in tasks:
-            copy = t.get("ansible.builtin.copy")
-            if not copy:
-                continue
-            for item in t.get("loop", []):
-                src = copy["src"].replace("{{ item.src }}", item["src"])
-                dest = copy["dest"].replace("{{ item.src }}", item["src"]).replace("{{ item.dest }}", item.get("dest", ""))
-                if os.path.isdir(os.path.join(SCRIPT_DIR, src)):
-                    noi[src.rstrip("/")] = self.noi_tep_ve(src, dest)
-                else:
-                    noi[src] = dest
-        thu_muc_script = os.path.dirname(noi["onebee-webui.py"])
-        self.assertEqual(noi.get("prompts"), os.path.join(thu_muc_script, "prompts"))
-        self.assertEqual(noi.get("knowledge"), os.path.join(thu_muc_script, "knowledge"))
+    def test_du_4_mau_prompt_va_2_tri_thuc(self):
+        for ten in ("to-trinh.json", "bien-ban.json", "hop-dong.json", "bao-cao.json"):
+            self.assertTrue(os.path.isfile(os.path.join(PROMPTS_DIR, ten)), ten)
+        for ten in ("nghi-dinh-30-2020-nd-cp.md", "luat-hop-tac-xa-2023.md"):
+            self.assertTrue(os.path.isfile(os.path.join(KNOWLEDGE_DIR, ten)), ten)
+        self.assertTrue(os.path.isfile(os.path.join(AI_FILES, "goi-y.json")))
+        self.assertTrue(os.path.isfile(os.path.join(AI_FILES, "tro-ly-onebee-loi-dan.md")))
 
 
 if __name__ == "__main__":

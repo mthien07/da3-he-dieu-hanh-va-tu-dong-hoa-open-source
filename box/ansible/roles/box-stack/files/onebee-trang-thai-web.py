@@ -118,8 +118,8 @@ def main(argv):
         "ram_phan_tram": ram,
         "o_dia": o_dia(du_lieu),
         "dich_vu": {
-            # Trợ lý dùng được khi cả giao diện (Open WebUI) lẫn bộ chạy model (Ollama) đều chạy
-            "tro_ly_ai": "chay" if container_chay("onebee-open-webui", "onebee-ollama") else "dung",
+            # Trợ lý dùng được khi cả dịch vụ RAG lẫn bộ chạy model (Ollama) đều chạy
+            "tro_ly_ai": "chay" if container_chay("onebee-ai-rag", "onebee-ollama") else "dung",
             "thu_muc_chung": "chay" if dich_vu_chay("smbd") else "dung",
             "sao_luu": sao_luu(tep_sao_luu, time.time()),
         },

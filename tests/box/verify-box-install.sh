@@ -4,35 +4,24 @@ set -uo pipefail
 fails=0
 check() { local d="$1"; shift; if "$@" >/dev/null 2>&1; then printf 'PASS  %s\n' "$d"; else printf 'FAIL  %s\n' "$d"; fails=$((fails + 1)); fi; }
 http_code() { curl -s -o /dev/null -w '%{http_code}' -m 10 "$1"; }
-# IP của Box (cùng cách check-https.sh lấy) — Origin hợp lệ của Open WebUI ở chế độ HTTP là http://<IP>:3000
+# IP của Box (cùng cách check-https.sh lấy) — Origin hợp lệ của Trợ lý AI ở chế độ HTTP là http://<IP>:3000
 BOX_IP="$(ip -4 route get 1.1.1.1 | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}')"
-# In giá trị access-control-allow-origin Open WebUI trả cho Origin $1 (rỗng nếu không có); lỗi nếu không gọi được API hoặc không 200
+# In giá trị access-control-allow-origin dịch vụ Trợ lý AI trả cho Origin $1 (rỗng nếu không có); lỗi nếu không gọi được API hoặc không 200
 cors_tra_ve() {
   local r; r="$(curl -si -m 10 http://127.0.0.1:3000/api/config -H "Origin: $1" | tr -d '\r')" || return 1
   grep -q '^HTTP/[0-9.]* 200' <<<"${r}" || return 1
   grep -i '^access-control-allow-origin:' <<<"${r}" | head -1 | sed 's/^[^:]*: *//' || true
 }
-# Bắt tay WebSocket Socket.IO (chat thời gian thực) với Origin $1, in mã trạng thái HTTP: 101 = nhận, 403 = Origin bị chặn.
-# curl không tự ngắt khi được 101 → -m 3 rồi bỏ mã thoát; "|| true" giữ nguyên kết quả cho set -o pipefail
-ws_ma_tra_ve() {
-  local r
-  r="$(curl -si -m 3 --http1.1 -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' \
-       -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' -H "Origin: $1" \
-       'http://127.0.0.1:3000/ws/socket.io/?EIO=4&transport=websocket' 2>/dev/null || true)"
-  awk 'NR == 1 {print $2}' <<<"${r}"
-}
 cors_nguon_hop_le_duoc_chap_nhan() { [[ -n "${BOX_IP}" && "$(cors_tra_ve "http://${BOX_IP}:3000")" == "http://${BOX_IP}:3000" ]]; }
-ws_nguon_hop_le_duoc_nhan() { [[ -n "${BOX_IP}" && "$(ws_ma_tra_ve "http://${BOX_IP}:3000")" == 101 ]]; }
-ws_nguon_la_bi_chan() { local c; c="$(ws_ma_tra_ve 'https://ke-la.example')"; [[ "${c}" =~ ^[0-9]{3}$ && "${c}" != 101 ]]; }
 code_in() { local c; c="$(http_code "$1")"; shift; for want in "$@"; do [[ "${c}" == "${want}" ]] && return 0; done; return 1; }
 
 check "Có file phiên bản Box" grep -q '^ONEBEE_EDITION=box$' /etc/onebee-release
 check "Docker đang chạy và bật cùng máy" bash -c "systemctl is-active docker && systemctl is-enabled docker"
-for c in onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server; do
+for c in onebee-portal onebee-ollama onebee-ai-rag onebee-n8n onebee-uptime-kuma onebee-rest-server; do
   check "Container ${c} đang chạy" bash -c "[ \"\$(docker inspect -f '{{.State.Running}}' ${c})\" = true ]"
 done
 check "Trang giới thiệu :80 hiển thị OneBee Box" bash -c "curl -s -m 10 http://127.0.0.1/ | grep -q 'OneBee Box'"
-check "Open WebUI :3000 khỏe (/health)" bash -c "curl -s -m 10 http://127.0.0.1:3000/health | grep -q true"
+check "Trợ lý AI :3000 khỏe (/health)" bash -c "curl -s -m 10 http://127.0.0.1:3000/health | grep -q true"
 check "n8n :5678 khỏe (/healthz)" bash -c "curl -s -m 10 http://127.0.0.1:5678/healthz | grep -q ok"
 check "Uptime Kuma :3001 trả lời" code_in http://127.0.0.1:3001/ 200 302
 # Uptime Kuma mở cổng web trước khi đọc xong CSDL (vừa khởi động lại) → thử lại tối đa 1 phút
@@ -45,12 +34,10 @@ s.on(\"connect\", () => s.emit(\"needSetup\", (need) => { if (need) process.exit
 setTimeout(() => process.exit(4), 20000);' && exit 0; done; exit 1"
 check "Giám sát mở ra LAN chỉ sau khi đã có tài khoản quản trị" bash -c \
   "[ -s /etc/onebee-box/secrets/uptime-kuma-da-co-quan-tri ] && ss -Htln | awk '{print \$4}' | grep -qx '0.0.0.0:3001'"
-check "Open WebUI :3000 không cho Origin lạ đọc API kèm cookie (CORS giới hạn cả ở chế độ HTTP)" bash -c \
+check "Trợ lý AI :3000 không cho Origin lạ đọc API kèm cookie (CORS giới hạn cả ở chế độ HTTP)" bash -c \
   "r=\$(curl -si -m 10 http://127.0.0.1:3000/api/config -H 'Origin: https://ke-la.example') && grep -q '^HTTP/[0-9.]* 200' <<<\"\$r\" \
    && ! grep -qi '^access-control-allow-origin: https://ke-la.example' <<<\"\$r\""
-check "Open WebUI :3000 cho Origin hợp lệ (http://<IP Box>:3000) đọc API: access-control-allow-origin trả đúng Origin đó" cors_nguon_hop_le_duoc_chap_nhan
-check "Open WebUI :3000 nhận bắt tay WebSocket (chat thời gian thực) từ Origin hợp lệ (101)" ws_nguon_hop_le_duoc_nhan
-check "Open WebUI :3000 từ chối bắt tay WebSocket từ Origin lạ (có phản hồi, không phải 101)" ws_nguon_la_bi_chan
+check "Trợ lý AI :3000 cho Origin hợp lệ (http://<IP Box>:3000) đọc API: access-control-allow-origin trả đúng Origin đó" cors_nguon_hop_le_duoc_chap_nhan
 check "Kho sao lưu :8000 đòi mật khẩu (401)" code_in http://127.0.0.1:8000/ 401
 check "Trang giới thiệu gửi kèm tiêu đề bảo mật (chống nhúng khung, không lộ tên máy chủ web)" bash -c \
   "h=\$(curl -sI -m 10 http://127.0.0.1/); grep -qi '^x-frame-options: DENY' <<<\"\$h\" && ! grep -qi '^server:' <<<\"\$h\""
@@ -62,35 +49,28 @@ check "n8n: tắt mô-đun Agents và MCP, chặn nút Git (rà soát bảo mậ
 check "Các image dịch vụ ghim theo digest (@sha256), n8n không còn dòng 2.40.x đã ngừng vá" bash -c \
   "for c in onebee-portal onebee-ollama onebee-n8n onebee-uptime-kuma onebee-rest-server; do docker inspect -f '{{.Config.Image}}' \$c | grep -q '@sha256:' || exit 1; done; \
    ! docker inspect -f '{{.Config.Image}}' onebee-n8n | grep -q ':2.40'"
-check "Open WebUI: tắt Functions/Tools; quản trị không đọc/xuất chat; tắt chia sẻ chat (biến môi trường)" bash -c \
-  "for kv in ENABLE_PLUGINS ENABLE_ADMIN_CHAT_ACCESS ENABLE_ADMIN_EXPORT USER_PERMISSIONS_CHAT_SHARE ENABLE_COMMUNITY_SHARING; do \
-     [ \"\$(docker exec onebee-open-webui printenv \$kv)\" = false ] || exit 1; done"
-
-# Cài đặt lưu trong CSDL của Open WebUI (biến môi trường chỉ có tác dụng với bản cài mới) → hỏi qua API quản trị
-webui_cai_dat_dung() {
-  local t cfg perms
+check "Trợ lý AI chạy quyền tối thiểu (cap_drop ALL, read_only) và khóa đăng ký tự do" bash -c \
+  "docker inspect -f '{{.HostConfig.ReadonlyRootfs}} {{.HostConfig.CapDrop}}' onebee-ai-rag | grep -q 'true \[ALL\]' \
+   && curl -s -m 10 http://127.0.0.1:3000/api/config | grep -q '\"signup_enabled\": *false' \
+   && [ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 10 -X POST http://127.0.0.1:3000/api/v1/auths/signup -H 'Content-Type: application/json' -d '{}')\" = 403 ]"
+ai_dang_nhap_va_mau_dung() {
+  local t
   t="$(curl -s -m 20 -X POST http://127.0.0.1:3000/api/v1/auths/signin -H 'Content-Type: application/json' \
-       -d "{\"email\":\"quantri@onebee.lan\",\"password\":\"$(cat /etc/onebee-box/secrets/webui-admin-password)\"}" \
+       -d "{\"email\":\"quantri@onebee.lan\",\"password\":\"$(cat /etc/onebee-box/secrets/ai-admin-password)\"}" \
        | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')" || return 1
-  cfg="$(curl -s -m 20 -H "Authorization: Bearer ${t}" http://127.0.0.1:3000/api/v1/auths/admin/config)"
-  perms="$(curl -s -m 20 -H "Authorization: Bearer ${t}" http://127.0.0.1:3000/api/v1/users/default/permissions)"
-  python3 - "${cfg}" "${perms}" <<'PY'
+  curl -s -m 20 -H "Authorization: Bearer ${t}" http://127.0.0.1:3000/ai/mau | python3 -c '
 import json, sys
-cfg, perms = json.loads(sys.argv[1]), json.loads(sys.argv[2])
-ok = (cfg["ENABLE_SIGNUP"] is False and cfg["ENABLE_COMMUNITY_SHARING"] is False and cfg["JWT_EXPIRES_IN"] == "30d"
-      and cfg["API_KEYS_ALLOWED_ENDPOINTS"] == "/api/chat/completions,/api/models"
-      and perms["features"]["api_keys"] is True and perms["chat"]["share"] is False)
-sys.exit(0 if ok else 1)
-PY
+d = json.load(sys.stdin)
+cmds = {p["command"] for p in d.get("prompts", [])}
+assert {"to-trinh", "bien-ban", "hop-dong", "bao-cao"}.issubset(cmds), cmds'
 }
-check "Open WebUI (CSDL): không đăng ký tự do, không chia sẻ cộng đồng, phiên 30 ngày, nhân viên tạo được khóa API nhưng không chia sẻ chat" \
-  webui_cai_dat_dung
+check "Trợ lý AI: đăng nhập quản trị được và có đủ 4 mẫu hành chính NĐ 30" ai_dang_nhap_va_mau_dung
 check "n8n chỉ ĐỌC được danh sách máy đã cấp (may-da-cap): gắn read-only, không tự thêm máy để nhận báo cáo giả" bash -c \
   "[ -d /srv/onebee/may-da-cap ] && [ \"\$(docker inspect -f '{{range .Mounts}}{{if eq .Destination \"/home/node/.n8n-files/may-da-cap\"}}{{.RW}}{{end}}{{end}}' onebee-n8n)\" = false ]"
 check "Ollama KHÔNG mở cổng ra ngoài (11434)" bash -c "! curl -s -m 3 http://127.0.0.1:11434/ >/dev/null"
-check "Ollama chạy được bên trong (Open WebUI gọi tới)" bash -c "docker exec onebee-open-webui curl -s -m 10 http://ollama:11434/api/version | grep -q version"
-check "Open WebUI không gọi AI đám mây (ENABLE_OPENAI_API=false)" \
-  bash -c "docker exec onebee-open-webui printenv ENABLE_OPENAI_API | grep -qx false"
+check "Ollama chạy được bên trong (Trợ lý AI gọi tới)" bash -c \
+  "docker exec onebee-ai-rag python3 -c \"import urllib.request; print(urllib.request.urlopen('http://ollama:11434/api/version', timeout=10).read().decode())\" | grep -q version"
+check "Trợ lý AI không chứa cấu hình gọi AI đám mây" bash -c "! grep -qi OPENAI_API_KEY /opt/onebee-box/.env"
 check "CA riêng: thư mục 700, khóa 600, gốc + trung gian có ràng buộc tên critical (chỉ IP Box /32 + <mã>.onebee.internal)" bash -c \
   "cd /etc/onebee-box/secrets/ca && [ \$(stat -c %a .) = 700 ] && [ \$(stat -c %a root.key) = 600 ] && [ \$(stat -c %a inter.key) = 600 ] \
    && for c in root inter; do openssl x509 -in \$c.crt -noout -text | grep -A3 'Name Constraints: critical' | grep -q 'IP:.*/255.255.255.255' || exit 1; done \
@@ -103,7 +83,7 @@ check "onebee-box in-ca in vân tay đúng chứng chỉ gốc" bash -c \
   "onebee-box in-ca | grep -q \"\$(sha256sum < <(openssl x509 -in /etc/onebee-box/secrets/ca/root.crt -outform DER) | cut -d' ' -f1 | tr a-f A-F | sed 's/../&:/g; s/:\$//')\""
 check "File .env chỉ root đọc (600)" bash -c "[ \"\$(stat -c %a /opt/onebee-box/.env)\" = 600 ]"
 check "Thư mục bí mật chỉ root vào (700)" bash -c "[ \"\$(stat -c %a /etc/onebee-box/secrets)\" = 700 ]"
-check "Khóa bí mật đã sinh, không để trống" bash -c "grep -Eq '^WEBUI_SECRET_KEY=[A-Za-z0-9]{48}$' /opt/onebee-box/.env && grep -Eq '^N8N_ENCRYPTION_KEY=[A-Za-z0-9]{48}$' /opt/onebee-box/.env"
+check "Khóa bí mật đã sinh, không để trống" bash -c "grep -Eq '^AI_RAG_SECRET_KEY=[A-Za-z0-9]{48}$' /opt/onebee-box/.env && grep -Eq '^N8N_ENCRYPTION_KEY=[A-Za-z0-9]{48}$' /opt/onebee-box/.env"
 
 pw="$(cat /etc/onebee-box/secrets/samba-onebee 2>/dev/null)"
 check "Samba đang chạy" systemctl is-active smbd

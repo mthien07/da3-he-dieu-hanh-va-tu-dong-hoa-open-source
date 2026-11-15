@@ -37,11 +37,11 @@ echo "===== XOAY KHÓA: BOX ====="
 box <<'EOF'
 S=/etc/onebee-box/secrets
 st() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
-cp ${S}/webui-admin-password /root/admin-cu
+cp ${S}/ai-admin-password /root/admin-cu
 cp ${S}/n8n-owner-password /root/n8n-cu
 for f in authelia-session-secret cau-noi-jwt-secret authelia-storage-key; do cp "${S}/${f}" "/root/${f}-cu"; done
 onebee-box xoay-khoa --box --dong-y > /root/xoay-box.log 2>&1 || { tail -40 /root/xoay-box.log; exit 1; }
-if cmp -s ${S}/webui-admin-password /root/admin-cu || cmp -s ${S}/n8n-owner-password /root/n8n-cu; then echo 'FAIL  Bí mật không đổi'; exit 1; fi
+if cmp -s ${S}/ai-admin-password /root/admin-cu || cmp -s ${S}/n8n-owner-password /root/n8n-cu; then echo 'FAIL  Bí mật không đổi'; exit 1; fi
 for f in authelia-session-secret cau-noi-jwt-secret; do
   [ -s "${S}/${f}" ] && ! cmp -s "${S}/${f}" "/root/${f}-cu" || { echo "FAIL  xoay-khoa --box không đổi ${f}"; exit 1; }
 done
@@ -53,7 +53,7 @@ echo 'PASS  xoay-khoa --box: khóa phiên đăng nhập một lần và khóa k�
 for _ in $(seq 40); do curl -s -m 5 http://127.0.0.1:3000/health | grep -q true && curl -s -m 5 http://127.0.0.1:5678/healthz | grep -q ok && break; sleep 3; done
 signin() { st -X POST http://127.0.0.1:3000/api/v1/auths/signin -H 'Content-Type: application/json' -d "{\"email\":\"quantri@onebee.lan\",\"password\":\"$1\"}"; }
 [ "$(signin "$(cat /root/admin-cu)")" != 200 ] || { echo 'FAIL  Mật khẩu quản trị Trợ lý AI cũ còn dùng được'; exit 1; }
-[ "$(signin "$(cat ${S}/webui-admin-password)")" = 200 ] || { echo 'FAIL  Mật khẩu quản trị Trợ lý AI mới không dùng được'; exit 1; }
+[ "$(signin "$(cat ${S}/ai-admin-password)")" = 200 ] || { echo 'FAIL  Mật khẩu quản trị Trợ lý AI mới không dùng được'; exit 1; }
 n8n_login() { st -X POST http://127.0.0.1:5678/rest/login -H 'Content-Type: application/json' -d "{\"emailOrLdapLoginId\":\"quantri@onebee.lan\",\"password\":\"$1\"}"; }
 [ "$(n8n_login "$(cat /root/n8n-cu)")" != 200 ] || { echo 'FAIL  Mật khẩu chủ n8n cũ còn dùng được'; exit 1; }
 [ "$(n8n_login "$(cat ${S}/n8n-owner-password)")" = 200 ] || { echo 'FAIL  Mật khẩu chủ n8n mới không dùng được'; exit 1; }

@@ -5,7 +5,7 @@ OneBee Box là 1 máy chủ đặt tại đơn vị, trong mạng LAN. Dịch v�
 | Dịch vụ | Địa chỉ trong LAN | Dùng để |
 |---|---|---|
 | Trang chủ (Dashboard) | `http://onebee.local/` hoặc `http://<ip-box>/` | Tình trạng Box (CPU, RAM, ổ trống, Trợ lý AI, thư mục chung, sao lưu), lối tắt các dịch vụ, cẩm nang |
-| Trợ lý AI (Open WebUI + Ollama) | `http://<ip-box>:3000` | Hỏi đáp, soạn thảo — AI chạy tại chỗ, không gửi dữ liệu ra ngoài |
+| Trợ lý AI (`onebee-ai-rag` + Ollama) | `http://<ip-box>:3000` (hoặc `/ai` qua SSO) | Hỏi đáp RAG, soạn thảo — AI chạy tại chỗ, không gửi dữ liệu ra ngoài |
 | Tự động hóa (n8n) | `http://<ip-box>:5678` | Quy trình tự động |
 | Giám sát (Uptime Kuma) | `http://<ip-box>:3001` | Theo dõi dịch vụ còn chạy không |
 | Thư mục chung (Samba) | `smb://onebee.local/chung` (Windows: `\\onebee.local\chung`) | Chia sẻ file trong đơn vị |
@@ -85,7 +85,7 @@ Thử trước trên 1 máy Windows 10 và 1 máy Linux Mint rồi mới áp cho
    thử `ssh <tài-khoản>@<ip-box>` vào được, rồi chạy lại `sudo ./box/onebee-box-install.sh` → Box tắt đăng nhập SSH bằng mật khẩu
    và không cho root. Chưa có khóa thì bộ cài giữ nguyên mật khẩu và in cảnh báo (không tự khóa anh ở ngoài).
 1. **Trợ lý AI** và **n8n**: tài khoản quản trị `quantri@onebee.lan` đã tạo sẵn, đăng ký tự do đã tắt. Mật khẩu: `sudo onebee-box in-khoa`
-   (dòng `webui-admin-password`, `n8n-owner-password`). Model AI (`gemma4:e2b-it-qat`) tự tải khi cài.
+   (dòng `ai-admin-password`, `n8n-owner-password`). Model AI (`gemma4:e2b-it-qat`) tự tải khi cài.
 2. **Giám sát (Uptime Kuma, `:3001`)**: tài khoản `quantri` tạo sẵn (mật khẩu dòng `uptime-kuma-password`), đã có 5 mục theo dõi
    các dịch vụ của Box; khi đã cấu hình email, dịch vụ nào ngừng sẽ có email báo.
 3. **Email báo cáo**: làm theo mục 4 của [dung-tro-ly-ai-va-quy-trinh-tu-dong.md](dung-tro-ly-ai-va-quy-trinh-tu-dong.md).
@@ -154,7 +154,7 @@ Máy trạm cài bản v0.1 (file `sao-luu.env`) được bộ cài tự đổi 
 | `sudo onebee-box thu-hoi-may <tên>` | Thu hồi máy (mất máy, nghỉ việc, nghi giả mạo); giữ kho sao lưu |
 | `sudo onebee-box ghim-lai-may <tên>` | Máy cài lại hệ điều hành: bỏ khóa SSH đã ghim để ghim lại |
 | `sudo onebee-box bao-cao-tuan [YYYY-MM-DD]` | Nhật ký tuần: yêu cầu hỗ trợ, khảo sát, tình trạng máy (ẩn tên) |
-| `sudo onebee-box dong-bo-tro-ly` | Tạo/cập nhật "Trợ lý OneBee" trong Open WebUI |
+| `sudo onebee-box dong-bo-tro-ly` | Tạo/cập nhật cấu hình "Trợ lý OneBee" trong `onebee-ai-rag` |
 | `sudo onebee-box dat-mat-khau-email` / `email-thu` | Đặt mật khẩu hộp thư gửi / gửi email thử |
 | `sudo onebee-box khoi-tao` | Tạo kho sao lưu Box trên ổ ngoài (1 lần) |
 | `sudo onebee-box sao-luu` | Sao lưu Box ra ổ ngoài ngay + dọn bản cũ (tự chạy 23:00 hằng ngày) |
@@ -172,7 +172,7 @@ Máy trạm cài bản v0.1 (file `sao-luu.env`) được bộ cài tự đổi 
 Đã diễn tập tự động trong container (`tests/box/check-khoi-phuc-toan-bo.sh`); nên diễn tập 1 lần trên máy ảo trước khi bán.
 
 ## Nâng cấp phiên bản dịch vụ
-Phiên bản các dịch vụ (Caddy, Ollama, Open WebUI, n8n, Uptime Kuma, rest-server) ghim cả **tag lẫn digest** trong
+Phiên bản các dịch vụ (Caddy, Ollama, `python:3.14-slim` cho `onebee-ai-rag`, n8n, Uptime Kuma, rest-server) ghim cả **tag lẫn digest** trong
 `box/ansible/group_vars/all.yml` (`onebee_box_images`). Nâng cấp = sửa cả hai rồi chạy lại bộ cài. Với n8n, mỗi lần đổi image bộ cài
 **tự dừng n8n và chép nguyên thư mục dữ liệu** sang `/srv/onebee/n8n.truoc-<phiên-bản-cũ>` (n8n chạy migration CSDL khi khởi động,
 không quay lui được). Hoàn tác: `docker compose stop n8n` (trong `/opt/onebee-box`) → xóa `/srv/onebee/n8n` → đổi tên thư mục chép về
@@ -182,9 +182,7 @@ không quay lui được). Hoàn tác: `docker compose stop n8n` (trong `/opt/on
 ## Quyền riêng tư
 Box giữ mật khẩu kho sao lưu của từng máy trạm (để tự dọn bản cũ) → người quản trị Box **đọc được** bản sao lưu `/home`
 của mọi máy. Box còn có **quyền quản trị (root) trên máy trạm** qua SSH để cập nhật. Cần thông báo 2 điều này cho đơn vị
-khi triển khai, và giữ Box kín (chỉ kỹ thuật viên có mật khẩu). Chat Trợ lý AI của nhân viên: tài khoản quản trị Open WebUI bị chặn
-không xem/xuất được, nhưng quản trị vẫn đặt lại được mật khẩu nhân viên rồi đăng nhập, và người có root trên Box vẫn đọc được
-file dữ liệu — cũng cần nói rõ với đơn vị.
+khi triển khai, và giữ Box kín (chỉ kỹ thuật viên có mật khẩu). Dữ liệu Trợ lý AI của nhân viên: `onebee-ai-rag` không lưu lịch sử chat người dùng trên máy chủ, nhưng người có root trên Box vẫn đọc được file cấu hình và bản sao lưu — cũng cần nói rõ với đơn vị.
 
 ## Giới hạn đã biết
 - Chưa giới hạn dung lượng từng máy trạm trên Box; theo dõi bằng `sudo onebee-box trang-thai`.

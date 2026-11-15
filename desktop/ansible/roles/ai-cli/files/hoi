@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """hoi — hỏi Trợ lý OneBee (AI chạy trên OneBee Box trong mạng nội bộ) ngay từ cửa sổ dòng lệnh.
 
 Cách dùng:
@@ -110,7 +112,7 @@ def luu_khoa(khoa):
 
 
 def goi_api(conf, phuong_thuc, duong_dan, khoa=None, noi_dung=None):
-    """Gọi API Open WebUI qua mo() (ghim CA). Trả về (mã, dữ liệu JSON hoặc None); lỗi mạng/chứng chỉ thì thoát với thông báo rõ."""
+    """Gọi API Trợ lý AI OneBee qua mo() (ghim CA). Trả về (mã, dữ liệu JSON hoặc None); lỗi mạng/chứng chỉ thì thoát với thông báo rõ."""
     tieu_de = {"Content-Type": "application/json"}
     if khoa:
         tieu_de["Authorization"] = f"Bearer {khoa}"
@@ -149,8 +151,13 @@ def dang_nhap(conf):
     if ma in (400, 401, 403) or not (du_lieu or {}).get("token"):
         sys.exit("Sai email hoặc mật khẩu. Nếu quên mật khẩu, nhờ người quản trị đặt lại.")
     phien = du_lieu["token"]
+    khoa_cu = doc_khoa_nguoi_dung()
     ma, du_lieu = goi_api(conf, "GET", "/api/v1/auths/api_key", khoa=phien)
     khoa = (du_lieu or {}).get("api_key") if ma == 200 else None
+    if not khoa and ma == 200 and (du_lieu or {}).get("has_key") and khoa_cu:
+        ma_m, _ = goi_api(conf, "GET", "/api/models", khoa=khoa_cu)
+        if ma_m == 200:
+            khoa = khoa_cu
     if not khoa:   # chưa có thì tạo; có rồi thì dùng lại (POST sẽ làm khóa cũ mất hiệu lực)
         ma, du_lieu = goi_api(conf, "POST", "/api/v1/auths/api_key", khoa=phien)
         khoa = (du_lieu or {}).get("api_key") if ma == 200 else None

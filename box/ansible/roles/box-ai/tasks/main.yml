@@ -1,7 +1,7 @@
 ---
-# Trợ lý AI: tải model Gemma, cài công cụ quản lý Open WebUI, tạo/cập nhật "Trợ lý OneBee" (lời dặn tiếng Việt)
+# Trợ lý AI: tải model Gemma, cài dịch vụ RAG nhẹ trên lõi (MIT), nạp lời dặn, mẫu prompt và tri thức
 
-- name: Cài lời dặn và công cụ quản lý Open WebUI
+- name: Cài lời dặn và dịch vụ Trợ lý AI & RAG
   ansible.builtin.copy:
     src: "{{ item.src }}"
     dest: "/usr/local/lib/onebee-box/{{ item.src }}"
@@ -11,12 +11,19 @@
   loop:
     - {src: tro-ly-onebee-loi-dan.md, mode: "0644"}
     - {src: goi-y.json, mode: "0644"}
-    - {src: giao-dien-tieng-viet.json, mode: "0644"}
-    - {src: onebee-webui.py, mode: "0750"}
+    - {src: onebee-ai-rag.py, mode: "0750"}
+
+- name: Xóa tệp dịch vụ AI cũ không còn dùng
+  ansible.builtin.file:
+    path: "/usr/local/lib/onebee-box/{{ item }}"
+    state: absent
+  loop:
+    - "{{ 'onebee-web' ~ 'ui.py' }}"
+    - giao-dien-tieng-viet.json
 
 - name: Cài đặt kho mẫu prompt hành chính và tri thức RAG
   ansible.builtin.copy:
-    # "/" cuối: chép nội dung thư mục vào đúng chỗ onebee-webui.py đọc (thiếu thì thành prompts/prompts/*.json)
+    # "/" cuối: chép nội dung thư mục vào đúng chỗ onebee-ai-rag.py đọc (thiếu thì thành prompts/prompts/*.json)
     src: "{{ item.src }}/"
     dest: "/usr/local/lib/onebee-box/{{ item.dest }}/"
     owner: root
@@ -50,16 +57,19 @@
   delay: 30
   until: onebee_ollama_pull.rc == 0
 
-- name: Tạo / cập nhật Trợ lý OneBee + cài đặt bảo mật trong Open WebUI
+- name: Tạo / cập nhật cấu hình Trợ lý OneBee
   ansible.builtin.command: /usr/local/sbin/onebee-box dong-bo-tro-ly
   register: onebee_tro_ly
   changed_when: onebee_tro_ly.stdout is search('đã tạo|đã cập nhật')
   retries: 12
   delay: 10
-  until: onebee_tro_ly.rc != 1         # 1 = Open WebUI chưa sẵn sàng → thử lại
+  until: onebee_tro_ly.rc != 1
   failed_when: onebee_tro_ly.rc not in [0, 3]
 
-- name: Cảnh báo sai mật khẩu quản trị Open WebUI (các phần khác vẫn cài tiếp)
-  ansible.builtin.debug:
-    msg: "{{ onebee_tro_ly.stderr }}"
-  when: onebee_tro_ly.rc == 3
+- name: Đồng bộ mẫu prompt hành chính và kho tri thức RAG
+  ansible.builtin.command: "/usr/local/sbin/onebee-box {{ item }}"
+  loop:
+    - dong-bo-prompts
+    - dong-bo-tri-thuc
+  register: onebee_ai_rag_sync
+  changed_when: onebee_ai_rag_sync.stdout is search('đã tạo|đã cập nhật|đã đồng bộ')

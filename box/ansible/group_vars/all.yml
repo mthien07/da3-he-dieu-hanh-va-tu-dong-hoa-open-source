@@ -15,7 +15,6 @@ onebee_box_ssh_dir: /etc/onebee-box/secrets/ssh  # khóa SSH quản trị máy t
 onebee_box_images:
   caddy: docker.io/library/caddy:2.11.4@sha256:0c994536bddb66445885237f1a5dcc1916bccea922661c76b4e9fc24061f9b52
   ollama: docker.io/ollama/ollama:0.34.4@sha256:8262851b2846b87c649eddf3e76beb270c52f4d1bc94559f47efde16b0841551
-  open_webui: ghcr.io/open-webui/open-webui:v0.11.4@sha256:9591b13f13843c7721c2b8eaf7382846c81b3ffe126526d1888d1fed50c6a33f
   n8n: docker.io/n8nio/n8n:2.42.6@sha256:526daa38b68e923cc00c5280d18b4da5d489f115a73bdbf3b8e452b184197a9a
   uptime_kuma: docker.io/louislam/uptime-kuma:2.5.5@sha256:c74379ac4509ce2d2c2633f509e67003ee2e45b6e995c5e43fc101f45a0e1fbe
   rest_server: docker.io/restic/rest-server:0.14.0@sha256:d2aff06f47eb38637dff580c3e6bce4af98f386c396a25d32eb6727ec96214a5
@@ -56,10 +55,11 @@ onebee_box_nhom_nguoi_dung: [nhan_vien, ky_thuat, quan_ly]
 # Cổng trong mạng LAN (KHÔNG mở các cổng này ra Internet trên router)
 onebee_box_ports:
   portal: 80  # trang chủ: tình trạng Box + lối tắt các dịch vụ (http://onebee.local)
-  open_webui: 3000  # Trợ lý AI
+  tro_ly_ai: 3000  # Trợ lý AI & RAG nội bộ (MIT)
   n8n: 5678         # Tự động hóa
   uptime_kuma: 3001  # Giám sát
   rest_server: 8000  # Nhận sao lưu từ máy trạm
+onebee_ai_rag_port: 8092  # cổng nội bộ dịch vụ onebee-ai-rag trong mạng Docker
 
 # Tường lửa: chỉ các mạng này vào được dịch vụ của Box (các cổng trên + thư mục chung + SSH).
 # Để trống: tự lấy mạng của cổng mạng chính (vd 192.168.1.0/24). Nhiều mạng: ["192.168.1.0/24", "192.168.2.0/24"].
@@ -80,8 +80,8 @@ onebee_box_ai_model: gemma4:e2b-it-qat
 onebee_box_ai_models: ["{{ onebee_box_ai_model }}"]   # model tải sẵn khi cài
 onebee_box_admin_email: quantri@onebee.lan             # tài khoản quản trị Trợ lý AI (mật khẩu: onebee-box in-khoa)
 # Origin được phép dùng Trợ lý AI NGOÀI hai địa chỉ mặc định (http(s)://<IP Box>:3000 và http(s)://box.<mã>.onebee.internal:3000).
-# Mở Trợ lý AI bằng tên/IP khác (tên DNS của router, IP Tailscale trần, đường hầm SSH http://localhost:3000) thì chat thời gian thực
-# (WebSocket) bị chặn mà không báo lỗi. Khai đầy đủ giao thức + tên + cổng, không có đường dẫn, vd ["http://onebee-box.lan:3000"].
+# Mở Trợ lý AI bằng tên/IP khác (tên DNS của router, IP Tailscale trần, đường hầm SSH http://localhost:3000) cần khai thêm
+# để trình duyệt không bị chặn CORS. Khai đầy đủ giao thức + tên + cổng, không có đường dẫn, vd ["http://onebee-box.lan:3000"].
 # Áp dụng cho cả chế độ HTTP lẫn HTTPS (HTTPS thì ghi https://...). Để trống: chỉ hai địa chỉ mặc định. Không dùng "*".
 onebee_box_cors_them: []
 
@@ -128,7 +128,7 @@ onebee_box_nhac_truoc_ngay: [7, 3, 1, 0]
 #   để `hoi` chạy ngay ở nhân viên chưa thiết lập khóa riêng.
 #   Khóa máy nằm trong /etc/onebee-hoi.conf, mọi tài khoản trên máy đọc được (rà soát bảo mật F10).
 # false: thôi cấp tài khoản/khóa theo máy, thôi đẩy HOI_API_KEY xuống máy. Sau đó chạy: sudo onebee-box go-khoa-hoi-may
-#   (xóa các tài khoản may-<tên> cũ trên Open WebUI) — nhân viên nào chưa chạy `hoi --dang-nhap` sẽ không hỏi được nữa.
+#   (thu hồi khóa may-<tên> cũ khỏi kho token AI) — nhân viên nào chưa chạy `hoi --dang-nhap` sẽ không hỏi được nữa.
 onebee_box_hoi_khoa_may: true
 
 # Khóa gửi tình trạng dùng chung (header X-OneBee-Key ở cửa n8n) — chỉ còn là bộ lọc rác, không phải danh tính máy

@@ -1,16 +1,11 @@
 # Hướng dẫn dùng Trợ lý AI và quy trình tự động (OneBee Box v0.2)
 
-## 1. Trợ lý AI (Open WebUI)
-- Mở `http://<ip-box>:3000`. Tài khoản quản trị tạo sẵn: `quantri@onebee.lan`, mật khẩu xem bằng `sudo onebee-box in-khoa`
-  (dòng `webui-admin-password`). **Đăng ký tự do đã tắt** — quản trị tạo tài khoản cho nhân viên trong
-  Bảng quản trị → Người dùng.
-- **Mỗi nhân viên một tài khoản** (không dùng chung): quản trị tạo trong Bảng quản trị → Người dùng, nhân viên nghỉ việc thì xóa.
-  Bộ cài đặt sẵn (và áp lại mỗi lần chạy, kể cả trên Box đã cài): tài khoản quản trị Open WebUI **không xem được chat của nhân viên và
-  không xuất được** (tắt `ENABLE_ADMIN_CHAT_ACCESS`, `ENABLE_ADMIN_EXPORT` — đã đối chiếu mã nguồn v0.11.4: chặn xem chat người khác
-  qua giao diện/API, xuất toàn bộ chat, tải file CSDL), nhân viên **không chia sẻ chat** cho nhau, không chia sẻ lên cộng đồng, tắt Functions/Tools (mã Python tự thêm), phiên đăng nhập
-  giữ **30 ngày** rồi phải đăng nhập lại. Nên báo trước cho nhân viên đúng phạm vi: đây là chặn trên Open WebUI, **không phải mã hóa** — quản trị vẫn **đặt lại được mật khẩu**
-  của nhân viên rồi đăng nhập bằng tài khoản đó (đã đối chiếu mã nguồn: `update_user_by_id`; nhân viên sẽ biết vì mật khẩu cũ không còn dùng
-  được), và người có quyền root trên Box vẫn đọc được file dữ liệu (`/srv/onebee/open-webui`) và bản sao lưu của nó; thư mục `/home` trên máy trạm cũng nằm trong bản
+## 1. Trợ lý AI (`onebee-ai-rag`, MIT)
+- Mở `https://<ip-box>/ai` (qua SSO) hoặc `http://<ip-box>:3000`. Tài khoản quản trị tạo sẵn: `quantri@onebee.lan`, mật khẩu xem bằng `sudo onebee-box in-khoa`
+  (dòng `ai-admin-password`). **Đăng ký tự do đã tắt** (`POST /api/v1/auths/signup` trả `403`).
+- **Mỗi nhân viên một tài khoản / phiên SSO** (không dùng chung): quản trị cấp qua hệ thống SSO Authelia hoặc tạo người dùng trên `onebee-ai-rag`, nhân viên nghỉ việc thì xóa/thu hồi.
+  `onebee-ai-rag` không lưu lịch sử trò chuyện nhân viên trên máy chủ, chặn dữ liệu định danh cá nhân (PII) ở `/ai/tom-tat`, phiên token ký HMAC-SHA256 giữ **30 ngày**.
+  Người có quyền root trên Box vẫn đọc được thư mục dữ liệu (`/srv/onebee/ai-rag`) và bản sao lưu của nó; thư mục `/home` trên máy trạm cũng nằm trong bản
   sao lưu mà quản trị Box đọc được (xem "Quyền riêng tư" trong hướng dẫn cài Box).
   Lệnh `hoi` dùng khóa của **từng nhân viên** (mục 2); khóa theo từng **máy** chỉ còn là giai đoạn chuyển tiếp.
 - **Mở cùng một địa chỉ:** biểu tượng Trợ lý AI trên máy trạm, lệnh `hoi` và các thẻ dịch vụ ở trang chủ Box đều mở `http(s)://<ip-box>:3000`
@@ -22,9 +17,7 @@
   **Save**, rồi bấm F5 tải lại trang (vài tiêu đề nhóm chỉ đổi sau khi tải lại).
 - Chọn **"Trợ lý OneBee"**: model Gemma chạy trên Box + lời dặn tiếng Việt (không bịa số liệu, hướng dẫn máy OneBee,
   biết ngày hôm nay, được nhờ soạn văn bản thì soạn ngay, chỗ thiếu để [trong ngoặc vuông]).
-- **Gợi ý và mẫu soạn văn bản:** trên màn hình trò chuyện mới, bấm một trong 4 gợi ý tiếng Việt (Soạn tờ trình, Lập biên bản họp,
-  Soạn thông báo, Tóm tắt văn bản) để chèn câu mở đầu vào ô nhập rồi viết tiếp, hoặc gõ `/` trong ô nhập để chọn 4 mẫu
-  (`to-trinh`, `bien-ban`, `hop-dong`, `bao-cao`). Bộ tri thức pháp lý chưa được nạp: Trợ lý chưa trả lời theo văn bản luật.
+- **Gợi ý, mẫu soạn thảo và RAG pháp lý:** trên màn hình `/ai`, bấm một trong 4 gợi ý tiếng Việt hoặc 4 mẫu hành chính (`to-trinh`, `bien-ban`, `hop-dong`, `bao-cao`). Bộ tri thức pháp lý (Nghị định 30/2020/NĐ-CP và Luật HTX 2023) được lập chỉ mục BM25 tại chỗ và trích dẫn nguồn trực tiếp trong câu trả lời.
 
 ![Trợ lý OneBee soạn thông báo](anh/02-tro-ly-ai-tieng-viet.png)
 - Model đang dùng: `gemma4:e2b-it-qat` (Gemma 4 của Google, giấy phép Apache-2.0, tải 4,3 GB) — bản Gemma nhẹ nhất vượt
@@ -46,16 +39,14 @@ hoi --dan-khoa    # tự tạo khóa trên web (Cài đặt → Tài khoản →
 hoi --dang-xuat   # xóa khóa của bạn khỏi máy này
 ```
 Khóa lưu ở `~/.config/onebee/hoi-khoa` (chỉ chính tài khoản Linux đó đọc; máy nhiều người thì mỗi người một khóa). Khóa chỉ gọi được hỏi đáp + danh sách model.
-**Thu hồi**: quản trị xóa tài khoản nhân viên trên Open WebUI → khóa mất hiệu lực (`hoi` báo "đã bị thu hồi").
+**Thu hồi**: quản trị xóa tài khoản nhân viên trên Box → khóa mất hiệu lực (`hoi` báo "đã bị thu hồi").
 **Chuyển tiếp**: nhân viên chưa thiết lập khóa riêng thì `hoi` tạm dùng khóa chung của máy (`/etc/onebee-hoi.conf`, **mọi tài khoản trên máy đọc được**) kèm nhắc.
 Khi mọi nhân viên đã dùng khóa riêng: đặt `onebee_box_hoi_khoa_may: false` trong `box/ansible/group_vars/all.yml`, chạy lại bộ cài, `sudo onebee-box dong-bo-may --tat-ca`,
 rồi `sudo onebee-box go-khoa-hoi-may` (xóa các tài khoản `may-<tên>@onebee.lan`). Từ đó `them-may` thôi cấp khóa theo máy. Cấu hình địa chỉ ở `/etc/onebee-hoi.conf`;
 mật khẩu sao lưu ở `/etc/onebee/` chỉ root đọc được.
 
-**Đổi mật khẩu quản trị (Trợ lý AI, n8n) trên giao diện web**: ghi mật khẩu mới vào file tương ứng trong
-`/etc/onebee-box/secrets/` (`webui-admin-password`) — nếu không, bộ cài vẫn chạy nhưng báo cảnh báo và không cập nhật được
-"Trợ lý OneBee". Tài khoản chủ n8n do bộ cài quản lý (`N8N_INSTANCE_OWNER_MANAGED_BY_ENV`) — **không đổi mật khẩu chủ
-n8n trên giao diện** (chưa kiểm n8n có đặt lại theo bộ cài hay không); dùng mật khẩu trong `in-khoa`.
+**Đổi mật khẩu quản trị (Trợ lý AI, n8n)**: ghi mật khẩu mới vào file tương ứng trong
+`/etc/onebee-box/secrets/` (`ai-admin-password`) hoặc dùng `sudo onebee-box xoay-khoa --box --dong-y` — nếu không, bộ cài vẫn chạy nhưng báo cảnh báo. Tài khoản chủ n8n do bộ cài quản lý (`N8N_INSTANCE_OWNER_MANAGED_BY_ENV`).
 
 ## 3. Quy trình tự động (n8n, `http://<ip-box>:5678`)
 Tài khoản chủ tạo sẵn: `quantri@onebee.lan`, mật khẩu dòng `n8n-owner-password` trong `in-khoa`.

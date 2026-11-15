@@ -178,7 +178,7 @@ sudo ./box/onebee-box-install.sh
 sudo onebee-box in-khoa
 ```
 Lệnh in ra các mật khẩu, trong đó:
-- `webui-admin-password`: mật khẩu **Trợ lý AI**.
+- `ai-admin-password`: mật khẩu **Trợ lý AI**.
 - `n8n-owner-password`: mật khẩu **Tự động hóa**.
 - `uptime-kuma-password`: mật khẩu **Giám sát**.
 

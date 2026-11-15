@@ -21,7 +21,7 @@ from onebee_ai_eval.scoring import score_answer  # noqa: E402
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 LOI_DAN = os.path.join(REPO, "box/ansible/roles/box-ai/files/tro-ly-onebee-loi-dan.md")
-# Tùy chọn sinh chữ GIỐNG "Trợ lý OneBee" trên Box (box-ai/files/onebee-webui.py) để chấm đúng cấu hình thật
+# Tùy chọn sinh chữ GIỐNG "Trợ lý OneBee" trên Box (box-ai/files/onebee-ai-rag.py) để chấm đúng cấu hình thật
 TUY_CHON_MODEL = {"temperature": 0.3}
 
 
@@ -51,7 +51,7 @@ def main():
         bo = yaml.safe_load(f)
     with open(a.loi_dan, encoding="utf-8") as f:
         loi_dan = f.read()
-    # Giống Open WebUI: thay biến ngày trong lời dặn (Trợ lý thật nhận ngày hôm nay)
+    # Giống onebee-ai-rag: thay biến ngày trong lời dặn (Trợ lý thật nhận ngày hôm nay)
     hom_nay = time.localtime()
     loi_dan = loi_dan.replace("{{CURRENT_DATE}}", time.strftime("%Y-%m-%d", hom_nay)).replace(
         "{{CURRENT_WEEKDAY}}", time.strftime("%A", hom_nay))
