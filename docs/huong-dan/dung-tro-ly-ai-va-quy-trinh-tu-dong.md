@@ -2,7 +2,7 @@
 
 ## 1. Trợ lý AI (OneBee AI RAG)
 - Mở `http://<ip-box>:3000`. Tài khoản quản trị tạo sẵn: `quantri@onebee.lan`, mật khẩu xem bằng `sudo onebee-box in-khoa`
-  (dòng `webui-admin-password`). **Đăng ký tự do đã tắt** — quản trị tạo tài khoản cho nhân viên trong
+  (dòng `ai-admin-password`). **Đăng ký tự do đã tắt** — quản trị tạo tài khoản cho nhân viên trong
   Bảng quản trị → Người dùng.
 - **Mỗi nhân viên một tài khoản** (không dùng chung): quản trị tạo trong Bảng quản trị → Người dùng, nhân viên nghỉ việc thì xóa.
   Bộ cài đặt sẵn (và áp lại mỗi lần chạy, kể cả trên Box đã cài): tài khoản quản trị OneBee AI RAG **không xem được chat của nhân viên và
@@ -53,12 +53,12 @@ rồi `sudo onebee-box go-khoa-hoi-may` (xóa các tài khoản `may-<tên>@oneb
 mật khẩu sao lưu ở `/etc/onebee/` chỉ root đọc được.
 
 **Đổi mật khẩu quản trị (Trợ lý AI, Node-RED) trên giao diện web**: ghi mật khẩu mới vào file tương ứng trong
-`/etc/onebee-box/secrets/` (`webui-admin-password`) — nếu không, bộ cài vẫn chạy nhưng báo cảnh báo và không cập nhật được
-"Trợ lý OneBee". Tài khoản chủ Node-RED do bộ cài quản lý (`NODE_RED_INSTANCE_OWNER_MANAGED_BY_ENV`) — **không đổi mật khẩu chủ
-Node-RED trên giao diện** (chưa kiểm Node-RED có đặt lại theo bộ cài hay không); dùng mật khẩu trong `in-khoa`.
+`/etc/onebee-box/secrets/` (`ai-admin-password`, `quy-trinh-owner-password`) — nếu không, bộ cài vẫn chạy nhưng báo cảnh báo và không cập nhật được
+"Trợ lý OneBee". Tài khoản chủ Node-RED do bộ cài quản lý — **không đổi mật khẩu chủ
+Node-RED trên giao diện**; dùng mật khẩu trong `in-khoa` hoặc xoay qua `onebee-box xoay-khoa --box`.
 
-## 3. Quy trình tự động (Node-RED, `http://<ip-box>:5678`)
-Tài khoản chủ tạo sẵn: `quantri@onebee.lan`, mật khẩu dòng `Node-RED-owner-password` trong `in-khoa`.
+## 3. Quy trình tự động (Node-RED, `http://<ip-box>:5678/quy-trinh`)
+Tài khoản chủ tạo sẵn: `quantri`, mật khẩu dòng `quy-trinh-owner-password` trong `in-khoa`.
 
 | Quy trình | Chạy khi | Kết quả |
 |---|---|---|

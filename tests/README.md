@@ -24,7 +24,7 @@ Các bài unit mới: `test_onebee_ca.py` (CA, ràng buộc tên bằng openssl/
 `tests/desktop/check-exe-handler.sh`: kiểm tra bộ trợ lý bắt file Windows `.exe` / `.msi` (onebee-windows-app-helper), đăng ký MIME handler hệ thống và nhận diện gợi ý ứng dụng thay thế (Zalo, Chrome, Unikey, Foxit, VLC, Ultraviewer, WINE/máy ảo).
 `tests/desktop/test_onebee_locale_ansible.py`: mọi lệnh gọi `ansible-playbook` trong bộ cài Desktop, bộ cài Box và `onebee-box` chạy bằng `C.UTF-8` dù người chạy đặt
 `LANG=vi_VN` (Python hiểu là bảng mã TCVN) hay locale chưa tạo trên máy (`ansible-playbook` giả ghi lại locale hiệu lực).
-`tests/box/test_onebee_webui.py` còn kiểm bản dịch giao diện tiếng Việt bổ sung (`giao-dien-tieng-viet.json`) gửi qua trường `I18N`: máy chủ giả làm đúng phép kiểm
+`tests/box/test_onebee_dxos_core.py` còn kiểm tra toàn diện thành phần lõi DX-OS, các biến môi trường AI RAG và bảo mật Node-RED/Sổ điều hành.
 của OneBee AI RAG v0.11.4, giữ bản dịch quản trị tự thêm, chạy lại không đổi; `tests/box/check-ai-chat-inside.sh` kiểm `/api/config` trả bản dịch cả khi chưa đăng nhập.
 `tests/desktop/test_onebee_phien_ban.py`: phiên bản trong bộ cài Desktop, bộ cài Box và mục đầu `CHANGELOG.md` phải trùng nhau và không thấp hơn tag mới nhất; gói phát hành có `LICENSE` và `CHANGELOG.md`.
 `tests/desktop/test_onebee_giay_phep.py`: gốc repo có `LICENSE` (MIT) và mọi tệp mã được theo dõi có dòng `SPDX-License-Identifier: MIT` trong 5 dòng đầu.

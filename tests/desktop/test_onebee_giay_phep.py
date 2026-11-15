@@ -20,6 +20,8 @@ THU_MUC_LOAI_TRU = {
     "reports/": "Báo cáo đo đạc và thử nghiệm",
 }
 
+THU_MUC_BO_QUA_WALK = {".git", "__pycache__", ".pytest_cache", "dist", "node_modules", ".venv"}
+
 DUOI_LOAI_TRU = {
     ".json": "Tệp JSON thuần không hỗ trợ cú pháp chú thích",
     ".png": "Tệp ảnh nhị phân",
@@ -49,15 +51,29 @@ def la_tep_ma(duong_dan):
 
 
 def danh_sach_tep_ma():
-    kq = subprocess.run(
-        ["git", "ls-files"],
-        cwd=GOC,
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=30,
-    )
-    return [d for d in kq.stdout.splitlines() if d and la_tep_ma(d)]
+    try:
+        kq = subprocess.run(
+            ["git", "-c", f"safe.directory={GOC}", "ls-files"],
+            cwd=GOC,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        kq = None
+    if kq is not None and kq.returncode == 0 and kq.stdout.strip():
+        return sorted(d for d in kq.stdout.splitlines() if d and la_tep_ma(d))
+
+    # Fallback khi kiểm tra bên ngoài cây Git (ví dụ giải nén gói .tar.gz phát hành)
+    cac_tep = []
+    for thu_muc, ds_con, ds_tep in os.walk(GOC):
+        ds_con[:] = [c for c in ds_con if c not in THU_MUC_BO_QUA_WALK]
+        for ten_tep in ds_tep:
+            tuong_doi = os.path.relpath(os.path.join(thu_muc, ten_tep), GOC).replace(os.sep, "/")
+            if la_tep_ma(tuong_doi):
+                cac_tep.append(tuong_doi)
+    return sorted(cac_tep)
 
 
 class GiayPhepTungTep(unittest.TestCase):
@@ -89,6 +105,8 @@ class GiayPhepTungTep(unittest.TestCase):
 
     def test_ci_chay_kiem_tra_giay_phep(self):
         ci_yml = os.path.join(GOC, ".github/workflows/ci.yml")
+        if not os.path.isfile(ci_yml):
+            self.skipTest("gói phát hành không kèm .github/workflows/ci.yml")
         with open(ci_yml, encoding="utf-8") as f:
             noi_dung = f.read()
         self.assertIn(

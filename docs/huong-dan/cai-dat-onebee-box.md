@@ -85,7 +85,7 @@ Thử trước trên 1 máy Windows 10 và 1 máy Linux Mint rồi mới áp cho
    thử `ssh <tài-khoản>@<ip-box>` vào được, rồi chạy lại `sudo ./box/onebee-box-install.sh` → Box tắt đăng nhập SSH bằng mật khẩu
    và không cho root. Chưa có khóa thì bộ cài giữ nguyên mật khẩu và in cảnh báo (không tự khóa anh ở ngoài).
 1. **Trợ lý AI** và **Node-RED**: tài khoản quản trị `quantri@onebee.lan` đã tạo sẵn, đăng ký tự do đã tắt. Mật khẩu: `sudo onebee-box in-khoa`
-   (dòng `webui-admin-password`, `Node-RED-owner-password`). Model AI (`gemma4:e2b-it-qat`) tự tải khi cài.
+   (dòng `ai-admin-password`, `quy-trinh-owner-password`). Model AI (`gemma4:e2b-it-qat`) tự tải khi cài.
 2. **Giám sát (Uptime Kuma, `:3001`)**: tài khoản `quantri` tạo sẵn (mật khẩu dòng `uptime-kuma-password`), đã có 5 mục theo dõi
    các dịch vụ của Box; khi đã cấu hình email, dịch vụ nào ngừng sẽ có email báo.
 3. **Email báo cáo**: làm theo mục 4 của [dung-tro-ly-ai-va-quy-trinh-tu-dong.md](dung-tro-ly-ai-va-quy-trinh-tu-dong.md).

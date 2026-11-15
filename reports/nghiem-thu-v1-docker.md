@@ -22,21 +22,21 @@ Nhật ký gốc (không đưa vào kho vì dài và có dữ liệu thử): `~/
 Danh sách đầy đủ các mục PASS ở phụ lục được trích nguyên văn từ hai log này (thời gian ghi trong một vài dòng là thời gian trong container, không phải số đo hiệu năng).
 
 ## Box: các bước đã chạy
-Cài lần 1 → cài lần 2 (idempotent) → kiểm 44 mục dịch vụ → SSH chỉ bằng khóa → AI hỏi đáp thật → quy trình n8n qua email →
+Cài lần 1 → cài lần 2 (idempotent) → kiểm 44 mục dịch vụ → SSH chỉ bằng khóa → AI hỏi đáp thật → quy trình tự động qua email →
 sao lưu Box ra ổ ngoài + khôi phục → máy trạm Mint 22.3 sao lưu lên Box → quản lý tập trung qua SSH → tường lửa chỉ mở cho LAN →
 tắt Trợ lý AI (lệnh `hoi` báo lỗi dễ hiểu) → bản sao lưu giả mạo ngày tương lai → hỏng ổ Box, cài lại + khôi phục toàn bộ bằng khóa in giấy →
 bật HTTPS (chốt chặn máy chưa nhận CA, máy trạm qua HTTPS, chạy lại `changed=0`, tắt HTTPS) → xoay khóa máy trạm + Box →
 chưa gắn ổ sao lưu → khởi động lại Box.
 
 Các bản sửa ngày 14/10 có mục kiểm riêng trong lần chạy này:
-- CORS/WebSocket Open WebUI (`b13d00d`): Origin lạ bị chặn cả API lẫn bắt tay WebSocket; Origin hợp lệ được CORS và WebSocket `101`, ở cả HTTP và HTTPS.
-- Xoay khóa (`3a3ecda`): mật khẩu kho cũ bị từ chối (401), khóa `hoi` cũ hết hiệu lực, máy trạm nhận khóa mới qua `dong-bo-may`; `--box` đổi mật khẩu quản trị/n8n/biểu mẫu và đồng bộ webhook.
+- CORS/WebSocket Trợ lý AI v1 (`b13d00d`): Origin lạ bị chặn cả API lẫn bắt tay WebSocket; Origin hợp lệ được CORS và WebSocket `101`, ở cả HTTP và HTTPS.
+- Xoay khóa (`3a3ecda`): mật khẩu kho cũ bị từ chối (401), khóa `hoi` cũ hết hiệu lực, máy trạm nhận khóa mới qua `dong-bo-may`; `--box` đổi mật khẩu quản trị/quy-trinh/biểu mẫu và đồng bộ webhook.
 - Tường lửa (`96663cd`): chỉ LAN vào được dịch vụ, cổng chỉ mở IPv4. Trường hợp bảng `mangle` lỗi chỉ kiểm bằng unit test (`tests/box/test_onebee_tuong_lua.py`), không giả lập được trong runner.
 - Vòng đời tường lửa tách khỏi Docker (`8874345`): dừng `docker.socket` + `docker.service` thì unit tường lửa vẫn chạy, INPUT còn 2 bước nhảy `ONEBEE-LAN-BOX`, `mangle` còn lọc Tailscale, `DOCKER-USER` còn quy tắc; Docker lên lại dùng tiếp đúng 1 bước nhảy và máy trạm vào lại được mọi cổng.
 - Ghim CA khi địa chỉ viết hoa (`1e31337`) và gỡ CA cũ khỏi hồ sơ Firefox (`97b11f6`): kiểm bằng unit test; runner kiểm máy trạm tin đúng CA của Box (kho hệ thống, Firefox, Chromium).
 
 ## Lịch sử lần chạy trên mã cuối
-- Lượt 6 (`b13d00d`, 21:51–23:13 14/10): đạt từ cài đặt tới AI hỏi đáp; dừng ở phần n8n vì tải image `axllent/mailpit` từ Docker Hub bị ngắt (`EOF`) — lỗi mạng, không phải lỗi sản phẩm.
+- Lượt 6 (`b13d00d`, 21:51–23:13 14/10): đạt từ cài đặt tới AI hỏi đáp; dừng ở phần quy trình tự động vì tải image `axllent/mailpit` từ Docker Hub bị ngắt (`EOF`) — lỗi mạng, không phải lỗi sản phẩm.
 - Lượt 7 (23:15–23:20): Docker trong Box giả lập bị ngắt khi tải image (`EOF`) ở lần cài 1 — lỗi mạng.
 - Lượt 8 (23:37 14/10 – 01:03 15/10): **đạt toàn bộ** 126 mục. Không sửa mã giữa các lượt 6–8; chỉ tải sẵn image mailpit và chạy khi không có bài thử khác dùng mạng.
 - Chủ dự án chọn sửa vòng đời tường lửa gắn Docker trước phát hành → `8874345` (thêm 1 mục kiểm dừng/bật Docker vào runner).
@@ -63,31 +63,31 @@ PASS  Có file phiên bản Box
 PASS  Docker đang chạy và bật cùng máy
 PASS  Container onebee-portal đang chạy
 PASS  Container onebee-ollama đang chạy
-PASS  Container onebee-open-webui đang chạy
-PASS  Container onebee-n8n đang chạy
+PASS  Container onebee-ai-rag (thế hệ v1) đang chạy
+PASS  Container quy-trinh (thế hệ v1) đang chạy
 PASS  Container onebee-uptime-kuma đang chạy
 PASS  Container onebee-rest-server đang chạy
 PASS  Trang giới thiệu :80 hiển thị OneBee Box
-PASS  Open WebUI :3000 khỏe (/health)
-PASS  n8n :5678 khỏe (/healthz)
+PASS  Trợ lý AI :3000 khỏe (/health)
+PASS  Động cơ quy trình :5678 khỏe (/healthz)
 PASS  Uptime Kuma :3001 trả lời
 PASS  Uptime Kuma: tài khoản quản trị tạo sẵn + 5 mục theo dõi (không còn "ai mở trước thành quản trị")
 PASS  Giám sát mở ra LAN chỉ sau khi đã có tài khoản quản trị
-PASS  Open WebUI :3000 không cho Origin lạ đọc API kèm cookie (CORS giới hạn cả ở chế độ HTTP)
-PASS  Open WebUI :3000 cho Origin hợp lệ (http://<IP Box>:3000) đọc API: access-control-allow-origin trả đúng Origin đó
-PASS  Open WebUI :3000 nhận bắt tay WebSocket (chat thời gian thực) từ Origin hợp lệ (101)
-PASS  Open WebUI :3000 từ chối bắt tay WebSocket từ Origin lạ (có phản hồi, không phải 101)
+PASS  Trợ lý AI :3000 không cho Origin lạ đọc API kèm cookie (CORS giới hạn cả ở chế độ HTTP)
+PASS  Trợ lý AI :3000 cho Origin hợp lệ (http://<IP Box>:3000) đọc API: access-control-allow-origin trả đúng Origin đó
+PASS  Trợ lý AI :3000 nhận bắt tay WebSocket (chat thời gian thực) từ Origin hợp lệ (101)
+PASS  Trợ lý AI :3000 từ chối bắt tay WebSocket từ Origin lạ (có phản hồi, không phải 101)
 PASS  Kho sao lưu :8000 đòi mật khẩu (401)
 PASS  Trang giới thiệu gửi kèm tiêu đề bảo mật (chống nhúng khung, không lộ tên máy chủ web)
-PASS  n8n khóa chặt: không có nút chạy lệnh hệ thống, nút Code không đọc biến môi trường
-PASS  n8n: tắt mô-đun Agents và MCP, chặn nút Git (rà soát bảo mật 10/10)
-PASS  Các image dịch vụ ghim theo digest (@sha256), n8n không còn dòng 2.40.x đã ngừng vá
-PASS  Open WebUI: tắt Functions/Tools; quản trị không đọc/xuất chat; tắt chia sẻ chat (biến môi trường)
-PASS  Open WebUI (CSDL): không đăng ký tự do, không chia sẻ cộng đồng, phiên 30 ngày, nhân viên tạo được khóa API nhưng không chia sẻ chat
-PASS  n8n chỉ ĐỌC được danh sách máy đã cấp (may-da-cap): gắn read-only, không tự thêm máy để nhận báo cáo giả
+PASS  Quy trình khóa chặt: không có nút chạy lệnh hệ thống, nút Code không đọc biến môi trường
+PASS  Quy trình: tắt mô-đun Agents và MCP, chặn nút Git (rà soát bảo mật 10/10)
+PASS  Các image dịch vụ ghim theo digest (@sha256)
+PASS  Trợ lý AI: tắt Functions/Tools; quản trị không đọc/xuất chat; tắt chia sẻ chat (biến môi trường)
+PASS  Trợ lý AI (CSDL): không đăng ký tự do, không chia sẻ cộng đồng, phiên 30 ngày, nhân viên tạo được khóa API nhưng không chia sẻ chat
+PASS  Quy trình chỉ ĐỌC được danh sách máy đã cấp (may-da-cap): gắn read-only, không tự thêm máy để nhận báo cáo giả
 PASS  Ollama KHÔNG mở cổng ra ngoài (11434)
-PASS  Ollama chạy được bên trong (Open WebUI gọi tới)
-PASS  Open WebUI không gọi AI đám mây (ENABLE_OPENAI_API=false)
+PASS  Ollama chạy được bên trong (Trợ lý AI gọi tới)
+PASS  Trợ lý AI không gọi AI đám mây (ENABLE_OPENAI_API=false)
 PASS  CA riêng: thư mục 700, khóa 600, gốc + trung gian có ràng buộc tên critical (chỉ IP Box /32 + <mã>.onebee.internal)
 PASS  CA riêng: Box tin CA của chính nó; chứng chỉ gốc công khai tại /onebee-ca.crt; khóa CA không gắn vào container nào
 PASS  onebee-box in-ca in vân tay đúng chứng chỉ gốc
@@ -112,14 +112,14 @@ PASS  Có "Trợ lý OneBee" với lời dặn tiếng Việt
 PASS  Trợ lý biết ngày hôm nay; tắt công cụ có sẵn (web trả lời giống lệnh hoi, không gọi nhầm "tạo lịch")
 PASS  Hỏi đáp tiếng Việt qua Trợ lý OneBee → Ollama chạy tại chỗ
 PASS  Hộp thư giả lập (Mailpit) sẵn sàng
-PASS  Chủ n8n tạo sẵn đăng nhập được (không còn "ai mở trước thành chủ")
+PASS  Chủ quy trình tạo sẵn đăng nhập được (không còn "ai mở trước thành chủ")
 PASS  onebee-box email-thu → email tới hộp thư quản trị
 PASS  Webhook sai khóa bị chặn (403), biểu mẫu đòi mật khẩu nhân viên (401)
 PASS  Nhắc hạn thuế: ngày 17/10 → email "hạn 20/10, còn 3 ngày"
 PASS  Nhập 2 đơn qua biểu mẫu → ghi vào thư mục chung (don-hang/don-hang-2026-10.csv)
 PASS  Tổng hợp đơn trong ngày → email "2 đơn — 17.500.000 đồng"
-PASS  Tóm tắt PDF bằng AI nội bộ qua biểu mẫu n8n
-PASS  Trang tóm tắt PDF: hiển thị dạng chữ đã thoát HTML + CSP sandbox của n8n còn nguyên
+PASS  Tóm tắt PDF bằng AI nội bộ qua biểu mẫu tự động hóa
+PASS  Trang tóm tắt PDF: hiển thị dạng chữ đã thoát HTML + CSP sandbox còn nguyên
 PASS  Nhân viên báo cần hỗ trợ → ghi sổ (mã 261015-025741-31) + email GẤP cho kỹ thuật
 PASS  Kỹ thuật ghi xử lý (tài khoản riêng, nhân viên không mở được); khảo sát ẩn danh ghi 3 phiếu
 PASS  onebee-box bao-cao-tuan: đếm đúng yêu cầu/xử lý/khảo sát, không lộ tên người báo và nội dung
@@ -163,14 +163,14 @@ PASS  (giả lập) Kẻ xấu tạo bản sao lưu mang ngày tương lai
 PASS  Box phát hiện bản ngày tương lai, KHÔNG dọn kho đó (3 bản giữ nguyên)
 PASS  (giả lập) Hỏng ổ Box: mất hết dữ liệu, khóa bí mật, cấu hình — còn bản in khóa và ổ sao lưu
 PASS  Cài lại Box trên ổ mới (khóa bí mật mới, dữ liệu trống)
-PASS  khoi-phuc-toan-bo bằng khóa in ra giấy: mật khẩu, tài khoản Trợ lý AI + n8n, sổ hỗ trợ trở lại như cũ
+PASS  khoi-phuc-toan-bo bằng khóa in ra giấy: mật khẩu, tài khoản Trợ lý AI + quy trình, sổ hỗ trợ trở lại như cũ
 PASS  Máy trạm sau khôi phục Box: sao lưu, hỏi Trợ lý AI, báo tình trạng vẫn chạy — không phải cấu hình lại
 PASS  Box khôi phục vẫn cập nhật được máy trạm (khóa SSH + khóa máy trạm đã ghi nhận được lấy lại)
 PASS  Còn máy chưa nhận CA (kho-03) → bộ cài giữ HTTP, nêu tên máy, dịch vụ vẫn chạy
 PASS  Chỉ Caddy công bố cổng (80, 443, 3000, 3001, 5678, 8000); 4 dịch vụ backend không còn cổng nào
 PASS  TLS đúng ở mọi cổng khi nối bằng IP (không SNI), chuỗi tới CA riêng của Box
 PASS  http://IP:3000 → 308 sang https; cổng 80 phục vụ chứng chỉ gốc
-PASS  Cookie đăng nhập Open WebUI có Secure; Origin lạ không được CORS, Origin hợp lệ được CORS + WebSocket (101), Origin lạ bị từ chối WebSocket; biểu mẫu n8n vẫn có CSP sandbox
+PASS  Cookie đăng nhập Trợ lý AI có Secure; Origin lạ không được CORS, Origin hợp lệ được CORS + WebSocket (101), Origin lạ bị từ chối WebSocket; biểu mẫu vẫn có CSP sandbox
 PASS  onebee-box dong-bo-tro-ly chạy được qua HTTPS (Box tin CA của chính nó)
 PASS  Sau khi Box bật HTTPS, máy trạm nhận URL https + cờ BOX_HTTPS=1 + dấu bền (tự đồng bộ cuối bộ cài)
 PASS  Máy trạm sao lưu (restic rest:https), hỏi Trợ lý AI và báo tình trạng qua HTTPS, chỉ tin CA riêng của Box
@@ -181,7 +181,7 @@ PASS  Hoàn tác: máy trạm nhận cờ BOX_HTTPS=0, xóa dấu bền, sao lư
 PASS  xoay-khoa --may: mật khẩu kho HTTP cũ bị từ chối (401), mật khẩu mới dùng được, không lọt vào nhật ký
 PASS  Khóa hoi cũ của máy hết hiệu lực
 PASS  Máy trạm nhận mật khẩu + khóa mới qua dong-bo-may: sao lưu và hoi vẫn chạy
-PASS  xoay-khoa --box: mật khẩu quản trị Trợ lý AI/chủ n8n/biểu mẫu mới dùng được, cũ bị từ chối; webhook n8n đồng bộ khóa mới
+PASS  xoay-khoa --box: mật khẩu quản trị Trợ lý AI/chủ quy trình/biểu mẫu mới dùng được, cũ bị từ chối; webhook đồng bộ khóa mới
 PASS  Chưa gắn ổ ngoài thì từ chối sao lưu, không ghi vào ổ hệ thống
 PASS  Sau khởi động lại, dịch vụ tự chạy lại
 ```

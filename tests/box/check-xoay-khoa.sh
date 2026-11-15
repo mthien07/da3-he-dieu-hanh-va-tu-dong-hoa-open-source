@@ -39,17 +39,17 @@ echo "===== XOAY KHÓA: BOX ====="
 box <<'EOF'
 S=/etc/onebee-box/secrets
 st() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
-cp ${S}/webui-admin-password /root/admin-cu
-cp ${S}/Node-RED-owner-password /root/Node-RED-cu
+cp ${S}/ai-admin-password /root/admin-cu
+cp ${S}/quy-trinh-owner-password /root/quy-trinh-cu
 onebee-box xoay-khoa --box --dong-y > /root/xoay-box.log 2>&1 || { tail -40 /root/xoay-box.log; exit 1; }
-if cmp -s ${S}/webui-admin-password /root/admin-cu || cmp -s ${S}/Node-RED-owner-password /root/Node-RED-cu; then echo 'FAIL  Bí mật không đổi'; exit 1; fi
-for _ in $(seq 40); do curl -s -m 5 http://127.0.0.1:3000/health | grep -q true && curl -s -m 5 http://127.0.0.1:5678/healthz | grep -q ok && break; sleep 3; done
+if cmp -s ${S}/ai-admin-password /root/admin-cu || cmp -s ${S}/quy-trinh-owner-password /root/quy-trinh-cu; then echo 'FAIL  Bí mật không đổi'; exit 1; fi
+for _ in $(seq 40); do curl -s -m 5 http://127.0.0.1:3000/health | grep -q ok && curl -s -m 5 http://127.0.0.1:5678/healthz | grep -q ok && break; sleep 3; done
 signin() { st -X POST http://127.0.0.1:3000/api/v1/auths/signin -H 'Content-Type: application/json' -d "{\"email\":\"quantri@onebee.lan\",\"password\":\"$1\"}"; }
 [ "$(signin "$(cat /root/admin-cu)")" != 200 ] || { echo 'FAIL  Mật khẩu quản trị Trợ lý AI cũ còn dùng được'; exit 1; }
-[ "$(signin "$(cat ${S}/webui-admin-password)")" = 200 ] || { echo 'FAIL  Mật khẩu quản trị Trợ lý AI mới không dùng được'; exit 1; }
-Node-RED_login() { st -X POST http://127.0.0.1:5678/rest/login -H 'Content-Type: application/json' -d "{\"emailOrLdapLoginId\":\"quantri@onebee.lan\",\"password\":\"$1\"}"; }
-[ "$(Node-RED_login "$(cat /root/Node-RED-cu)")" != 200 ] || { echo 'FAIL  Mật khẩu chủ Node-RED cũ còn dùng được'; exit 1; }
-[ "$(Node-RED_login "$(cat ${S}/Node-RED-owner-password)")" = 200 ] || { echo 'FAIL  Mật khẩu chủ Node-RED mới không dùng được'; exit 1; }
+[ "$(signin "$(cat ${S}/ai-admin-password)")" = 200 ] || { echo 'FAIL  Mật khẩu quản trị Trợ lý AI mới không dùng được'; exit 1; }
+quy_trinh_login() { st -X POST http://127.0.0.1:5678/quy-trinh/auth/token -H 'Content-Type: application/x-www-form-urlencoded' -d "client_id=node-red-admin&grant_type=password&scope=*&username=quantri@onebee.lan&password=$1"; }
+[ "$(quy_trinh_login "$(cat /root/quy-trinh-cu)")" != 200 ] || { echo 'FAIL  Mật khẩu chủ Node-RED cũ còn dùng được'; exit 1; }
+[ "$(quy_trinh_login "$(cat ${S}/quy-trinh-owner-password)")" = 200 ] || { echo 'FAIL  Mật khẩu chủ Node-RED mới không dùng được'; exit 1; }
 [ "$(st -u nhanvien:"$(cat ${S}/bieu-mau-nhanvien)" http://127.0.0.1:5678/form/onebee-ho-tro)" = 200 ] || { echo 'FAIL  Mật khẩu biểu mẫu mới không dùng được'; exit 1; }
 onebee-box email-thu >/dev/null || { echo 'FAIL  Box không gửi được báo cáo qua Node-RED sau khi xoay khóa webhook'; exit 1; }
 echo 'PASS  xoay-khoa --box: mật khẩu quản trị Trợ lý AI/chủ Node-RED/biểu mẫu mới dùng được, cũ bị từ chối; webhook Node-RED đồng bộ khóa mới'

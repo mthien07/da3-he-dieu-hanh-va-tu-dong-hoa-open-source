@@ -29,7 +29,7 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "${API}/api/v1/auths/signu
 echo "PASS  Đăng ký tự do đã tắt (người lạ nhận mã ${code})"
 
 token="$(curl -s -m 30 -X POST "${API}/api/v1/auths/signin" -H 'Content-Type: application/json' \
-  -d "{\"email\":\"quantri@onebee.lan\",\"password\":\"$(cat ${SECRETS}/webui-admin-password)\"}" \
+  -d "{\"email\":\"quantri@onebee.lan\",\"password\":\"$(cat ${SECRETS}/ai-admin-password)\"}" \
   | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("token","") if d.get("role")=="admin" else "")')"
 [[ -n "${token}" ]] || { echo "FAIL  Đăng nhập tài khoản quản trị tạo sẵn"; exit 1; }
 echo "PASS  Tài khoản quản trị tạo sẵn đăng nhập được (mật khẩu trong in-khoa)"

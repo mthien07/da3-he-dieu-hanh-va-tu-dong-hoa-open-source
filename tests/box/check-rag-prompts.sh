@@ -10,7 +10,7 @@ ROOT="$(cd "${HERE}/../.." && pwd)"
 AI_FILES="${ROOT}/box/ansible/roles/box-ai/files"
 PROMPTS_DIR="${AI_FILES}/prompts"
 KNOWLEDGE_DIR="${AI_FILES}/knowledge"
-SCRIPT="${AI_FILES}/onebee-webui.py"
+SCRIPT="${AI_FILES}/onebee-ai-rag.py"
 
 pass() { echo "PASS  $*"; }
 fail() { echo "FAIL  $*"; exit 1; }
@@ -45,17 +45,17 @@ grep -q "Thể thức văn bản hành chính" "${KNOWLEDGE_DIR}/nghi-dinh-30-20
 grep -q "Tài sản chung không chia" "${KNOWLEDGE_DIR}/luat-hop-tac-xa-2023.md" || fail "Tài liệu Luật HTX thiếu nội dung tài sản chung không chia"
 pass "Bộ tài liệu tri thức pháp lý RAG đầy đủ và chính xác"
 
-# 5. Kiểm tra onebee-webui.py có hàm dong-bo-prompts và dong-bo-tri-thuc
-grep -q "def dong_bo_prompts" "${SCRIPT}" || fail "onebee-webui.py thiếu hàm dong_bo_prompts"
-grep -q "def dong_bo_tri_thuc" "${SCRIPT}" || fail "onebee-webui.py thiếu hàm dong_bo_tri_thuc"
-grep -q "dong-bo-prompts" "${SCRIPT}" || fail "onebee-webui.py thiếu nhánh CLI dong-bo-prompts"
-grep -q "dong-bo-tri-thuc" "${SCRIPT}" || fail "onebee-webui.py thiếu nhánh CLI dong-bo-tri-thuc"
-pass "onebee-webui.py đã tích hợp đầy đủ lệnh đồng bộ prompt và tri thức RAG"
+# 5. Kiểm tra onebee-ai-rag.py có hàm dong-bo-prompts và dong-bo-tri-thuc
+grep -q "def dong_bo_prompts" "${SCRIPT}" || fail "onebee-ai-rag.py thiếu hàm dong_bo_prompts"
+grep -q "def dong_bo_tri_thuc" "${SCRIPT}" || fail "onebee-ai-rag.py thiếu hàm dong_bo_tri_thuc"
+grep -q "dong-bo-prompts" "${SCRIPT}" || fail "onebee-ai-rag.py thiếu nhánh CLI dong-bo-prompts"
+grep -q "dong-bo-tri-thuc" "${SCRIPT}" || fail "onebee-ai-rag.py thiếu nhánh CLI dong-bo-tri-thuc"
+pass "onebee-ai-rag.py đã tích hợp đầy đủ lệnh đồng bộ prompt và tri thức RAG"
 
 # 6. Kiểm tra onebee-box.sh.j2 có điều hướng lệnh
 BOX_SCRIPT="${ROOT}/box/ansible/roles/box-stack/templates/onebee-box.sh.j2"
-grep -q "dong-bo-prompts) webui dong-bo-prompts ;;" "${BOX_SCRIPT}" || fail "onebee-box.sh.j2 thiếu điều hướng dong-bo-prompts"
-grep -q "dong-bo-tri-thuc) webui dong-bo-tri-thuc ;;" "${BOX_SCRIPT}" || fail "onebee-box.sh.j2 thiếu điều hướng dong-bo-tri-thuc"
+grep -q "dong-bo-prompts) tro_ly_ai dong-bo-prompts ;;" "${BOX_SCRIPT}" || fail "onebee-box.sh.j2 thiếu điều hướng dong-bo-prompts"
+grep -q "dong-bo-tri-thuc) tro_ly_ai dong-bo-tri-thuc ;;" "${BOX_SCRIPT}" || fail "onebee-box.sh.j2 thiếu điều hướng dong-bo-tri-thuc"
 pass "onebee-box.sh.j2 đã tích hợp lệnh CLI quản trị tương ứng"
 
 # 7. Kiểm tra Ansible role box-ai có bước sao chép prompts và knowledge

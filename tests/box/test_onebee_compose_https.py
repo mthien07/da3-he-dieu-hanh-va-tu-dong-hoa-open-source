@@ -45,7 +45,7 @@ class ComposeHaiCheDo(unittest.TestCase):
         self.assertEqual(s["uptime-kuma"]["ports"], ["0.0.0.0:3001:3001"])
         env = s["quy-trinh"]["environment"]
         self.assertEqual(env["WEBHOOK_BASE_URL"], "http://192.168.1.10:5678/")
-        self.assertNotIn("WEBUI_SESSION_COOKIE_SECURE", s["ai-rag"]["environment"])
+        self.assertFalse(any("SESSION_COOKIE_SECURE" in k for k in s["ai-rag"]["environment"]))
 
     def test_https_chi_caddy_cong_bo_cong_va_backend_khong_co_ports(self):
         s = ve(True)
@@ -98,7 +98,7 @@ class ComposeHaiCheDo(unittest.TestCase):
         self.assertNotIn("http://", cors)
 
     def test_cors_them_ghep_vao_sau_hai_nguon_mac_dinh_o_ca_hai_che_do(self):
-        # Mở WebUI bằng tên/IP khác (DNS router, IP Tailscale, đường hầm SSH) thì Origin lệch → WebSocket chat bị chặn 403; quản trị khai thêm Origin ở đây
+        # Mở Trợ lý AI bằng tên/IP khác (DNS router, IP Tailscale, đường hầm SSH) thì Origin lệch → WebSocket chat bị chặn 403; quản trị khai thêm Origin ở đây
         them = ["http://onebee-box.lan:3000", "http://100.64.1.2:3000"]
         mac_dinh_http = "http://192.168.1.10:3000;http://onebee.local:3000;http://box.anphu.onebee.internal:3000"
         mac_dinh_https = "https://192.168.1.10:3000;https://box.anphu.onebee.internal:3000"

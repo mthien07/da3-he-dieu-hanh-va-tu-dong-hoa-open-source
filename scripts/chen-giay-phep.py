@@ -24,7 +24,7 @@ def cap_dong_giay_phep(tep, cac_dong):
             f"{{# {SPDX_CHUAN} #}}\n",
             f"{{# {BAN_QUYEN} #}}\n",
         ]
-    if tep.endswith((".html", ".html.j2")) or dau_trang.startswith("<?xml"):
+    if tep.endswith((".html", ".html.j2", ".xml", ".xml.j2")) or dau_trang.startswith(("<?xml", "<!doctype")):
         return [
             f"<!-- {SPDX_CHUAN} -->\n",
             f"<!-- {BAN_QUYEN} -->\n",
@@ -54,7 +54,7 @@ def vi_tri_chen(tep, cac_dong):
     if not cac_dong:
         return 0
     dau_trang = cac_dong[0].lstrip().lower()
-    if tep.endswith((".html", ".html.j2")) or dau_trang.startswith("<?xml"):
+    if tep.endswith((".html", ".html.j2", ".xml", ".xml.j2")) or dau_trang.startswith(("<?xml", "<!doctype")):
         vi_tri = 0
         for i, dong in enumerate(cac_dong[:3]):
             d = dong.lstrip().lower()

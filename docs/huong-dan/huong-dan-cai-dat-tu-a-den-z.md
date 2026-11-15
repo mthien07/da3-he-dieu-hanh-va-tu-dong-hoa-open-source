@@ -178,8 +178,8 @@ sudo ./box/onebee-box-install.sh
 sudo onebee-box in-khoa
 ```
 Lệnh in ra các mật khẩu, trong đó:
-- `webui-admin-password`: mật khẩu **Trợ lý AI**.
-- `Node-RED-owner-password`: mật khẩu **Tự động hóa**.
+- `ai-admin-password`: mật khẩu **Trợ lý AI**.
+- `quy-trinh-owner-password`: mật khẩu **Tự động hóa (Node-RED)**.
 - `uptime-kuma-password`: mật khẩu **Giám sát**.
 
 Tài khoản đăng nhập Trợ lý AI và Tự động hóa là `quantri@onebee.lan`, còn Giám sát là `quantri`.

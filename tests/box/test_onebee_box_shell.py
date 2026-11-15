@@ -80,19 +80,19 @@ done
 exit "${ONEBEE_ANSIBLE_RC:-0}"
 '''
 
-WEBUI_GIA = r'''#!/usr/bin/env python3
+AI_RAG_GIA = r'''#!/usr/bin/env python3
 import os, sys
-open(os.environ["ONEBEE_OUT"] + "/webui.log", "a").write(" ".join(sys.argv[1:]) + "\n")
+open(os.environ["ONEBEE_OUT"] + "/ai-rag.log", "a").write(" ".join(sys.argv[1:]) + "\n")
 cmd = sys.argv[1] if len(sys.argv) > 1 else ""
 if cmd == "xoay-khoa":
     print("sk-moi-" + sys.argv[2])
 if cmd == "doi-mat-khau-quan-tri":
     open(os.environ["ONEBEE_OUT"] + "/mk-quan-tri-moi", "w").write(os.environ["ONEBEE_MAT_KHAU_MOI"])
 if cmd in ("cap-khoa", "lay-khoa"):
-    if cmd == "lay-khoa" and os.environ.get("ONEBEE_WEBUI_LAY_KHOA_LOI"):
+    if cmd == "lay-khoa" and os.environ.get("ONEBEE_AI_LAY_KHOA_LOI"):
         sys.exit("OneBee AI RAG chưa chạy")
-    if cmd == "cap-khoa":   # như onebee-webui.py thật: lưu mật khẩu tài khoản may-<tên> vào thư mục bí mật
-        open(os.path.join(os.environ["ONEBEE_SECRETS"], "may-%s-webui" % sys.argv[2]), "w").write("mk\n")
+    if cmd == "cap-khoa":   # như onebee-ai-rag.py thật: lưu mật khẩu tài khoản may-<tên> vào thư mục bí mật
+        open(os.path.join(os.environ["ONEBEE_SECRETS"], "may-%s-ai" % sys.argv[2]), "w").write("mk\n")
     print("sk-khoa-" + sys.argv[2])
 '''
 
@@ -146,12 +146,12 @@ class OnebeeBoxShell(unittest.TestCase):
         shutil.copy(os.path.join(ROLES, "box-stack/files/onebee-ca.sh"), f"{lib}/onebee-ca.sh")
         # CA riêng của Box (bộ cài sinh bước này trước khi sinh các lệnh)
         subprocess.run([f"{lib}/onebee-ca.sh", f"{t}/secrets/ca", "kiem-thu", "192.168.1.10"], check=True, capture_output=True)
-        for ten, nd in (("onebee-webui.py", WEBUI_GIA),):
+        for ten, nd in (("onebee-ai-rag.py", AI_RAG_GIA),):
             open(f"{lib}/{ten}", "w").write(nd)
         docker_gia = '#!/bin/sh\necho "docker $*" >> "$ONEBEE_OUT/docker.log"\n'
         for ten, nd in (("ssh", SSH_GIA), ("ansible-playbook", ANSIBLE_GIA), ("install", INSTALL_GIA), ("chown", "#!/bin/sh\nexit 0\n"), ("docker", docker_gia)):
             open(f"{t}/bin/{ten}", "w").write(nd)
-        for f in os.listdir(f"{t}/bin") + [os.path.join("..", "lib", "onebee-webui.py")]:
+        for f in os.listdir(f"{t}/bin") + [os.path.join("..", "lib", "onebee-ai-rag.py")]:
             os.chmod(os.path.join(t, "bin", f), 0o755)
         # khóa quản trị của Box (chỉ để tên file tồn tại; ssh giả không đọc)
         subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", f"{t}/ssh/quan-tri"], check=True)
@@ -240,8 +240,8 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertIn("ketoan-01:", open(f"{self.t}/data/restic/.htpasswd").read())
         self.assertEqual(open(f"{self.t}/secrets/may-ketoan-01-hoi").read(), "sk-khoa-ketoan-01")  # lưu để in lại không cần gọi OneBee AI RAG
         # in lại cấu hình (dong-bo-may) không gọi cap-khoa nữa, không tạo gì mới
-        webui_truoc = open(f"{self.t}/out/webui.log").read()
-        self.assertEqual(webui_truoc.strip().splitlines(), ["cap-khoa ketoan-01"])
+        ai_truoc = open(f"{self.t}/out/ai-rag.log").read()
+        self.assertEqual(ai_truoc.strip().splitlines(), ["cap-khoa ketoan-01"])
 
     def test_in_ca_in_van_tay_va_rang_buoc(self):
         r = self.chay("in-ca").stdout
@@ -304,7 +304,7 @@ class OnebeeBoxShell(unittest.TestCase):
         kv = self.kv("ketoan-01")
         self.assertNotIn("HOI_API_KEY", kv)
         self.assertEqual(kv["HOI_URL"], "http://192.168.1.10:3000")                       # hoi --dang-nhap cần địa chỉ
-        log = f"{self.t}/out/webui.log"
+        log = f"{self.t}/out/ai-rag.log"
         self.assertNotIn("cap-khoa", open(log).read() if os.path.exists(log) else "")      # không tạo tài khoản may-<tên>
         self.assertFalse(os.path.exists(f"{self.t}/secrets/may-ketoan-01-hoi"))
 
@@ -315,7 +315,7 @@ class OnebeeBoxShell(unittest.TestCase):
         self.thay_khoa_may("false")
         r = self.chay("go-khoa-hoi-may")
         self.assertIn("ketoan-01", r.stdout)
-        self.assertIn("xoa-tai-khoan ketoan-01", open(f"{self.t}/out/webui.log").read())
+        self.assertIn("xoa-tai-khoan ketoan-01", open(f"{self.t}/out/ai-rag.log").read())
         self.assertFalse(os.path.exists(f"{self.t}/secrets/may-ketoan-01-hoi"))
         self.assertTrue(os.path.exists(f"{self.t}/secrets/may-ketoan-01-repo"))            # chỉ bỏ khóa hoi, máy vẫn được cấp
 
@@ -334,7 +334,7 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertIn("docker exec onebee-rest-server kill -HUP 1", self.docker_log()[len(docker_truoc):])
         self.assertEqual(open(f"{self.t}/secrets/may-ketoan-01-hoi").read(), "sk-moi-ketoan-01")
         self.assertEqual(open(f"{self.t}/secrets/may-ketoan-01-repo").read(), repo_cu)       # RESTIC_PASSWORD KHÔNG xoay
-        self.assertIn("xoay-khoa ketoan-01", open(f"{self.t}/out/webui.log").read())
+        self.assertIn("xoay-khoa ketoan-01", open(f"{self.t}/out/ai-rag.log").read())
         goi = self.ansible_goi()
         self.assertEqual(len(goi), 1)
         self.assertIn("dong-bo-may-tram.yml", open(f"{self.t}/out/{goi[0]}/args").read())     # đã đẩy xuống máy
@@ -347,11 +347,12 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertNotEqual(self.chay("xoay-khoa", kiem=False).returncode, 0)
         r = subprocess.run([self.cmd, "xoay-khoa", "--may", "ketoan-01"], capture_output=True, text=True, env=self.env, input="khong\n")
         self.assertNotEqual(r.returncode, 0)                                                   # không gõ đúng câu xác nhận → hủy
-        self.assertFalse(os.path.exists(f"{self.t}/out/webui.log") and "xoay-khoa" in open(f"{self.t}/out/webui.log").read())
+        self.assertFalse(os.path.exists(f"{self.t}/out/ai-rag.log") and "xoay-khoa" in open(f"{self.t}/out/ai-rag.log").read())
 
     def test_xoay_khoa_box_doi_bi_mat_va_chay_bo_cai(self):
-        for f, nd in (("webui-admin-password", "admin-cu"), ("Node-RED-owner-password", "Node-RED-cu"), ("Node-RED-owner-hash", "h-cu"), ("webui-secret-key", "sk-cu"),
-                      ("bieu-mau-nhanvien", "nv-cu"), ("bieu-mau-kythuat", "kt-cu"), ("Node-RED-webhook-key", "wh-cu")):
+        for f, nd in (("ai-admin-password", "admin-cu"), ("quy-trinh-owner-password", "quy-trinh-cu"), ("quy-trinh-owner-hash", "h-cu"),
+                      ("pgrst-jwt-secret", "jwt-cu"), ("authelia-session-secret", "sess-cu"), ("node-red-credential-secret", "sk-cu"),
+                      ("bieu-mau-nhanvien", "nv-cu"), ("bieu-mau-kythuat", "kt-cu"), ("quy-trinh-webhook-key", "wh-cu")):
             open(f"{self.t}/secrets/{f}", "w").write(nd)
         bo_cai = f"{self.t}/bo-cai.sh"
         open(bo_cai, "w").write(f"#!/bin/sh\necho chay > {self.t}/out/bo-cai.log\n")
@@ -359,14 +360,14 @@ class OnebeeBoxShell(unittest.TestCase):
         open(f"{self.t}/lib/duong-dan-bo-cai", "w").write(bo_cai + "\n")
         self.chay("xoay-khoa", "--box", "--dong-y")
         moi = open(f"{self.t}/out/mk-quan-tri-moi").read()
-        self.assertEqual(open(f"{self.t}/secrets/webui-admin-password").read(), moi)           # đổi trong dịch vụ rồi mới ghi file
+        self.assertEqual(open(f"{self.t}/secrets/ai-admin-password").read(), moi)           # đổi trong dịch vụ rồi mới ghi file
         self.assertRegex(moi, r"^[A-Za-z0-9]{24}$")
-        Node-RED = open(f"{self.t}/secrets/Node-RED-owner-password").read()
-        self.assertNotEqual(Node-RED, "Node-RED-cu")
-        self.assertTrue(open(f"{self.t}/secrets/Node-RED-owner-hash").read().startswith("$2"))      # bcrypt
-        for f in ("webui-secret-key", "bieu-mau-nhanvien", "bieu-mau-kythuat"):
+        quy_trinh_pw = open(f"{self.t}/secrets/quy-trinh-owner-password").read()
+        self.assertNotEqual(quy_trinh_pw, "quy-trinh-cu")
+        self.assertTrue(open(f"{self.t}/secrets/quy-trinh-owner-hash").read().startswith("$2"))      # bcrypt
+        for f in ("node-red-credential-secret", "bieu-mau-nhanvien", "bieu-mau-kythuat"):
             self.assertFalse(os.path.exists(f"{self.t}/secrets/{f}"), f)                      # để bộ cài (Ansible) sinh lại
-        self.assertNotEqual(open(f"{self.t}/secrets/Node-RED-webhook-key").read(), "wh-cu")
+        self.assertNotEqual(open(f"{self.t}/secrets/quy-trinh-webhook-key").read(), "wh-cu")
         self.assertTrue(os.path.exists(f"{self.t}/out/bo-cai.log"))                            # đã chạy bộ cài để áp dụng
 
     def bo_cai_gia(self):
@@ -597,7 +598,7 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertFalse(os.path.exists(f"{self.t}/data/may-da-cap/ketoan-01"))            # Node-RED ngừng nhận báo cáo
         self.assertFalse(os.path.exists(f"{self.t}/data/tinh-trang-may/ketoan-01.json"))
         self.assertFalse(self.da_ghim("ketoan-01"))
-        self.assertIn("xoa-tai-khoan ketoan-01", open(f"{self.t}/out/webui.log").read())
+        self.assertIn("xoa-tai-khoan ketoan-01", open(f"{self.t}/out/ai-rag.log").read())
         self.assertTrue(os.path.exists(f"{self.t}/secrets/may-ketoan-01-repo"))            # giữ mật khẩu kho để khôi phục dữ liệu
         # không "hồi sinh": mọi lệnh dùng danh sách chung đều bỏ qua; in cấu hình thiếu bí mật thì dừng, không tự sinh mới
         self.assertEqual(self.chay("cap-nhat-may", "ketoan-01", kiem=False).returncode, 1)
@@ -653,16 +654,16 @@ class OnebeeBoxShell(unittest.TestCase):
     def test_dong_bo_may_thieu_khoa_hoi_thi_bo_qua_may_do_khong_day_file_thieu(self):
         self.cap_may("ketoan-01", "10.1.1.5")
         os.remove(f"{self.t}/secrets/may-ketoan-01-hoi")       # máy cấp từ bản cũ chưa lưu khóa
-        self.env["ONEBEE_WEBUI_LAY_KHOA_LOI"] = "1"            # và OneBee AI RAG đang trục trặc
+        self.env["ONEBEE_AI_LAY_KHOA_LOI"] = "1"            # và OneBee AI RAG đang trục trặc
         r = self.chay("dong-bo-may", "ketoan-01", kiem=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertEqual(self.ansible_goi(), [])               # không đẩy cấu hình thiếu dòng hoi (sẽ làm hỏng hoi trên máy)
         # OneBee AI RAG chạy lại → lấy lại khóa đã cấp (không tạo mới) và đẩy bình thường
-        del self.env["ONEBEE_WEBUI_LAY_KHOA_LOI"]
+        del self.env["ONEBEE_AI_LAY_KHOA_LOI"]
         self.chay("dong-bo-may", "ketoan-01")
         self.assertEqual(len(self.ansible_goi()), 1)
         self.assertEqual(open(f"{self.t}/secrets/may-ketoan-01-hoi").read(), "sk-khoa-ketoan-01")
-        self.assertNotIn("cap-khoa ketoan-01", open(f"{self.t}/out/webui.log").read().splitlines()[1:])
+        self.assertNotIn("cap-khoa ketoan-01", open(f"{self.t}/out/ai-rag.log").read().splitlines()[1:])
 
     def test_dong_bo_ten_may_dung_va_idempotent(self):
         self.cap_may("a", "10.1.1.5")

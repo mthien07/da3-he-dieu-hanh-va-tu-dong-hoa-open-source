@@ -87,8 +87,8 @@ in_cau_hinh_may() {
     hoi_key=""   # không còn khóa theo máy: nhân viên tự đăng nhập (hoi --dang-nhap)
   elif [[ -s "${SECRETS}/may-${ten}-hoi" ]]; then
     hoi_key="$(cat "${SECRETS}/may-${ten}-hoi")"
-  elif [[ -e "${SECRETS}/may-${ten}-webui" ]]; then
-    hoi_key="$(webui lay-khoa "${ten}")" || die "Không lấy được khóa Trợ lý AI của máy ${ten} (Trợ lý AI chưa chạy?) — thử lại sau"
+  elif [[ -e "${SECRETS}/may-${ten}-ai" ]]; then
+    hoi_key="$(tro_ly_ai lay-khoa "${ten}")" || die "Không lấy được khóa Trợ lý AI của máy ${ten} (Trợ lý AI chưa chạy?) — thử lại sau"
     (umask 077; printf '%s' "${hoi_key}" >"${SECRETS}/may-${ten}-hoi")
   fi
   echo "MAY_TRAM=${ten}"
@@ -132,7 +132,7 @@ cmd_them_may() {
   nap_lai_kho_http
   hoi_key=""
   if [[ "${HOI_KHOA_MAY}" == true ]]; then
-    hoi_key="$(webui cap-khoa "${ten}")" || {
+    hoi_key="$(tro_ly_ai cap-khoa "${ten}")" || {
       warn "Chưa cấp được khóa Trợ lý AI (Trợ lý AI chưa chạy?) — sao lưu vẫn dùng được; chạy lại lệnh này sau để bật hoi"
       hoi_key=""
     }
@@ -156,8 +156,8 @@ cmd_thu_hoi_may() {
   (umask 077; mkdir -p "${SECRETS}/thu-hoi"; : >"${SECRETS}/thu-hoi/${ten}")   # đánh dấu TRƯỚC: lỡ dừng giữa chừng thì máy đã bị coi là thu hồi
   htpasswd -D "${DATA}/restic/.htpasswd" "${ten}" 2>/dev/null || true
   nap_lai_kho_http   # máy thu hồi mất quyền vào kho ngay, không chờ rest-server tự đọc lại
-  webui xoa-tai-khoan "${ten}" || warn "Chưa xóa được tài khoản Trợ lý AI may-${ten}@onebee.lan (Trợ lý AI chưa chạy?) — chạy lại lệnh này sau"
-  rm -f "${SECRETS}/may-${ten}-http" "${SECRETS}/may-${ten}-webui" "${SECRETS}/may-${ten}-hoi" "${DATA}/tinh-trang-may/${ten}.json"
+  tro_ly_ai xoa-tai-khoan "${ten}" || warn "Chưa xóa được tài khoản Trợ lý AI may-${ten}@onebee.lan (Trợ lý AI chưa chạy?) — chạy lại lệnh này sau"
+  rm -f "${SECRETS}/may-${ten}-http" "${SECRETS}/may-${ten}-ai" "${SECRETS}/may-${ten}-hoi" "${DATA}/tinh-trang-may/${ten}.json"
   ssh-keygen -R "${ten}" -f "${SSH_DIR}/known_hosts" >/dev/null 2>&1 || true
   dong_bo_ten_may >/dev/null
   echo "Đã thu hồi máy ${ten}. Kho sao lưu của máy vẫn còn trên Box. Cấp lại (mật khẩu kho mới, kho cũ cất riêng): sudo onebee-box them-may ${ten}"
@@ -170,8 +170,8 @@ cmd_go_khoa_hoi_may() {
   local ten loi=0
   [[ "${HOI_KHOA_MAY}" != true ]] || die "Chưa tắt khóa theo máy: đặt onebee_box_hoi_khoa_may: false trong group_vars, chạy lại bộ cài, rồi dong-bo-may --tat-ca trước"
   while read -r ten; do
-    webui xoa-tai-khoan "${ten}" >/dev/null || { warn "Chưa xóa được tài khoản Trợ lý AI của máy ${ten} (Trợ lý AI chưa chạy?)"; loi=1; continue; }
-    rm -f "${SECRETS}/may-${ten}-webui" "${SECRETS}/may-${ten}-hoi"
+    tro_ly_ai xoa-tai-khoan "${ten}" >/dev/null || { warn "Chưa xóa được tài khoản Trợ lý AI của máy ${ten} (Trợ lý AI chưa chạy?)"; loi=1; continue; }
+    rm -f "${SECRETS}/may-${ten}-ai" "${SECRETS}/may-${ten}-hoi"
     echo "Đã bỏ khóa Trợ lý AI theo máy: ${ten}"
   done < <(may_da_cap)
   return "${loi}"
@@ -347,8 +347,8 @@ xoay_khoa_may() {
   rm -f "${SECRETS}/may-${ten}-http"
   htpasswd -B -i "${DATA}/restic/.htpasswd" "${ten}" <<<"$(secret "may-${ten}-http")" 2>/dev/null
   nap_lai_kho_http   # mật khẩu cũ hết hiệu lực ngay (không còn khoảng ≤30 giây)
-  if [[ "${HOI_KHOA_MAY}" == true && -e "${SECRETS}/may-${ten}-webui" ]]; then
-    khoa_moi="$(webui xoay-khoa "${ten}")" || { warn "Chưa đổi được khóa Trợ lý AI của máy ${ten} (Trợ lý AI chưa chạy?) — giữ khóa cũ"; return 0; }
+  if [[ "${HOI_KHOA_MAY}" == true && -e "${SECRETS}/may-${ten}-ai" ]]; then
+    khoa_moi="$(tro_ly_ai xoay-khoa "${ten}")" || { warn "Chưa đổi được khóa Trợ lý AI của máy ${ten} (Trợ lý AI chưa chạy?) — giữ khóa cũ"; return 0; }
     (umask 077; printf '%s' "${khoa_moi}" >"${SECRETS}/may-${ten}-hoi")
   fi
   echo "Đã tạo mật khẩu mới cho máy ${ten}"
@@ -359,8 +359,8 @@ xoay_khoa_may() {
 xoay_khoa_box() {
   local moi
   moi="$(ngau_nhien 24)"
-  ONEBEE_MAT_KHAU_MOI="${moi}" webui doi-mat-khau-quan-tri
-  (umask 077; printf '%s' "${moi}" >"${SECRETS}/webui-admin-password")
+  ONEBEE_MAT_KHAU_MOI="${moi}" tro_ly_ai doi-mat-khau-quan-tri
+  (umask 077; printf '%s' "${moi}" >"${SECRETS}/ai-admin-password")
   if [[ -e "${SECRETS}/uptime-kuma-da-co-quan-tri" ]]; then
     moi="$(ngau_nhien 24)"
     KUMA_USER=quantri KUMA_PASS="$(cat "${SECRETS}/uptime-kuma-password")" KUMA_PASS_MOI="${moi}" \
@@ -369,6 +369,9 @@ xoay_khoa_box() {
     (umask 077; printf '%s' "${moi}" >"${SECRETS}/uptime-kuma-password")
   fi
   moi="$(ngau_nhien 24)"
+  (umask 077
+   printf '%s' "${moi}" >"${SECRETS}/quy-trinh-owner-password"
+   htpasswd -niBC 10 onebee <<<"${moi}" | cut -d: -f2 | tr -d '\n' >"${SECRETS}/quy-trinh-owner-hash")
   # Khóa gửi tình trạng dùng chung (nếu còn dùng): bộ cài sinh lại; cmd_xoay_khoa đẩy xuống mọi máy ngay sau bộ cài
   [[ "${TINH_TRANG_KHOA_CHUNG}" != true ]] || rm -f "${SECRETS}/tinh-trang-key"
   rm -f "${SECRETS}/pgrst-jwt-secret" "${SECRETS}/authelia-session-secret" "${SECRETS}/node-red-credential-secret" "${SECRETS}/bieu-mau-nhanvien" "${SECRETS}/bieu-mau-kythuat" "${SECRETS}/quy-trinh-webhook-key"
@@ -493,9 +496,9 @@ case "${1:-}" in
   tat-sso-tam)       python3 -c 'import json,sys,time; f="/var/lib/onebee-box/sso-khan-cap.json"; m=sys.argv[1] if len(sys.argv)>1 else "tat"; open(f,"w").write(json.dumps({"het_han":int(time.time())+(900 if m=="15m" else 3600) if m in ("15m","1h") else 0}))' "${2:-tat}" ;;
   chuyen-du-lieu)    python3 /usr/local/lib/onebee-box/onebee-chuyen-du-lieu.py "${DATA}" --thuc-thi ;;
   cap-nhat-chu-ky-clamav) python3 /usr/local/lib/onebee-box/onebee-kho-tep.py cap-nhat-chu-ky "${2:-}" "${DATA}/clamav" ;;
-  dong-bo-tro-ly) webui dong-bo-tro-ly ;;
-  dong-bo-prompts) webui dong-bo-prompts ;;
-  dong-bo-tri-thuc) webui dong-bo-tri-thuc ;;
+  dong-bo-tro-ly) tro_ly_ai dong-bo-tro-ly ;;
+  dong-bo-prompts) tro_ly_ai dong-bo-prompts ;;
+  dong-bo-tri-thuc) tro_ly_ai dong-bo-tri-thuc ;;
   khoi-tao) with_lock cmd_khoi_tao ;;
   sao-luu) with_lock cmd_sao_luu_co_bao_cao ;;
   khoi-phuc-thu) with_lock cmd_khoi_phuc_thu ;;

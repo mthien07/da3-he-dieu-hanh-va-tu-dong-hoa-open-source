@@ -38,4 +38,4 @@ Toàn bộ các thành phần chạy trong đường dẫn thực thi của **On
 | Restic & `rest-server` | `0.18.0` / `0.14.0` | BSD-2-Clause | Sao lưu mã hóa chống mã độc tống tiền |
 | MeshCentral (tùy chọn) | `1.1.56` | Apache-2.0 | Hỗ trợ kỹ thuật từ xa trong mạng nội bộ |
 
-> **Lịch sử chuyển đổi giấy phép (ADR 0006 & ADR 0007):** Từ phiên bản `v1.3.0`, dự án đã loại bỏ hoàn toàn `Node-RED` (Sustainable Use License) và `OneBee AI RAG` (điều khoản thương hiệu từ v0.6.6+) để đạt chuẩn **100% OSI Open Source**.
+> **Lịch sử chuyển đổi giấy phép (ADR 0006 & ADR 0007):** Từ phiên bản `v1.3.0`, dự án chuyển sang **Node-RED (`Apache-2.0`)** thay thế động cơ quy trình fair-code cũ và tự viết **OneBee AI RAG (`MIT`)** cho Trợ lý AI để đạt chuẩn **100% OSI Open Source**.

@@ -40,7 +40,7 @@ Chi tiết quan trọng:
 - [Unverified] Firefox và Chrome có áp ràng buộc tên của CA hay không; Windows có áp cho CA tự cài hay không.
 - Node-RED 2.42.6 nhận quy trình 06 và áp mật khẩu chủ mới khi khởi động lại.
 - OneBee AI RAG v0.11.4 và Uptime Kuma 2.5.5 chạy đúng các lệnh đổi mật khẩu/khóa API.
-- Hệ quả của việc đổi `WEBUI_SECRET_KEY`.
+- Hệ quả của việc đổi `PGRST_JWT_SECRET` và `NODE_RED_CREDENTIAL_SECRET`.
 - Tường lửa thật, Tailscale, Samba với Windows 10 và Mint, WebSocket chat qua Caddy, restic tải lớn qua Caddy.
 
 ## 4. Clone về test

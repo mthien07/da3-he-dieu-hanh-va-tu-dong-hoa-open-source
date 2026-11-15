@@ -16,10 +16,6 @@ SECRETS_DIR="${ONEBEE_BOX_SECRETS:-/etc/onebee-box/secrets}"
 
 WEBHOOK_KEY=""
 [[ -f "${SECRETS_DIR}/quy-trinh-webhook-key" ]] && WEBHOOK_KEY="$(cat "${SECRETS_DIR}/quy-trinh-webhook-key")"
-TRAM_KEY=""
-[[ -f "${SECRETS_DIR}/tinh-trang-key" ]] && TRAM_KEY="$(cat "${SECRETS_DIR}/tinh-trang-key")"
-ALERT_TOKEN=""
-[[ -f "${SECRETS_DIR}/canh-bao-token" ]] && ALERT_TOKEN="$(cat "${SECRETS_DIR}/canh-bao-token")"
 
 fail() { echo "FAIL  $*" >&2; exit 1; }
 pass() { echo "PASS  $*"; }

@@ -8,7 +8,7 @@
 # → tường lửa: máy trong LAN vào được, máy ngoài mạng cho phép bị chặn
 # → diễn tập hỏng ổ Box: cài lại + khôi phục toàn bộ bằng khóa in ra giấy
 # → bản giả mạo ngày tương lai bị phát hiện → chưa gắn ổ ngoài thì từ chối → khởi động lại Box, dịch vụ tự lên.
-# Biến: ONEBEE_TEST_EXTRA_CA (CA proxy), ONEBEE_TEST_FULL_WEBUI=1 (dùng image OneBee AI RAG đầy đủ thay bản slim),
+# Biến: ONEBEE_TEST_EXTRA_CA (CA proxy), ONEBEE_TEST_FULL_AI=1 (dùng image OneBee AI RAG đầy đủ thay bản slim),
 #       ONEBEE_TEST_KEEP=1 (giữ container để xem lại).
 set -euo pipefail
 
@@ -47,7 +47,7 @@ docker run -d --name "${BOX}" --hostname onebee-box --network "${NET}" --privile
   -v "${REPO_ROOT}:/onebee:ro" ${ca_opts[@]+"${ca_opts[@]}"} "${IMAGE}" >/dev/null
 wait_systemd
 box 'update-ca-certificates >/dev/null 2>&1; rm -rf /root/onebee-test; cp -r /onebee /root/onebee-test'
-if [[ "${ONEBEE_TEST_FULL_WEBUI:-0}" != 1 ]]; then
+if [[ "${ONEBEE_TEST_FULL_AI:-0}" != 1 ]]; then
   # Bản slim (không kèm model nhúng) để test nhanh, đỡ tốn ổ; chức năng hỏi đáp như bản đầy đủ
   # Image ghim kèm digest (@sha256:…) là của bản đầy đủ → bản slim dùng tag, bỏ digest
   box "sed -i -E 's#(tro_ly_ai: .*ai-rag:v[0-9.]+)(@sha256:[0-9a-f]+)?\$#\\1-slim#' /root/onebee-test/box/ansible/group_vars/all.yml"
@@ -197,7 +197,7 @@ mo="$(thu_cong)"
 box 'cp /root/tuong-lua.conf.bak /etc/onebee-box/tuong-lua.conf; systemctl restart onebee-tuong-lua'
 [[ -z "${mo}" ]] || { echo "FAIL  Máy ngoài mạng cho phép vẫn vào được cổng: ${mo}"; exit 1; }
 echo "PASS  Máy ngoài mạng cho phép (vd Wi-Fi khách) bị chặn hết: AI, trang giới thiệu, kho sao lưu, thư mục chung"
-box 'curl -s -m 10 http://127.0.0.1:3000/health | grep -q true || { echo "FAIL  Box tự gọi dịch vụ của mình bị chặn"; exit 1; }'
+box 'curl -s -m 10 http://127.0.0.1:3000/health | grep -q ok || { echo "FAIL  Box tự gọi dịch vụ của mình bị chặn"; exit 1; }'
 [[ "$(thu_cong)" == "80 3000 3001 8000 445 " ]] || { echo "FAIL  Mở lại tường lửa nhưng máy trạm chưa vào lại được"; exit 1; }
 echo "PASS  Box tự gọi dịch vụ của mình không bị chặn; trả lại danh sách cũ → máy trạm vào lại được"
 # Dừng/nâng cấp Docker không được gỡ tường lửa (trước đây PartOf=docker.service + ExecStop=tat mở SSH/Samba/Tailscale tới khi Docker lên lại)
@@ -206,7 +206,7 @@ box 'systemctl stop docker.socket docker.service
        && iptables -t mangle -S PREROUTING | grep -q ONEBEE-TAILSCALE && iptables -S DOCKER-USER | grep -q ONEBEE-LAN-DOCKER \
        || { echo "FAIL  Dừng Docker gỡ luôn tường lửa (SSH/Samba/Tailscale/cổng Docker)"; exit 1; }
      systemctl start docker
-     for _ in $(seq 60); do curl -s -m 5 http://127.0.0.1:3000/health | grep -q true && break; sleep 5; done
+     for _ in $(seq 60); do curl -s -m 5 http://127.0.0.1:3000/health | grep -q ok && break; sleep 5; done
      [ "$(iptables -S DOCKER-USER | grep -c ONEBEE-LAN-DOCKER)" = 1 ] || { echo "FAIL  Docker lên lại: quy tắc DOCKER-USER mất hoặc nhân đôi"; iptables -S DOCKER-USER; exit 1; }'
 [[ "$(thu_cong)" == "80 3000 3001 8000 445 " ]] || { echo "FAIL  Docker lên lại nhưng máy trạm chưa vào lại được"; exit 1; }
 echo "PASS  Dừng Docker vẫn giữ tường lửa SSH/Samba/Tailscale; Docker lên lại dùng tiếp quy tắc DOCKER-USER, máy trạm vào lại được"
@@ -251,7 +251,7 @@ box 'umount /mnt/onebee-sao-luu
 echo "===== KHỞI ĐỘNG LẠI BOX ====="
 docker restart "${BOX}" >/dev/null
 wait_systemd
-box 'for _ in $(seq 60); do curl -s -m 5 http://127.0.0.1:3000/health | grep -q true && curl -s -m 5 http://127.0.0.1:5678/healthz | grep -q ok && break; sleep 5; done
+box 'for _ in $(seq 60); do curl -s -m 5 http://127.0.0.1:3000/health | grep -q ok && curl -s -m 5 http://127.0.0.1:5678/healthz | grep -q ok && break; sleep 5; done
      /root/onebee-test/tests/box/verify-box-install.sh | tail -1'
 echo "PASS  Sau khởi động lại, dịch vụ tự chạy lại"
 echo "TẤT CẢ BƯỚC KIỂM THỬ BOX ĐẠT"

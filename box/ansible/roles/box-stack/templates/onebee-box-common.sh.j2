@@ -139,7 +139,7 @@ compose() { docker compose --project-directory "${BOX_DIR}" "$@"; }
 nap_lai_kho_http() { docker exec onebee-rest-server kill -HUP 1 >/dev/null 2>&1 || true; }
 
 # Gọi công cụ quản lý Trợ lý AI & RAG nội bộ (tạo Trợ lý OneBee, cấp khóa API cho máy trạm)
-webui() {
+tro_ly_ai() {
   ONEBEE_AI_DATA="${DATA}/ai-rag" ONEBEE_SECRETS="${SECRETS}" ONEBEE_LIB="/usr/local/lib/onebee-box" \
   ONEBEE_AI_MODEL="{{ onebee_box_ai_model }}" ONEBEE_LOI_DAN=/usr/local/lib/onebee-box/tro-ly-onebee-loi-dan.md \
     python3 /usr/local/lib/onebee-box/onebee-ai-rag.py "$@"

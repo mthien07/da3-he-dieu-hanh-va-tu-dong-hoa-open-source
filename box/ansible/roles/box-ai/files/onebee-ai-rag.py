@@ -185,7 +185,7 @@ class QuanLyAiRag:
         km[ten] = khoa
         self.ghi_state(st)
         if os.path.isdir(self.secrets_dir):
-            with open(os.path.join(self.secrets_dir, f"may-{ten}-webui"), "w", encoding="utf-8") as f:
+            with open(os.path.join(self.secrets_dir, f"may-{ten}-ai"), "w", encoding="utf-8") as f:
                 f.write("managed-by-ai-rag\n")
         return khoa
 
@@ -294,7 +294,7 @@ class AiRagHandler(BaseHTTPRequestHandler):
             email = (body.get("email") or "").strip()
             pw = body.get("password") or ""
             admin_pw = doc_tep(os.path.join(self.ql.secrets_dir, "sso-quantri-password")).strip() or doc_tep(
-                os.path.join(self.ql.secrets_dir, "webui-admin-password")
+                os.path.join(self.ql.secrets_dir, "ai-admin-password")
             ).strip()
             if email and pw and (pw == admin_pw):
                 st = self.ql.doc_state()

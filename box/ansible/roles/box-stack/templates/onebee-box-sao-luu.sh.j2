@@ -154,7 +154,7 @@ xoa_tai_khoan_may_da_thu_hoi() {
     [[ -e "${f}" ]] || continue
     ten="$(basename "${f}")"
     for lan in $(seq 24); do
-      webui xoa-tai-khoan "${ten}" >/dev/null 2>&1 && continue 2
+      tro_ly_ai xoa-tai-khoan "${ten}" >/dev/null 2>&1 && continue 2
       sleep 5
     done
     warn "Chưa xóa được tài khoản Trợ lý AI của máy đã thu hồi ${ten} — chạy: sudo onebee-box thu-hoi-may ${ten} --dong-y"

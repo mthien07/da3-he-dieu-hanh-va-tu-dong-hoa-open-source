@@ -16,7 +16,7 @@ box "onebee-box them-may tam-01 >/dev/null && onebee-box thu-hoi-may tam-01 --do
   ! grep -q '^tam-01:' /srv/onebee/restic/.htpasswd"
 
 box "onebee-box in-khoa > /root/khoa-in-ra-giay.txt
-  cp ${S}/webui-admin-password /root/cu-webui; cp ${S}/quy-trinh-owner-password /root/cu-quy-trinh; cp ${S}/ca/root.sha256 /root/cu-ca-sha
+  cp ${S}/ai-admin-password /root/cu-ai; cp ${S}/quy-trinh-owner-password /root/cu-quy-trinh; cp ${S}/ca/root.sha256 /root/cu-ca-sha
   wc -l < /srv/onebee/ho-tro/yeu-cau.csv > /root/cu-so-yeu-cau
   curl -s -f -X PUT http://127.0.0.1/files/chung-tu-truoc-hong.txt -H 'Remote-User: lan' -H 'Remote-Groups: nhan_vien' --data-binary 'Chung tu HTX OneBee truoc khi hong o' >/dev/null
   onebee-box sao-luu > /root/sl-truoc-hong.log 2>&1 || { tail -20 /root/sl-truoc-hong.log; exit 1; }
@@ -27,16 +27,16 @@ box "onebee-box in-khoa > /root/khoa-in-ra-giay.txt
   echo 'PASS  (giả lập) Hỏng ổ Box: mất hết dữ liệu, khóa bí mật, cấu hình — còn bản in khóa và ổ sao lưu'"
 
 box "/root/onebee-test/box/onebee-box-install.sh > /root/cai-lai.log 2>&1 || { tail -30 /root/cai-lai.log; exit 1; }
-  ! cmp -s ${S}/webui-admin-password /root/cu-webui || { echo 'FAIL  Cài lại mà khóa không đổi — giả lập sai'; exit 1; }
+  ! cmp -s ${S}/ai-admin-password /root/cu-ai || { echo 'FAIL  Cài lại mà khóa không đổi — giả lập sai'; exit 1; }
   echo 'PASS  Cài lại Box trên ổ mới (khóa bí mật mới, dữ liệu trống)'
   onebee-box khoi-phuc-toan-bo /root/khoa-in-ra-giay.txt > /root/khoi-phuc.log 2>&1 || { tail -20 /root/khoi-phuc.log; exit 1; }
   /root/onebee-test/box/onebee-box-install.sh > /root/cai-lai-2.log 2>&1 || { tail -30 /root/cai-lai-2.log; exit 1; }
-  cmp -s ${S}/webui-admin-password /root/cu-webui && cmp -s ${S}/quy-trinh-owner-password /root/cu-quy-trinh \
+  cmp -s ${S}/ai-admin-password /root/cu-ai && cmp -s ${S}/quy-trinh-owner-password /root/cu-quy-trinh \
     || { echo 'FAIL  Khóa bí mật không trở lại như cũ'; exit 1; }
   cmp -s ${S}/ca/root.sha256 /root/cu-ca-sha || { echo 'FAIL  CA riêng sau khôi phục khác CA cũ — máy trạm sẽ không tin Box'; exit 1; }
   openssl verify -CApath /etc/ssl/certs ${S}/ca/inter.crt >/dev/null || { echo 'FAIL  Box không tin CA đã khôi phục'; exit 1; }
   code=\$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:3000/api/v1/auths/signin -H 'Content-Type: application/json' \
-    -d \"{\\\"email\\\":\\\"quantri@onebee.lan\\\",\\\"password\\\":\\\"\$(cat /root/cu-webui)\\\"}\")
+    -d \"{\\\"email\\\":\\\"quantri@onebee.lan\\\",\\\"password\\\":\\\"\$(cat /root/cu-ai)\\\"}\")
   [ \"\${code}\" = 200 ] || { echo \"FAIL  Mật khẩu quản trị Trợ lý AI cũ không dùng được (\${code})\"; exit 1; }
   for _ in \$(seq 30); do curl -s -m 5 http://127.0.0.1:5678/healthz | grep -q ok && break; sleep 3; done
   [ \"\$(wc -l < /srv/onebee/ho-tro/yeu-cau.csv)\" = \"\$(cat /root/cu-so-yeu-cau)\" ] || { echo 'FAIL  Mất sổ yêu cầu hỗ trợ'; exit 1; }

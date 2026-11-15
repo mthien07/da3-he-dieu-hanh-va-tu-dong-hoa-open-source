@@ -23,7 +23,7 @@ from onebee_ai_eval.scoring import score_answer  # noqa: E402
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 LOI_DAN = os.path.join(REPO, "box/ansible/roles/box-ai/files/tro-ly-onebee-loi-dan.md")
-# Tùy chọn sinh chữ GIỐNG "Trợ lý OneBee" trên Box (box-ai/files/onebee-webui.py) để chấm đúng cấu hình thật
+# Tùy chọn sinh chữ GIỐNG "Trợ lý OneBee" trên Box (box-ai/files/onebee-ai-rag.py) để chấm đúng cấu hình thật
 TUY_CHON_MODEL = {"temperature": 0.3}
 
 

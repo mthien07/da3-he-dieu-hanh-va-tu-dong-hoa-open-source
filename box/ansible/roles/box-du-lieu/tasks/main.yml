@@ -39,7 +39,8 @@
     set -euo pipefail
     docker exec -i onebee-postgres psql -v ON_ERROR_STOP=1 -U postgres -d onebee < /usr/local/lib/onebee-box/01-luoc-do-dxos.sql >/dev/null
     pw="$(cat {{ onebee_box_secrets }}/postgres-authenticator-password)"
-    docker exec -i onebee-postgres psql -v ON_ERROR_STOP=1 -U postgres -d onebee -c "ALTER ROLE authenticator WITH LOGIN PASSWORD '${pw}';" >/dev/null
+    docker exec -i onebee-postgres psql -v ON_ERROR_STOP=1 -U postgres -d onebee \
+      -c "ALTER ROLE authenticator WITH LOGIN PASSWORD '${pw}';" >/dev/null
   args:
     executable: /bin/bash
   changed_when: false

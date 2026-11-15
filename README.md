@@ -86,7 +86,7 @@ Sau khi cài xong, mở `https://onebee-box.local/` (Cổng nội bộ) hoặc `
 - **Hồ sơ OLP 2026 & Kiến trúc DX-OS Open-Core**:
   - [Kiến trúc 3 tầng DX-OS & 4 nguyên tắc thiết kế](docs/kien-truc-dx-os.md)
   - [ADR 0006 — Khảo sát, chấm điểm & chọn lõi DX-OS Open-Core](docs/adr/0006-loi-dx-os-open-core.md)
-  - [ADR 0007 — Thay thế Node-RED bằng Node-RED (Apache-2.0)](docs/adr/0007-thay-Node-RED.md)
+  - [ADR 0007 — Chuyển đổi động cơ quy trình sang Node-RED (Apache-2.0)](docs/adr/)
   - [Bảng tự chấm 40 tiêu chí Proof of Freedom (PoF)](docs/olp-2026-tu-cham-pof.md)
   - [Đặc tả OpenAPI 3.0 của các dịch vụ DX-OS](docs/api/openapi-dxos.md)
   - [Kịch bản trình diễn trực tiếp 10 phút](docs/hoi-thi/olp-2026-kich-ban-trinh-dien.md) · [Thư nộp bài OLP 2026](docs/hoi-thi/olp-2026-thu-nop-bai.md)

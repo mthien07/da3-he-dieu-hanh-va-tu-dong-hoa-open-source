@@ -11,7 +11,7 @@ Tài liệu này đối chiếu trực tiếp **40 tiêu chí đánh giá Proof 
 | A1 | Kho mã nguồn có giấy phép chuẩn OSI tại thư mục gốc | ĐẠT | `LICENSE` (MIT License) |
 | A2 | 100% tệp mã nguồn có dòng định danh `SPDX-License-Identifier: MIT` | ĐẠT | `scripts/chen-giay-phep.py --kiem` & `tests/desktop/test_onebee_giay_phep.py` |
 | A3 | Kiểm tra tự động header giấy phép trên CI/CD | ĐẠT | `.github/workflows/ci.yml` (bước `python3 scripts/chen-giay-phep.py --kiem`) |
-| A4 | Không sử dụng thành phần Source-Available / Sustainable Use License (công cụ fair-code cũ) | ĐẠT | Đã thay hoàn toàn bằng Node-RED (`Apache-2.0`) — xem `docs/adr/0007-thay-công cụ fair-code cũ.md` |
+| A4 | Không sử dụng thành phần Source-Available / Sustainable Use License | ĐẠT | Đã thay hoàn toàn bằng Node-RED (`Apache-2.0`) — xem hồ sơ quyết định trong `docs/adr/` |
 | A5 | Không sử dụng thành phần giới hạn thương hiệu (`giao diện AI bên thứ ba >= 0.6.6`) | ĐẠT | Đã thay bằng dịch vụ `onebee-ai-rag.py` (`MIT`) — xem `docs/adr/0006-loi-dx-os-open-core.md` |
 | A6 | Danh mục đầy đủ giấy phép của toàn bộ container và gói phụ thuộc | ĐẠT | `LICENSES.md` (100% giấy phép chuẩn OSI: MIT, Apache-2.0, PostgreSQL, BSD, GPL-2.0) |
 | A7 | Có tài liệu hướng dẫn đóng góp cộng đồng | ĐẠT | `CONTRIBUTING.md` |

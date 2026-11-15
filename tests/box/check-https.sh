@@ -19,7 +19,7 @@ box "onebee-box them-may kho-03 >/dev/null     # máy cấp rồi nhưng chưa �
 cai chot-chan
 box "grep -q 'CHƯA BẬT HTTPS' /root/cai-chot-chan.log && grep -q 'kho-03' /root/cai-chot-chan.log || { echo 'FAIL  Không báo máy chưa nhận CA'; exit 1; }
   [ ! -e /etc/onebee-box/secrets/https-da-bat ] || { echo 'FAIL  Vẫn bật HTTPS khi còn máy chưa nhận CA'; exit 1; }
-  curl -sf -m 10 http://127.0.0.1:3000/health | grep -q true || { echo 'FAIL  Dịch vụ HTTP bị ảnh hưởng'; exit 1; }
+  curl -sf -m 10 http://127.0.0.1:3000/health | grep -q ok || { echo 'FAIL  Dịch vụ HTTP bị ảnh hưởng'; exit 1; }
   echo 'PASS  Còn máy chưa nhận CA (kho-03) → bộ cài giữ HTTP, nêu tên máy, dịch vụ vẫn chạy'"
 
 echo "===== HTTPS: BẬT ====="
@@ -44,11 +44,11 @@ box "[ -e /etc/onebee-box/secrets/https-da-bat ] || { echo 'FAIL  Chưa có dấ
   [ \"\$(curl -s -o /dev/null -w '%{http_code}' http://${IP}:3000/)\" = 308 ] || { echo 'FAIL  http:// tới cổng TLS không bị chuyển 308'; exit 1; }
   curl -sf http://${IP}/onebee-ca.crt | cmp - /etc/onebee-box/secrets/ca/root.crt
   echo 'PASS  http://IP:3000 → 308 sang https; cổng 80 phục vụ chứng chỉ gốc'
-  curl -sf -m 10 https://${IP}:3000/health | grep -q true && curl -sf -m 10 https://${IP}:5678/healthz | grep -q ok \
+  curl -sf -m 10 https://${IP}:3000/health | grep -q ok && curl -sf -m 10 https://${IP}:5678/healthz | grep -q ok \
     || { echo 'FAIL  Dịch vụ không trả lời qua HTTPS'; exit 1; }
   [ \"\$(curl -s -o /dev/null -m 3 -w '%{http_code}' http://127.0.0.1:3000/)\" = 308 ] || { echo 'FAIL  127.0.0.1:3000 không phải cổng Caddy (308)'; exit 1; }"
 
-box "pw=\$(cat /etc/onebee-box/secrets/webui-admin-password)
+box "pw=\$(cat /etc/onebee-box/secrets/ai-admin-password)
   hdr=\$(curl -si -m 20 -X POST https://${IP}:3000/api/v1/auths/signin -H 'Content-Type: application/json' \
     -d \"{\\\"email\\\":\\\"quantri@onebee.lan\\\",\\\"password\\\":\\\"\${pw}\\\"}\")
   grep -i '^set-cookie:' <<<\"\${hdr}\" | grep -qi 'secure' || { echo 'FAIL  Cookie đăng nhập OneBee AI RAG thiếu cờ Secure'; echo \"\${hdr}\" | head -20; exit 1; }
@@ -97,7 +97,7 @@ echo "===== HTTPS: TẮT (HOÀN TÁC) ====="
 box "sed -i -E 's#^onebee_box_https: .*#onebee_box_https: false#' ${GV}"
 cai tat-https
 box "[ ! -e /etc/onebee-box/secrets/https-da-bat ] || { echo 'FAIL  Còn dấu HTTPS'; exit 1; }
-  curl -sf -m 10 http://127.0.0.1:3000/health | grep -q true && curl -sf -m 10 http://127.0.0.1:5678/healthz | grep -q ok \
+  curl -sf -m 10 http://127.0.0.1:3000/health | grep -q ok && curl -sf -m 10 http://127.0.0.1:5678/healthz | grep -q ok \
     || { echo 'FAIL  Dịch vụ HTTP không chạy lại'; exit 1; }
   echo 'PASS  Tắt HTTPS: dịch vụ chạy lại ở HTTP, dấu HTTPS bị xóa'"
 tram "grep -q '^BOX_HTTPS=0' /etc/onebee/may-tram.env && [ ! -e /var/lib/onebee/https-bat ] && grep -q '^RESTIC_REPOSITORY=rest:http://' /etc/onebee/may-tram.env \

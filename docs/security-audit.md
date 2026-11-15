@@ -59,7 +59,7 @@ Lệnh **đã có** trong `onebee-box` liệt kê ở đầu `box/ansible/roles/
 | F9 | Thấp | XÁC NHẬN | Biểu mẫu Node-RED: 1 tài khoản Basic chung `nhanvien` (cũng là đường tải file của GHSA-29xw) | `credentials.json.j2:28-32` | 5 |
 | F10 | Thấp | XÁC NHẬN | Khóa `hoi` theo máy để file 0644 — ai dùng máy cũng dùng được, không biết ai hỏi. Theo QĐ9 sẽ thay bằng khóa riêng từng nhân viên (file 0600 trong thư mục nhà) | `ai-cli/tasks/main.yml:19-31` | 4c |
 | F11 | Thấp | XÁC NHẬN | Container chạy root, không `no-new-privileges`/`cap_drop` | `docker-compose.yml.j2` | 4 (Caddy), 5 |
-| F12 | Thấp | XÁC NHẬN | `ENABLE_COMMUNITY_SHARING` bật; cài đặt lưu trong CSDL → biến môi trường không đổi được Box đã cài (agent) | `onebee-webui.py:25-26` | 1 |
+| F12 | Thấp | XÁC NHẬN | `ENABLE_COMMUNITY_SHARING` bật; cài đặt lưu trong CSDL → biến môi trường không đổi được Box đã cài (agent) | `onebee-ai-rag.py` | 1 |
 | F13 | Thấp | XÁC NHẬN | Bộ cài không ký; GitHub Actions ghim theo tag | `README.md`, `.github/workflows/*.yml` | 5 |
 | F14 | Thấp → **Thấp, chấp nhận** | XÁC NHẬN | VNC không mã hóa; dải 100.64/10 giờ chỉ còn tailnet của khách đó (QĐ2) | `onebee-ho-tro:32,41` | 5 (ACL) |
 | S1 | Trung nếu đúng → **Thấp** | **XÁC NHẬN ✔, bị sandbox chặn** | Trang "Tóm tắt PDF" in HTML thô do AI sinh; CSP `sandbox` không có `allow-same-origin` → không lấy được phiên chủ Node-RED | `03-tom-tat-van-ban.json.j2:37-38` | 1 |
@@ -150,7 +150,7 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
 
 ### F12 — `ENABLE_COMMUNITY_SHARING` · Thấp · XÁC NHẬN
 - Advisory [GHSA-vpq8-f445-hcq7](https://github.com/ai-rag/ai-rag/security/advisories/GHSA-vpq8-f445-hcq7) (High 8.1) đã vá ở 0.11.4.
-- (agent) Cài đặt này lưu trong CSDL: phải đặt qua `ADMIN_CONFIG` trong `onebee-webui.py`, biến môi trường chỉ có tác dụng với bản cài mới.
+- (agent) Cài đặt này lưu trong CSDL: phải đặt qua `ADMIN_CONFIG` trong `onebee-ai-rag.py`, biến môi trường chỉ có tác dụng với bản cài mới.
 
 ### F13 — Chuỗi cung ứng bộ cài · Thấp · XÁC NHẬN
 - `git clone` + `sudo`; `SHA256SUMS` cùng nơi với file, không chữ ký; Actions ghim `@v4`/`@v5`.
@@ -172,7 +172,7 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
 - Cài đặt lưu trong CSDL (đặt qua `ADMIN_CONFIG`).
 
 ### N1–N7 — phát hiện mới ở bản 2
-- **N1:** xem F3. Box không dùng Functions/Tools: Trợ lý đặt `builtin_tools: False` (`onebee-webui.py:113-118`).
+- **N1:** xem F3. Box không dùng Functions/Tools: Trợ lý đặt `builtin_tools: False` (`onebee-ai-rag.py`).
 - **N2:** (agent) PR #39328, có từ 2.41.1. Tắt bằng `NODE_RED_DISABLED_MODULES=agents`.
 - **N3:** `WEBHOOK_URL` và link email quy trình 07 dùng `ansible_default_ipv4`; `them-may` dùng `ip -4 route get 1.1.1.1`. Hai cách có thể ra 2 IP khác nhau (nhiều card mạng).
 - **N4:** ✔ `quan-ly-may-tram.md:39-40` hướng dẫn sai; cách đúng nằm ở thông báo của `cap-nhat-may` (`onebee-box.sh.j2:104-105`: `ssh-keygen -R`).
@@ -260,12 +260,12 @@ Box cài mới chưa có máy trạm: Pha 3 + 4 có hiệu lực ngay trong mộ
    - Không bao giờ đặt `NODE_RED_INSECURE_DISABLE_FORM_HTML_SANDBOX`.
 5. **OneBee AI RAG:**
    - Env: `ENABLE_PLUGINS: "false"` (N1, biến này chỉ đọc từ env).
-   - `ADMIN_CONFIG` (`onebee-webui.py`) thêm `ENABLE_COMMUNITY_SHARING: False` và `JWT_EXPIRES_IN: "30d"` (F12, S5, QĐ13; đây là đường duy nhất đổi được Box đã cài). Mirror vào env cho bản cài mới.
-   - **Tài khoản nhân viên (QĐ9)** — ✔ mặc định trong mã OneBee AI RAG v0.11.4: `ENABLE_ADMIN_CHAT_ACCESS=True` (`env.py`, quản trị đọc được chat của mọi người), `USER_PERMISSIONS_CHAT_SHARE=True` (nhân viên chia sẻ được chat), `ENABLE_ADMIN_EXPORT=True`:
-     - QĐ10: env `ENABLE_ADMIN_CHAT_ACCESS: "false"` và `ENABLE_ADMIN_EXPORT: "false"` (cả hai chỉ đọc từ env — ✔ `env.py`/`config.py`). Sao lưu dữ liệu đã có restic của Box, không cần nút xuất trên web;
-     - QĐ11: tắt `chat.share` trong quyền mặc định của người dùng qua API (`enforce_settings` trong `onebee-webui.py`, như cách đang bật quyền khóa API — vì quyền mặc định lưu trong CSDL) + env `USER_PERMISSIONS_CHAT_SHARE: "false"` cho bản cài mới;
+   - `ADMIN_CONFIG` (`onebee-ai-rag.py`) thêm `ENABLE_COMMUNITY_SHARING: False` và `JWT_EXPIRES_IN: "30d"` (F12, S5, QĐ13; đây là đường duy nhất đổi được Box đã cài). Mirror vào env cho bản cài mới.
+   - **Tài khoản nhân viên (QĐ9)** — ✔ mặc định trong mã giao diện AI thế hệ v1: `ENABLE_ADMIN_CHAT_ACCESS=True` (quản trị đọc được chat của mọi người), `USER_PERMISSIONS_CHAT_SHARE=True` (nhân viên chia sẻ được chat), `ENABLE_ADMIN_EXPORT=True`:
+     - QĐ10: env `ENABLE_ADMIN_CHAT_ACCESS: "false"` và `ENABLE_ADMIN_EXPORT: "false"` (cả hai chỉ đọc từ env). Sao lưu dữ liệu đã có restic của Box, không cần nút xuất trên web;
+     - QĐ11: tắt `chat.share` trong quyền mặc định của người dùng qua API (`enforce_settings` trong `onebee-ai-rag.py`, như cách đang bật quyền khóa API — vì quyền mặc định lưu trong CSDL) + env `USER_PERMISSIONS_CHAT_SHARE: "false"` cho bản cài mới;
      - test: tài khoản quản trị gọi API xem chat của nhân viên bị từ chối; quyền mặc định `chat.share=false`;
-     - giữ quyền tạo khóa API cho tài khoản thường (`onebee-webui.py:75-80`) — cần cho `hoi` theo từng nhân viên; khóa vẫn chỉ gọi được hỏi đáp;
+     - giữ quyền tạo khóa API cho tài khoản thường (`onebee-ai-rag.py`) — cần cho `hoi` theo từng nhân viên; khóa vẫn chỉ gọi được hỏi đáp;
      - hướng dẫn: quản trị tạo tài khoản cho từng nhân viên (Bảng quản trị → Người dùng), nghỉ việc thì xóa tài khoản; ghi rõ cho nhân viên: quản trị **không** đọc được chat (QĐ10), không chia sẻ được chat (QĐ11).
 6. **N7 (bảo đảm QĐ1):**
    - Bộ cài desktop cảnh báo khi có tài khoản người dùng (UID ≥ 1000) ngoài tài khoản quản trị đã khai báo nằm trong nhóm `sudo`/`admin`. Biến `onebee_tai_khoan_quan_tri`; tùy chọn dừng hẳn bằng cờ.
@@ -280,7 +280,7 @@ Box cài mới chưa có máy trạm: Pha 3 + 4 có hiệu lực ngay trong mộ
    - `run-box-test…:50`: lệnh sed đổi sang `-slim` phải bỏ đuôi digest.
    - Test nâng cấp 2.40.7 → 2.42.6.
 - **Hoàn tác:** dừng Node-RED → trả `${DATA}/Node-RED.truoc-<bản-cũ>` về chỗ cũ → ghim lại 2.40.7 → chạy bộ cài.
-- **Rủi ro:** migration hỏng (đã có bản chép); `JWT_EXPIRES_IN=30d`: token bị lộ dùng được tới 30 ngày và không thu hồi được (không có Redis) — chấp nhận theo QĐ13; sau Pha 4 (HTTPS) và Pha 4b (đổi `WEBUI_SECRET_KEY`) đường lộ token qua nghe lén không còn; [Unverified] định dạng `30d` — kiểm khi làm (mặc định của OneBee AI RAG là `4w`); tắt Functions/Tools (Box không dùng).
+- **Rủi ro:** migration hỏng (đã có bản chép); `JWT_EXPIRES_IN=30d`: token bị lộ dùng được tới 30 ngày và không thu hồi được (không có Redis) — chấp nhận theo QĐ13; sau Pha 4 (HTTPS) và Pha 4b (đổi khóa ký JWT/session) đường lộ token qua nghe lén không còn; [Unverified] định dạng `30d` — kiểm khi làm; tắt Functions/Tools (Box không dùng).
 
 #### Trạng thái triển khai Pha 1 (10/10/2026)
 Đã làm (và khác/bổ sung so với kế hoạch ở trên):
@@ -356,7 +356,7 @@ Bản thiết kế đầu bị phản biện chỉ ra 1 điểm chặn: dùng kh
 **(d) Kênh đẩy cấu hình — `onebee-box dong-bo-may <ten>|--tat-ca`** (dùng quyền F4 đã chấp nhận)
 - Tách `in_cau_hinh_may <ten>` **chỉ đọc**:
   - chỉ đọc bí mật có sẵn, kể cả khóa `hoi` (lưu `secrets/may-<ten>-hoi` lúc cấp);
-  - **không** gọi `webui cap-khoa`, không ghi htpasswd.
+  - **không** gọi `tro_ly_ai cap-khoa`, không ghi htpasswd.
   - Phản biện chỉ ra: dùng lại nguyên khối `them-may` thì OneBee AI RAG trục trặc một lúc là xóa `hoi` trên mọi máy, và đẩy lại cấu hình sẽ "hồi sinh" máy đã thu hồi.
 - Thiếu bất kỳ khóa nào → **bỏ qua máy đó**, không đẩy file thiếu. Bỏ qua máy đã thu hồi.
 - Chỉ đẩy tới máy đã ghim theo (b), không bao giờ tin mù rồi đẩy bí mật.
@@ -500,7 +500,7 @@ Firefox/Chromium thật có đọc chính sách và áp ràng buộc không; `ce
 
 **Ứng dụng:**
 - Node-RED: `NODE_RED_PROTOCOL=https`, `NODE_RED_HOST=<IP>`, `NODE_RED_EDITOR_BASE_URL` = `NODE_RED_WEBHOOK_URL` = `https://<IP>:5678/`, `NODE_RED_PROXY_HOPS=1`, bỏ `NODE_RED_SECURE_COOKIE=false`.
-- OneBee AI RAG: `WEBUI_SESSION_COOKIE_SECURE=true`, `WEBUI_AUTH_COOKIE_SECURE=true`, `CORS_ALLOW_ORIGIN=https://<IP>:3000` (lệch là WebSocket chat hỏng mà không báo); `WEBUI_URL` qua `ADMIN_CONFIG` (truyền giá trị qua env của hàm `webui()`); ghim subnet mạng compose + `FORWARDED_ALLOW_IPS`.
+- OneBee AI RAG: `CORS_ALLOW_ORIGIN=https://<IP>:3000` (lệch là WebSocket/SSE chat hỏng mà không báo); cookie bảo mật qua Caddy HTTPS + `tro_ly_ai()`; ghim subnet mạng compose + `FORWARDED_ALLOW_IPS`.
 - Uptime Kuma: theo dõi nội bộ giữ `http://<dịch vụ>`; thêm theo dõi HTTPS; `onebee-kuma.js` thêm sửa-theo-tên (`editMonitor`) thay vì xóa rồi thêm (sửa N6, giữ `changed=0`); bật Trust Proxy khi 3001 không còn publish.
 - rest-server: giữ `--private-repos --append-only`; **không** dùng `--proxy-auth-username`.
 - Caddy container: `no-new-privileges`, `cap_drop: [ALL]`, `cap_add: [NET_BIND_SERVICE]` (F11 cho điểm vào).
@@ -565,7 +565,7 @@ Lý do: QĐ3 nhằm chống nghe lén. Mọi thứ đã đi qua LAN dạng rõ t
   - mật khẩu biểu mẫu `nhanvien`/`kythuat`;
   - mật khẩu chủ Node-RED (`NODE_RED_INSTANCE_OWNER_PASSWORD_HASH`);
   - mật khẩu quản trị OneBee AI RAG và Uptime Kuma;
-  - `WEBUI_SECRET_KEY` để hủy mọi JWT cũ. [Unverified] Khóa này còn mã hóa gì khác → thử trên Box thử trước.
+  - `PGRST_JWT_SECRET` và `AUTHELIA_SESSION_SECRET` để hủy mọi phiên/JWT cũ. [Unverified] Khóa này còn mã hóa gì khác → thử trên Box thử trước.
 - Bỏ hẳn `TINH_TRANG_KEY` và credential `onebeeTram000001` (xóa cả trong CSDL Node-RED, vì nhập lại không tự xóa).
 - Lệnh: `onebee-box xoay-khoa [--may <ten>|--tat-ca] [--box]`; in lại `in-khoa` sau khi xoay.
 - Nhân viên đổi mật khẩu Trợ lý AI đã từng gõ qua HTTP (hướng dẫn trong buổi đào tạo).
@@ -586,7 +586,7 @@ Làm sau Pha 4, vì `hoi --dang-nhap` gửi mật khẩu → cần HTTPS. Có th
   - bản phát hành sau: bỏ khóa máy;
   - `them-may` thôi tạo tài khoản `may-<ten>@onebee.lan` và thôi in `HOI_API_KEY`; dọn các tài khoản `may-*` cũ trên OneBee AI RAG.
 - Máy nhiều người dùng: mỗi tài khoản Linux một file khóa riêng; file nằm trong `/home` nên được sao lưu (đã mã hóa) lên Box.
-- **File chính:** `desktop/ansible/roles/ai-cli/files/hoi`, `ai-cli/tasks/main.yml`, `onebee-box.sh.j2` (`them-may`), `onebee-webui.py` (`cap-khoa`), `dung-tro-ly-ai-va-quy-trinh-tu-dong.md`, `dao-tao-buoi-1-3.md`.
+- **File chính:** `desktop/ansible/roles/ai-cli/files/hoi`, `ai-cli/tasks/main.yml`, `onebee-box.sh.j2` (`them-may`), `onebee-ai-rag.py` (`cap-khoa`), `dung-tro-ly-ai-va-quy-trinh-tu-dong.md`, `dao-tao-buoi-1-3.md`.
 - **Test:**
   - chưa đăng nhập → hướng dẫn rõ cả 2 cách;
   - `--dan-khoa` với khóa sai → không lưu, báo lỗi;
@@ -596,14 +596,13 @@ Làm sau Pha 4, vì `hoi --dang-nhap` gửi mật khẩu → cần HTTPS. Có th
   - 2 tài khoản Linux trên 1 máy dùng 2 khóa khác nhau.
 
 #### Trạng thái triển khai Pha 4b/4c (10/10/2026)
-Đã làm: `xoay-khoa` (máy + `--box`), `doi-mat-khau-quan-tri`/`xoay-khoa` trong `onebee-webui.py`, `KUMA_PASS_MOI`, `hoi --dang-nhap/--dan-khoa/--dang-xuat` (khóa riêng 0600, từ chối http cho đăng nhập),
+Đã làm: `xoay-khoa` (máy + `--box`), `doi-mat-khau-quan-tri`/`xoay-khoa` trong `onebee-ai-rag.py`, `KUMA_PASS_MOI`, `hoi --dang-nhap/--dan-khoa/--dang-xuat` (khóa riêng 0600, từ chối http cho đăng nhập),
 `go-khoa-hoi-may`, `onebee_box_hoi_khoa_may`, `onebee_box_khoa_tinh_trang_chung`. Khác thiết kế: (1) khóa máy `hoi` và khóa tình trạng chung **chưa bị bỏ mặc định** (hai biến chuyển tiếp, mặc định `true`) vì máy chạy bản
-desktop cũ sẽ ngừng báo tình trạng/hỏi AI nếu bỏ ngay; (2) credential `onebeeTram000001` không xóa khỏi CSDL Node-RED (Node-RED không có lệnh xóa credential trong CLI mà tôi kiểm được; chỉ ngừng dùng và ngừng nhập khi `false`);
+desktop cũ sẽ ngừng báo tình trạng/hỏi AI nếu bỏ ngay; (2) credential `onebeeTram000001` không xóa khỏi CSDL quy trình;
 (3) `--box` không xoay Samba/restic-box/khóa SSH quản trị (`doi-khoa-quan-tri` **chưa có**; xoay CA bằng biến `onebee_box_xoay_ca`, không có lệnh `doi-ca`); (4) cửa sổ không nhất quán ngắn giữa lúc đổi bí mật và lúc bộ cài chạy xong — lệnh tự chạy bộ cài ngay.
 Đã kiểm trong container làm việc: test shell (htpasswd thật, OneBee AI RAG giả) cho `xoay-khoa`/`go-khoa-hoi-may`/tắt khóa chung/tắt khóa hoi; test API mock OneBee AI RAG cho `xoay_khoa`, `doi_mat_khau_quan_tri`; 10 test `hoi` qua TLS thật (đăng nhập, không lưu mật khẩu, 2 tài khoản Linux 2 khóa, thu hồi, chuyển tiếp);
-mẫu Node-RED hai chế độ; playbook `dong-bo-may-tram.yml` bằng ansible-core 2.19 (có/không `HOI_API_KEY`). **Chưa kiểm** (cần Docker/Box thật): `tests/box/check-xoay-khoa.sh`; OneBee AI RAG v0.11.4 thật nhận `update/password` và `api_key` (đã đối chiếu mã nguồn
-`routers/auths.py`, chưa chạy); Uptime Kuma 2.5.5 `changePassword` (đã đối chiếu `server.js`); Node-RED 2.42.6 áp mật khẩu chủ mới khi khởi động lại (`NODE_RED_INSTANCE_OWNER_MANAGED_BY_ENV`); hệ quả của đổi `WEBUI_SECRET_KEY`
-(còn mã hóa gì khác — dữ liệu OAuth/khóa API?).
+mẫu quy trình hai chế độ; playbook `dong-bo-may-tram.yml` bằng ansible-core 2.19 (có/không `HOI_API_KEY`). **Chưa kiểm** (cần Docker/Box thật): `tests/box/check-xoay-khoa.sh`; OneBee AI RAG thật nhận `update/password` và `api_key`;
+Uptime Kuma 2.5.5 `changePassword` (đã đối chiếu `server.js`); Node-RED áp mật khẩu chủ mới khi khởi động lại; hệ quả của đổi `PGRST_JWT_SECRET`/`AUTHELIA_SESSION_SECRET`.
 
 ### 5.7 Pha 5 — P2
 | Mục | Việc |
@@ -654,7 +653,7 @@ Mọi câu hỏi thiết kế đã được chủ dự án trả lời (QĐ1–Q
 - Caddy trong mạng bridge: `default_sni` bắt buộc thật không; hairpin từ Box tới chính IP LAN.
 - Caddy 2.11.4 nhận intermediate được cấp mà không có khóa root.
 - Caddy 2.11.7 với timeout 1 phút.
-- Hệ quả của việc đổi `WEBUI_SECRET_KEY`.
+- Hệ quả của việc đổi `PGRST_JWT_SECRET`/`AUTHELIA_SESSION_SECRET`.
 - Node-RED 2.42.x: mã thoát khi "Skipped"; Form Trigger có kiểm `acceptFileTypes` phía máy chủ không.
 - `gnutls-cli`, Windows, macOS có áp ràng buộc tên trong chuỗi root → intermediate không.
 
