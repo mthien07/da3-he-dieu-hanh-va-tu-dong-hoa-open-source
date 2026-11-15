@@ -379,6 +379,24 @@ class LenhNguoiDung(unittest.TestCase):
         with patch.object(mod.time, "time", return_value=now), patch.object(mod.time, "sleep") as ngu:
             mod.ghi(self.tep, d)
         ngu.assert_not_called()
+        # Ba lần gọi liên tiếp (an, binh, kt): os.utime cập nhật mtime sau khi ngủ nên lần thứ 3 vẫn giữ đủ khoảng cách
+        dong_ho = [now]
+        moc_thay = []
+        os.utime(self.tep, (now - 10.0, now - 10.0))
+
+        def gia_sleep(sec):
+            dong_ho[0] += sec
+
+        orig_replace = mod.os.replace
+        with patch.object(mod.time, "time", side_effect=lambda: dong_ho[0]), \
+             patch.object(mod.time, "sleep", side_effect=gia_sleep), \
+             patch.object(mod.os, "replace", side_effect=lambda a, b: (orig_replace(a, b), moc_thay.append(dong_ho[0]))):
+            for _ in range(3):
+                dong_ho[0] += 0.2
+                mod.ghi(self.tep, d)
+        self.assertGreaterEqual(moc_thay[1] - moc_thay[0], mod.COOLDOWN_GIAY - 1e-6)
+        self.assertGreaterEqual(moc_thay[2] - moc_thay[1], mod.COOLDOWN_GIAY - 1e-6)
+        self.assertAlmostEqual(os.stat(self.tep).st_mtime, moc_thay[2], delta=1e-3)
 
     def test_ma_xac_nhan_in_ma_moi_nhat(self):
         r = self.chay("ma-xac-nhan", kiem=False)

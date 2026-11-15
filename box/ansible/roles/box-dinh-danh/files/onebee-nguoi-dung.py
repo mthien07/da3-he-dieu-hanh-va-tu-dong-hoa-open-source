@@ -41,6 +41,10 @@ def ghi(tep, d):
                 time.sleep(COOLDOWN_GIAY - dt)
         except FileNotFoundError:
             pass
+        # Cập nhật mtime của tệp tạm về đúng thời điểm os.replace (không giữ mốc lúc ghi trước khi ngủ),
+        # để lần gọi kế tiếp đo đúng khoảng cách thực tế tới lần đổi tệp này.
+        luc = time.time()
+        os.utime(tam, (luc, luc))
         os.replace(tam, tep)
     except BaseException:
         if os.path.exists(tam):
