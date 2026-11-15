@@ -18,9 +18,9 @@
 - name: Lấy các dòng liên quan CA
   ansible.builtin.set_fact:
     # Mẫu không dùng dấu gạch chéo ngược (ansible-core 2.16 và 2.19 xử lý chuỗi thoát trong Jinja khác nhau);
-    # các giá trị BOX_* chỉ gồm base64/số/chấm
+    # các giá trị BOX_* chỉ gồm base64/số/chấm/gạch ngang
     onebee_kn: >-
-      {{ dict(onebee_kn_raw.content | b64decode | regex_findall('(?m)^(BOX_[A-Z_]+)="?([A-Za-z0-9+/=.]*)'))
+      {{ dict(onebee_kn_raw.content | b64decode | regex_findall('(?m)^(BOX_[A-Z_]+)="?([A-Za-z0-9+/=.-]*)'))
          if onebee_kn_env.stat.exists else {} }}
   no_log: true
 
@@ -124,6 +124,27 @@
     path: /usr/share/applications/onebee-chia-se-noi-bo.desktop
     state: absent
   when: not (onebee_kn.BOX_IP | default('') is match('^[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+$'))
+
+# ---- Tên nội bộ của Box trong /etc/hosts (box.<mã>.onebee.internal) cho đăng nhập một lần (SSO) ----
+# LAN của đơn vị không có DNS nội bộ; ghi dòng có dấu '# onebee-box' để sửa khi đổi IP và gỡ khi thiếu/sai BOX_TEN.
+- name: Ghi tên nội bộ của Box vào /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^.*# onebee-box$'
+    line: "{{ onebee_kn.BOX_IP }} {{ onebee_kn.BOX_TEN }} # onebee-box"
+    state: present
+  when: >-
+    onebee_kn.BOX_TEN | default('') is match('^box[.][a-z0-9-]+[.]onebee[.]internal$')
+    and onebee_kn.BOX_IP | default('') is match('^[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+$')
+
+- name: Gỡ dòng tên Box khỏi /etc/hosts khi thiếu hoặc sai cấu hình
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^.*# onebee-box$'
+    state: absent
+  when: >-
+    not (onebee_kn.BOX_TEN | default('') is match('^box[.][a-z0-9-]+[.]onebee[.]internal$')
+         and onebee_kn.BOX_IP | default('') is match('^[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+$'))
 
 # ---- Có BOX_CA: kiểm thật kỹ rồi mới cài ----
 - name: Cài CA của OneBee Box

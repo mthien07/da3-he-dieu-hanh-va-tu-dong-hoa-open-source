@@ -11,7 +11,11 @@ import subprocess
 import tempfile
 import unittest
 
+import jinja2
+import yaml
+
 HERE = os.path.dirname(os.path.abspath(__file__))
+TASKS = os.path.join(HERE, "../../desktop/ansible/roles/ket-noi-box/tasks/main.yml")
 FILES = os.path.join(HERE, "../../desktop/ansible/roles/ket-noi-box/files")
 KIEM_CA = os.path.join(FILES, "onebee-kiem-ca.py")
 TRINH_DUYET = os.path.join(FILES, "onebee-chinh-sach-trinh-duyet.py")
@@ -301,6 +305,140 @@ class ChinhSachTrinhDuyet(unittest.TestCase):
         self.dat_goi({"policies": {"X": 1}})
         self.assertEqual(self.td("go"), "không đổi")
         self.assertFalse(os.path.exists(self.ff))
+
+
+class TenBoxTrongHosts(unittest.TestCase):
+    """Ghi và gỡ dòng <BOX_IP> <BOX_TEN> # onebee-box trong /etc/hosts cho đăng nhập một lần (SSO)."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(TASKS, encoding="utf-8") as f:
+            cls.ds_tac_vu = yaml.safe_load(f)
+        cls.env = jinja2.Environment()
+        cls.env.tests["match"] = lambda val, pat: bool(re.match(pat, str(val)))
+        cls.env.filters["b64decode"] = lambda val: base64.b64decode(val).decode("utf-8")
+        cls.env.filters["regex_findall"] = lambda val, pat: re.findall(pat, str(val))
+
+    def tac_vu_hosts(self, state):
+        kq = []
+        for t in self.ds_tac_vu:
+            li = t.get("ansible.builtin.lineinfile")
+            if isinstance(li, dict) and li.get("path") == "/etc/hosts" and li.get("state", "present") == state:
+                kq.append(t)
+        return kq
+
+    def xet_dieu_kien(self, when_expr, onebee_kn):
+        ds = when_expr if isinstance(when_expr, list) else [when_expr]
+        for dk in ds:
+            if not self.env.compile_expression(str(dk))(onebee_kn=onebee_kn):
+                return False
+        return True
+
+    def doc_onebee_kn(self, env_text):
+        for t in self.ds_tac_vu:
+            sf = t.get("ansible.builtin.set_fact")
+            if isinstance(sf, dict) and "onebee_kn" in sf:
+                b64 = base64.b64encode(env_text.encode("utf-8")).decode("ascii")
+                raw = {"content": b64}
+                stat = type("S", (), {"stat": type("E", (), {"exists": True})()})()
+                kq = self.env.from_string(sf["onebee_kn"]).render(onebee_kn_raw=raw, onebee_kn_env=stat)
+                return yaml.safe_load(kq)
+        self.fail("Không tìm thấy set_fact onebee_kn")
+
+    def chay_lineinfile_hosts(self, dong_hosts, onebee_kn):
+        """Mô phỏng đúng ansible.builtin.lineinfile trên danh sách dòng /etc/hosts; trả về (danh sách dòng mới, changed)."""
+        moi = list(dong_hosts)
+        changed = False
+        for t in self.ds_tac_vu:
+            li = t.get("ansible.builtin.lineinfile")
+            if not (isinstance(li, dict) and li.get("path") == "/etc/hosts"):
+                continue
+            if not self.xet_dieu_kien(t["when"], onebee_kn):
+                continue
+            rx = re.compile(li["regexp"])
+            state = li.get("state", "present")
+            if state == "present":
+                dong_dich = self.env.from_string(li["line"]).render(onebee_kn=onebee_kn)
+                vi_tri = [i for i, d in enumerate(moi) if rx.search(d)]
+                if vi_tri:
+                    idx = vi_tri[-1]
+                    if moi[idx] != dong_dich:
+                        moi[idx] = dong_dich
+                        changed = True
+                else:
+                    moi.append(dong_dich)
+                    changed = True
+            elif state == "absent":
+                loc = [d for d in moi if not rx.search(d)]
+                if len(loc) != len(moi):
+                    moi = loc
+                    changed = True
+        return moi, changed
+
+    def test_co_tac_vu_ghi_va_go_dong_hosts_voi_regexp_dau_nhan_dien(self):
+        ghi = self.tac_vu_hosts("present")
+        go = self.tac_vu_hosts("absent")
+        self.assertEqual(len(ghi), 1, "Cần đúng 1 tác vụ lineinfile ghi /etc/hosts (state=present)")
+        self.assertEqual(len(go), 1, "Cần đúng 1 tác vụ lineinfile gỡ /etc/hosts (state=absent)")
+        li_ghi = ghi[0]["ansible.builtin.lineinfile"]
+        li_go = go[0]["ansible.builtin.lineinfile"]
+        self.assertEqual(li_ghi["line"], "{{ onebee_kn.BOX_IP }} {{ onebee_kn.BOX_TEN }} # onebee-box")
+        for li in (li_ghi, li_go):
+            self.assertIn("# onebee-box", li["regexp"])
+            self.assertRegex("192.168.1.10 box.anphu.onebee.internal # onebee-box", li["regexp"])
+            self.assertNotRegex("127.0.0.1 localhost", li["regexp"])
+            self.assertNotRegex("192.168.1.10 box.anphu.onebee.internal", li["regexp"])
+        dk_ghi = str(ghi[0]["when"])
+        self.assertIn("BOX_TEN", dk_ghi)
+        self.assertIn("BOX_IP", dk_ghi)
+        self.assertIn("^box[.][a-z0-9-]+[.]onebee[.]internal$", dk_ghi)
+
+    def test_bieu_thuc_dieu_kien_chap_nhan_va_tu_choi_ten_va_ip(self):
+        ghi = self.tac_vu_hosts("present")[0]
+        go = self.tac_vu_hosts("absent")[0]
+        for ten_dung in ("box.anphu.onebee.internal", "box.htx-an-phu-01.onebee.internal"):
+            kn = self.doc_onebee_kn(f"BOX_IP=192.168.1.10\nBOX_TEN={ten_dung}\n")
+            self.assertEqual(kn.get("BOX_TEN"), ten_dung)
+            self.assertTrue(self.xet_dieu_kien(ghi["when"], kn), ten_dung)
+            self.assertFalse(self.xet_dieu_kien(go["when"], kn), ten_dung)
+        for ten_sai in ("evil.com", "box.anphu.onebee.internal.evil.com", "Box.ANPHU.onebee.internal", "",
+                        "anphu.onebee.internal", "box..onebee.internal", "box.an_phu.onebee.internal"):
+            kn = {"BOX_IP": "192.168.1.10", "BOX_TEN": ten_sai}
+            self.assertFalse(self.xet_dieu_kien(ghi["when"], kn), f"Phải từ chối BOX_TEN={ten_sai!r}")
+            self.assertTrue(self.xet_dieu_kien(go["when"], kn), f"Phải gỡ khi BOX_TEN={ten_sai!r}")
+        # Thiếu hẳn BOX_TEN
+        self.assertFalse(self.xet_dieu_kien(ghi["when"], {"BOX_IP": "192.168.1.10"}))
+        self.assertTrue(self.xet_dieu_kien(go["when"], {"BOX_IP": "192.168.1.10"}))
+        # BOX_TEN hợp lệ nhưng thiếu hoặc sai BOX_IP
+        for ip_sai in ("", "khong-phai-ip", "192.168.1", "192.168.1.10.5"):
+            kn = {"BOX_IP": ip_sai, "BOX_TEN": "box.anphu.onebee.internal"}
+            self.assertFalse(self.xet_dieu_kien(ghi["when"], kn), f"Phải từ chối BOX_IP={ip_sai!r}")
+            self.assertTrue(self.xet_dieu_kien(go["when"], kn), f"Phải gỡ khi BOX_IP={ip_sai!r}")
+        self.assertFalse(self.xet_dieu_kien(ghi["when"], {"BOX_TEN": "box.anphu.onebee.internal"}))
+        self.assertTrue(self.xet_dieu_kien(go["when"], {"BOX_TEN": "box.anphu.onebee.internal"}))
+
+    def test_ghi_doi_ip_idempotent_va_go_khong_dung_dong_khac(self):
+        goc = ["127.0.0.1 localhost", "127.0.1.1 may-tram-01", "10.0.0.5 may-in.lan # may-in"]
+        kn1 = {"BOX_IP": "192.168.1.10", "BOX_TEN": "box.anphu.onebee.internal"}
+        sau1, doi1 = self.chay_lineinfile_hosts(goc, kn1)
+        self.assertTrue(doi1)
+        self.assertEqual(sau1, [*goc, "192.168.1.10 box.anphu.onebee.internal # onebee-box"])
+        # Chạy lại lần hai không đổi gì (idempotent)
+        sau2, doi2 = self.chay_lineinfile_hosts(sau1, kn1)
+        self.assertFalse(doi2)
+        self.assertEqual(sau2, sau1)
+        # Đổi IP: thay dòng cũ, không thêm dòng thứ hai
+        kn_doi_ip = {"BOX_IP": "192.168.1.99", "BOX_TEN": "box.anphu.onebee.internal"}
+        sau3, doi3 = self.chay_lineinfile_hosts(sau2, kn_doi_ip)
+        self.assertTrue(doi3)
+        self.assertEqual(sau3, [*goc, "192.168.1.99 box.anphu.onebee.internal # onebee-box"])
+        # Thiếu hoặc sai BOX_TEN: gỡ dòng # onebee-box, giữ nguyên mọi dòng khác
+        for kn_go in ({"BOX_IP": "192.168.1.99"}, {"BOX_IP": "192.168.1.99", "BOX_TEN": "evil.com"}):
+            sau_go, doi_go = self.chay_lineinfile_hosts(sau3, kn_go)
+            self.assertTrue(doi_go)
+            self.assertEqual(sau_go, goc)
+            _, doi_go_lan2 = self.chay_lineinfile_hosts(sau_go, kn_go)
+            self.assertFalse(doi_go_lan2)
 
 
 if __name__ == "__main__":
