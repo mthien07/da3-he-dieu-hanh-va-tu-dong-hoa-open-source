@@ -1,0 +1,92 @@
+---
+# Dịch vụ định danh của OneBee Box (Authelia, ADR 0006): một tài khoản cho mọi tuyến lõi, hai lớp cho kỹ thuật và quản lý.
+# Dịch vụ khai trong docker-compose.yml của box-stack; role này sinh cấu hình, tệp người dùng, bí mật rồi mới chạy nó
+# (box-stack không tự chạy dịch vụ này: thiếu tệp gắn vào container thì Docker tạo thư mục rỗng đúng chỗ đó).
+
+- name: Tạo thư mục cấu hình và dữ liệu của dịch vụ định danh
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - {path: "{{ onebee_box_dir }}/authelia", mode: "0750"}
+    - {path: "{{ onebee_box_data }}/authelia", mode: "0700"}   # tệp người dùng (bản băm mật khẩu), ghi danh hai lớp, mã xác minh
+
+- name: Kiểm khóa bí mật của dịch vụ định danh đã có chưa
+  ansible.builtin.stat:
+    path: "{{ onebee_box_secrets }}/{{ item }}"
+  loop: [authelia-session-secret, authelia-storage-key, authelia-jwt-secret]
+  register: onebee_dd_khoa_cu
+
+# Sinh một lần (lookup password ghi tệp 0600 khi chưa có). authelia-storage-key mã hóa ghi danh hai lớp trong CSDL:
+# KHÔNG xoay (mất là mọi người phải ghi danh lại). Chỉ giữ số đếm trong biến, không giữ khóa
+- name: Sinh khóa bí mật của dịch vụ định danh (lần đầu, hoặc sau onebee-box xoay-khoa --box)
+  ansible.builtin.set_fact:
+    onebee_dd_so_khoa: >-
+      {{ [lookup('ansible.builtin.password', onebee_box_secrets ~ '/authelia-session-secret', chars=['ascii_letters', 'digits'], length=64),
+          lookup('ansible.builtin.password', onebee_box_secrets ~ '/authelia-storage-key', chars=['ascii_letters', 'digits'], length=64),
+          lookup('ansible.builtin.password', onebee_box_secrets ~ '/authelia-jwt-secret', chars=['ascii_letters', 'digits'], length=64)]
+         | length }}
+  no_log: true
+
+# Authelia không chạy với danh sách người dùng rỗng → tệp đầu tiên có một tài khoản hệ thống ĐÃ KHÓA, mật khẩu ngẫu nhiên không ai biết
+# (tên bắt đầu bằng "_": lệnh them-nguoi/xoa-nguoi không nhận tên này). Có tệp rồi thì không bao giờ ghi đè (Box quản lý nội dung).
+- name: Tạo tệp người dùng của dịch vụ định danh (chỉ khi chưa có)
+  ansible.builtin.shell: |
+    set -o pipefail
+    bam="$(docker run --rm --network none --entrypoint authelia {{ onebee_box_images.authelia }} \
+      crypto hash generate argon2 --random --random.length 64 | sed -n 's/^Digest: //p')"
+    [ -n "${bam}" ]
+    umask 077
+    printf 'users:\n  _onebee:\n    disabled: true\n    displayname: "%s"\n    password: "%s"\n    groups: []\n' \
+      "OneBee (tài khoản hệ thống, đã khóa)" "${bam}" > {{ onebee_box_data }}/authelia/users_database.yml.moi
+    mv {{ onebee_box_data }}/authelia/users_database.yml.moi {{ onebee_box_data }}/authelia/users_database.yml
+  args:
+    creates: "{{ onebee_box_data }}/authelia/users_database.yml"
+    executable: /bin/bash
+  register: onebee_dd_tep_nguoi_dung
+  retries: 5   # lần đầu phải tải image (mạng chập chờn)
+  delay: 30
+  until: onebee_dd_tep_nguoi_dung.rc == 0
+  no_log: true
+
+- name: Sinh cấu hình dịch vụ định danh
+  ansible.builtin.template:
+    src: configuration.yml.j2
+    dest: "{{ onebee_box_dir }}/authelia/configuration.yml"
+    owner: root
+    group: root
+    mode: "0640"
+  register: onebee_dd_cau_hinh
+
+- name: Cài công cụ sửa tệp người dùng (lệnh onebee-box them-nguoi, xoa-nguoi, danh-sach-nguoi)
+  ansible.builtin.copy:
+    src: onebee-nguoi-dung.py
+    dest: /usr/local/lib/onebee-box/onebee-nguoi-dung.py
+    owner: root
+    group: root
+    mode: "0640"
+
+# Cấu hình hoặc khóa đổi → tạo lại container (khóa sinh lại là tệp mới; phiên đang mở bị hủy — đúng ý của xoay khóa)
+- name: Khởi chạy / cập nhật dịch vụ định danh
+  ansible.builtin.command: >-
+    docker compose up -d --no-deps
+    {{ '--force-recreate' if (onebee_dd_cau_hinh is changed or (onebee_dd_khoa_cu.results | rejectattr('stat.exists') | list)) else '' }}
+    authelia
+  args:
+    chdir: "{{ onebee_box_dir }}"
+  register: onebee_dd_up
+  changed_when: onebee_dd_up.stderr is search('Creat|Recreat|Start|Pull')
+  retries: 5
+  delay: 30
+  until: onebee_dd_up.rc == 0
+
+- name: Chờ dịch vụ định danh sẵn sàng
+  ansible.builtin.command: docker exec onebee-authelia wget -q -O /dev/null http://127.0.0.1:9091/dangnhap/api/health
+  register: onebee_dd_san_sang
+  until: onebee_dd_san_sang.rc == 0
+  retries: 30
+  delay: 2
+  changed_when: false

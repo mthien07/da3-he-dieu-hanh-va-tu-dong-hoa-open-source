@@ -144,5 +144,11 @@ webui() {
   ONEBEE_LOI_DAN=/usr/local/lib/onebee-box/tro-ly-onebee-loi-dan.md ONEBEE_SECRETS="${SECRETS}" \
     python3 /usr/local/lib/onebee-box/onebee-webui.py "$@"
 }
+
+# ---- Đăng nhập một lần (role box-dinh-danh) ----
+NGUOI_DUNG_TEP="${DATA}/authelia/users_database.yml"   # Box quản lý; bộ cài chỉ tạo khi chưa có
+THONG_BAO_TEP="${DATA}/authelia/thong-bao.txt"         # mã xác minh ghi danh hai lớp (notifier filesystem)
+NHOM_NGUOI_DUNG=({{ onebee_box_nhom_nguoi_dung | join(' ') }})
+nguoi_dung_py() { python3 -I /usr/local/lib/onebee-box/onebee-nguoi-dung.py "$@"; }
 AI_PORT="{{ onebee_box_ports.open_webui }}"
 N8N_PORT="{{ onebee_box_ports.n8n }}"
