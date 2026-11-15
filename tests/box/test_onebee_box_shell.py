@@ -384,6 +384,39 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertNotEqual(open(f"{self.t}/secrets/n8n-webhook-key").read(), "wh-cu")
         self.assertTrue(os.path.exists(f"{self.t}/out/bo-cai.log"))                            # đã chạy bộ cài để áp dụng
 
+    def test_xoay_khoa_box_thu_lai_kuma_khi_chua_san_sang_va_dung_khi_sai_mat_khau(self):
+        self.bo_cai_gia()
+        open(f"{self.t}/lib/onebee-kuma.js", "w").write("// gia\n")
+        open(f"{self.t}/secrets/uptime-kuma-da-co-quan-tri", "w").write("1\n")
+        open(f"{self.t}/secrets/uptime-kuma-password", "w").write("kuma-cu")
+        open(f"{self.t}/bin/sleep", "w").write('#!/bin/sh\necho "sleep $*" >> "$ONEBEE_OUT/sleep.log"\n')
+        os.chmod(f"{self.t}/bin/sleep", 0o755)
+        docker_gia = (
+            '#!/bin/bash\necho "docker $*" >> "$ONEBEE_OUT/docker.log"\n'
+            'if [[ " $* " == *" onebee-uptime-kuma "* ]]; then\n'
+            '  n=$(( $(cat "$ONEBEE_OUT/kuma-n" 2>/dev/null || echo 0) + 1 ))\n'
+            '  echo "$n" > "$ONEBEE_OUT/kuma-n"\n'
+            '  [[ -z "${ONEBEE_KUMA_RC:-}" ]] || exit "${ONEBEE_KUMA_RC}"\n'
+            '  [[ "$n" -ge 2 ]] && exit 0 || exit 1\n'
+            'fi\n'
+        )
+        open(f"{self.t}/bin/docker", "w").write(docker_gia)
+        os.chmod(f"{self.t}/bin/docker", 0o755)
+        self.chay("xoay-khoa", "--box", "--dong-y")
+        self.assertEqual(open(f"{self.t}/out/kuma-n").read().strip(), "2")
+        self.assertIn("sleep 5", open(f"{self.t}/out/sleep.log").read())
+        self.assertNotEqual(open(f"{self.t}/secrets/uptime-kuma-password").read(), "kuma-cu")
+        # Mã 3 = sai mật khẩu quản trị → dừng ngay, không thử lại và giữ mật khẩu cũ
+        open(f"{self.t}/secrets/uptime-kuma-password", "w").write("kuma-cu")
+        os.remove(f"{self.t}/out/kuma-n")
+        os.remove(f"{self.t}/out/bo-cai.log")
+        env = dict(self.env, ONEBEE_KUMA_RC="3")
+        r = subprocess.run([self.cmd, "xoay-khoa", "--box", "--dong-y"], capture_output=True, text=True, env=env)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(open(f"{self.t}/out/kuma-n").read().strip(), "1")
+        self.assertEqual(open(f"{self.t}/secrets/uptime-kuma-password").read(), "kuma-cu")
+        self.assertFalse(os.path.exists(f"{self.t}/out/bo-cai.log"))
+
     def bo_cai_gia(self):
         """Bộ cài giả: như Ansible thật, sinh lại khóa gửi tình trạng dùng chung mà xoay-khoa --box vừa xóa."""
         bo_cai = f"{self.t}/bo-cai.sh"

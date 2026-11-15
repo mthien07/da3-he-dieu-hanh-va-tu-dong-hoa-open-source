@@ -10,8 +10,13 @@ Ghi tệp mới cạnh tệp cũ (0600) rồi đổi tên: Authelia (watch: true
 import os
 import sys
 import tempfile
+import time
 
 import yaml
+
+# Authelia (watch: true) bỏ qua sự kiện đổi tệp mới nếu xảy ra trong thời gian cooldown (~1s) sau lần nạp trước.
+# Giữ hai lần thay tệp liên tiếp cách nhau tối thiểu 2s để không rơi người dùng vừa thêm/xóa (vd gọi them-nguoi liên tiếp).
+COOLDOWN_GIAY = 2.0
 
 
 def doc(tep):
@@ -30,9 +35,16 @@ def ghi(tep, d):
             f.flush()
             os.fsync(f.fileno())
         os.chmod(tam, 0o600)
+        try:
+            dt = time.time() - os.stat(tep).st_mtime
+            if 0 <= dt < COOLDOWN_GIAY:
+                time.sleep(COOLDOWN_GIAY - dt)
+        except FileNotFoundError:
+            pass
         os.replace(tam, tep)
     except BaseException:
-        os.unlink(tam)
+        if os.path.exists(tam):
+            os.unlink(tam)
         raise
 
 
