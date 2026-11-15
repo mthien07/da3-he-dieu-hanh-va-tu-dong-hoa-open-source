@@ -10,9 +10,11 @@ Khảo sát chỉ hiện điểm khi tuần có từ 3 phiếu (giữ ẩn danh)
 """
 import csv
 import datetime as dt
+import io
 import json
 import os
 import statistics
+import subprocess
 import sys
 from collections import Counter
 
@@ -29,14 +31,54 @@ PHIEU_TOI_THIEU = 3
 HAN_GAP_GIO = 4
 CA_LAM = [(dt.time(7, 30), dt.time(11, 30)), (dt.time(13, 30), dt.time(17, 0))]
 NGAY_LAM = range(6)  # thứ Hai–thứ Bảy (weekday 0–5)
+BANG_CSDL = {
+    "yeu-cau.csv": (
+        "yeu_cau_ho_tro",
+        "ma, to_char(thoi_gian, 'YYYY-MM-DD HH24:MI'), may, loai, muc_do, nguoi_bao, mo_ta",
+    ),
+    "xu-ly.csv": (
+        "xu_ly_ho_tro",
+        "ma, to_char(thoi_gian, 'YYYY-MM-DD HH24:MI'), cach_xu_ly, so_phut, ghi_chu",
+    ),
+    "khao-sat.csv": (
+        "khao_sat",
+        "to_char(thoi_gian, 'YYYY-MM-DD HH24:MI'), diem_1, diem_2, diem_3, diem_4, diem_5, gop_y",
+    ),
+}
 
 
-def doc_csv(thu_muc, ten):
-    try:
-        with open(os.path.join(thu_muc, ten), newline="", encoding="utf-8") as f:
-            return [r for r in csv.reader(f) if r]
-    except OSError:
-        return []
+def chay_lenh(lenh):
+    return subprocess.run(lenh, capture_output=True, text=True, encoding="utf-8")
+
+
+def doc_bang(nguon, ten):
+    if nguon == "csdl":
+        if ten not in BANG_CSDL:
+            print(f"Lỗi: tên bảng không hợp lệ: {ten}", file=sys.stderr)
+            sys.exit(1)
+        bang, cot = BANG_CSDL[ten]
+        cau_lenh = f"COPY (SELECT {cot} FROM onebee.{bang} ORDER BY nguon NULLS LAST, dong, id) TO STDOUT WITH CSV"
+        lenh = ["docker", "exec", "onebee-postgres", "psql", "-U", "postgres", "-d", "onebee", "-At", "-c", cau_lenh]
+        try:
+            kq = chay_lenh(lenh)
+        except (OSError, subprocess.SubprocessError) as e:
+            print(f"Lỗi khi gọi cơ sở dữ liệu ({bang}): {e}", file=sys.stderr)
+            sys.exit(1)
+        if isinstance(kq, str):
+            luong = io.StringIO(kq)
+        else:
+            if getattr(kq, "returncode", 0) != 0:
+                chi_tiet = (getattr(kq, "stderr", "") or "").strip()
+                print(f"Lỗi khi truy vấn cơ sở dữ liệu ({bang}): {chi_tiet or 'mã thoát khác 0'}", file=sys.stderr)
+                sys.exit(1)
+            luong = io.StringIO(getattr(kq, "stdout", "") or "")
+    else:
+        try:
+            with open(os.path.join(nguon, ten), newline="", encoding="utf-8") as f:
+                luong = io.StringIO(f.read())
+        except OSError:
+            return []
+    return [r for r in csv.reader(luong) if r]
 
 
 def gio(chuoi):
@@ -87,9 +129,9 @@ def bao_cao(thu_muc, ngay, may_tram, bay_gio=None):
     dau = dt.datetime.combine(ngay - dt.timedelta(days=ngay.weekday()), dt.time())
     cuoi = dau + dt.timedelta(days=7)
     # Chỉ in nhãn có sẵn (không in chữ tự do người dùng gõ); mã xử lý phải có trong sổ yêu cầu
-    yeu_cau = [r for r in doc_csv(thu_muc, "yeu-cau.csv") if len(r) >= 5 and gio(r[1])]
+    yeu_cau = [r for r in doc_bang(thu_muc, "yeu-cau.csv") if len(r) >= 5 and gio(r[1])]
     ma_co = {r[0] for r in yeu_cau}
-    moi_lan = [r for r in doc_csv(thu_muc, "xu-ly.csv") if len(r) >= 4 and r[0] in ma_co and gio(r[1])]
+    moi_lan = [r for r in doc_bang(thu_muc, "xu-ly.csv") if len(r) >= 4 and r[0] in ma_co and gio(r[1])]
     lan_xu_ly = [r for r in moi_lan if gio(r[1]) < cuoi]
     xu_ly = {}
     for r in sorted(lan_xu_ly, key=lambda r: gio(r[1])):
@@ -136,7 +178,7 @@ def bao_cao(thu_muc, ngay, may_tram, bay_gio=None):
                    + "; ".join([f"{m} ({loai})" for m, loai in biet]
                                + [f"{n} máy ghi tên khác ({loai})" for loai, n in sorted(la.items())]))
 
-    phieu = [r for r in doc_csv(thu_muc, "khao-sat.csv") if len(r) >= 6 and gio(r[0]) and dau <= gio(r[0]) < cuoi]
+    phieu = [r for r in doc_bang(thu_muc, "khao-sat.csv") if len(r) >= 6 and gio(r[0]) and dau <= gio(r[0]) < cuoi]
     out += ["", "## Khảo sát hài lòng (1–5, ẩn danh)"]
     if not phieu:
         out.append("- Không có phiếu trong tuần.")
