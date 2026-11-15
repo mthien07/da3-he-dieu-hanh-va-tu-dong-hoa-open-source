@@ -1,0 +1,48 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Định danh tập trung (Authelia 4.39.28) và cầu nối JWT sang PostgREST (onebee-cau-noi.py)
+
+- name: Tạo thư mục cấu hình và dữ liệu Authelia
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - {path: "{{ onebee_box_dir }}/authelia", mode: "0750"}
+    - {path: "{{ onebee_box_data }}/authelia", mode: "0700"}
+
+- name: Cài đặt cầu nối danh tính và công cụ quản lý người dùng SSO
+  ansible.builtin.copy:
+    src: onebee-cau-noi.py
+    dest: /usr/local/lib/onebee-box/onebee-cau-noi.py
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Sinh cấu hình Authelia (configuration.yml)
+  ansible.builtin.template:
+    src: authelia-configuration.yml.j2
+    dest: "{{ onebee_box_dir }}/authelia/configuration.yml"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Kiểm tra tệp người dùng SSO (users.yml) đã tồn tại chưa
+  ansible.builtin.stat:
+    path: "{{ onebee_box_data }}/authelia/users.yml"
+  register: onebee_authelia_users
+
+- name: Tạo tài khoản quản trị/quản lý SSO mặc định lần đầu
+  ansible.builtin.command: >-
+    python3 /usr/local/lib/onebee-box/onebee-cau-noi.py them-nguoi
+    {{ onebee_box_data }}/authelia/users.yml quantri quan_ly
+    {{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/sso-quantri-password', chars=['ascii_letters', 'digits'], length=24) }}
+    "Quản trị OneBee"
+  environment:
+    BOX_MA_DON_VI: "{{ onebee_box_ma_don_vi }}"
+  when: not onebee_authelia_users.stat.exists
+  changed_when: true
+  no_log: true

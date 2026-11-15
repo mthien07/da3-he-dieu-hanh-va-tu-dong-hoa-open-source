@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Gọi Ollama bằng thư viện chuẩn: hỏi đáp (đo thời gian chờ chữ đầu, tốc độ) và đọc dung lượng model đang nạp."""
 import json
 import time

@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Docker + Docker Compose từ kho chính thức của Ubuntu (nhận bản vá bảo mật qua unattended-upgrades).
 # Máy đã cài Docker CE (docker-ce từ kho Docker) thì dùng luôn, không cài đè docker.io (2 gói xung đột).
 

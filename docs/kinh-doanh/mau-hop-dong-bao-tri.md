@@ -20,7 +20,7 @@ quy định hiện hành về bảo vệ dữ liệu cá nhân; nhu cầu và kh
 
 ## Điều 2. Phần mềm và giấy phép
 Phần mềm cài đặt là phần mềm nguồn mở và nguồn công bố, giữ nguyên giấy phép của tác giả (danh sách tại `LICENSES.md`).
-Bên B **không bán giấy phép phần mềm**; phí hợp đồng là phí dịch vụ triển khai, đào tạo, bảo trì. n8n dùng theo Sustainable Use
+Bên B **không bán giấy phép phần mềm**; phí hợp đồng là phí dịch vụ triển khai, đào tạo, bảo trì. Node-RED dùng theo Sustainable Use
 License — chỉ cài cho nhu cầu nội bộ của Bên A.
 
 ## Điều 3. Mức dịch vụ (SLA) — đo bằng sổ yêu cầu hỗ trợ trên OneBee Box

@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+// Làm sạch một ô CSV: bỏ \0, thay \r/\n bằng khoảng trắng (không chèn được dòng mới),
+// và nếu ký tự đầu sau các khoảng trắng/ký tự điều khiển đầu chuỗi là =, +, -, @ thì thêm dấu ' ở đầu (chặn CSV formula injection trong Calc/Excel).
+const safe = (v) => {
+  const s = String(v ?? "").replace(/\0/g, "").replace(/[\r\n]+/g, " ");
+  return /^[\s\u0000-\u001f]*[=+\-@]/.test(s) ? "'" + s : s;
+};
+const esc = (v) => '"' + safe(v).replace(/"/g, '""') + '"';
+const dongCsv = (mang) => mang.map(esc).join(",") + "\n";

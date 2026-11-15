@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử phiên bản nhất quán: bộ cài Desktop, bộ cài Box và mục đầu nhật ký thay đổi phải trùng nhau,
 và không thấp hơn tag phát hành mới nhất (nếu không thì workflow phát hành không đính kèm file tải).
 Chạy: python3 -m unittest"""
@@ -11,7 +13,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 GOC = os.path.abspath(os.path.join(HERE, "../.."))
 DESKTOP_VARS = os.path.join(GOC, "desktop/ansible/group_vars/all.yml")
 BOX_VARS = os.path.join(GOC, "box/ansible/group_vars/all.yml")
-CHANGELOG = os.path.join(GOC, "docs/project-changelog.md")
+CHANGELOG = os.path.join(GOC, "CHANGELOG.md")
+DONG_GOI = os.path.join(GOC, "scripts/dong-goi-ban-phat-hanh.sh")
 
 
 def doc(duong_dan):
@@ -57,6 +60,12 @@ class PhienBanNhatQuan(unittest.TestCase):
         self.assertGreaterEqual(
             bo_ba(hien_tai), bo_ba(moi_nhat),
             "Phiên bản trong mã (%s) thấp hơn tag %s: bản phát hành sẽ không có file tải" % (hien_tai, moi_nhat))
+
+    def test_goi_phat_hanh_co_license_va_changelog_goc(self):
+        self.assertTrue(os.path.isfile(CHANGELOG), "Thiếu CHANGELOG.md ở gốc repo")
+        nd_dong_goi = doc(DONG_GOI)
+        for tep in ("LICENSE", "CHANGELOG.md", "CONTRIBUTING.md", "SECURITY.md"):
+            self.assertIn(tep, nd_dong_goi, "scripts/dong-goi-ban-phat-hanh.sh chưa đóng gói %s" % tep)
 
 
 if __name__ == "__main__":

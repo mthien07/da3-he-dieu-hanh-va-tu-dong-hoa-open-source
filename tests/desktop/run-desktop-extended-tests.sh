@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm thử MỞ RỘNG cho OneBee OS Desktop (chạy trên máy có Docker). Mỗi kịch bản 1 container sạch.
 #   1. guards    — chặn đúng: không phải root, có tham số, hệ điều hành không hỗ trợ (Debian 12)
 #   2. mint      — Mint 22.3: chờ khóa dpkg, giữ LC_* sẵn có, cài 2 lần, tự sửa khi cấu hình bị lệch,

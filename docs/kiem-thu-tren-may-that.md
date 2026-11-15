@@ -30,7 +30,7 @@ Hai môi trường — ghi rõ để không lẫn:
 
 Lỗi tìm được và đã sửa trong lần chạy này (chi tiết ở mục "Đã sửa sau khi lập phiếu này"): **N11, N12** (sản phẩm), **T1, T2** (script test). Lỗi mới khi đó: **N13**
 — đã sửa ngày 14/10 cùng N2, N4–N10 (xem cùng mục; các bản sửa này **chưa** chạy lại runner Box đầy đủ).
-Kiểm thêm tay trên Box test (Mac): `n8n --version` = `2.42.6`; log n8n không có `blocked by policy|content-import|X-Forwarded`;
+Kiểm thêm tay trên Box test (Mac): `Node-RED --version` = `2.42.6`; log Node-RED không có `blocked by policy|content-import|X-Forwarded`;
 portal `[ALL] [CAP_NET_BIND_SERVICE] [no-new-privileges:true]`, rest-server `ro=true drop=[ALL]`, mọi dịch vụ `no-new-privileges`; máy thu hồi `kho-02` không còn trong `.htpasswd`.
 
 **Lần chạy runner gốc từ đầu (Mac, 11/10 03:39 → 05:38, ~2 giờ, gồm tải lại ~8 GB image + model):** `tests/box/run-box-test-in-systemd-container.sh` không sửa gì,
@@ -85,7 +85,7 @@ xoay khóa máy trạm (N11, T2 — dòng "Máy trạm nhận mật khẩu + kh�
     ```
   - (c) `playbook: …` không lỗi (cảnh báo "Could not match … may_tram" là bình thường).
   - (d) Từ khóa mới hơn 2.16 (`meta: end_role` chỉ có từ 2.18); biểu thức có `\\` trong Jinja (2.16 và 2.19 xử lý khác: `dong-bo-may-tram.yml:26-31`,
-    `ket-noi-box/tasks/main.yml:22`, `box-stack/tasks/main.yml` khối chép n8n).
+    `ket-noi-box/tasks/main.yml:22`, `box-stack/tasks/main.yml` khối chép Node-RED).
 - [x] **A2.3 Renovate đọc được `renovate.json`** (Pha 5 chưa kiểm) — (a) có `npx`. (b) `npx --yes --package renovate -- renovate-config-validator renovate.json`
   (c) `Config validated successfully`. (d) `renovate.json` (regex manager cho `group_vars/all.yml`).
 
@@ -99,7 +99,7 @@ xoay khóa máy trạm (N11, T2 — dòng "Máy trạm nhận mật khẩu + kh�
 ### A4. Box đầy đủ trong container systemd + Docker lồng (quan trọng nhất)
 - [x] **A4.1 Chạy** — (a) Linux có Docker (cgroup v2, chạy được `--privileged`), **≥ 30 GB trống** (image ~6 GB + model + volume), RAM ≥ 8 GB.
   Biến: `ONEBEE_TEST_EXTRA_CA` (proxy tự ký), `ONEBEE_TEST_MODEL` (mặc định `gemma4:e2b-it-qat`; `gemma3:1b` nhanh hơn, chỉ để thử kết nối),
-  `ONEBEE_TEST_FULL_WEBUI=1` (image Open WebUI đầy đủ thay `-slim`), `ONEBEE_TEST_KEEP=1` (giữ container để xem), `ONEBEE_TEST_MINT_IMAGE`.
+  `ONEBEE_TEST_FULL_WEBUI=1` (image OneBee AI RAG đầy đủ thay `-slim`), `ONEBEE_TEST_KEEP=1` (giữ container để xem), `ONEBEE_TEST_MINT_IMAGE`.
   (b)
   ```bash
   ONEBEE_TEST_KEEP=1 tests/box/run-box-test-in-systemd-container.sh 2>&1 | tee /tmp/box-test.log
@@ -113,22 +113,22 @@ xoay khóa máy trạm (N11, T2 — dòng "Máy trạm nhận mật khẩu + kh�
   docker volume rm onebee-box-test-<PID>-docker onebee-box-test-<PID>-containerd onebee-box-test-<PID>-sao-luu`.
 
 - [x] **A4.2 Những bước MỚI chưa từng chạy** (bản `1.0.0-rc.1` là lần chạy đạt cuối, trước toàn bộ Pha 1–5) — đánh dấu từng bước khi thấy `PASS`:
-  - [x] Cài lần 1/lần 2 `changed=0` với mã đơn vị `kiem-thu`, CA, n8n 2.42.6, digest (lần đầu ansible 2.16 chạy toàn bộ role Box mới).
-  - [x] `verify-box-install.sh`: env n8n (`N8N_DISABLED_MODULES`, `NODES_EXCLUDE` có git, MCP), image có `@sha256`, env Open WebUI = false, cài đặt trong CSDL
+  - [x] Cài lần 1/lần 2 `changed=0` với mã đơn vị `kiem-thu`, CA, Node-RED 2.42.6, digest (lần đầu ansible 2.16 chạy toàn bộ role Box mới).
+  - [x] `verify-box-install.sh`: env Node-RED (`NODE_RED_DISABLED_MODULES`, `NODES_EXCLUDE` có git, MCP), image có `@sha256`, env OneBee AI RAG = false, cài đặt trong CSDL
     (`/api/v1/auths/admin/config`, `/api/v1/users/default/permissions`), `may-da-cap` gắn read-only, 3 mục CA, `in-ca`.
-  - [x] `check-n8n-inside.sh`: `n8n export:workflow --id=onebeeTomTat0001` có `respondWith=text` + thoát `< >`; trang kết quả có CSP `sandbox`, không `allow-same-origin`.
+  - [x] `check-Node-RED-inside.sh`: `Node-RED export:workflow --id=onebeeTomTat0001` có `respondWith=text` + thoát `< >`; trang kết quả có CSP `sandbox`, không `allow-same-origin`.
   - [x] Runner: `them-may` in đủ 11 tên dòng (+ `BOX_HTTPS`); máy Mint có CA đúng vân tay + chính sách Firefox/Chromium.
   - [x] `check-quan-ly-tap-trung.sh`: báo cáo **có chữ ký**; máy chưa cấp `ke-gia` không ghi được file (quy trình 06 dùng `fileSelector`); báo cáo sai chữ ký bị nêu;
     lần đầu ghim khóa SSH sau khi chứng minh, lần 2 không ghim lại; `dong-bo-may` không lộ mật khẩu vào log; thu hồi → cấp lại `kho-02`.
   - [x] `check-khoi-phuc-toan-bo.sh`: máy `tam-01` đã thu hồi không sống lại; CA giữ nguyên sau khôi phục; Box tin CA khôi phục.
   - [x] `check-https.sh` (toàn bộ): chốt chặn `kho-03`, bật, chỉ Caddy công bố cổng, TLS không SNI ở 5 cổng, 308, `/onebee-ca.crt`, cookie Secure, CORS, CSP biểu mẫu qua Caddy,
     `dong-bo-tro-ly` qua HTTPS, máy trạm sao lưu/hoi/báo cáo qua HTTPS, Firefox dấu trang https, chạy lại `changed=0` ở HTTPS, tắt → máy trạm về HTTP.
-  - [x] `check-xoay-khoa.sh` (toàn bộ): mật khẩu kho cũ 401, khóa hoi cũ hết hạn, máy nhận khóa mới; `--box`: quản trị Open WebUI/n8n mới đăng nhập được, cũ bị từ chối, biểu mẫu, `email-thu`.
+  - [x] `check-xoay-khoa.sh` (toàn bộ): mật khẩu kho cũ 401, khóa hoi cũ hết hạn, máy nhận khóa mới; `--box`: quản trị OneBee AI RAG/Node-RED mới đăng nhập được, cũ bị từ chối, biểu mẫu, `email-thu`.
 - [ ] **A4.3 Rủi ro trong chính script test** (FAIL ở đây có thể là lỗi của test, không phải sản phẩm):
-  - *10–11/10 (Mac):* `check-https.sh:55` (CSP trang GET biểu mẫu) **đạt** — n8n có gửi CSP `sandbox` ở trang GET. Gặp thêm 2 lỗi test ngoài danh sách dưới: **T1, T2** (đã sửa).
+  - *10–11/10 (Mac):* `check-https.sh:55` (CSP trang GET biểu mẫu) **đạt** — Node-RED có gửi CSP `sandbox` ở trang GET. Gặp thêm 2 lỗi test ngoài danh sách dưới: **T1, T2** (đã sửa).
     `check-https.sh:53` (CORS) có thể đạt giả nếu curl lỗi — đã sửa 14/10 (N13, `16057f5`): kiểm mã 200 trước rồi mới kiểm header.
   - `check-https.sh:55` đòi CSP `sandbox` ở trang **GET biểu mẫu** `onebee-ho-tro`; Pha 1 mới đối chiếu mã nguồn cho trang **kết quả** (completion). FAIL → kiểm bằng tay
-    `curl -si -u nhanvien:<mk> https://<IP>:5678/form/onebee-ho-tro | grep -i content-security` trên Box: nếu n8n vốn không gửi CSP ở trang GET thì sửa test, không phải Caddy.
+    `curl -si -u nhanvien:<mk> https://<IP>:5678/form/onebee-ho-tro | grep -i content-security` trên Box: nếu Node-RED vốn không gửi CSP ở trang GET thì sửa test, không phải Caddy.
   - ~~`check-https.sh:53` dạng `! curl | grep -q` dưới `pipefail`: curl chết SIGPIPE → `!` thành đúng → bài **đạt giả**~~ — đã sửa (N13, `16057f5`).
     `check-https.sh:73`, `check-quan-ly-tap-trung.sh:44` có `| grep -q`/`| head` sau pipefail — nguy cơ mã 141 như commit `3061a08` (đầu ra nhỏ nên thấp).
   - `check-https.sh:70` FAIL nếu `policies.json` của gói Firefox (được trộn vào `/etc/firefox/policies/policies.json`) có sẵn URL `http://` — container Mint không có Firefox nên không lộ ra; trên Mint thật xem C1.
@@ -149,17 +149,17 @@ Chụp snapshot VM trước mỗi nhóm.
 - [ ] **B2. Lần 2 `changed=0`** — (b) `sudo ./box/onebee-box-install.sh 2>&1 | tail -3` (c) `changed=0 … failed=0`. (d) `grep -B2 'changed:' /var/log/onebee/box-install-*.log | tail -30`;
   hay gặp: mode thư mục `portal` (`ca.yml:69` vs `main.yml`), `Ghi đường dẫn bộ cài` (`main.yml:207`), ghi `ten-da-cap`.
 - [ ] **B3. Nâng cấp từ bản cũ** (Pha 1, 5.0 "test nâng cấp" — chưa làm):
-  - (b) VM sạch: `git checkout 3061a08` (n8n 2.40.7, chưa vá) → cài Box, `them-may ketoan-01`, cài máy trạm, tạo dữ liệu (chat, 1 yêu cầu hỗ trợ, 1 đơn hàng, sao lưu).
+  - (b) VM sạch: `git checkout 3061a08` (Node-RED 2.40.7, chưa vá) → cài Box, `them-may ketoan-01`, cài máy trạm, tạo dữ liệu (chat, 1 yêu cầu hỗ trợ, 1 đơn hàng, sao lưu).
     Rồi `git checkout -- box/ansible/group_vars/all.yml && git checkout claude/confident-gauss-ntiwuc`, khai mã đơn vị, chạy bộ cài. Lặp lại từ `9ac8eee` (Box Pha 2, chưa có CA).
-  - (c) có `/srv/onebee/n8n.truoc-*` (bản chép trước khi đổi image), n8n migration xong, 9 quy trình còn và chạy, dữ liệu Open WebUI còn; CA sinh mới và **tự đẩy** xuống
+  - (c) có `/srv/onebee/Node-RED.truoc-*` (bản chép trước khi đổi image), Node-RED migration xong, 9 quy trình còn và chạy, dữ liệu OneBee AI RAG còn; CA sinh mới và **tự đẩy** xuống
     `ketoan-01` (`/var/lib/onebee/ket-noi-box` = vân tay); lần chạy kế `changed=0`; máy trạm bản desktop cũ vẫn sao lưu/báo tình trạng (ma trận lệch phiên bản).
-  - (d) `box-stack/tasks/main.yml` khối chép n8n (`regex_findall` — [Inference] chưa thử trên 2.16), `box-fleet/tasks/main.yml:72-77`.
-- [ ] **B4. n8n 2.42.6 thật** — (b) `docker exec onebee-n8n n8n --version`; trên Mint `sudo onebee-bao-tinh-trang`; trên Box `ls -l /srv/onebee/tinh-trang-may/`;
-  mở n8n → Executions của quy trình `onebeeTinhTrang1`. (c) `2.42.6`; báo cáo ghi vào `<tên>.json`; tên chưa cấp → execution lỗi "No file(s) found" và không ghi file;
-  `docker logs onebee-n8n 2>&1 | grep -iE 'blocked by policy|content-import|X-Forwarded'` rỗng. (d) `06-nhan-tinh-trang-may-tram.json.j2:54` (`fileSelector`), `box-n8n/tasks/main.yml:61-73`.
-- [ ] **B5. Mật khẩu chủ n8n qua `N8N_INSTANCE_OWNER_MANAGED_BY_ENV`** — (b) `sudo onebee-box xoay-khoa --box --dong-y`, đăng nhập n8n bằng `n8n-owner-password` mới (in-khoa) và thử mật khẩu cũ.
-  (c) mới vào được, cũ bị từ chối. (d) n8n chỉ áp hash lúc chưa có chủ → mật khẩu cũ còn: `docker-compose.yml.j2:149-153`, `onebee-box.sh.j2:355-357`.
-- [ ] **B6. Open WebUI v0.11.4 thật**
+  - (d) `box-stack/tasks/main.yml` khối chép Node-RED (`regex_findall` — [Inference] chưa thử trên 2.16), `box-fleet/tasks/main.yml:72-77`.
+- [ ] **B4. Node-RED 2.42.6 thật** — (b) `docker exec onebee-quy-trinh Node-RED --version`; trên Mint `sudo onebee-bao-tinh-trang`; trên Box `ls -l /srv/onebee/tinh-trang-may/`;
+  mở Node-RED → Executions của quy trình `onebeeTinhTrang1`. (c) `2.42.6`; báo cáo ghi vào `<tên>.json`; tên chưa cấp → execution lỗi "No file(s) found" và không ghi file;
+  `docker logs onebee-quy-trinh 2>&1 | grep -iE 'blocked by policy|content-import|X-Forwarded'` rỗng. (d) `06-nhan-tinh-trang-may-tram.json.j2:54` (`fileSelector`), `box-quy-trinh/tasks/main.yml:61-73`.
+- [ ] **B5. Mật khẩu chủ Node-RED qua `NODE_RED_INSTANCE_OWNER_MANAGED_BY_ENV`** — (b) `sudo onebee-box xoay-khoa --box --dong-y`, đăng nhập Node-RED bằng `Node-RED-owner-password` mới (in-khoa) và thử mật khẩu cũ.
+  (c) mới vào được, cũ bị từ chối. (d) Node-RED chỉ áp hash lúc chưa có chủ → mật khẩu cũ còn: `docker-compose.yml.j2:149-153`, `onebee-box.sh.j2:355-357`.
+- [ ] **B6. OneBee AI RAG v0.11.4 thật**
   - (b) `sudo onebee-box xoay-khoa --box --dong-y` (đổi mật khẩu quản trị qua `POST /api/v1/auths/update/password`, đổi `WEBUI_SECRET_KEY`); trước đó đăng nhập web bằng 1 tài khoản nhân viên
     và để nhân viên có khóa riêng (`hoi --dang-nhap`, C5). Kiểm thêm: Bảng quản trị → Người dùng → mở chat của nhân viên.
   - (c) mật khẩu quản trị mới dùng được/cũ bị từ chối; **mọi phiên web phải đăng nhập lại**; khóa API riêng của nhân viên **vẫn dùng được** (`hoi xin chào`); quản trị không xem/xuất được chat
@@ -171,7 +171,7 @@ Chụp snapshot VM trước mỗi nhóm.
 - [ ] **B8. Caddy trong mạng bridge, bật/tắt HTTPS**
   - (b) chạy `sudo onebee-box dong-bo-may --tat-ca`, đặt `onebee_box_https: true`, chạy bộ cài; rồi trên **chính Box**:
     ```bash
-    IP=<ip-box>; docker port onebee-portal; for c in onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server; do echo "$c: $(docker port $c)"; done
+    IP=<ip-box>; docker port onebee-portal; for c in onebee-ai-rag onebee-quy-trinh onebee-uptime-kuma onebee-rest-server; do echo "$c: $(docker port $c)"; done
     for p in 443 3000 5678 3001 8000; do openssl s_client -connect $IP:$p -noservername -verify_ip $IP -verify_return_error </dev/null 2>&1 | grep -m1 'Verification'; done
     curl -s -o /dev/null -w '%{http_code}\n' http://$IP:3000/ ; curl -sf https://$IP:3000/health; curl -sf https://$IP:5678/healthz
     docker inspect -f '{{.HostConfig.CapDrop}} {{.HostConfig.CapAdd}} {{.HostConfig.SecurityOpt}}' onebee-portal
@@ -180,14 +180,14 @@ Chụp snapshot VM trước mỗi nhóm.
     tắt (`onebee_box_https: false`) → backend có lại cổng, máy trạm `BOX_HTTPS=0`. Chạy lại bộ cài ở mỗi chế độ: `changed=0`.
   - (d) `Caddyfile.j2:13,29,32`; tranh cổng khi chuyển: `box-stack/tasks/main.yml:265` (dừng dịch vụ giữ cổng), `:293-301` (xóa chứng chỉ + restart / reload);
     Caddy không chạy với `cap_drop ALL` + file capability của binary: `docker-compose.yml.j2:33-35`.
-- [ ] **B9. WebSocket/SSE qua Caddy** — (b) Firefox trên Mint: chat có stream ở `:3000`; mở trình soạn n8n `:5678`, chạy tay 1 quy trình; Kuma như B7; DevTools → Network lọc WS.
-  (c) chữ chạy dần, kết quả thực thi n8n hiện ngay, không lỗi WS/CORS. (d) `CORS_ALLOW_ORIGIN` `docker-compose.yml.j2:97`; `N8N_PROXY_HOPS`/`N8N_EDITOR_BASE_URL` `:140-144`.
+- [ ] **B9. WebSocket/SSE qua Caddy** — (b) Firefox trên Mint: chat có stream ở `:3000`; mở trình soạn Node-RED `:5678`, chạy tay 1 quy trình; Kuma như B7; DevTools → Network lọc WS.
+  (c) chữ chạy dần, kết quả thực thi Node-RED hiện ngay, không lỗi WS/CORS. (d) `CORS_ALLOW_ORIGIN` `docker-compose.yml.j2:97`; `NODE_RED_PROXY_HOPS`/`NODE_RED_EDITOR_BASE_URL` `:140-144`.
 - [ ] **B10. Tải lớn / chờ lâu qua Caddy** — (b) trên Mint: `dd if=/dev/urandom of=/home/<nv>/lon.bin bs=1M count=3072 && sudo onebee-sao-luu`;
   `time hoi "viết bản kế hoạch 1500 chữ về sổ sách HTX"`; tóm tắt 1 PDF 20 trang qua biểu mẫu. (c) sao lưu xong không 413/502; hoi trả lời (lưu ý `hoi` tự cắt ở 300 s:
   `ai-cli/files/hoi:233`); trang tóm tắt hiện được. (d) `Caddyfile.j2:68,76,83` (`stream_close_delay`, `max_size 256MB`); không nâng Caddy ≥ 2.11.6 (timeout idle 1 phút).
 - [ ] **B11. CSP biểu mẫu, cookie Secure, CORS bằng trình duyệt** — (b) mở `https://<IP>:5678/form/onebee-ho-tro`, gửi; DevTools → Storage → Cookies của `:3000` và `:5678`;
-  `curl -si -X POST https://<IP>:5678/rest/login -H 'Content-Type: application/json' -d '{"emailOrLdapLoginId":"quantri@onebee.lan","password":"<n8n-owner-password>"}' | grep -i set-cookie`.
-  (c) header `content-security-policy: sandbox …` (không `allow-same-origin`); cookie `token` (Open WebUI) và `n8n-auth` có Secure. (d) `docker-compose.yml.j2:95-97,140-144`; không thêm CSP ở Caddy cho n8n.
+  `curl -si -X POST https://<IP>:5678/rest/login -H 'Content-Type: application/json' -d '{"emailOrLdapLoginId":"quantri@onebee.lan","password":"<Node-RED-owner-password>"}' | grep -i set-cookie`.
+  (c) header `content-security-policy: sandbox …` (không `allow-same-origin`); cookie `token` (OneBee AI RAG) và `Node-RED-auth` có Secure. (d) `docker-compose.yml.j2:95-97,140-144`; không thêm CSP ở Caddy cho Node-RED.
 - [ ] **B12. Hardening container (F11)** — (b)
   ```bash
   docker inspect -f '{{.Name}} restart={{.RestartCount}} ro={{.HostConfig.ReadonlyRootfs}} drop={{.HostConfig.CapDrop}} {{.HostConfig.SecurityOpt}}' $(docker ps -q)
@@ -295,8 +295,8 @@ Chụp snapshot VM trước mỗi nhóm.
   mở bằng Edge/Chrome (kho Windows), Safari, Chrome Android. (c) 9444 vào được, 9443 bị từ chối. Thiết bị nào **không** chặn → ghi vào ADR 0005 mục rủi ro (hiện [Unverified]).
 - [ ] **D3. Laptop kỹ thuật qua Tailscale** — (b) laptop: `/etc/hosts` thêm `<100.x của Box> box.<mã>.onebee.internal`; `firefox -P` tạo hồ sơ `khach-<mã>`, chỉ nhập CA khách đó
   (Cài đặt → Chứng chỉ → Nhập, tin cho trang web); mở `https://box.<mã>.onebee.internal:3000`, `:5678`, `:3001`; thử `https://<100.x>:3000`; thử Box khách khác bằng IP LAN trong hồ sơ này.
-  (c) tên phụ vào được cả 3 dịch vụ (cần B14 khai IP laptop); IP 100.x trần → cảnh báo chứng chỉ (đúng thiết kế); n8n qua tên phụ: ghi lại liên kết/biểu mẫu có trỏ về IP LAN không
-  (`N8N_EDITOR_BASE_URL` = IP). (d) `Caddyfile.j2` tên phụ, `docker-compose.yml.j2:97,142-143`.
+  (c) tên phụ vào được cả 3 dịch vụ (cần B14 khai IP laptop); IP 100.x trần → cảnh báo chứng chỉ (đúng thiết kế); Node-RED qua tên phụ: ghi lại liên kết/biểu mẫu có trỏ về IP LAN không
+  (`NODE_RED_EDITOR_BASE_URL` = IP). (d) `Caddyfile.j2` tên phụ, `docker-compose.yml.j2:97,142-143`.
 
 ---
 
@@ -358,15 +358,15 @@ Hướng dẫn: [truy-cap-tu-xa-khi-cai-may.md](huong-dan/truy-cap-tu-xa-khi-cai
 
 | Việc chưa làm | Lý do ghi trong kế hoạch |
 |---|---|
-| F9: tài khoản biểu mẫu theo phòng/người | Form Trigger chỉ có 1 credential basic-auth; theo người cần `n8nUserAuth` — quyết định thiết kế riêng, liên quan GHSA-3qcw |
-| Siết `N8N_CONTENT_SECURITY_POLICY` | n8n tự đặt CSP sandbox cho biểu mẫu; chưa có bằng chứng cần thêm |
+| F9: tài khoản biểu mẫu theo phòng/người | Form Trigger chỉ có 1 credential basic-auth; theo người cần `Node-REDUserAuth` — quyết định thiết kế riêng, liên quan GHSA-3qcw |
+| Siết `NODE_RED_CONTENT_SECURITY_POLICY` | Node-RED tự đặt CSP sandbox cho biểu mẫu; chưa có bằng chứng cần thêm |
 | `doi-khoa-quan-tri` (xoay khóa SSH quản trị) | cần giai đoạn 2 khóa song song trong `authorized_keys` (dong-bo-may đẩy bằng chính khóa đang xoay) |
 | F13: ký bản phát hành (minisign/cosign) | chưa chọn công cụ và nơi giữ khóa ký |
 | Cờ `ONEBEE_TOI_THIEU` (desktop tối thiểu) | hoãn từ Pha 2 |
-| Snapshot restic tag `truoc-nang-cap` + `--keep-tag` | chỉ có bản chép cục bộ `n8n.truoc-*` (đủ hoàn tác n8n) |
-| Nâng Ollama 0.40, quét image rest-server, tắt thêm mô-đun n8n | cần kế hoạch (lùi bản phải tải lại model) |
+| Snapshot restic tag `truoc-nang-cap` + `--keep-tag` | chỉ có bản chép cục bộ `Node-RED.truoc-*` (đủ hoàn tác Node-RED) |
+| Nâng Ollama 0.40, quét image rest-server, tắt thêm mô-đun Node-RED | cần kế hoạch (lùi bản phải tải lại model) |
 | Bỏ khóa máy `hoi` và khóa tình trạng chung | 2 biến chuyển tiếp mặc định `true` để máy desktop cũ không gãy |
-| Xóa credential `onebeeTram000001` khỏi CSDL n8n | CLI n8n không có lệnh xóa credential — xóa tay trên giao diện |
+| Xóa credential `onebeeTram000001` khỏi CSDL Node-RED | CLI Node-RED không có lệnh xóa credential — xóa tay trên giao diện |
 | `xoay-khoa --box` không xoay Samba, `restic-box`, khóa SSH quản trị | thuộc Pha 5+ |
 | Lệnh `onebee-box doi-ca` | thay bằng biến `onebee_box_xoay_ca` (xem N1) |
 | Kuma `editMonitor`, ghim subnet + `FORWARDED_ALLOW_IPS`, cảnh báo CA trong email quy trình 01 | YAGNI / chưa có bằng chứng cần; cảnh báo CA nằm trong log sao lưu + `trang-thai` |
@@ -420,9 +420,9 @@ Ký hiệu: **XÁC NHẬN** = thấy rõ trong code (đã chạy thử nếu ghi
   - `cai-dat-onebee-box.md:61` + ADR 0005 dòng 16: "gia hạn tự động mỗi đêm" (xem N4). `security-audit.md` 5.8 nêu `doi-khoa-quan-tri`, `doi-ca` — chưa có lệnh này; dòng 42 còn ghi "Pha 2–5 vẫn là kế hoạch".
   - `group_vars/all.yml:119` "hoặc nghi lộ khóa CA" (xem N1).
 
-- **N13 — XÁC NHẬN (Mac, chế độ HTTP): Open WebUI phản chiếu mọi `Origin` kèm `access-control-allow-credentials: true`.**
+- **N13 — XÁC NHẬN (Mac, chế độ HTTP): OneBee AI RAG phản chiếu mọi `Origin` kèm `access-control-allow-credentials: true`.**
   `curl -si http://127.0.0.1:3000/api/config -H 'Origin: https://ke-la.example'` → `access-control-allow-origin: https://ke-la.example` + `allow-credentials: true`.
-  `CORS_ALLOW_ORIGIN` chỉ đặt khi bật HTTPS (`docker-compose.yml.j2:94-97`); ở HTTP Open WebUI dùng mặc định. [Inference] tác động bị giới hạn bởi SameSite của cookie
+  `CORS_ALLOW_ORIGIN` chỉ đặt khi bật HTTPS (`docker-compose.yml.j2:94-97`); ở HTTP OneBee AI RAG dùng mặc định. [Inference] tác động bị giới hạn bởi SameSite của cookie
   (chưa kiểm), nhưng một trang web lạ mở trên máy trạm có thể đọc API bằng phiên đăng nhập nếu cookie được gửi. Đề xuất: đặt `CORS_ALLOW_ORIGIN=http://<IP>:3000` cả ở chế độ HTTP.
   Kèm: `check-https.sh:53` (`! curl … | grep -qi`) đạt giả nếu curl lỗi — nên kiểm mã HTTP trước.
 

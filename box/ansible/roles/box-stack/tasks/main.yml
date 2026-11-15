@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Bộ dịch vụ OneBee Box chạy bằng Docker Compose
 
 # Mã đơn vị, IP, CA riêng — trước mọi thứ khác (chốt onebee_box_ip cho cấu hình sinh bên dưới)
@@ -38,17 +40,17 @@
     - {path: "{{ onebee_box_data }}/caddy/config", mode: "0700"}
     - {path: "{{ onebee_box_data }}"}
     - {path: "{{ onebee_box_data }}/ollama", mode: "0700"}
-    - {path: "{{ onebee_box_data }}/open-webui", mode: "0700"}
-    - {path: "{{ onebee_box_data }}/n8n", owner: "1000", mode: "0700"}  # n8n chạy bằng uid 1000
-    - {path: "{{ onebee_box_data }}/tinh-trang-may", owner: "1000", mode: "0700"}  # máy trạm báo tình trạng (qua n8n)
-    - {path: "{{ onebee_box_data }}/ho-tro", owner: "1000", mode: "0700"}  # sổ yêu cầu hỗ trợ + khảo sát (qua n8n)
+    - {path: "{{ onebee_box_data }}/ai-rag", mode: "0700"}
+    - {path: "{{ onebee_box_data }}/quy-trinh", owner: "1000", mode: "0700"}  # quy-trinh chạy bằng uid 1000
+    - {path: "{{ onebee_box_data }}/tinh-trang-may", owner: "1000", mode: "0700"}  # máy trạm báo tình trạng (qua quy-trinh)
+    - {path: "{{ onebee_box_data }}/ho-tro", owner: "1000", mode: "0700"}  # sổ yêu cầu hỗ trợ + khảo sát (qua quy-trinh)
     - {path: "{{ onebee_box_data }}/uptime-kuma", mode: "0700"}
     - {path: "{{ onebee_box_data }}/restic", mode: "0700"}
-    - {path: "{{ onebee_box_dir }}/n8n-import", owner: "1000", mode: "0700"}
-    - {path: "{{ onebee_box_dir }}/n8n-import/workflows", owner: "1000", mode: "0700"}
+    - {path: "{{ onebee_box_dir }}/quy-trinh-import", owner: "1000", mode: "0700"}
+    - {path: "{{ onebee_box_dir }}/quy-trinh-import/workflows", owner: "1000", mode: "0700"}
 
-# Danh sách máy đã cấp cho n8n đọc (chỉ đọc): root ghi, nhóm 1000 (n8n) đọc. Nội dung do onebee-box dong-bo-ten-may dựng từ bí mật
-- name: Tạo thư mục danh sách máy đã cấp (n8n chỉ đọc)
+# Danh sách máy đã cấp cho quy-trinh đọc (chỉ đọc): root ghi, nhóm 1000 (quy-trinh) đọc. Nội dung do onebee-box dong-bo-ten-may dựng từ bí mật
+- name: Tạo thư mục danh sách máy đã cấp (quy-trinh chỉ đọc)
   ansible.builtin.file:
     path: "{{ onebee_box_data }}/may-da-cap"
     state: directory
@@ -65,19 +67,19 @@
     group: root
     mode: "0600"
 
-- name: Sinh mật khẩu chủ n8n (lần đầu)
+- name: Sinh mật khẩu chủ quy-trinh (lần đầu)
   ansible.builtin.set_fact:
-    onebee_n8n_owner_password: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/n8n-owner-password',
+    onebee_quy-trinh_owner_password: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/quy-trinh-owner-password',
                                    chars=['ascii_letters', 'digits'], length=24) }}"
   no_log: true
 
-- name: Băm mật khẩu chủ n8n bằng bcrypt (lưu 1 lần để .env không đổi mỗi lần chạy)
+- name: Băm mật khẩu chủ quy-trinh bằng bcrypt (lưu 1 lần để .env không đổi mỗi lần chạy)
   ansible.builtin.shell: >-
     set -o pipefail;
-    htpasswd -niBC 10 onebee < {{ onebee_box_secrets }}/n8n-owner-password | cut -d: -f2 | tr -d '\n'
-    > {{ onebee_box_secrets }}/n8n-owner-hash && chmod 600 {{ onebee_box_secrets }}/n8n-owner-hash
+    htpasswd -niBC 10 onebee < {{ onebee_box_secrets }}/quy-trinh-owner-password | cut -d: -f2 | tr -d '\n'
+    > {{ onebee_box_secrets }}/quy-trinh-owner-hash && chmod 600 {{ onebee_box_secrets }}/quy-trinh-owner-hash
   args:
-    creates: "{{ onebee_box_secrets }}/n8n-owner-hash"
+    creates: "{{ onebee_box_secrets }}/quy-trinh-owner-hash"
     executable: /bin/bash
 
 - name: Sinh file .env chứa khóa bí mật
@@ -100,10 +102,10 @@
   ansible.builtin.set_fact:
     onebee_kuma_dia_chi: "{{ '0.0.0.0' if onebee_kuma_xong.stat.exists else '127.0.0.1' }}"
 
-# Nâng cấp n8n chạy migration CSDL SQLite lúc khởi động, không quay lui được → chép nguyên thư mục dữ liệu n8n trước khi
-# đổi image (lúc n8n đã dừng). Hoàn tác: dừng n8n, trả thư mục chép về chỗ cũ, ghim lại image cũ, chạy lại bộ cài.
+# Nâng cấp quy-trinh chạy migration CSDL SQLite lúc khởi động, không quay lui được → chép nguyên thư mục dữ liệu quy-trinh trước khi
+# đổi image (lúc quy-trinh đã dừng). Hoàn tác: dừng quy-trinh, trả thư mục chép về chỗ cũ, ghim lại image cũ, chạy lại bộ cài.
 # Chép vào thư mục .tmp rồi đổi tên: chép dở (ổ đầy, mất điện) không bị coi là bản chép hoàn chỉnh. Tên có dấu thời gian: mỗi lần
-# đổi image có một bản riêng. Không xóa tự động — xóa tay sau khi đã dùng ổn: sudo rm -rf /srv/onebee/n8n.truoc-*
+# đổi image có một bản riêng. Không xóa tự động — xóa tay sau khi đã dùng ổn: sudo rm -rf /srv/onebee/quy-trinh.truoc-*
 - name: Kiểm tra đã có docker-compose.yml của lần cài trước chưa
   ansible.builtin.stat:
     path: "{{ onebee_box_dir }}/docker-compose.yml"
@@ -117,83 +119,83 @@
 
 # regex_findall (không phải regex_search): trả danh sách rỗng khi không khớp, chạy giống nhau trên ansible-core 2.16 (Ubuntu 24.04) và 2.19.
 # Mẫu không dùng dấu gạch chéo ngược (2.16 và 2.19 xử lý chuỗi thoát trong Jinja khác nhau)
-- name: Xác định image n8n đang dùng và image sắp đổi sang
+- name: Xác định image quy-trinh đang dùng và image sắp đổi sang
   ansible.builtin.set_fact:
-    onebee_n8n_anh_cu: >-
-      {{ ((onebee_compose_cu_nd.content | b64decode) | regex_findall('image: ([A-Za-z0-9._/:@-]*n8nio/n8n[A-Za-z0-9._:@-]*)')
+    onebee_quy-trinh_anh_cu: >-
+      {{ ((onebee_compose_cu_nd.content | b64decode) | regex_findall('image: ([A-Za-z0-9._/:@-]*quy-trinhio/quy-trinh[A-Za-z0-9._:@-]*)')
          | first | default('')) if onebee_compose_cu.stat.exists else '' }}
-    onebee_n8n_ban_sao: >-
-      {{ onebee_box_data }}/n8n.truoc-{{ ((onebee_compose_cu_nd.content | b64decode)
-         | regex_findall('n8nio/n8n:([A-Za-z0-9._-]+)') | first | default('khong-ro'))
+    onebee_quy-trinh_ban_sao: >-
+      {{ onebee_box_data }}/quy-trinh.truoc-{{ ((onebee_compose_cu_nd.content | b64decode)
+         | regex_findall('quy-trinhio/quy-trinh:([A-Za-z0-9._-]+)') | first | default('khong-ro'))
          if onebee_compose_cu.stat.exists else 'khong-ro' }}-{{ ansible_facts.date_time.iso8601_basic_short }}
 
-- name: Chép dữ liệu n8n trước khi đổi image
+- name: Chép dữ liệu quy-trinh trước khi đổi image
   when:
-    - onebee_n8n_anh_cu | length > 0
-    - onebee_n8n_anh_cu != onebee_box_images.n8n
+    - onebee_quy-trinh_anh_cu | length > 0
+    - onebee_quy-trinh_anh_cu != onebee_box_images.quy-trinh
   block:
-    # Đủ chỗ trống? (ổ đầy cũng làm hỏng ghi SQLite của Open WebUI, Uptime Kuma và thư mục chung Samba) — kiểm TRƯỚC khi dừng n8n
-    - name: Đo dung lượng dữ liệu n8n và chỗ trống trên ổ dữ liệu
+    # Đủ chỗ trống? (ổ đầy cũng làm hỏng ghi SQLite của Trợ lý AI, Uptime Kuma và thư mục chung Samba) — kiểm TRƯỚC khi dừng quy-trinh
+    - name: Đo dung lượng dữ liệu quy-trinh và chỗ trống trên ổ dữ liệu
       ansible.builtin.shell: |
         set -o pipefail
-        echo "$(du -sk {{ onebee_box_data }}/n8n | cut -f1) $(df --output=avail -k {{ onebee_box_data }} | tail -n 1 | tr -d ' ')"
+        echo "$(du -sk {{ onebee_box_data }}/quy-trinh | cut -f1) $(df --output=avail -k {{ onebee_box_data }} | tail -n 1 | tr -d ' ')"
       args:
         executable: /bin/bash
-      register: onebee_n8n_dung_luong
+      register: onebee_quy-trinh_dung_luong
       changed_when: false
 
-    - name: Dừng bộ cài nếu ổ không đủ chỗ cho bản chép (n8n chưa bị dừng)
+    - name: Dừng bộ cài nếu ổ không đủ chỗ cho bản chép (quy-trinh chưa bị dừng)
       ansible.builtin.assert:
-        that: (onebee_n8n_dung_luong.stdout.split()[1] | int) > (onebee_n8n_dung_luong.stdout.split()[0] | int) * 2 + 1048576
+        that: (onebee_quy-trinh_dung_luong.stdout.split()[1] | int) > (onebee_quy-trinh_dung_luong.stdout.split()[0] | int) * 2 + 1048576
         fail_msg: >-
-          Không đủ chỗ để chép dữ liệu n8n trước khi nâng cấp (dữ liệu {{ onebee_n8n_dung_luong.stdout.split()[0] }} KB,
-          còn trống {{ onebee_n8n_dung_luong.stdout.split()[1] }} KB; cần ít nhất gấp đôi + 1 GB). Dọn ổ rồi chạy lại bộ cài.
+          Không đủ chỗ để chép dữ liệu quy-trinh trước khi nâng cấp (dữ liệu {{ onebee_quy-trinh_dung_luong.stdout.split()[0] }} KB,
+          còn trống {{ onebee_quy-trinh_dung_luong.stdout.split()[1] }} KB; cần ít nhất gấp đôi + 1 GB). Dọn ổ rồi chạy lại bộ cài.
         quiet: true
 
-    - name: Chép dữ liệu n8n (dừng n8n để chép nhất quán; lỗi giữa chừng thì xóa bản dở và bật lại n8n)
+    - name: Chép dữ liệu quy-trinh (dừng quy-trinh để chép nhất quán; lỗi giữa chừng thì xóa bản dở và bật lại quy-trinh)
       block:
-        - name: Dừng n8n
-          ansible.builtin.command: docker compose stop n8n
+        - name: Dừng quy-trinh
+          ansible.builtin.command: docker compose stop quy-trinh
           args:
             chdir: "{{ onebee_box_dir }}"
           changed_when: true
 
-        # Đảm bảo n8n thật sự đã dừng (không chép SQLite đang mở, có WAL)
-        - name: Kiểm tra n8n không còn chạy
-          ansible.builtin.command: docker compose ps --status running -q n8n
+        # Đảm bảo quy-trinh thật sự đã dừng (không chép SQLite đang mở, có WAL)
+        - name: Kiểm tra quy-trinh không còn chạy
+          ansible.builtin.command: docker compose ps --status running -q quy-trinh
           args:
             chdir: "{{ onebee_box_dir }}"
-          register: onebee_n8n_dang_chay
+          register: onebee_quy-trinh_dang_chay
           changed_when: false
-          failed_when: onebee_n8n_dang_chay.stdout | length > 0
+          failed_when: onebee_quy-trinh_dang_chay.stdout | length > 0
 
         - name: Xóa thư mục tạm của lần chép dở trước (nếu có)
           ansible.builtin.file:
-            path: "{{ onebee_n8n_ban_sao }}.tmp"
+            path: "{{ onebee_quy-trinh_ban_sao }}.tmp"
             state: absent
 
-        - name: Chép thư mục dữ liệu n8n sang thư mục tạm (giữ nguyên chủ sở hữu và quyền)
-          ansible.builtin.command: "cp -a {{ onebee_box_data }}/n8n {{ onebee_n8n_ban_sao }}.tmp"
+        - name: Chép thư mục dữ liệu quy-trinh sang thư mục tạm (giữ nguyên chủ sở hữu và quyền)
+          ansible.builtin.command: "cp -a {{ onebee_box_data }}/quy-trinh {{ onebee_quy-trinh_ban_sao }}.tmp"
           changed_when: true
 
         - name: Đổi tên thành bản chép chính thức
-          ansible.builtin.command: "mv {{ onebee_n8n_ban_sao }}.tmp {{ onebee_n8n_ban_sao }}"
+          ansible.builtin.command: "mv {{ onebee_quy-trinh_ban_sao }}.tmp {{ onebee_quy-trinh_ban_sao }}"
           args:
-            creates: "{{ onebee_n8n_ban_sao }}"
+            creates: "{{ onebee_quy-trinh_ban_sao }}"
 
         - name: Báo đã chép
           ansible.builtin.debug:
             msg: >-
-              Đã chép dữ liệu n8n sang {{ onebee_n8n_ban_sao }} trước khi đổi {{ onebee_n8n_anh_cu }} → {{ onebee_box_images.n8n }}.
-              Xóa tay khi đã dùng ổn: sudo rm -rf {{ onebee_box_data }}/n8n.truoc-*
+              Đã chép dữ liệu quy-trinh sang {{ onebee_quy-trinh_ban_sao }} trước khi đổi {{ onebee_quy-trinh_anh_cu }} → {{ onebee_box_images.quy-trinh }}.
+              Xóa tay khi đã dùng ổn: sudo rm -rf {{ onebee_box_data }}/quy-trinh.truoc-*
       rescue:
         - name: Xóa bản chép dở
           ansible.builtin.file:
-            path: "{{ onebee_n8n_ban_sao }}.tmp"
+            path: "{{ onebee_quy-trinh_ban_sao }}.tmp"
             state: absent
 
-        - name: Bật lại n8n (đừng để dịch vụ dừng vì bộ cài lỗi)
-          ansible.builtin.command: docker compose start n8n
+        - name: Bật lại quy-trinh (đừng để dịch vụ dừng vì bộ cài lỗi)
+          ansible.builtin.command: docker compose start quy-trinh
           args:
             chdir: "{{ onebee_box_dir }}"
           changed_when: true
@@ -202,7 +204,7 @@
         - name: Dừng bộ cài, chưa đổi image
           ansible.builtin.fail:
             msg: >-
-              Không chép được dữ liệu n8n trước khi nâng cấp (n8n đã được bật lại, image CHƯA đổi). Kiểm tra ổ đĩa
+              Không chép được dữ liệu quy-trinh trước khi nâng cấp (quy-trinh đã được bật lại, image CHƯA đổi). Kiểm tra ổ đĩa
               ({{ onebee_box_data }}) rồi chạy lại bộ cài.
 
 # Lệnh onebee-box cài TRƯỚC khi sinh cấu hình dịch vụ: bước quyết định HTTPS (https.yml) gọi "onebee-box may-chua-nhan-ca"
@@ -258,6 +260,7 @@
   loop:
     - {src: docker-compose.yml.j2, dest: docker-compose.yml}
     - {src: index.html.j2, dest: portal/site/index.html}
+    - {src: so-dieu-hanh.html.j2, dest: portal/site/so-dieu-hanh/index.html}
     - {src: huong-dan-ca.html.j2, dest: portal/site-http/index.html}
 
 - name: Sinh cấu hình cổng Caddy
@@ -317,7 +320,7 @@
     daemon_reload: true
 
 # Máy đã cấp từ trước (Box nâng cấp) được ghi vào danh sách; Box mới chưa có máy nào thì không đổi gì
-- name: Đồng bộ danh sách máy đã cấp cho n8n
+- name: Đồng bộ danh sách máy đã cấp cho quy-trinh
   ansible.builtin.command: /usr/local/sbin/onebee-box dong-bo-ten-may
   register: onebee_ten_may
   changed_when: onebee_ten_may.stdout is search('đã đổi')
@@ -326,7 +329,7 @@
 # kẻo "port is already allocated".
 # Chỉ làm khi trạng thái HTTPS thật sự đổi (dừng vài chục giây). Image không đổi nên không tải lại gì.
 - name: Chuyển HTTP ↔ HTTPS — dừng các dịch vụ đang giữ cổng
-  ansible.builtin.command: docker compose stop portal open-webui n8n uptime-kuma rest-server
+  ansible.builtin.command: docker compose stop portal ai-rag quy-trinh uptime-kuma rest-server authelia postgres postgrest cau-noi seaweedfs kho-tep
   args:
     chdir: "{{ onebee_box_dir }}"
   when: onebee_https_doi | bool and onebee_compose_cu.stat.exists
@@ -334,7 +337,7 @@
 
 # Dịch vụ backend trước, cổng Caddy (portal) sau: không tranh cổng khi chuyển, và Caddy khởi động khi backend đã có
 - name: Khởi chạy / cập nhật dịch vụ backend
-  ansible.builtin.command: docker compose up -d --remove-orphans --no-deps ollama open-webui n8n uptime-kuma rest-server
+  ansible.builtin.command: docker compose up -d --remove-orphans --no-deps ollama ai-rag quy-trinh uptime-kuma rest-server authelia postgres postgrest cau-noi seaweedfs kho-tep
   args:
     chdir: "{{ onebee_box_dir }}"
   register: onebee_compose_up_be
@@ -381,12 +384,12 @@
     status_code: [200, 302, 401]
   register: onebee_http
   until: onebee_http.status in [200, 302, 401]
-  retries: 120   # n8n lần đầu sau khi nâng cấp chạy migration CSDL — có thể lâu hơn 5 phút
+  retries: 120   # quy-trinh lần đầu sau khi nâng cấp chạy migration CSDL — có thể lâu hơn 5 phút
   delay: 5
   loop:
     - "{{ onebee_box_ports.portal }}"
-    - "{{ onebee_box_ports.open_webui }}"
-    - "{{ onebee_box_ports.n8n }}"
+    - "{{ onebee_box_ports.tro_ly_ai }}"
+    - "{{ onebee_box_ports.quy_trinh }}"
     - "{{ onebee_box_ports.uptime_kuma }}"
   when: not (onebee_https_hieu_luc | bool)
 
@@ -401,8 +404,8 @@
   delay: 5
   loop:
     - {cong: "", noi_dung: "OneBee Box"}
-    - {cong: ":{{ onebee_box_ports.open_webui }}", noi_dung: "Open WebUI"}
-    - {cong: ":{{ onebee_box_ports.n8n }}", noi_dung: "n8n"}
+    - {cong: ":{{ onebee_box_ports.tro_ly_ai }}", noi_dung: "OneBee"}
+    - {cong: ":{{ onebee_box_ports.quy_trinh }}", noi_dung: "Node-RED"}
   loop_control:
     label: "{{ item.cong }}"
   when: onebee_https_hieu_luc | bool
@@ -454,7 +457,7 @@
 - name: Cấu hình Uptime Kuma (tài khoản, theo dõi dịch vụ, email báo)
   ansible.builtin.shell: >-
     set -o pipefail;
-    docker exec -i -w /app -e KUMA_USER -e KUMA_PASS -e KUMA_MONITORS -e KUMA_SMTP -e KUMA_TRUST_PROXY onebee-uptime-kuma
+    docker exec -i -w /app -e KUMA_USER -e KUMA_PASS -e KUMA_MONITORS -e KUMA_SMTP -e KUMA_TRUST_PROXY -e KUMA_TAT_DANG_NHAP onebee-uptime-kuma
     node - < /usr/local/lib/onebee-box/onebee-kuma.js
   args:
     executable: /bin/bash
@@ -464,6 +467,7 @@
     KUMA_MONITORS: "{{ onebee_kuma_monitors | to_json }}"
     KUMA_SMTP: "{{ (onebee_kuma_smtp | to_json) if onebee_box_email.smtp_host else '' }}"
     KUMA_TRUST_PROXY: "{{ '1' if (onebee_https_hieu_luc | bool) else '0' }}"
+    KUMA_TAT_DANG_NHAP: "{{ '1' if (onebee_https_hieu_luc | bool) else '0' }}"
   vars:
     # Theo dõi nội bộ luôn gọi http://<dịch vụ> trong mạng Docker (không phụ thuộc HTTPS); khi bật HTTPS thêm theo dõi cổng Caddy
     # (ignoreTls: trong container Kuma tên "portal" không khớp chứng chỉ của IP Box — chỉ kiểm Caddy còn trả lời)
@@ -472,9 +476,9 @@
       - {name: "Cổng HTTPS (Caddy)", url: "https://portal:443/", ignoreTls: true}
     onebee_kuma_monitors_goc:
       - {name: "Trang giới thiệu", url: "http://portal/"}
-      - {name: "Trợ lý AI (Open WebUI)", url: "http://open-webui:8080/health"}
+      - {name: "Trợ lý AI (Trợ lý AI)", url: "http://ai-rag:8080/health"}
       - {name: "AI chạy tại chỗ (Ollama)", url: "http://ollama:11434/"}
-      - {name: "Tự động hóa (n8n)", url: "http://n8n:5678/healthz"}
+      - {name: "Tự động hóa (quy-trinh)", url: "http://quy-trinh:5678/healthz"}
       - {name: "Kho sao lưu máy trạm", url: "http://rest-server:8000/", accepted_statuscodes: ["401"]}
     onebee_kuma_smtp:
       smtpHost: "{{ onebee_box_email.smtp_host }}"

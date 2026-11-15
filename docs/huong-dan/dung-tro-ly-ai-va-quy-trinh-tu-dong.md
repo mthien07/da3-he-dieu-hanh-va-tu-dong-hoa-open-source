@@ -1,16 +1,16 @@
 # Hướng dẫn dùng Trợ lý AI và quy trình tự động (OneBee Box v0.2)
 
-## 1. Trợ lý AI (Open WebUI)
+## 1. Trợ lý AI (OneBee AI RAG)
 - Mở `http://<ip-box>:3000`. Tài khoản quản trị tạo sẵn: `quantri@onebee.lan`, mật khẩu xem bằng `sudo onebee-box in-khoa`
   (dòng `webui-admin-password`). **Đăng ký tự do đã tắt** — quản trị tạo tài khoản cho nhân viên trong
   Bảng quản trị → Người dùng.
 - **Mỗi nhân viên một tài khoản** (không dùng chung): quản trị tạo trong Bảng quản trị → Người dùng, nhân viên nghỉ việc thì xóa.
-  Bộ cài đặt sẵn (và áp lại mỗi lần chạy, kể cả trên Box đã cài): tài khoản quản trị Open WebUI **không xem được chat của nhân viên và
+  Bộ cài đặt sẵn (và áp lại mỗi lần chạy, kể cả trên Box đã cài): tài khoản quản trị OneBee AI RAG **không xem được chat của nhân viên và
   không xuất được** (tắt `ENABLE_ADMIN_CHAT_ACCESS`, `ENABLE_ADMIN_EXPORT` — đã đối chiếu mã nguồn v0.11.4: chặn xem chat người khác
   qua giao diện/API, xuất toàn bộ chat, tải file CSDL), nhân viên **không chia sẻ chat** cho nhau, không chia sẻ lên cộng đồng, tắt Functions/Tools (mã Python tự thêm), phiên đăng nhập
-  giữ **30 ngày** rồi phải đăng nhập lại. Nên báo trước cho nhân viên đúng phạm vi: đây là chặn trên Open WebUI, **không phải mã hóa** — quản trị vẫn **đặt lại được mật khẩu**
+  giữ **30 ngày** rồi phải đăng nhập lại. Nên báo trước cho nhân viên đúng phạm vi: đây là chặn trên OneBee AI RAG, **không phải mã hóa** — quản trị vẫn **đặt lại được mật khẩu**
   của nhân viên rồi đăng nhập bằng tài khoản đó (đã đối chiếu mã nguồn: `update_user_by_id`; nhân viên sẽ biết vì mật khẩu cũ không còn dùng
-  được), và người có quyền root trên Box vẫn đọc được file dữ liệu (`/srv/onebee/open-webui`) và bản sao lưu của nó; thư mục `/home` trên máy trạm cũng nằm trong bản
+  được), và người có quyền root trên Box vẫn đọc được file dữ liệu (`/srv/onebee/ai-rag`) và bản sao lưu của nó; thư mục `/home` trên máy trạm cũng nằm trong bản
   sao lưu mà quản trị Box đọc được (xem "Quyền riêng tư" trong hướng dẫn cài Box).
   Lệnh `hoi` dùng khóa của **từng nhân viên** (mục 2); khóa theo từng **máy** chỉ còn là giai đoạn chuyển tiếp.
 - **Mở cùng một địa chỉ:** biểu tượng Trợ lý AI trên máy trạm, lệnh `hoi` và các thẻ dịch vụ ở trang chủ Box đều mở `http(s)://<ip-box>:3000`
@@ -46,19 +46,19 @@ hoi --dan-khoa    # tự tạo khóa trên web (Cài đặt → Tài khoản →
 hoi --dang-xuat   # xóa khóa của bạn khỏi máy này
 ```
 Khóa lưu ở `~/.config/onebee/hoi-khoa` (chỉ chính tài khoản Linux đó đọc; máy nhiều người thì mỗi người một khóa). Khóa chỉ gọi được hỏi đáp + danh sách model.
-**Thu hồi**: quản trị xóa tài khoản nhân viên trên Open WebUI → khóa mất hiệu lực (`hoi` báo "đã bị thu hồi").
+**Thu hồi**: quản trị xóa tài khoản nhân viên trên OneBee AI RAG → khóa mất hiệu lực (`hoi` báo "đã bị thu hồi").
 **Chuyển tiếp**: nhân viên chưa thiết lập khóa riêng thì `hoi` tạm dùng khóa chung của máy (`/etc/onebee-hoi.conf`, **mọi tài khoản trên máy đọc được**) kèm nhắc.
 Khi mọi nhân viên đã dùng khóa riêng: đặt `onebee_box_hoi_khoa_may: false` trong `box/ansible/group_vars/all.yml`, chạy lại bộ cài, `sudo onebee-box dong-bo-may --tat-ca`,
 rồi `sudo onebee-box go-khoa-hoi-may` (xóa các tài khoản `may-<tên>@onebee.lan`). Từ đó `them-may` thôi cấp khóa theo máy. Cấu hình địa chỉ ở `/etc/onebee-hoi.conf`;
 mật khẩu sao lưu ở `/etc/onebee/` chỉ root đọc được.
 
-**Đổi mật khẩu quản trị (Trợ lý AI, n8n) trên giao diện web**: ghi mật khẩu mới vào file tương ứng trong
+**Đổi mật khẩu quản trị (Trợ lý AI, Node-RED) trên giao diện web**: ghi mật khẩu mới vào file tương ứng trong
 `/etc/onebee-box/secrets/` (`webui-admin-password`) — nếu không, bộ cài vẫn chạy nhưng báo cảnh báo và không cập nhật được
-"Trợ lý OneBee". Tài khoản chủ n8n do bộ cài quản lý (`N8N_INSTANCE_OWNER_MANAGED_BY_ENV`) — **không đổi mật khẩu chủ
-n8n trên giao diện** (chưa kiểm n8n có đặt lại theo bộ cài hay không); dùng mật khẩu trong `in-khoa`.
+"Trợ lý OneBee". Tài khoản chủ Node-RED do bộ cài quản lý (`NODE_RED_INSTANCE_OWNER_MANAGED_BY_ENV`) — **không đổi mật khẩu chủ
+Node-RED trên giao diện** (chưa kiểm Node-RED có đặt lại theo bộ cài hay không); dùng mật khẩu trong `in-khoa`.
 
-## 3. Quy trình tự động (n8n, `http://<ip-box>:5678`)
-Tài khoản chủ tạo sẵn: `quantri@onebee.lan`, mật khẩu dòng `n8n-owner-password` trong `in-khoa`.
+## 3. Quy trình tự động (Node-RED, `http://<ip-box>:5678`)
+Tài khoản chủ tạo sẵn: `quantri@onebee.lan`, mật khẩu dòng `Node-RED-owner-password` trong `in-khoa`.
 
 | Quy trình | Chạy khi | Kết quả |
 |---|---|---|
@@ -98,6 +98,6 @@ Sửa `onebee_box_lich_han` trong `box/ansible/group_vars/all.yml` rồi chạy 
 - Email đi qua máy chủ thư của đơn vị (ra Internet) và **có chứa dữ liệu kinh doanh** (tên khách, số lượng, số tiền trong
   email tổng hợp đơn hàng). Không gửi văn bản PDF hay câu hỏi AI qua email.
 - Chưa kiểm trên máy thật; kiểm tự động trong container (xem `tests/README.md` — kết quả lần chạy gần nhất ghi trong changelog).
-- Nhập lại quy trình mẫu (khi nâng cấp) sẽ ghi đè chỉnh sửa trên giao diện n8n của các quy trình mẫu — muốn sửa riêng thì
+- Nhập lại quy trình mẫu (khi nâng cấp) sẽ ghi đè chỉnh sửa trên giao diện Node-RED của các quy trình mẫu — muốn sửa riêng thì
   nhân bản quy trình rồi sửa bản sao.
-- n8n tự gọi `api.n8n.io` để tải danh mục máy chủ MCP (thấy trong nhật ký khi test). Chưa rà hết các kết nối ra ngoài khác của n8n.
+- Node-RED tự gọi `api.Node-RED.io` để tải danh mục máy chủ MCP (thấy trong nhật ký khi test). Chưa rà hết các kết nối ra ngoài khác của Node-RED.

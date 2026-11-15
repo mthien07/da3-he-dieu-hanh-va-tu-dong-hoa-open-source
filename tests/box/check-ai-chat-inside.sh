@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra Trợ lý AI thật trên Box: model Gemma nạp vào Ollama → đăng nhập tài khoản quản trị tạo sẵn
 # → "Trợ lý OneBee" có lời dặn tiếng Việt → hỏi 1 câu → nhận câu trả lời tiếng Việt; đăng ký tự do đã tắt.
 set -euo pipefail
@@ -41,7 +43,7 @@ import json, sys
 m = json.load(sys.stdin)
 p, cap = m.get("params") or {}, (m.get("meta") or {}).get("capabilities") or {}
 assert "{{CURRENT_DATE}}" in p.get("system", ""), "lời dặn thiếu ngày hôm nay"
-assert cap.get("builtin_tools") is False, "chưa tắt công cụ có sẵn của Open WebUI"' \
+assert cap.get("builtin_tools") is False, "chưa tắt công cụ có sẵn của OneBee AI RAG"' \
   || { echo "FAIL  Trợ lý OneBee: lời dặn/công cụ chưa đúng"; exit 1; }
 echo "PASS  Trợ lý biết ngày hôm nay; tắt công cụ có sẵn (web trả lời giống lệnh hoi, không gọi nhầm \"tạo lịch\")"
 
@@ -105,7 +107,7 @@ mong = json.load(open("/usr/local/lib/onebee-box/giao-dien-tieng-viet.json"))["v
 vi = i18n.get("vi-VN") or {}
 thieu = [k for k, v in mong.items() if vi.get(k) != v]
 assert not thieu, f"thiếu bản dịch: {thieu[:5]}"' \
-  || { echo "FAIL  Open WebUI chưa có bản dịch giao diện tiếng Việt bổ sung"; exit 1; }
+  || { echo "FAIL  OneBee AI RAG chưa có bản dịch giao diện tiếng Việt bổ sung"; exit 1; }
 echo "PASS  Giao diện Trợ lý có bản dịch tiếng Việt bổ sung (cả trang đăng nhập)"
 
 curl -s -m 30 -X DELETE "${API}/api/v1/users/${id_nv}" -H "Authorization: Bearer ${token}" >/dev/null

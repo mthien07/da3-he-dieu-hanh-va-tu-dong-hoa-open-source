@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# check-rag-prompts.sh — Kiểm thử kho mẫu prompt hành chính NĐ 30 và bộ tri thức RAG Open WebUI
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# check-rag-prompts.sh — Kiểm thử kho mẫu prompt hành chính NĐ 30 và bộ tri thức RAG OneBee AI RAG
 # Chạy độc lập, không cần Docker thật.
 set -euo pipefail
 

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Chấm Trợ lý OneBee: chạy bộ câu hỏi tiếng Việt qua từng model trên Ollama, so với ngưỡng, xuất báo cáo.
 
 Ví dụ (trên OneBee Box, Ollama chạy trong container onebee-ollama):
@@ -51,7 +53,7 @@ def main():
         bo = yaml.safe_load(f)
     with open(a.loi_dan, encoding="utf-8") as f:
         loi_dan = f.read()
-    # Giống Open WebUI: thay biến ngày trong lời dặn (Trợ lý thật nhận ngày hôm nay)
+    # Giống OneBee AI RAG: thay biến ngày trong lời dặn (Trợ lý thật nhận ngày hôm nay)
     hom_nay = time.localtime()
     loi_dan = loi_dan.replace("{{CURRENT_DATE}}", time.strftime("%Y-%m-%d", hom_nay)).replace(
         "{{CURRENT_WEEKDAY}}", time.strftime("%A", hom_nay))

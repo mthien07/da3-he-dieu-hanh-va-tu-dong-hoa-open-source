@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Tiếng Việt: gói ngôn ngữ cho hệ thống/ứng dụng + bộ gõ tiếng Việt mặc định
 
 - name: Cài gói ngôn ngữ tiếng Việt
@@ -16,7 +18,7 @@
   register: onebee_ff_phan_phoi
 
 # Gói tiếng Việt của Firefox (firefox-locale-vi) chỉ nạp được vào ĐÚNG phiên bản Firefox của nó, mà kho chỉ giữ bản mới nhất. Máy cài từ ISO
-# còn Firefox cũ → Firefox chạy tiếng Anh tới lần tự cập nhật đầu, và Trợ lý AI (Open WebUI) chọn ngôn ngữ theo trình duyệt ở lần mở đầu
+# còn Firefox cũ → Firefox chạy tiếng Anh tới lần tự cập nhật đầu, và Trợ lý AI (OneBee AI RAG) chọn ngôn ngữ theo trình duyệt ở lần mở đầu
 # rồi ghi nhớ luôn tiếng Anh. Nâng Firefox cùng gói tiếng Việt lên bản mới nhất để hai bản khớp nhau ngay khi cài.
 - name: Nâng Firefox cùng gói tiếng Việt cho khớp phiên bản
   ansible.builtin.apt:  # noqa: package-latest — cố ý: hai gói phải cùng phiên bản, kho chỉ có bản mới nhất

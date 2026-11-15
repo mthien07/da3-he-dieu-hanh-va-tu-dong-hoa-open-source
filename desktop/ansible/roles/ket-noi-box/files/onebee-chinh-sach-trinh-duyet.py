@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Cài / gỡ CA của OneBee Box vào trình duyệt (Firefox, Chromium, Chrome) bằng chính sách doanh nghiệp (rà soát bảo mật F3).
 Cách dùng: onebee-chinh-sach-trinh-duyet.py cai <file-pem-CA> [--https <IP-Box>] | go
  - Firefox: chính sách Certificates.Install ghi vào /etc/firefox/policies/policies.json. File ở /etc THAY THẾ file
@@ -72,7 +74,7 @@ def rang_buoc(file_pem):
     return cidr, dns
 
 
-DICH_VU = [("Trợ lý AI", 3000, ""), ("Tự động hóa (n8n)", 5678, ""), ("Giám sát", 3001, ""),
+DICH_VU = [("Trợ lý AI", 3000, ""), ("Tự động hóa (Node-RED)", 5678, ""), ("Giám sát", 3001, ""),
            ("Báo cần hỗ trợ", 5678, "form/onebee-ho-tro"), ("Nhập đơn hàng", 5678, "form/onebee-don-hang")]
 
 

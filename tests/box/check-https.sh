@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra bật/tắt HTTPS (rà soát bảo mật F3, Pha 4) trên máy test, SAU khi Box và máy trạm ketoan-01 đã chạy ở chế độ HTTP:
 # chốt chặn máy chưa nhận CA → bật HTTPS → Caddy là nơi duy nhất công bố cổng, TLS đúng CA riêng, http:// bị chuyển 308, cookie Secure, CORS,
-# CSP sandbox của biểu mẫu n8n còn nguyên, máy trạm sao lưu/hỏi AI/báo tình trạng qua HTTPS → tắt HTTPS lại về HTTP.
+# CSP sandbox của biểu mẫu Node-RED còn nguyên, máy trạm sao lưu/hỏi AI/báo tình trạng qua HTTPS → tắt HTTPS lại về HTTP.
 # Cách dùng: check-https.sh <container-Box> <container-máy-trạm>   (chưa chạy trên máy tác giả — cần Docker lồng, xem tests/README.md)
 set -euo pipefail
 BOX="$1"; CLIENT="$2"
@@ -28,7 +30,7 @@ box "for m in kho-02 kho-03; do onebee-box thu-hoi-may \$m --dong-y >/dev/null 2
   [ \"\$(cat /etc/onebee-box/secrets/ca-da-dong-bo/ketoan-01)\" = \"\$(cat /etc/onebee-box/secrets/ca/root.sha256)\" ]"
 cai bat-https
 box "[ -e /etc/onebee-box/secrets/https-da-bat ] || { echo 'FAIL  Chưa có dấu HTTPS'; exit 1; }
-  for c in onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server onebee-ollama; do
+  for c in onebee-ai-rag onebee-quy-trinh onebee-uptime-kuma onebee-rest-server onebee-ollama; do
     [ -z \"\$(docker port \$c)\" ] || { echo \"FAIL  \$c còn công bố cổng: \$(docker port \$c)\"; exit 1; }
   done
   p=\$(docker port onebee-portal | awk '{print \$1}' | sort | tr '\n' ' ')
@@ -49,7 +51,7 @@ box "[ -e /etc/onebee-box/secrets/https-da-bat ] || { echo 'FAIL  Chưa có dấ
 box "pw=\$(cat /etc/onebee-box/secrets/webui-admin-password)
   hdr=\$(curl -si -m 20 -X POST https://${IP}:3000/api/v1/auths/signin -H 'Content-Type: application/json' \
     -d \"{\\\"email\\\":\\\"quantri@onebee.lan\\\",\\\"password\\\":\\\"\${pw}\\\"}\")
-  grep -i '^set-cookie:' <<<\"\${hdr}\" | grep -qi 'secure' || { echo 'FAIL  Cookie đăng nhập Open WebUI thiếu cờ Secure'; echo \"\${hdr}\" | head -20; exit 1; }
+  grep -i '^set-cookie:' <<<\"\${hdr}\" | grep -qi 'secure' || { echo 'FAIL  Cookie đăng nhập OneBee AI RAG thiếu cờ Secure'; echo \"\${hdr}\" | head -20; exit 1; }
   # Gọi được API trước rồi mới kiểm header (dạng cũ \"! curl | grep\" đạt giả khi curl lỗi/timeout/TLS hỏng)
   res=\$(curl -si -m 10 https://${IP}:3000/api/config -H 'Origin: https://ke-la.example') || { echo 'FAIL  Không gọi được /api/config qua HTTPS'; exit 1; }
   grep -q '^HTTP/[0-9.]* 200' <<<\"\${res}\" || { echo 'FAIL  /api/config qua HTTPS không trả 200'; head -5 <<<\"\${res}\"; exit 1; }
@@ -67,8 +69,8 @@ box "pw=\$(cat /etc/onebee-box/secrets/webui-admin-password)
   [ \"\${ma_hop_le}\" = 101 ] || { echo \"FAIL  WebSocket với Origin hợp lệ không được nhận (mã: \${ma_hop_le:-không phản hồi})\"; exit 1; }
   grep -Eq '^[0-9]{3}\$' <<<\"\${ma_la}\" && [ \"\${ma_la}\" != 101 ] || { echo \"FAIL  WebSocket với Origin lạ không bị từ chối (mã: \${ma_la:-không phản hồi})\"; exit 1; }
   curl -si -m 10 https://${IP}:5678/form/onebee-ho-tro -u nhanvien:\"\$(cat /etc/onebee-box/secrets/bieu-mau-nhanvien)\" | grep -i '^content-security-policy:' | grep -qi sandbox \
-    || { echo 'FAIL  Biểu mẫu n8n mất CSP sandbox khi đi qua Caddy'; exit 1; }
-  echo 'PASS  Cookie đăng nhập Open WebUI có Secure; Origin lạ không được CORS, Origin hợp lệ được CORS + WebSocket (101), Origin lạ bị từ chối WebSocket; biểu mẫu n8n vẫn có CSP sandbox'
+    || { echo 'FAIL  Biểu mẫu Node-RED mất CSP sandbox khi đi qua Caddy'; exit 1; }
+  echo 'PASS  Cookie đăng nhập OneBee AI RAG có Secure; Origin lạ không được CORS, Origin hợp lệ được CORS + WebSocket (101), Origin lạ bị từ chối WebSocket; biểu mẫu Node-RED vẫn có CSP sandbox'
   onebee-box dong-bo-tro-ly >/dev/null
   echo 'PASS  onebee-box dong-bo-tro-ly chạy được qua HTTPS (Box tin CA của chính nó)'"
 

@@ -1,7 +1,17 @@
 ---
-# Trợ lý AI: tải model Gemma, cài công cụ quản lý Open WebUI, tạo/cập nhật "Trợ lý OneBee" (lời dặn tiếng Việt)
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Trợ lý AI & RAG trên lõi DX-OS: tải model Gemma 4, cài dịch vụ onebee-ai-rag.py (MIT), nạp kho mẫu NĐ 30 và tri thức pháp lý
 
-- name: Cài lời dặn và công cụ quản lý Open WebUI
+- name: Tạo thư mục dữ liệu cho dịch vụ AI RAG
+  ansible.builtin.file:
+    path: "{{ onebee_box_data }}/ai-rag"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Cài lời dặn và dịch vụ Trợ lý AI & RAG (onebee-ai-rag.py)
   ansible.builtin.copy:
     src: "{{ item.src }}"
     dest: "/usr/local/lib/onebee-box/{{ item.src }}"
@@ -11,12 +21,10 @@
   loop:
     - {src: tro-ly-onebee-loi-dan.md, mode: "0644"}
     - {src: goi-y.json, mode: "0644"}
-    - {src: giao-dien-tieng-viet.json, mode: "0644"}
-    - {src: onebee-webui.py, mode: "0750"}
+    - {src: onebee-ai-rag.py, mode: "0755"}
 
 - name: Cài đặt kho mẫu prompt hành chính và tri thức RAG
   ansible.builtin.copy:
-    # "/" cuối: chép nội dung thư mục vào đúng chỗ onebee-webui.py đọc (thiếu thì thành prompts/prompts/*.json)
     src: "{{ item.src }}/"
     dest: "/usr/local/lib/onebee-box/{{ item.dest }}/"
     owner: root
@@ -45,21 +53,11 @@
   when: item not in onebee_ollama_list.stdout
   changed_when: true
   register: onebee_ollama_pull
-  # Model vài GB; mạng chập chờn → thử lại (Ollama giữ phần đã tải)
   retries: 5
   delay: 30
   until: onebee_ollama_pull.rc == 0
 
-- name: Tạo / cập nhật Trợ lý OneBee + cài đặt bảo mật trong Open WebUI
+- name: Đồng bộ Trợ lý OneBee, kho mẫu NĐ 30 và bộ tri thức RAG
   ansible.builtin.command: /usr/local/sbin/onebee-box dong-bo-tro-ly
   register: onebee_tro_ly
   changed_when: onebee_tro_ly.stdout is search('đã tạo|đã cập nhật')
-  retries: 12
-  delay: 10
-  until: onebee_tro_ly.rc != 1         # 1 = Open WebUI chưa sẵn sàng → thử lại
-  failed_when: onebee_tro_ly.rc not in [0, 3]
-
-- name: Cảnh báo sai mật khẩu quản trị Open WebUI (các phần khác vẫn cài tiếp)
-  ansible.builtin.debug:
-    msg: "{{ onebee_tro_ly.stderr }}"
-  when: onebee_tro_ly.rc == 3

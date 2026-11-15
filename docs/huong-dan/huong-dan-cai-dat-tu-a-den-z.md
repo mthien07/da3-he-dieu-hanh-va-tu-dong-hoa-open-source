@@ -32,7 +32,7 @@ flowchart LR
         subgraph BOX["🗄️ OneBee Box — 1 máy, bật suốt ngày đêm, IP cố định"]
             direction TB
             AI["🤖 Trợ lý AI tiếng Việt<br/>chạy tại chỗ :3000"]
-            N8N["⚙️ Tự động hóa, email :5678"]
+            NODE_RED["⚙️ Tự động hóa, email :5678"]
             KUMA["📈 Giám sát :3001"]
             SMB["📁 Thư mục chung"]
             KHO["🔒 Kho sao lưu máy trạm :8000"]
@@ -179,7 +179,7 @@ sudo onebee-box in-khoa
 ```
 Lệnh in ra các mật khẩu, trong đó:
 - `webui-admin-password`: mật khẩu **Trợ lý AI**.
-- `n8n-owner-password`: mật khẩu **Tự động hóa**.
+- `Node-RED-owner-password`: mật khẩu **Tự động hóa**.
 - `uptime-kuma-password`: mật khẩu **Giám sát**.
 
 Tài khoản đăng nhập Trợ lý AI và Tự động hóa là `quantri@onebee.lan`, còn Giám sát là `quantri`.
@@ -189,7 +189,7 @@ Từ một máy khác cùng mạng, mở trình duyệt vào `http://<ip-box>/`.
 | Dịch vụ | Địa chỉ | Dùng để |
 |---|---|---|
 | Trợ lý AI | `http://<ip-box>:3000` | Hỏi đáp, soạn văn bản bằng tiếng Việt |
-| Tự động hóa (n8n) | `http://<ip-box>:5678` | Email báo cáo, nhắc hạn thuế/BHXH, đơn hàng, sổ hỗ trợ |
+| Tự động hóa (Node-RED) | `http://<ip-box>:5678` | Email báo cáo, nhắc hạn thuế/BHXH, đơn hàng, sổ hỗ trợ |
 | Giám sát | `http://<ip-box>:3001` | Xem dịch vụ nào đang ngừng |
 | Thư mục chung | `smb://<ip-box>/chung` | Chia sẻ file trong đơn vị (tài khoản `onebee`, mật khẩu: `sudo cat /etc/onebee-box/secrets/samba-onebee`) |
 
@@ -205,7 +205,7 @@ flowchart LR
     end
     subgraph BX["🗄️ OneBee Box"]
         K["Kho sao lưu máy trạm<br/>🔒 chỉ-thêm: máy trạm KHÔNG xóa được bản cũ<br/>→ chống mã độc tống tiền"]
-        D["Dữ liệu của Box<br/>Trợ lý AI, n8n, thư mục chung,<br/>sổ hỗ trợ, khóa bí mật"]
+        D["Dữ liệu của Box<br/>Trợ lý AI, Node-RED, thư mục chung,<br/>sổ hỗ trợ, khóa bí mật"]
     end
     O[("💽 Ổ sao lưu ngoài<br/>🔒 mã hóa")]
     G["📄 Tờ in-khoa<br/>cất két"]

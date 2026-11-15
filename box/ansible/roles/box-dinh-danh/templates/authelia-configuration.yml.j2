@@ -1,0 +1,94 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Cấu hình Authelia 4.39.28 cho OneBee Box (QĐ1, QĐ2, QĐ3, QĐ7 — ADR 0006)
+{% set ten_mien = 'box.' ~ onebee_box_ma_don_vi ~ '.onebee.internal' %}
+{% set chinh_sach_quan_tri = 'one_factor' if (onebee_box_che_do_demo | default(false) | bool) else 'two_factor' %}
+server:
+  address: 'tcp://:9091/dangnhap'
+
+log:
+  level: info
+
+totp:
+  issuer: 'OneBee Box ({{ onebee_box_ma_don_vi }})'
+  period: 30
+  skew: 1
+
+authentication_backend:
+  file:
+    path: /data/users.yml
+    watch: true
+    password:
+      algorithm: argon2
+      argon2:
+        variant: argon2id
+        iterations: 3
+        memory: 65536
+        parallelism: 4
+        key_length: 32
+        salt_length: 16
+
+access_control:
+  default_policy: deny
+  rules:
+    - domain: '{{ ten_mien }}'
+      resources:
+        - '^/giam-sat(/.*)?$'
+        - '^/quy-trinh(/.*)?$'
+      subject:
+        - 'group:ky_thuat'
+      policy: {{ chinh_sach_quan_tri }}
+    - domain: '{{ ten_mien }}'
+      resources:
+        - '^/api(/.*)?$'
+        - '^/files(/.*)?$'
+        - '^/ai(/.*)?$'
+        - '^/so-dieu-hanh(/.*)?$'
+        - '^/webhook/onebee-phe-duyet$'
+      subject:
+        - 'group:ky_thuat'
+        - 'group:quan_ly'
+      policy: {{ chinh_sach_quan_tri }}
+    - domain: '{{ ten_mien }}'
+      resources:
+        - '^/api(/.*)?$'
+        - '^/files(/.*)?$'
+        - '^/ai(/.*)?$'
+        - '^/so-dieu-hanh(/.*)?$'
+      subject:
+        - 'group:nhan_vien'
+      policy: one_factor
+
+session:
+  name: authelia_session
+  same_site: lax
+  inactivity: 1h
+  expiration: 8h
+  remember_me: 7d
+  cookies:
+    - domain: '{{ ten_mien }}'
+      authelia_url: 'https://{{ ten_mien }}/dangnhap'
+      default_redirection_url: 'https://{{ ten_mien }}/so-dieu-hanh/'
+
+regulation:
+  max_retries: 5
+  find_time: 2m
+  ban_time: 5m
+
+storage:
+  local:
+    path: /data/db.sqlite3
+
+notifier:
+  disable_startup_check: false
+{% if onebee_box_email.smtp_host %}
+  smtp:
+    address: 'smtp://{{ onebee_box_email.smtp_host }}:{{ onebee_box_email.smtp_port }}'
+    username: '{{ onebee_box_email.smtp_user }}'
+    sender: '{{ onebee_box_email.gui_tu }}'
+    subject: '[OneBee Box] {title}'
+{% else %}
+  filesystem:
+    filename: /data/thong-bao.txt
+{% endif %}

@@ -1,0 +1,46 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Dữ liệu cấu trúc (PostgreSQL 18 + pgvector) và API tự sinh (PostgREST 16.5)
+
+- name: Tạo thư mục dữ liệu PostgreSQL và khởi tạo lược đồ
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.owner | default('root') }}"
+    mode: "{{ item.mode | default('0750') }}"
+  loop:
+    - {path: "{{ onebee_box_data }}/postgres", owner: "999", mode: "0700"}
+    - {path: "{{ onebee_box_dir }}/db-init", mode: "0755"}
+
+- name: Chép lược đồ SQL lõi DX-OS và công cụ chuyển dữ liệu
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - {src: 01-luoc-do-dxos.sql, dest: "{{ onebee_box_dir }}/db-init/01-luoc-do-dxos.sql", mode: "0644"}
+    - {src: 01-luoc-do-dxos.sql, dest: "/usr/local/lib/onebee-box/01-luoc-do-dxos.sql", mode: "0644"}
+    - {src: onebee-chuyen-du-lieu.py, dest: "/usr/local/lib/onebee-box/onebee-chuyen-du-lieu.py", mode: "0755"}
+
+- name: Chờ PostgreSQL sẵn sàng nhận kết nối
+  ansible.builtin.command: docker exec onebee-postgres pg_isready -U postgres -d onebee
+  register: onebee_pg_ready
+  until: onebee_pg_ready.rc == 0
+  retries: 30
+  delay: 2
+  changed_when: false
+
+- name: Áp dụng lược đồ SQL lõi DX-OS và mật khẩu authenticator (lũy đẳng)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    docker exec -i onebee-postgres psql -v ON_ERROR_STOP=1 -U postgres -d onebee < /usr/local/lib/onebee-box/01-luoc-do-dxos.sql >/dev/null
+    pw="$(cat {{ onebee_box_secrets }}/postgres-authenticator-password)"
+    docker exec -i onebee-postgres psql -v ON_ERROR_STOP=1 -U postgres -d onebee -c "ALTER ROLE authenticator WITH LOGIN PASSWORD '${pw}';" >/dev/null
+  args:
+    executable: /bin/bash
+  changed_when: false
+  no_log: true

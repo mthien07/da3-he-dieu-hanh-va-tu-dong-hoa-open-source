@@ -24,14 +24,14 @@ Máy trạm gửi mỗi giờ: tên, IP, phiên bản, số gói chờ cập nh�
 lần sao lưu cuối, số tài khoản có quyền sudo. **Không gửi** tên file, nội dung, lịch sử dùng máy. Gửi ngay trên máy trạm: `sudo onebee-bao-tinh-trang`.
 
 **Nâng cấp theo thứ tự: Box trước, máy trạm sau.** Box mới nhận được cả báo cáo cũ lẫn mới. Máy trạm đã nâng cấp mà Box còn bản cũ thì quy trình
-n8n cũ bỏ hết trường của báo cáo mới (Box không biết địa chỉ máy, bảng tình trạng trống).
+Node-RED cũ bỏ hết trường của báo cáo mới (Box không biết địa chỉ máy, bảng tình trạng trống).
 
 **Báo cáo có chữ ký.** Mỗi báo cáo được ký (HMAC-SHA256) bằng khóa suy từ mật khẩu kho sao lưu của máy — mật khẩu này chưa từng đi qua
-mạng. n8n (nơi nhận) không giữ khóa nên không giả được; Box tự kiểm chữ ký khi in bảng. Báo cáo sai chữ ký được nêu rõ ("giả mạo, hoặc mật
+mạng. Node-RED (nơi nhận) không giữ khóa nên không giả được; Box tự kiểm chữ ký khi in bảng. Báo cáo sai chữ ký được nêu rõ ("giả mạo, hoặc mật
 khẩu sao lưu trên máy khác với Box"); báo cáo chưa ký (máy chạy mã cũ) hiện cảnh báo "chạy lại bộ cài OneBee OS trên máy" và **không** được
 dùng để chọn địa chỉ SSH máy chưa ghim (máy đã ghim vẫn dùng được: khóa SSH lệch thì dừng). Chữ ký đúng nhưng giờ ký lệch giờ Box quá 10 phút
 → cảnh báo "đồng hồ máy sai hoặc báo cáo cũ bị gửi lại" (kiểm tra giờ/NTP của máy). Chống phát lại có giới hạn: qua đường bình thường chỉ phát lại
-được trong ±10 phút; n8n bị chiếm có thể phát lại báo cáo đã ký cũ nhưng địa chỉ nằm trong phần đã ký, cộng khóa SSH đã ghim và bước chứng
+được trong ±10 phút; Node-RED bị chiếm có thể phát lại báo cáo đã ký cũ nhưng địa chỉ nằm trong phần đã ký, cộng khóa SSH đã ghim và bước chứng
 minh, nên không lái được SSH tới máy lạ. Box chỉ nhận báo cáo của máy **đã cấp** (`them-may`), máy đã thu hồi hoặc tên lạ bị bỏ.
 
 ## 2. Cập nhật phần mềm máy trạm
@@ -68,11 +68,11 @@ sudo onebee-box thu-hoi-may ketoan-01      # mất máy, nhân viên nghỉ, ngh
 `xoay-khoa` dùng khi nghi lộ khóa, sau khi bật HTTPS (mật khẩu đã đi qua mạng dạng rõ vẫn còn hiệu lực), hoặc định kỳ. `--may/--tat-ca` đổi mật khẩu kho HTTP
 (htpasswd) + khóa `hoi` theo máy rồi chạy `dong-bo-may`; máy tắt thì mất quyền sao lưu tới khi bật lên và `dong-bo-may <tên>` — lệnh vẫn chạy hết và in cảnh báo
 riêng cho từng máy chưa nhận ("Máy trạm <tên> hiện đang tắt … cần chạy: sudo onebee-box dong-bo-may <tên>"). `--box` đổi mật khẩu quản trị Trợ lý AI và giám sát
-(trong dịch vụ), mật khẩu chủ n8n, mật khẩu biểu mẫu `nhanvien`/`kythuat`, khóa webhook n8n, `WEBUI_SECRET_KEY` (mọi phiên Open WebUI phải đăng nhập lại) rồi **chạy lại bộ cài ngay**
+(trong dịch vụ), mật khẩu chủ Node-RED, mật khẩu biểu mẫu `nhanvien`/`kythuat`, khóa webhook Node-RED, `WEBUI_SECRET_KEY` (mọi phiên OneBee AI RAG phải đăng nhập lại) rồi **chạy lại bộ cài ngay**
 để áp dụng — ghi lại mật khẩu mới bằng `sudo onebee-box in-khoa`. Khi khóa gửi tình trạng dùng chung còn bật, `--box` đổi cả khóa này và **tự đẩy xuống mọi máy**
-(như `dong-bo-may --tat-ca`) ngay sau bộ cài. `xoay-khoa` không chạy chồng với sao lưu (đang sao lưu thì báo "thử lại sau"). **Không xoay** `RESTIC_PASSWORD` (chưa từng đi qua mạng; đổi là mất bản sao lưu cũ) và `N8N_ENCRYPTION_KEY`
-(đổi là mất thông tin đăng nhập đã lưu trong n8n). Khóa gửi tình trạng dùng chung chỉ còn là bộ lọc rác: khi mọi máy đã chạy bản desktop mới, đặt `onebee_box_khoa_tinh_trang_chung: false`
-(n8n thôi đòi khóa, Box thôi đẩy `TINH_TRANG_KEY`; credential cũ còn nằm trong n8n, xóa tay trên giao diện nếu muốn).
+(như `dong-bo-may --tat-ca`) ngay sau bộ cài. `xoay-khoa` không chạy chồng với sao lưu (đang sao lưu thì báo "thử lại sau"). **Không xoay** `RESTIC_PASSWORD` (chưa từng đi qua mạng; đổi là mất bản sao lưu cũ) và `NODE_RED_CREDENTIAL_SECRET`
+(đổi là mất thông tin đăng nhập đã lưu trong Node-RED). Khóa gửi tình trạng dùng chung chỉ còn là bộ lọc rác: khi mọi máy đã chạy bản desktop mới, đặt `onebee_box_khoa_tinh_trang_chung: false`
+(Node-RED thôi đòi khóa, Box thôi đẩy `TINH_TRANG_KEY`; credential cũ còn nằm trong Node-RED, xóa tay trên giao diện nếu muốn).
 
 `dong-bo-may` dùng khi đổi khóa/URL: cấu hình dựng từ đúng nguồn của `them-may`, thiếu khóa nào của máy thì bỏ qua máy đó (không đẩy file
 thiếu). File cũ trên máy giữ lại bản `.~`. Sau khi ghi file cấu hình, lệnh chạy lại trên máy đúng các task của bộ cài desktop (`ket-noi-box`: CA + trình duyệt;

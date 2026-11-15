@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+// Cấu hình Node-RED 5.0.9 cho OneBee Box (chạy hoàn toàn nội bộ, không gọi Internet, khóa trình sửa luồng)
+module.exports = {
+  flowFile: "flows.json",
+  flowFilePretty: true,
+  uiPort: process.env.PORT || 1880,
+  uiHost: "0.0.0.0",
+  httpAdminRoot: "/quy-trinh",
+  httpNodeRoot: "/",
+  disableEditor: false,
+  functionExternalModules: false,
+  exportGlobalContextKeys: false,
+  externalModules: {
+    autoInstall: false,
+    palette: { allowInstall: false, allowUpload: false }
+  },
+  editorTheme: {
+    page: { title: "OneBee Box — Quy trình tự động" },
+    header: { title: "OneBee Box — Quy trình (Node-RED)" },
+    tours: false,
+    palette: { catalogue: [] }
+  },
+  logging: {
+    console: { level: "info", metrics: false, audit: true }
+  }
+};

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm chứng chỉ CA của OneBee Box trước khi cài lên máy trạm (rà soát bảo mật F3).
 Cách dùng: onebee-kiem-ca.py <BOX_CA base64 DER> <BOX_CA_VAN_TAY sha256 hex> <BOX_IP>
 Đạt → in chứng chỉ dạng PEM ra stdout, thoát 0. Không đạt → in lý do ra stderr, thoát 1.

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm thử OneBee Box trong container "Ubuntu 24.04 + systemd" (cần Docker, chạy --privileged để có Docker lồng).
 # Các bước: cài 2 lần (idempotent) → verify 26 mục → AI hỏi đáp thật → sao lưu/khôi phục Box ra "ổ ngoài"
 # → máy trạm Mint 22.3 cài OneBee OS Desktop, sao lưu lên Box + khôi phục + thử xóa bản cũ (phải bị chặn)
@@ -6,7 +8,7 @@
 # → tường lửa: máy trong LAN vào được, máy ngoài mạng cho phép bị chặn
 # → diễn tập hỏng ổ Box: cài lại + khôi phục toàn bộ bằng khóa in ra giấy
 # → bản giả mạo ngày tương lai bị phát hiện → chưa gắn ổ ngoài thì từ chối → khởi động lại Box, dịch vụ tự lên.
-# Biến: ONEBEE_TEST_EXTRA_CA (CA proxy), ONEBEE_TEST_FULL_WEBUI=1 (dùng image Open WebUI đầy đủ thay bản slim),
+# Biến: ONEBEE_TEST_EXTRA_CA (CA proxy), ONEBEE_TEST_FULL_WEBUI=1 (dùng image OneBee AI RAG đầy đủ thay bản slim),
 #       ONEBEE_TEST_KEEP=1 (giữ container để xem lại).
 set -euo pipefail
 
@@ -48,7 +50,7 @@ box 'update-ca-certificates >/dev/null 2>&1; rm -rf /root/onebee-test; cp -r /on
 if [[ "${ONEBEE_TEST_FULL_WEBUI:-0}" != 1 ]]; then
   # Bản slim (không kèm model nhúng) để test nhanh, đỡ tốn ổ; chức năng hỏi đáp như bản đầy đủ
   # Image ghim kèm digest (@sha256:…) là của bản đầy đủ → bản slim dùng tag, bỏ digest
-  box "sed -i -E 's#(open_webui: .*open-webui:v[0-9.]+)(@sha256:[0-9a-f]+)?\$#\\1-slim#' /root/onebee-test/box/ansible/group_vars/all.yml"
+  box "sed -i -E 's#(tro_ly_ai: .*ai-rag:v[0-9.]+)(@sha256:[0-9a-f]+)?\$#\\1-slim#' /root/onebee-test/box/ansible/group_vars/all.yml"
 fi
 # Model AI: mặc định đúng model sản phẩm (ADR 0003); ONEBEE_TEST_MODEL=gemma3:1b để test nhanh phần kết nối.
 # Tải sau khi cài (container Ollama cần tin CA proxy của môi trường test)
@@ -57,7 +59,7 @@ box "sed -i -E 's#^onebee_box_ai_model: .*#onebee_box_ai_model: ${TEST_MODEL}#; 
      /root/onebee-test/box/ansible/group_vars/all.yml"
 # Mã đơn vị bắt buộc (CA riêng của Box); IP lấy tự động từ cổng mạng của container Box
 box "sed -i -E 's#^onebee_box_ma_don_vi: .*#onebee_box_ma_don_vi: kiem-thu#' /root/onebee-test/box/ansible/group_vars/all.yml"
-# Email: gửi vào hộp thư giả lập Mailpit (khởi chạy trong check-n8n-inside.sh)
+# Email: gửi vào hộp thư giả lập Mailpit (khởi chạy trong check-quy-trinh-inside.sh)
 box "sed -i -E 's#^  smtp_host: .*#  smtp_host: \"mailpit\"#; s#^  smtp_port: .*#  smtp_port: 1025#; s#^  smtp_starttls: .*#  smtp_starttls: false#' \
      /root/onebee-test/box/ansible/group_vars/all.yml"
 
@@ -96,8 +98,8 @@ box 'for i in 1 2 3; do apt-get update -q >/dev/null 2>&1 && apt-get install -y 
      echo "PASS  Có khóa quản trị → SSH vào Box chỉ bằng khóa, không cho root; quản trị vào được bằng khóa"'
 echo "===== AI HỎI ĐÁP THẬT ====="
 box "ONEBEE_TEST_MODEL=${TEST_MODEL} /root/onebee-test/tests/box/check-ai-chat-inside.sh"
-echo "===== QUY TRÌNH n8n QUA EMAIL ====="
-box '/root/onebee-test/tests/box/check-n8n-inside.sh'
+echo "===== QUY TRÌNH NODE-RED QUA EMAIL & PHÊ DUYỆT POKA-YOKE ====="
+box '/root/onebee-test/tests/box/check-quy-trinh-inside.sh'
 echo "===== SAO LƯU BOX RA Ổ NGOÀI + KHÔI PHỤC ====="
 box 'if onebee-box sao-luu > /root/sl0.log 2>&1; then echo "FAIL  sao-luu chạy khi chưa tạo kho"; exit 1; fi
      grep -q "Chưa tạo kho" /root/sl0.log || { cat /root/sl0.log; exit 1; }
@@ -210,11 +212,11 @@ box 'systemctl stop docker.socket docker.service
 echo "PASS  Dừng Docker vẫn giữ tường lửa SSH/Samba/Tailscale; Docker lên lại dùng tiếp quy tắc DOCKER-USER, máy trạm vào lại được"
 
 echo "===== TẮT TRỢ LÝ AI → LỆNH hoi BÁO LỖI DỄ HIỂU ====="
-box 'compose_dir=/opt/onebee-box; docker compose --project-directory $compose_dir stop open-webui >/dev/null 2>&1'
+box 'compose_dir=/opt/onebee-box; docker compose --project-directory $compose_dir stop ai-rag >/dev/null 2>&1'
 docker exec "${CLIENT}" bash -c 'out=$(su - nhanvien -c "hoi xin chào" 2>&1); rc=$?
   [ ${rc} -ne 0 ] && grep -q "Không kết nối được OneBee Box" <<<"${out}" || { echo "FAIL  hoi khi Box tắt: ${out}"; exit 1; }
   echo "PASS  Box tắt Trợ lý → hoi báo \"Không kết nối được OneBee Box\" (không treo, không lỗi khó hiểu)"'
-box 'docker compose --project-directory /opt/onebee-box start open-webui >/dev/null 2>&1'
+box 'docker compose --project-directory /opt/onebee-box start ai-rag >/dev/null 2>&1'
 
 echo "===== MÁY TRẠM SAU KHI BOX DỌN + CHỐNG BẢN GIẢ MẠO NGÀY TƯƠNG LAI ====="
 docker exec "${CLIENT}" bash -euo pipefail -c '

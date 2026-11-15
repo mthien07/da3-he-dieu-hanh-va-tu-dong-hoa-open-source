@@ -1,4 +1,6 @@
 <!DOCTYPE html>
+<!-- SPDX-License-Identifier: MIT -->
+<!-- Copyright (c) 2026 Dương Minh Thiện, HTX OneBee -->
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -975,7 +977,7 @@ Gõ 'help' để xem các lệnh khả dụng.
                 termHistory.innerHTML += `\n[Ollama] (mô phỏng) Đang nạp Gemma 4 (gemma4:e2b-it-qat)...\n[Ollama] Sẵn sàng! Hãy nhập câu hỏi sau dấu nhắc lệnh để trò chuyện. (Gõ 'exit' để thoát khỏi AI Chat).\n`;
                 currentMode = 'ai';
             } else if (cmd === 'docker ps') {
-                termHistory.innerHTML += `CONTAINER ID   IMAGE         COMMAND                  STATUS          PORTS                    NAMES\n18b56f932f31   n8nio/n8n     "tini -- /docker-ent…"   Up 24 hours     0.0.0.0:5678->5678/tcp   n8n-automation\n9a18fdb9e1a1   postgres:16   "docker-entrypoint.s…"   Up 24 hours     0.0.0.0:5432->5432/tcp   onebee-db\nf72ad3819eac   ollama/ollama "/bin/ollama serve"      Up 24 hours     11434/tcp                llama-ai`;
+                termHistory.innerHTML += `CONTAINER ID   IMAGE         COMMAND                  STATUS          PORTS                    NAMES\n18b56f932f31   nodered/node-red     "tini -- /docker-ent…"   Up 24 hours     0.0.0.0:5678->5678/tcp   node-red-automation\n9a18fdb9e1a1   postgres:16   "docker-entrypoint.s…"   Up 24 hours     0.0.0.0:5432->5432/tcp   onebee-db\nf72ad3819eac   ollama/ollama "/bin/ollama serve"      Up 24 hours     11434/tcp                llama-ai`;
             } else if (cmd === 'apt update') {
                 termHistory.innerHTML += `Hit:1 http://archive.ubuntu.com/ubuntu jammy InRelease\nGet:2 http://archive.ubuntu.com/ubuntu jammy-updates InRelease [119 kB]\nFetched 119 kB in 1s (182 kB/s)\nReading package lists... Done\nBuilding dependency tree... Done\nAll packages are up to date.`;
             } else if (cmd === 'backup-db') {

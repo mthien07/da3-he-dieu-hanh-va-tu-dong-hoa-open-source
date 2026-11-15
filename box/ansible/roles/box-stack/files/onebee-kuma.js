@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 // Cấu hình Uptime Kuma của OneBee Box: tạo tài khoản quản trị (lần đầu), email báo khi dịch vụ ngừng, danh sách theo dõi.
 // Chạy bên trong container Uptime Kuma: docker exec -i -w /app -e ... onebee-uptime-kuma node - < onebee-kuma.js
 // Biến: KUMA_USER, KUMA_PASS, KUMA_MONITORS (JSON), KUMA_SMTP (JSON, rỗng = không gửi email),
@@ -38,6 +40,16 @@ socket.on("connect", async () => {
       if (Boolean(g.data.trustProxy) !== muon) {
         const r = await call("setSettings", { ...g.data, trustProxy: muon }, pass);
         if (!r.ok) out(1, `LỖI: không lưu được cài đặt Trust Proxy: ${r.msg}`);
+        doi++;
+      }
+    }
+    if (process.env.KUMA_TAT_DANG_NHAP) {
+      const muon = process.env.KUMA_TAT_DANG_NHAP === "1";
+      const g = await call("getSettings");
+      if (!g.ok) out(1, `LỖI: không đọc được cài đặt Uptime Kuma: ${g.msg}`);
+      if (Boolean(g.data.disableAuth) !== muon) {
+        const r = await call("setSettings", { ...g.data, disableAuth: muon }, pass);
+        if (!r.ok) out(1, `LỖI: không lưu được cài đặt disableAuth: ${r.msg}`);
         doi++;
       }
     }

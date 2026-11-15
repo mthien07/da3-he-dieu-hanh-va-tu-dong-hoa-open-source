@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Tổng hợp kết quả chấm theo ngưỡng anh chốt và xuất báo cáo Markdown + CSV."""
 import csv
 import statistics

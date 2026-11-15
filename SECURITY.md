@@ -19,7 +19,7 @@ tác động bạn đánh giá. **Xóa mật khẩu, khóa (`in-khoa`), địa c
 
 ## Chúng tôi làm gì
 - Xác nhận đã nhận trong vòng **7 ngày** (mục tiêu của nhóm nhỏ, không phải cam kết hợp đồng).
-- Sửa, viết kiểm thử hồi quy, ghi vào [docs/project-changelog.md](docs/project-changelog.md) và ghi công người báo (nếu bạn đồng ý).
+- Sửa, viết kiểm thử hồi quy, ghi vào [CHANGELOG.md](CHANGELOG.md) và ghi công người báo (nếu bạn đồng ý).
 
 ## Tài liệu liên quan
 - Rà soát bảo mật và trạng thái từng mục: [docs/security-audit.md](docs/security-audit.md) · [docs/tong-ket-ra-soat-bao-mat.md](docs/tong-ket-ra-soat-bao-mat.md)

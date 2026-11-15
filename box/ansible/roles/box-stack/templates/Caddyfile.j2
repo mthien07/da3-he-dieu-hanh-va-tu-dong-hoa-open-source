@@ -1,11 +1,12 @@
-# Quản lý bởi OneBee OS — cổng vào của OneBee Box
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Quản lý bởi OneBee OS — cổng vào và API Gateway của OneBee Box (Caddy 2.11.4 + Authelia forward_auth)
 {% if onebee_https_hieu_luc | bool %}
 {% set cong = onebee_box_ports %}
 {% set kuma_san_sang = onebee_kuma_dia_chi | default('0.0.0.0') == '0.0.0.0' %}
-{% set cong_tls = [443, cong.open_webui, cong.n8n, cong.rest_server] + ([cong.uptime_kuma] if kuma_san_sang else []) %}
-{# Mỗi cổng TLS có 2 địa chỉ: IP của Box (LAN) và box.<mã>.onebee.internal (kỹ thuật vào qua Tailscale, thêm dòng /etc/hosts trỏ tới IP Tailscale của Box) #}
+{% set cong_tls = [443, cong.tro_ly_ai, cong.quy_trinh, cong.rest_server] + ([cong.uptime_kuma] if kuma_san_sang else []) %}
+{# Mỗi cổng TLS có 2 địa chỉ: IP của Box (LAN) và box.<mã>.onebee.internal (tên chuẩn cho SSO và Tailscale) #}
 {% macro dia_chi(c) %}https://{{ onebee_box_ip }}:{{ c }}, https://box.{{ onebee_box_ma_don_vi }}.onebee.internal:{{ c }}{% endmacro %}
-{# HTTPS (Pha 4): CA riêng đặt sẵn (gốc + trung gian, ràng buộc tên); Caddy chỉ cấp chứng chỉ lá cho IP của Box và box.<mã>.onebee.internal #}
 {
 	skip_install_trust
 	auto_https disable_redirects
@@ -23,7 +24,6 @@
 		}
 	}
 {% for c in cong_tls %}
-	# Kết nối http:// thường tới cổng TLS → chuyển hướng sang https:// (308); chỉ HTTP/1.1 và HTTP/2 (HTTP/3 không dùng được CA tự thêm trong Chrome)
 	servers :{{ c }} {
 		listener_wrappers {
 			http_redirect
@@ -51,31 +51,93 @@
 	header -Server
 }
 
+(xac_thuc) {
+	forward_auth authelia:9091 {
+		uri /api/authz/forward-auth
+		copy_headers Remote-User Remote-Groups Remote-Email Remote-Name
+	}
+}
+
 {{ dia_chi(443) }} {
 	import onebee_tls
-	root * /srv
-	file_server
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
 		Referrer-Policy no-referrer
 	}
-	# Số liệu tình trạng trên trang chủ đổi mỗi phút (onebee-trang-thai-web.timer) → trình duyệt không giữ bản cũ
 	header /trang-thai.json Cache-Control no-store
+
+	handle /dangnhap* {
+		reverse_proxy authelia:9091
+	}
+
+	handle /so-dieu-hanh* {
+		route {
+			import xac_thuc
+			root * /srv
+			file_server
+		}
+	}
+
+	# route giữ đúng thứ tự: xác thực trên đường dẫn gốc (luật Authelia khớp ^/api/) rồi mới bỏ tiền tố (ADR 0006)
+	handle /api/* {
+		route {
+			import xac_thuc
+			uri strip_prefix /api
+			reverse_proxy cau-noi:8080
+		}
+	}
+
+	handle /files/* {
+		route {
+			import xac_thuc
+			uri strip_prefix /files
+			request_body {
+				max_size 10MB
+			}
+			reverse_proxy kho-tep:8080
+		}
+	}
+
+	handle /ai/* {
+		route {
+			import xac_thuc
+			reverse_proxy ai-rag:8080
+		}
+	}
+
+	handle /webhook/onebee-phe-duyet {
+		route {
+			import xac_thuc
+			reverse_proxy quy-trinh:1880
+		}
+	}
+
+	handle {
+		root * /srv
+		file_server
+	}
 }
 
-{{ dia_chi(cong.open_webui) }} {
+{{ dia_chi(cong.tro_ly_ai) }} {
 	import onebee_tls
-	reverse_proxy open-webui:8080 {
+	reverse_proxy ai-rag:8080 {
 		stream_close_delay 5m
 	}
 }
 
-{# Không thêm tiêu đề CSP ở đây: n8n tự đặt CSP sandbox cho biểu mẫu #}
-{{ dia_chi(cong.n8n) }} {
+{{ dia_chi(cong.quy_trinh) }} {
 	import onebee_tls
-	reverse_proxy n8n:5678 {
-		stream_close_delay 5m
+	handle /quy-trinh* {
+		route {
+			import xac_thuc
+			reverse_proxy quy-trinh:1880
+		}
+	}
+	handle {
+		reverse_proxy quy-trinh:1880 {
+			stream_close_delay 5m
+		}
 	}
 }
 
@@ -96,10 +158,8 @@
 }
 {% endif %}
 {% else %}
-# Cổng 80: trang chủ cho mọi tên gọi Box (IP, {{ onebee_box_ten_mdns }}.local qua mDNS)
+# Cổng 80: trang chủ và cổng nội bộ ở chế độ HTTP (IP, {{ onebee_box_ten_mdns }}.local qua mDNS)
 :80 {
-	root * /srv
-	file_server
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
@@ -107,5 +167,28 @@
 		-Server
 	}
 	header /trang-thai.json Cache-Control no-store
+
+	handle /api/* {
+		route {
+			uri strip_prefix /api
+			reverse_proxy cau-noi:8080
+		}
+	}
+	handle /files/* {
+		route {
+			uri strip_prefix /files
+			request_body {
+				max_size 10MB
+			}
+			reverse_proxy kho-tep:8080
+		}
+	}
+	handle /ai/* {
+		reverse_proxy ai-rag:8080
+	}
+	handle {
+		root * /srv
+		file_server
+	}
 }
 {% endif %}

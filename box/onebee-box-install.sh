@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # OneBee Box — bộ cài máy chủ nội bộ, chạy trên Ubuntu Server 24.04 LTS (64-bit).
 # Cách dùng:  sudo ./onebee-box-install.sh
 # Chạy lại nhiều lần an toàn (cũng là cách nâng cấp sau khi sửa box/ansible/group_vars/all.yml).

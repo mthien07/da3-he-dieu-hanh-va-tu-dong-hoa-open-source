@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Mở Trợ lý AI OneBee (giao diện web chạy trên OneBee Box). Địa chỉ lấy từ /etc/onebee-hoi.conf do bộ cài tạo
 # khi máy đã kết nối Box — cùng cấu hình với lệnh `hoi` trong cửa sổ dòng lệnh.
 set -uo pipefail

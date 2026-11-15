@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Ví dụ cấu hình máy chủ Demo công khai cho Ban Giám khảo OLP 2026 (Phase 9)
+# Sao chép thành inventory.demo.ini và chạy:
+#   ansible-playbook -i inventory.demo.ini site.yml
+
+[onebee_box]
+demo.onebee.vn ansible_host=203.0.113.10 ansible_user=ubuntu
+
+[onebee_box:vars]
+onebee_box_che_do_demo=true
+onebee_https_noi_bo=true
+onebee_mdns_hostname=demo-htx-onebee
+onebee_box_ma_don_vi=htx-onebee
+onebee_box_ten_don_vi="Hợp tác xã Mật ong OneBee (Bản Demo OLP 2026)"

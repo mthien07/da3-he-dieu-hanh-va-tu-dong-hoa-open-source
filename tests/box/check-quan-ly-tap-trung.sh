@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra quản lý tập trung (chạy trên máy test, sau khi máy trạm ketoan-01 đã cài OneBee OS với cấu hình từ Box):
 # máy trạm báo tình trạng → Box in bảng + cảnh báo; khóa sai/tên bậy bị chặn; Box cập nhật máy trạm qua SSH;
 # SSH máy trạm chỉ nhận khóa của Box từ IP của Box, không nhận mật khẩu.
@@ -34,12 +36,12 @@ box "key=\$(cat /etc/onebee-box/secrets/tinh-trang-key)
   [ \"\${code}\" = 403 ] || { echo \"FAIL  Khóa sai vẫn gửi được (\${code})\"; exit 1; }
   curl -s -o /dev/null -X POST http://127.0.0.1:5678/webhook/onebee-tinh-trang -H \"X-OneBee-Key: \${key}\" \
     -H 'Content-Type: application/json' -d '{\"ten\":\"../../etc/x\"}' || true
-  # Tên hợp lệ về dạng nhưng CHƯA CẤP (kẻ có khóa chung cũng không tạo được file): n8n chỉ nhận máy có file đánh dấu trong may-da-cap
+  # Tên hợp lệ về dạng nhưng CHƯA CẤP (kẻ có khóa chung cũng không tạo được file): Node-RED chỉ nhận máy có file đánh dấu trong may-da-cap
   curl -s -o /dev/null -X POST http://127.0.0.1:5678/webhook/onebee-tinh-trang -H \"X-OneBee-Key: \${key}\" \
     -H 'Content-Type: application/json' -d \"{\\\"ten\\\":\\\"ke-gia\\\",\\\"du_lieu\\\":\\\"{}\\\",\\\"ky\\\":\\\"\$(printf '0%.0s' \$(seq 64))\\\"}\" || true
   [ \"\$(ls ${TT})\" = ketoan-01.json ] && [ ! -e /srv/onebee/etc ] || { echo 'FAIL  Tên máy bậy/khóa sai/máy chưa cấp vẫn ghi được file'; ls -R ${TT}; exit 1; }
   echo 'PASS  Khóa sai bị chặn (403); tên máy bậy (../) và máy CHƯA CẤP (kể cả có khóa chung) không ghi được file'
-  # n8n lưu nguyên báo cáo của máy đã cấp nhưng Box tự kiểm chữ ký: bao bì sai chữ ký bị nêu thẳng trong bảng tình trạng
+  # Node-RED lưu nguyên báo cáo của máy đã cấp nhưng Box tự kiểm chữ ký: bao bì sai chữ ký bị nêu thẳng trong bảng tình trạng
   cp ${TT}/ketoan-01.json /tmp/ketoan-01.json.tot
   curl -s -o /dev/null -X POST http://127.0.0.1:5678/webhook/onebee-tinh-trang -H \"X-OneBee-Key: \${key}\" \
     -H 'Content-Type: application/json' -d \"{\\\"ten\\\":\\\"ketoan-01\\\",\\\"du_lieu\\\":\\\"{}\\\",\\\"ky\\\":\\\"\$(printf 'a%.0s' \$(seq 64))\\\"}\" || true
@@ -86,10 +88,10 @@ tram 'if ssh -i /tmp/khoa-box -o BatchMode=yes -o StrictHostKeyChecking=no -o Co
   grep -q "Permission denied (publickey)" <<<"${out}" || { echo "FAIL  SSH vẫn hỏi mật khẩu: ${out}"; exit 1; }
   echo "PASS  Lấy được khóa của Box cũng không vào được từ máy khác; SSH không nhận mật khẩu"'
 
-# Thu hồi máy: hết quyền vào kho HTTP, n8n ngừng nhận báo cáo, ghim SSH bị gỡ, máy biến khỏi bảng tình trạng; cấp lại được
+# Thu hồi máy: hết quyền vào kho HTTP, Node-RED ngừng nhận báo cáo, ghim SSH bị gỡ, máy biến khỏi bảng tình trạng; cấp lại được
 box 'onebee-box thu-hoi-may kho-02 --dong-y >/dev/null
   ! grep -q "^kho-02:" /srv/onebee/restic/.htpasswd || { echo "FAIL  Máy thu hồi vẫn còn tài khoản kho HTTP"; exit 1; }
-  [ ! -e /srv/onebee/may-da-cap/kho-02 ] || { echo "FAIL  Máy thu hồi vẫn còn trong danh sách n8n nhận báo cáo"; exit 1; }
+  [ ! -e /srv/onebee/may-da-cap/kho-02 ] || { echo "FAIL  Máy thu hồi vẫn còn trong danh sách Node-RED nhận báo cáo"; exit 1; }
   if onebee-box cap-nhat-may kho-02 >/dev/null 2>&1; then echo "FAIL  Vẫn cập nhật được máy đã thu hồi"; exit 1; fi
   ! onebee-box may-tram | grep -q "^kho-02 " || { echo "FAIL  Máy thu hồi vẫn nằm trong bảng tình trạng"; exit 1; }
   onebee-box them-may kho-02 >/dev/null

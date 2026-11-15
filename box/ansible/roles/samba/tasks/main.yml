@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Thư mục chung trong mạng LAN (\\<tên-box>\chung). Chỉ người có mật khẩu mới vào được, không cho khách.
 
 - name: Cài Samba
@@ -27,11 +29,11 @@
     group: onebee
     mode: "2770"
 
-- name: Tạo thư mục đơn hàng trong thư mục chung (n8n ghi, nhân viên đọc)
+- name: Tạo thư mục đơn hàng trong thư mục chung (Node-RED ghi, nhân viên đọc)
   ansible.builtin.file:
     path: "{{ onebee_box_data }}/{{ onebee_box_samba_share }}/don-hang"
     state: directory
-    owner: "1000"   # n8n chạy bằng uid 1000
+    owner: "1000"   # Node-RED chạy bằng uid 1000
     group: onebee
     mode: "2775"
 
@@ -39,7 +41,7 @@
   ansible.builtin.copy:
     dest: "{{ onebee_box_data }}/{{ onebee_box_samba_share }}/don-hang/DOC-TRUOC.txt"
     content: |
-      Thư mục này do quy trình "OneBee — Nhập đơn hàng" (n8n) ghi tự động. Mỗi tháng 1 file don-hang-NĂM-THÁNG.csv
+      Thư mục này do quy trình "OneBee — Nhập đơn hàng" (Node-RED) ghi tự động. Mỗi tháng 1 file don-hang-NĂM-THÁNG.csv
       (mã UTF-8, dấu phẩy). Các cột theo thứ tự:
       1. Thời điểm nhập  2. Khách hàng  3. Mặt hàng  4. Số lượng (kg)  5. Đơn giá (đồng/kg)
       6. Thành tiền (đồng)  7. Ngày giao  8. Ghi chú

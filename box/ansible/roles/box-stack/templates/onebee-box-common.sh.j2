@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # shellcheck shell=bash
 # shellcheck disable=SC2034  # biến dùng ở các file nạp thư viện này
 # Thư viện dùng chung cho lệnh onebee-box (quản lý bởi OneBee OS, không sửa tay)
@@ -58,7 +60,7 @@ may_da_cap() {
   done
 }
 
-# Thư mục file đánh dấu máy đã cấp: n8n (gắn chỉ đọc) chỉ nhận báo cáo tình trạng của máy có file <tên> ở đây.
+# Thư mục file đánh dấu máy đã cấp: quy-trinh (gắn chỉ đọc) chỉ nhận báo cáo tình trạng của máy có file <tên> ở đây.
 # In "đã đổi" khi có thay đổi (để bộ cài Ansible báo changed đúng)
 MAY_DA_CAP_DIR="${DATA}/may-da-cap"
 dong_bo_ten_may() {
@@ -136,13 +138,12 @@ compose() { docker compose --project-directory "${BOX_DIR}" "$@"; }
 # (HasBeenManuallyStopped) → khởi động lại Box thì kho sao lưu KHÔNG tự chạy lại dù restart: unless-stopped (bắt được khi chạy A4).
 nap_lai_kho_http() { docker exec onebee-rest-server kill -HUP 1 >/dev/null 2>&1 || true; }
 
-# Gọi công cụ quản lý Open WebUI (tạo Trợ lý OneBee, cấp khóa API cho máy trạm)
+# Gọi công cụ quản lý Trợ lý AI & RAG nội bộ (tạo Trợ lý OneBee, cấp khóa API cho máy trạm)
 webui() {
-  WEBUI_URL="$(dia_chi_noi_bo):{{ onebee_box_ports.open_webui }}" ONEBEE_WEBUI_PUBLIC_URL="$(https_bat && echo "https://${BOX_ADDRESS}:{{ onebee_box_ports.open_webui }}" || true)" \
-  WEBUI_ADMIN_EMAIL={{ onebee_box_admin_email | quote }} \
-  WEBUI_ADMIN_PASSWORD="$(cat "${SECRETS}/webui-admin-password")" ONEBEE_AI_MODEL="{{ onebee_box_ai_model }}" \
-  ONEBEE_LOI_DAN=/usr/local/lib/onebee-box/tro-ly-onebee-loi-dan.md ONEBEE_SECRETS="${SECRETS}" \
-    python3 /usr/local/lib/onebee-box/onebee-webui.py "$@"
+  ONEBEE_AI_DATA="${DATA}/ai-rag" ONEBEE_SECRETS="${SECRETS}" ONEBEE_LIB="/usr/local/lib/onebee-box" \
+  ONEBEE_AI_MODEL="{{ onebee_box_ai_model }}" ONEBEE_LOI_DAN=/usr/local/lib/onebee-box/tro-ly-onebee-loi-dan.md \
+    python3 /usr/local/lib/onebee-box/onebee-ai-rag.py "$@"
 }
-AI_PORT="{{ onebee_box_ports.open_webui }}"
-N8N_PORT="{{ onebee_box_ports.n8n }}"
+
+AI_PORT="{{ onebee_box_ports.tro_ly_ai }}"
+QUY_TRINH_PORT="{{ onebee_box_ports.quy_trinh }}"

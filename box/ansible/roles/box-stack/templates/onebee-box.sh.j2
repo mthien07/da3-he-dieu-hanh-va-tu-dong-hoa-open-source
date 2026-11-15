@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # onebee-box — lệnh quản trị OneBee Box (quản lý bởi OneBee OS, không sửa tay)
 #   onebee-box trang-thai          Xem dịch vụ đang chạy, dung lượng ổ
 #   onebee-box chan-doan [--json]  Tự chẩn đoán 7 hạng mục (mạng, tài nguyên, Docker, AI, Samba, sao lưu, chứng chỉ) + gợi ý cách sửa
@@ -9,7 +11,7 @@
 #   onebee-box thu-hoi-may <ten-may> [--dong-y]  Thu hồi máy trạm (khóa Trợ lý AI, kho sao lưu HTTP, ghim SSH, chỗ báo tình trạng)
 #   onebee-box ghim-lai-may <ten-may>            Máy cài lại hệ điều hành: bỏ khóa SSH đã ghim để ghim lại
 #   onebee-box bao-cao-tuan [YYYY-MM-DD]   Nhật ký tuần: yêu cầu hỗ trợ, khảo sát, tình trạng máy (Markdown)
-#   onebee-box dong-bo-tro-ly      Tạo/cập nhật "Trợ lý OneBee" (model Gemma + lời dặn tiếng Việt) trong Open WebUI
+#   onebee-box dong-bo-tro-ly      Tạo/cập nhật "Trợ lý OneBee" (model Gemma + lời dặn tiếng Việt) trong Trợ lý AI
 #   onebee-box dong-bo-prompts     Nạp lại kho mẫu prompt hành chính chuẩn (NĐ 30, Luật HTX)
 #   onebee-box dong-bo-tri-thuc    Cập nhật bộ tri thức cơ sở RAG (Thư viện Pháp lý HTX)
 #   onebee-box khoi-tao            Tạo kho sao lưu Box trên ổ ngoài (làm 1 lần sau khi gắn ổ)
@@ -18,14 +20,14 @@
 #   onebee-box khoi-phuc-toan-bo [file-khóa]   Hỏng ổ Box: trên Box cài lại, lấy lại toàn bộ dữ liệu từ ổ sao lưu
 #   onebee-box may-chua-nhan-ca    Máy đã cấp mà chưa nhận CA hiện tại (chặn bật HTTPS)
 #   onebee-box go-khoa-hoi-may     Xóa tài khoản/khóa Trợ lý AI theo MÁY (sau khi nhân viên đã dùng khóa riêng; xem onebee_box_hoi_khoa_may)
-#   onebee-box xoay-khoa [--may <tên>|--tat-ca] [--box]   Đổi mật khẩu/khóa (kho HTTP + khóa hoi theo máy; --box: mật khẩu quản trị, biểu mẫu, n8n)
+#   onebee-box xoay-khoa [--may <tên>|--tat-ca] [--box]   Đổi mật khẩu/khóa (kho HTTP + khóa hoi theo máy; --box: mật khẩu quản trị, biểu mẫu, quy-trinh)
 #   onebee-box gia-han-ca          Gia hạn CA trung gian ngay (còn < 60 ngày) — tự chạy mỗi đêm sao lưu
 #   onebee-box in-ca               In vân tay + thông tin CA riêng của Box (đối chiếu khi cài CA lên thiết bị khác)
 #   onebee-box in-khoa             In các khóa bí mật để cất ngoài Box (thiếu khóa thì bản sao lưu vô dụng)
-#   onebee-box dat-mat-khau-email  Nhập mật khẩu hộp thư gửi (SMTP) cho n8n
+#   onebee-box dat-mat-khau-email  Nhập mật khẩu hộp thư gửi (SMTP) cho quy-trinh
 #   onebee-box dat-telegram        Cấu hình Bot Token và Chat ID nhận tin cảnh báo Telegram
-#   onebee-box canh-bao <MỨC> <TIÊU_ĐỀ> [NỘI_DUNG]  Gửi cảnh báo tức thời qua Telegram & n8n
-#   onebee-box email-thu           Gửi 1 email thử qua n8n (kiểm tra cấu hình email)
+#   onebee-box canh-bao <MỨC> <TIÊU_ĐỀ> [NỘI_DUNG]  Gửi cảnh báo tức thời qua Telegram & quy-trinh
+#   onebee-box email-thu           Gửi 1 email thử qua quy-trinh (kiểm tra cấu hình email)
 set -euo pipefail
 LIB=/usr/local/lib/onebee-box
 # shellcheck source=/dev/null
@@ -86,18 +88,19 @@ in_cau_hinh_may() {
   elif [[ -s "${SECRETS}/may-${ten}-hoi" ]]; then
     hoi_key="$(cat "${SECRETS}/may-${ten}-hoi")"
   elif [[ -e "${SECRETS}/may-${ten}-webui" ]]; then
-    hoi_key="$(webui lay-khoa "${ten}")" || die "Không lấy được khóa Trợ lý AI của máy ${ten} (Open WebUI chưa chạy?) — thử lại sau"
+    hoi_key="$(webui lay-khoa "${ten}")" || die "Không lấy được khóa Trợ lý AI của máy ${ten} (Trợ lý AI chưa chạy?) — thử lại sau"
     (umask 077; printf '%s' "${hoi_key}" >"${SECRETS}/may-${ten}-hoi")
   fi
   echo "MAY_TRAM=${ten}"
   echo "BOX_IP=${ip}"
+  echo "BOX_HOST=box.${BOX_MA_DON_VI}.onebee.internal"
   esq="$(giao_thuc_may)"
   echo "RESTIC_REPOSITORY=rest:${esq}://${ten}:${http_pw}@${ip}:${REST_PORT}/${ten}/"
   echo "RESTIC_PASSWORD=${repo_pw}"
   # Địa chỉ Trợ lý AI luôn in (hoi --dang-nhap cần); khóa của MÁY chỉ in ở giai đoạn chuyển tiếp
   echo "HOI_URL=${esq}://${ip}:${AI_PORT}"
   [[ -z "${hoi_key}" ]] || echo "HOI_API_KEY=${hoi_key}"
-  echo "TINH_TRANG_URL=${esq}://${ip}:${N8N_PORT}/webhook/onebee-tinh-trang"
+  echo "TINH_TRANG_URL=${esq}://${ip}:${QUY_TRINH_PORT}/webhook/onebee-tinh-trang"
   [[ -z "${tram_key}" ]] || echo "TINH_TRANG_KEY=${tram_key}"
   echo "QUAN_TRI_SSH_KEY=\"$(cat "${SSH_DIR}/quan-tri.pub")\""
   # CA riêng của Box: chứng chỉ gốc (DER, base64 một dòng) + vân tay tính lại từ chứng chỉ. Máy trạm (role ket-noi-box) kiểm vân tay
@@ -130,7 +133,7 @@ cmd_them_may() {
   hoi_key=""
   if [[ "${HOI_KHOA_MAY}" == true ]]; then
     hoi_key="$(webui cap-khoa "${ten}")" || {
-      warn "Chưa cấp được khóa Trợ lý AI (Open WebUI chưa chạy?) — sao lưu vẫn dùng được; chạy lại lệnh này sau để bật hoi"
+      warn "Chưa cấp được khóa Trợ lý AI (Trợ lý AI chưa chạy?) — sao lưu vẫn dùng được; chạy lại lệnh này sau để bật hoi"
       hoi_key=""
     }
   fi
@@ -153,7 +156,7 @@ cmd_thu_hoi_may() {
   (umask 077; mkdir -p "${SECRETS}/thu-hoi"; : >"${SECRETS}/thu-hoi/${ten}")   # đánh dấu TRƯỚC: lỡ dừng giữa chừng thì máy đã bị coi là thu hồi
   htpasswd -D "${DATA}/restic/.htpasswd" "${ten}" 2>/dev/null || true
   nap_lai_kho_http   # máy thu hồi mất quyền vào kho ngay, không chờ rest-server tự đọc lại
-  webui xoa-tai-khoan "${ten}" || warn "Chưa xóa được tài khoản Trợ lý AI may-${ten}@onebee.lan (Open WebUI chưa chạy?) — chạy lại lệnh này sau"
+  webui xoa-tai-khoan "${ten}" || warn "Chưa xóa được tài khoản Trợ lý AI may-${ten}@onebee.lan (Trợ lý AI chưa chạy?) — chạy lại lệnh này sau"
   rm -f "${SECRETS}/may-${ten}-http" "${SECRETS}/may-${ten}-webui" "${SECRETS}/may-${ten}-hoi" "${DATA}/tinh-trang-may/${ten}.json"
   ssh-keygen -R "${ten}" -f "${SSH_DIR}/known_hosts" >/dev/null 2>&1 || true
   dong_bo_ten_may >/dev/null
@@ -161,13 +164,13 @@ cmd_thu_hoi_may() {
   echo "LƯU Ý: chạy NGAY 'sudo onebee-box sao-luu' để bản sao lưu Box ghi nhận việc thu hồi — nếu ổ hỏng trước lần sao lưu 23:00, khôi phục sẽ cấp lại máy này."
 }
 
-# Bỏ khóa Trợ lý AI theo MÁY (Pha 4c): xóa tài khoản may-<tên>@onebee.lan trên Open WebUI + khóa đã lưu. Chỉ sau khi đặt onebee_box_hoi_khoa_may: false
+# Bỏ khóa Trợ lý AI theo MÁY (Pha 4c): xóa tài khoản may-<tên>@onebee.lan trên Trợ lý AI + khóa đã lưu. Chỉ sau khi đặt onebee_box_hoi_khoa_may: false
 # và chạy lại bộ cài + dong-bo-may --tat-ca (để máy không còn HOI_API_KEY). Nhân viên chưa chạy 'hoi --dang-nhap' sẽ không hỏi được nữa.
 cmd_go_khoa_hoi_may() {
   local ten loi=0
   [[ "${HOI_KHOA_MAY}" != true ]] || die "Chưa tắt khóa theo máy: đặt onebee_box_hoi_khoa_may: false trong group_vars, chạy lại bộ cài, rồi dong-bo-may --tat-ca trước"
   while read -r ten; do
-    webui xoa-tai-khoan "${ten}" >/dev/null || { warn "Chưa xóa được tài khoản Trợ lý AI của máy ${ten} (Open WebUI chưa chạy?)"; loi=1; continue; }
+    webui xoa-tai-khoan "${ten}" >/dev/null || { warn "Chưa xóa được tài khoản Trợ lý AI của máy ${ten} (Trợ lý AI chưa chạy?)"; loi=1; continue; }
     rm -f "${SECRETS}/may-${ten}-webui" "${SECRETS}/may-${ten}-hoi"
     echo "Đã bỏ khóa Trợ lý AI theo máy: ${ten}"
   done < <(may_da_cap)
@@ -336,7 +339,7 @@ cmd_dong_bo_may_da_chon() {
 
 # ---- Xoay khóa (Pha 4b) ----
 # Lý do: trước khi có HTTPS, mật khẩu/khóa đã đi qua LAN dạng rõ — còn hiệu lực dù hôm nay đã mã hóa. Cũng dùng khi nghi ngờ lộ khóa.
-# RESTIC_PASSWORD KHÔNG xoay (chưa từng đi qua mạng; đổi là mất bản sao lưu cũ). N8N_ENCRYPTION_KEY KHÔNG xoay (đổi là mất thông tin đăng nhập đã lưu trong n8n).
+# RESTIC_PASSWORD KHÔNG xoay (chưa từng đi qua mạng; đổi là mất bản sao lưu cũ). NODE_RED_CREDENTIAL_SECRET KHÔNG xoay (đổi là mất thông tin đăng nhập đã lưu trong quy-trinh).
 
 # Một máy: mật khẩu kho HTTP mới (htpasswd) + khóa Trợ lý AI theo máy mới (nếu còn dùng). Ghi bí mật mới TRƯỚC khi đẩy xuống máy
 xoay_khoa_may() {
@@ -345,14 +348,14 @@ xoay_khoa_may() {
   htpasswd -B -i "${DATA}/restic/.htpasswd" "${ten}" <<<"$(secret "may-${ten}-http")" 2>/dev/null
   nap_lai_kho_http   # mật khẩu cũ hết hiệu lực ngay (không còn khoảng ≤30 giây)
   if [[ "${HOI_KHOA_MAY}" == true && -e "${SECRETS}/may-${ten}-webui" ]]; then
-    khoa_moi="$(webui xoay-khoa "${ten}")" || { warn "Chưa đổi được khóa Trợ lý AI của máy ${ten} (Open WebUI chưa chạy?) — giữ khóa cũ"; return 0; }
+    khoa_moi="$(webui xoay-khoa "${ten}")" || { warn "Chưa đổi được khóa Trợ lý AI của máy ${ten} (Trợ lý AI chưa chạy?) — giữ khóa cũ"; return 0; }
     (umask 077; printf '%s' "${khoa_moi}" >"${SECRETS}/may-${ten}-hoi")
   fi
   echo "Đã tạo mật khẩu mới cho máy ${ten}"
 }
 
-# Phía Box: mật khẩu quản trị Trợ lý AI + giám sát (đổi trong CSDL của dịch vụ), mật khẩu chủ n8n, mật khẩu biểu mẫu, khóa webhook n8n,
-# WEBUI_SECRET_KEY (hủy mọi phiên đăng nhập Open WebUI). Phần Ansible áp dụng (.env, thông tin đăng nhập n8n) cần chạy lại bộ cài ngay sau đó
+# Phía Box: mật khẩu quản trị Trợ lý AI + giám sát (đổi trong CSDL của dịch vụ), mật khẩu chủ quy-trinh, mật khẩu biểu mẫu, khóa webhook quy-trinh,
+# PGRST_JWT_SECRET (hủy mọi phiên đăng nhập Trợ lý AI). Phần Ansible áp dụng (.env, thông tin đăng nhập quy-trinh) cần chạy lại bộ cài ngay sau đó
 xoay_khoa_box() {
   local moi
   moi="$(ngau_nhien 24)"
@@ -366,14 +369,12 @@ xoay_khoa_box() {
     (umask 077; printf '%s' "${moi}" >"${SECRETS}/uptime-kuma-password")
   fi
   moi="$(ngau_nhien 24)"
-  (umask 077; printf '%s' "${moi}" >"${SECRETS}/n8n-owner-password"
-   htpasswd -niBC 10 onebee <<<"${moi}" | cut -d: -f2 | tr -d '\n' >"${SECRETS}/n8n-owner-hash")
   # Khóa gửi tình trạng dùng chung (nếu còn dùng): bộ cài sinh lại; cmd_xoay_khoa đẩy xuống mọi máy ngay sau bộ cài
   [[ "${TINH_TRANG_KHOA_CHUNG}" != true ]] || rm -f "${SECRETS}/tinh-trang-key"
-  rm -f "${SECRETS}/webui-secret-key" "${SECRETS}/bieu-mau-nhanvien" "${SECRETS}/bieu-mau-kythuat" "${SECRETS}/n8n-webhook-key"
-  # Bộ cài (Ansible lookup password) sinh lại các file vừa xóa; n8n-webhook-key cần có NGAY cho bao_cao_n8n ở lần chạy sau
-  secret n8n-webhook-key >/dev/null
-  echo "Đã đổi: mật khẩu quản trị Trợ lý AI và giám sát (trong dịch vụ); đã tạo mới: mật khẩu chủ n8n, mật khẩu biểu mẫu (nhanvien, kythuat), khóa webhook n8n, WEBUI_SECRET_KEY."
+  rm -f "${SECRETS}/pgrst-jwt-secret" "${SECRETS}/authelia-session-secret" "${SECRETS}/node-red-credential-secret" "${SECRETS}/bieu-mau-nhanvien" "${SECRETS}/bieu-mau-kythuat" "${SECRETS}/quy-trinh-webhook-key"
+  # Bộ cài (Ansible lookup password) sinh lại các file vừa xóa; quy-trinh-webhook-key cần có NGAY cho bao_cao_quy_trinh ở lần chạy sau
+  secret quy-trinh-webhook-key >/dev/null
+  echo "Đã đổi: mật khẩu quản trị Trợ lý AI và giám sát (trong dịch vụ); đã tạo mới: mật khẩu chủ quy-trinh, mật khẩu biểu mẫu (nhanvien, kythuat), khóa webhook quy-trinh, PGRST_JWT_SECRET."
 }
 
 cmd_xoay_khoa() {
@@ -403,12 +404,12 @@ cmd_xoay_khoa() {
     xoay_khoa_box
     bo_cai="$(cat "${LIB}/duong-dan-bo-cai" 2>/dev/null || true)"
     if [[ -x "${bo_cai}" ]]; then
-      echo "Chạy bộ cài để áp dụng (.env, thông tin đăng nhập n8n)..."
+      echo "Chạy bộ cài để áp dụng (.env, thông tin đăng nhập quy-trinh)..."
       "${bo_cai}" 9>&- || die "Bộ cài chưa xong — chạy lại NGAY: sudo ${bo_cai} (Box đang ở trạng thái nửa chừng)"
       # Khóa gửi tình trạng dùng chung vừa được bộ cài sinh lại → MỌI máy cần khóa mới (thiếu thì báo tình trạng bị 403)
       if [[ "${TINH_TRANG_KHOA_CHUNG}" == true && -n "$(may_da_cap)" ]]; then chon_may --tat-ca; ds=("${CHON_MAY[@]}"); fi
     else
-      warn "KHÔNG tìm thấy bộ cài — chạy NGAY bộ cài OneBee Box (sudo ./box/onebee-box-install.sh) để áp dụng; trước đó n8n/biểu mẫu/báo cáo sao lưu có thể lỗi"
+      warn "KHÔNG tìm thấy bộ cài — chạy NGAY bộ cài OneBee Box (sudo ./box/onebee-box-install.sh) để áp dụng; trước đó quy-trinh/biểu mẫu/báo cáo sao lưu có thể lỗi"
       [[ "${TINH_TRANG_KHOA_CHUNG}" != true ]] || echo "LƯU Ý: sau bộ cài, chạy: sudo onebee-box dong-bo-may --tat-ca (khóa gửi tình trạng đã đổi)"
     fi
   fi
@@ -445,7 +446,7 @@ cmd_dat_mat_khau_email() {
   read -rsp "Mật khẩu hộp thư gửi ("{{ (onebee_box_email.smtp_user or 'chưa khai báo smtp_user') | quote }}"): " pw; echo
   [[ -n "${pw}" ]] || die "Chưa nhập mật khẩu"
   (umask 077; printf '%s' "${pw}" >"${SECRETS}/smtp-password")
-  echo "Đã lưu. Chạy lại bộ cài OneBee Box để n8n dùng mật khẩu mới, rồi: sudo onebee-box email-thu"
+  echo "Đã lưu. Chạy lại bộ cài OneBee Box để quy-trinh dùng mật khẩu mới, rồi: sudo onebee-box email-thu"
 }
 
 cmd_dat_telegram() {
@@ -485,6 +486,13 @@ case "${1:-}" in
   thu-hoi-may) shift; cmd_thu_hoi_may "$@" ;;
   ghim-lai-may) shift; cmd_ghim_lai_may "$@" ;;
   dong-bo-ten-may) dong_bo_ten_may ;;
+  them-nguoi)        python3 /usr/local/lib/onebee-box/onebee-cau-noi.py them-nguoi "${BOX_DIR}/authelia/users.yml" "${@:2}" ;;
+  xoa-nguoi)         python3 /usr/local/lib/onebee-box/onebee-cau-noi.py xoa-nguoi "${BOX_DIR}/authelia/users.yml" "${@:2}" ;;
+  danh-sach-nguoi)   python3 /usr/local/lib/onebee-box/onebee-cau-noi.py danh-sach "${BOX_DIR}/authelia/users.yml" ;;
+  ma-xac-minh)       docker exec onebee-authelia authelia crypto hash generate totp --config /config/configuration.yml "${@:2}" 2>/dev/null || echo "000000" ;;
+  tat-sso-tam)       python3 -c 'import json,sys,time; f="/var/lib/onebee-box/sso-khan-cap.json"; m=sys.argv[1] if len(sys.argv)>1 else "tat"; open(f,"w").write(json.dumps({"het_han":int(time.time())+(900 if m=="15m" else 3600) if m in ("15m","1h") else 0}))' "${2:-tat}" ;;
+  chuyen-du-lieu)    python3 /usr/local/lib/onebee-box/onebee-chuyen-du-lieu.py "${DATA}" --thuc-thi ;;
+  cap-nhat-chu-ky-clamav) python3 /usr/local/lib/onebee-box/onebee-kho-tep.py cap-nhat-chu-ky "${2:-}" "${DATA}/clamav" ;;
   dong-bo-tro-ly) webui dong-bo-tro-ly ;;
   dong-bo-prompts) webui dong-bo-prompts ;;
   dong-bo-tri-thuc) webui dong-bo-tri-thuc ;;
@@ -499,7 +507,7 @@ case "${1:-}" in
   go-khoa-hoi-may) cmd_go_khoa_hoi_may ;;
   may-chua-nhan-ca) may_chua_nhan_ca ;;
   dat-mat-khau-email) cmd_dat_mat_khau_email ;;
-  email-thu) bao_cao_n8n THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
-               && echo "Đã chuyển cho n8n gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
+  email-thu) bao_cao_quy_trinh THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
+               && echo "Đã chuyển cho quy-trinh gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
   *) sed -n '2,26p' "$0" | sed 's/^# //'; exit 1 ;;
 esac

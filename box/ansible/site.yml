@@ -1,5 +1,9 @@
 ---
-# OneBee Box v0.1 — máy chủ nội bộ: AI chạy tại chỗ, tự động hóa n8n, thư mục chung, sao lưu, giám sát
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# OneBee Box v1.3.0 (DX-OS Open-Core) — máy chủ nội bộ thuần chuẩn OSI:
+# định danh tập trung (Authelia), cổng API (Caddy), dữ liệu cấu trúc & vector (PostgreSQL + pgvector + PostgREST),
+# kho tệp kiểm dịch (SeaweedFS + ClamAV), động cơ quy trình (Node-RED), Trợ lý AI & RAG (Ollama + Gemma 4), sao lưu, giám sát.
 - name: OneBee Box
   hosts: box
   become: true
@@ -12,8 +16,11 @@
     - docker
     - box-firewall   # trước khi mở dịch vụ: từ lần chạy đầu chỉ mạng LAN vào được
     - samba
+    - box-dinh-danh
+    - box-kho-tep
     - box-stack
+    - box-du-lieu
     - box-ai
-    - box-n8n
+    - box-quy-trinh
     - box-backup
     - box-fleet
