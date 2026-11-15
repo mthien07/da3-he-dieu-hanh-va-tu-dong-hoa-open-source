@@ -533,9 +533,15 @@
     state: absent
   when: onebee_kuma.rc == 0 and not (onebee_sso_hieu_luc | bool)
 
-# Lần đầu (vừa tạo tài khoản quản trị) hoặc vừa bật lại đăng nhập riêng của Kuma khi không còn đăng nhập một lần che
+# Lần đầu (vừa tạo tài khoản quản trị) hoặc vừa bật lại đăng nhập riêng của Kuma khi không còn đăng nhập một lần che.
+# Chốt điều kiện vào biến riêng TRƯỚC block: Ansible đánh giá lại `when` của block ở từng task,
+# mà task đầu của block đổi onebee_kuma_dia_chi
+- name: Quyết định mở giám sát ra mạng LAN ngay lần chạy này
+  ansible.builtin.set_fact:
+    onebee_kuma_mo_ra_lan: "{{ onebee_kuma.rc == 0 and onebee_kuma_dia_chi == '127.0.0.1' }}"
+
 - name: Mở giám sát ra mạng LAN (khi đã có tài khoản quản trị và trang giám sát đòi đăng nhập)
-  when: onebee_kuma.rc == 0 and onebee_kuma_dia_chi == '127.0.0.1'
+  when: onebee_kuma_mo_ra_lan | bool
   block:
     - name: Mở cổng giám sát cho mạng LAN
       ansible.builtin.set_fact:
