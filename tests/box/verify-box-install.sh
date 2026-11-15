@@ -28,7 +28,7 @@ code_in() { local c; c="$(http_code "$1")"; shift; for want in "$@"; do [[ "${c}
 
 check "Có file phiên bản Box" grep -q '^ONEBEE_EDITION=box$' /etc/onebee-release
 check "Docker đang chạy và bật cùng máy" bash -c "systemctl is-active docker && systemctl is-enabled docker"
-for c in onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server; do
+for c in onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server onebee-postgres onebee-postgrest; do
   check "Container ${c} đang chạy" bash -c "[ \"\$(docker inspect -f '{{.State.Running}}' ${c})\" = true ]"
 done
 check "Trang giới thiệu :80 hiển thị OneBee Box" bash -c "curl -s -m 10 http://127.0.0.1/ | grep -q 'OneBee Box'"
