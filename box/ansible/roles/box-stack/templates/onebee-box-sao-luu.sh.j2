@@ -57,12 +57,15 @@ cmd_sao_luu() {
   restic cat config >/dev/null 2>&1 || die "Chưa tạo kho sao lưu Box. Chạy: sudo onebee-box khoi-tao"
   [[ "$(stat -c %d "${BACKUP_MOUNT}")" != "$(stat -c %d "${DATA}")" ]] || warn "Ổ sao lưu cùng ổ với dữ liệu — hỏng ổ là mất cả hai"
 
+  # Bước 0: kết xuất CSDL dữ liệu cấu trúc TRƯỚC khi tạm dừng (không chạy được lệnh trong container đang tạm dừng);
+  # lỗi thì dừng cả lần sao lưu. Thư mục dữ liệu sống của PostgreSQL không được chụp (chụp lúc đang ghi = bản hỏng)
+  ket_xuat_csdl || die "Không kết xuất được CSDL (PostgreSQL) — lần sao lưu này DỪNG, chưa chụp gì. Kiểm tra: sudo onebee-box chan-doan"
   # Bước 1: tạm dừng dịch vụ có cơ sở dữ liệu, chụp nhanh phần dữ liệu của chúng (nhất quán), chạy lại ngay
   local svcs=(open-webui n8n uptime-kuma authelia)
   trap 'compose unpause "${svcs[@]}" >/dev/null 2>&1 || true' EXIT
   compose pause "${svcs[@]}" >/dev/null 2>&1 || die "Không tạm dừng được dịch vụ ${svcs[*]}"
   restic backup --retry-lock 5m --tag onebee-box --tag csdl \
-    "${DATA}/open-webui" "${DATA}/n8n" "${DATA}/uptime-kuma" "${DATA}/ho-tro" "${DATA}/authelia" "${BOX_DIR}" "${SECRETS}"
+    "${DATA}/open-webui" "${DATA}/n8n" "${DATA}/uptime-kuma" "${DATA}/ho-tro" "${DATA}/authelia" "${KET_XUAT_DIR}" "${BOX_DIR}" "${SECRETS}"
   compose unpause "${svcs[@]}" >/dev/null 2>&1 || die "Không chạy lại được dịch vụ ${svcs[*]} — kiểm tra: sudo onebee-box trang-thai"
   trap - EXIT
   # Bước 2: thư mục chung (có thể lâu) — dịch vụ vẫn chạy. Không sao lưu model AI (tải lại được)
@@ -158,6 +161,22 @@ xoa_tai_khoan_may_da_thu_hoi() {
   done
 }
 
+# Sau khi lấy lại tệp: đổ bản kết xuất vào CSDL của bản cài lại (thay toàn bộ lược đồ onebee), rồi đặt mật khẩu vai trò theo tệp
+# bí mật vừa khôi phục (vai trò là của cụm PostgreSQL, không nằm trong bản kết xuất; cụm của bản cài lại mang mật khẩu mới)
+khoi_phuc_csdl() {
+  local f="${KET_XUAT_DIR}/onebee.dump"
+  if [[ ! -s "${f}" ]]; then
+    warn "Bản sao lưu không có tệp kết xuất CSDL (${f}; bản sao lưu làm trước khi Box có CSDL?) — CSDL giữ trống, chạy: sudo onebee-box chuyen-du-lieu"
+    return 0
+  fi
+  cho_csdl || die "PostgreSQL không chạy lên sau khôi phục — CSDL CHƯA được khôi phục. Xem: sudo docker logs --tail 50 onebee-postgres; sửa xong chạy lại lệnh này"
+  docker exec -i onebee-postgres pg_restore -U postgres -d onebee --clean --if-exists --single-transaction <"${f}" \
+    || die "Đổ bản kết xuất ${f} vào CSDL lỗi — CSDL giữ nguyên như trước lệnh này (giao dịch đã hoàn tác). Xem lỗi ở trên; tệp kết xuất còn nguyên"
+  dong_bo_mat_khau_csdl >/dev/null || die "Không đặt lại được mật khẩu vai trò CSDL theo tệp bí mật đã khôi phục"
+  csdl -c "NOTIFY pgrst, 'reload schema'" >/dev/null || true
+  echo "Đã khôi phục CSDL từ bản kết xuất $(date -r "${f}" '+%d/%m/%Y %H:%M')"
+}
+
 # Khôi phục toàn bộ Box khi hỏng ổ: chạy trên Box ĐÃ CÀI LẠI (bộ cài OneBee Box), đã gắn ổ sao lưu cũ.
 # $1 = file khóa in từ 'onebee-box in-khoa' (dùng dòng restic-box=…); không đưa file thì hỏi khóa.
 cmd_khoi_phuc_toan_bo() {
@@ -174,11 +193,11 @@ cmd_khoi_phuc_toan_bo() {
   restic cat config >/dev/null 2>&1 || die "Khóa sai, hoặc ổ không có kho sao lưu Box tại ${BACKUP_REPO}"
   restic snapshots --latest 1 --tag onebee-box,csdl --json \
     | python3 -c 'import json, sys; sys.exit(0 if json.load(sys.stdin) else 1)' || die "Kho không có bản sao lưu dữ liệu Box"
-  echo "Dừng dịch vụ, khôi phục cơ sở dữ liệu, khóa bí mật, cấu hình, thư mục chung…"
+  echo "Dừng dịch vụ, khôi phục cơ sở dữ liệu (cả CSDL dữ liệu cấu trúc), khóa bí mật, cấu hình, thư mục chung…"
   compose stop >/dev/null 2>&1 || true
   # Xóa dữ liệu của bản cài mới trước khi chép bản cũ vào (restic không xóa file thừa; file tạm của CSDL mới
   # lẫn với CSDL cũ có thể làm hỏng dữ liệu)
-  rm -rf "${DATA}/open-webui" "${DATA}/n8n" "${DATA}/uptime-kuma" "${DATA}/ho-tro" "${DATA}/authelia"
+  rm -rf "${DATA}/open-webui" "${DATA}/n8n" "${DATA}/uptime-kuma" "${DATA}/ho-tro" "${DATA}/authelia" "${KET_XUAT_DIR}"
   # CA riêng do lần cài lại vừa sinh phải nhường chỗ cho CA cũ (máy trạm đã tin CA cũ): xóa CA mới rồi khôi phục CA cũ từ bản sao lưu
   rm -rf "${CA_DIR}" "${HTTPS_DAU}" "${DATA}/caddy/data/caddy/certificates"   # chứng chỉ lá Caddy đã cấp bằng CA của bản cài lại cũng bỏ   # dấu HTTPS do bản cài lại ghi cũng nhường chỗ cho dấu trong bản sao lưu (nếu có)
   restic restore latest --tag onebee-box,csdl --target / || die "Khôi phục dữ liệu Box lỗi — chưa chạy lại dịch vụ"
@@ -197,6 +216,7 @@ cmd_khoi_phuc_toan_bo() {
   nap_lai_kho_http   # rest-server của bản cài lại có thể đang chạy với file cũ
   dong_bo_ten_may >/dev/null   # chỗ nhận báo cáo tình trạng của n8n dựng lại từ bí mật vừa khôi phục
   compose up -d >/dev/null
+  khoi_phuc_csdl
   xoa_tai_khoan_may_da_thu_hoi
   echo "Đã khôi phục. Việc tiếp theo: chạy lại bộ cài (sudo ./box/onebee-box-install.sh) để đồng bộ cấu hình, rồi"
   echo "sudo onebee-box khoi-phuc-thu. Máy trạm không cần làm gì (dùng lại cấu hình cũ)."

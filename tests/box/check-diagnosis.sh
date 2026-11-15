@@ -76,6 +76,9 @@ case "$1" in
   exec) printf "%s\n" "$*" >>"${SIM}/docker-exec.log"
     st="$(cat "${SIM}/ct-$2" 2>/dev/null || echo running)"
     [[ "${st}" == running* && ! -e "${SIM}/ct-$2-mat" ]] || { echo "Error response from daemon: container $2 is not running" >&2; exit 1; }
+    # PostgreSQL: $SIM/pg-hong = không nhận kết nối; PostgREST (hỏi /ready qua cầu nối): $SIM/postgrest-hong = không trả lời
+    [[ "$2 $3" != "onebee-postgres pg_isready" ]] || { [[ ! -e "${SIM}/pg-hong" ]] || { echo "127.0.0.1:5432 - no response"; exit 2; }; exit 0; }
+    [[ "$2" != onebee-cau-noi ]] || { [[ "$*" == *"http://postgrest:3001/ready"* && ! -e "${SIM}/postgrest-hong" ]] || exit 1; exit 0; }
     read -r ma giay <<<"$(cat "${SIM}/ai" 2>/dev/null || echo "200 1.2")"
     [[ "${ma}" == 200 ]] && printf "{\"response\":\"ok\",\"done\":true}" || printf "{\"error\":\"model not found\"}"
     printf "\n%s %s" "${ma}" "${giay}"; [[ "${ma}" != 000 ]] || exit 28 ;;
@@ -91,6 +94,7 @@ moi_thu_khoe() {
   printf 'MemTotal:       16000000 kB\nMemFree:         4000000 kB\nMemAvailable:    8000000 kB\n' >"${T}/proc/meminfo"
   echo "0.50 0.40 0.30 1/200 12345" >"${T}/proc/loadavg"
   ban_sao_luu 2
+  mkdir -p "${T}/data/postgres-ket-xuat"; echo "kết xuất" >"${T}/data/postgres-ket-xuat/onebee.dump"   # kết xuất CSDL vừa làm
   rm -rf "${T}/secrets/ca"; "${T}/lib/onebee-ca.sh" "${T}/secrets/ca" kiem-thu 127.0.0.1 >/dev/null 2>&1
   rm -f "${T}/secrets/https-da-bat" "${T}/secrets/sso-tam-tat"
 }
@@ -147,9 +151,15 @@ assert d["thoi_diem"][:2] == "20"' "${OUT}" 2>"${T}/py-loi"; then pass "Mọi d�
 else fail "Mọi dịch vụ sống: JSON sai — $(tail -1 "${T}/py-loi")"; echo "${OUT}" | head -c 600; echo; fi
 if [[ "${RC}" == 0 ]]; then pass "Mọi dịch vụ sống: mã thoát 0"; else fail "Mọi dịch vụ sống: mã thoát ${RC} (mong 0)"; fi
 [[ "$(khong_ok)" == "" ]] || fail "Mọi dịch vụ sống: có mục không OK: $(khong_ok)"
-for c in onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server onebee-authelia onebee-cau-noi; do
-  [[ "$(trang_thai docker "${c}")" == ok ]] || fail "Thiếu mục container ${c} trong hạng mục Docker"
+for c in onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server onebee-authelia onebee-cau-noi \
+         onebee-postgres onebee-postgrest postgres_ket_noi postgrest_tra_loi; do
+  [[ "$(trang_thai docker "${c}")" == ok ]] || fail "Thiếu mục ${c} trong hạng mục Docker"
 done
+[[ "$(trang_thai sao_luu ket_xuat_csdl)" == ok ]] || fail "Thiếu mục kết xuất CSDL trong hạng mục Sao lưu"
+if grep -q 'onebee-postgres pg_isready -q -h 127.0.0.1 -U postgres -d onebee' "${SIM}/docker-exec.log" \
+   && grep -q 'onebee-cau-noi python3 -I -c .*http://postgrest:3001/ready' "${SIM}/docker-exec.log"; then
+  pass "Thử CSDL: pg_isready qua TCP trong onebee-postgres; PostgREST hỏi /ready (cổng quản trị) từ cầu nối danh tính"
+else fail "Thử CSDL/PostgREST không gọi đúng: $(grep -E 'postgres|cau-noi' "${SIM}/docker-exec.log")"; fi
 if grep -q 'gemma4:e2b-it-qat' "${SIM}/docker-exec.log" && grep -q 'http://ollama:11434/api/generate' "${SIM}/docker-exec.log"; then pass "Thử AI: gửi prompt tới Ollama cổng 11434 bằng đúng model trong group_vars"; else fail "Thử AI không gọi Ollama đúng model/cổng: $(cat "${SIM}/docker-exec.log" 2>/dev/null)"; fi
 
 chay
@@ -176,6 +186,22 @@ moi_thu_khoe; : >"${SIM}/docker-tat"
 chay --json
 if [[ "${RC}" == 2 && "$(trang_thai docker docker)" == loi && "$(trang_thai ai ollama)" == loi ]]; then pass "Dịch vụ Docker ngừng → Docker LỖI, AI LỖI, lệnh vẫn chạy hết các hạng mục"; else fail "Docker ngừng: mã ${RC}, docker=$(trang_thai docker docker), ai=$(trang_thai ai ollama)"; fi
 [[ "$(trang_thai samba smbd)" == ok && "$(trang_thai sao_luu ban_moi_nhat)" == ok ]] || fail "Docker ngừng làm hỏng kết quả các hạng mục khác"
+
+# ===== Dữ liệu cấu trúc =====
+moi_thu_khoe; : >"${SIM}/pg-hong"
+kich_ban "PostgreSQL không nhận kết nối → LỖI" 2 "docker/postgres_ket_noi=loi"
+chay; if grep -q 'docker logs --tail 50 onebee-postgres' <<<"${OUT}"; then pass "Gợi ý xem nhật ký onebee-postgres"; else fail "Thiếu gợi ý nhật ký onebee-postgres"; fi
+moi_thu_khoe; : >"${SIM}/postgrest-hong"
+kich_ban "PostgREST không trả lời /ready → LỖI" 2 "docker/postgrest_tra_loi=loi"
+moi_thu_khoe; echo "exited" >"${SIM}/ct-onebee-postgres"; : >"${SIM}/pg-hong"; : >"${SIM}/postgrest-hong"
+kich_ban "Container PostgreSQL dừng → container, kết nối CSDL, PostgREST đều LỖI" 2 "docker/onebee-postgres=loi docker/postgres_ket_noi=loi docker/postgrest_tra_loi=loi"
+moi_thu_khoe; touch -d '50 hours ago' "${T}/data/postgres-ket-xuat/onebee.dump"
+kich_ban "Kết xuất CSDL gần nhất cách 50 giờ (> 48 giờ) → CẢNH BÁO" 1 "sao_luu/ket_xuat_csdl=canh_bao"
+moi_thu_khoe; touch -d '47 hours ago' "${T}/data/postgres-ket-xuat/onebee.dump"
+kich_ban "Kết xuất CSDL cách 47 giờ → vẫn OK" 0 ""
+moi_thu_khoe; rm -f "${T}/data/postgres-ket-xuat/onebee.dump"
+kich_ban "Chưa có tệp kết xuất CSDL → CẢNH BÁO" 1 "sao_luu/ket_xuat_csdl=canh_bao"
+chay; if grep -q 'onebee-box sao-luu' <<<"${OUT}"; then pass "Gợi ý sao lưu ngay khi thiếu kết xuất"; else fail "Thiếu gợi ý sao-luu khi thiếu kết xuất"; fi
 
 # ===== Mạng =====
 moi_thu_khoe; rm -f "${SIM}/ping-192.168.1.1"
@@ -229,7 +255,7 @@ moi_thu_khoe; : >"${SIM}/restic-chua-tao"
 kich_ban "Chưa tạo kho sao lưu → LỖI" 2 "sao_luu/ban_moi_nhat=loi"
 chay; if grep -q 'onebee-box khoi-tao' <<<"${OUT}"; then pass "Gợi ý chạy khoi-tao khi chưa có kho"; else fail "Thiếu gợi ý khoi-tao"; fi
 moi_thu_khoe; : >"${SIM}/o-sao-luu-chua-gan"
-kich_ban "Chưa gắn ổ sao lưu → LỖI (không đọc kho)" 2 "sao_luu/o_sao_luu=loi sao_luu/ban_moi_nhat=loi"
+kich_ban "Chưa gắn ổ sao lưu → LỖI (không đọc kho); kết xuất CSDL trên ổ dữ liệu vẫn kiểm" 2 "sao_luu/o_sao_luu=loi sao_luu/ban_moi_nhat=loi"
 
 # ===== Chứng chỉ =====
 # CA trung gian còn 10 ngày (ký lại bằng khóa CA gốc thật, giữ nguyên khóa trung gian)

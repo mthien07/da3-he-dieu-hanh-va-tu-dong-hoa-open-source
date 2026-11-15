@@ -363,7 +363,7 @@ xoay_khoa_may() {
   echo "Đã tạo mật khẩu mới cho máy ${ten}"
 }
 
-# Phía Box: mật khẩu quản trị Trợ lý AI + giám sát (đổi trong CSDL của dịch vụ), mật khẩu chủ n8n, mật khẩu biểu mẫu, khóa webhook n8n,
+# Phía Box: mật khẩu quản trị Trợ lý AI + giám sát + vai trò CSDL (đổi trong dịch vụ trước), mật khẩu chủ n8n, mật khẩu biểu mẫu, khóa webhook n8n,
 # WEBUI_SECRET_KEY (hủy mọi phiên đăng nhập Open WebUI). Phần Ansible áp dụng (.env, thông tin đăng nhập n8n) cần chạy lại bộ cài ngay sau đó
 xoay_khoa_box() {
   local moi
@@ -377,6 +377,15 @@ xoay_khoa_box() {
       || die "Không đổi được mật khẩu giám sát — các mật khẩu khác CHƯA đổi thêm. Kiểm tra: sudo onebee-box trang-thai"
     (umask 077; printf '%s' "${moi}" >"${SECRETS}/uptime-kuma-password")
   fi
+  # CSDL: đổi trong PostgreSQL (ALTER ROLE) TRƯỚC, ghi tệp bí mật SAU — lỗi thì giữ tệp cũ (vẫn khớp CSDL) và dừng.
+  # PostgREST đọc mật khẩu mới từ .env khi bộ cài chạy ngay sau đây (compose tạo lại dịch vụ)
+  local muc
+  for muc in "${VAI_TRO_CSDL[@]}"; do
+    moi="$(ngau_nhien 32)"
+    dat_mat_khau_csdl "${muc%%:*}" "${moi}" \
+      || die "Không đổi được mật khẩu CSDL của ${muc%%:*} (PostgreSQL chưa chạy?) — mật khẩu này giữ nguyên. Kiểm tra: sudo onebee-box chan-doan"
+    (umask 077; printf '%s' "${moi}" >"${SECRETS}/${muc#*:}")
+  done
   moi="$(ngau_nhien 24)"
   (umask 077; printf '%s' "${moi}" >"${SECRETS}/n8n-owner-password"
    htpasswd -niBC 10 onebee <<<"${moi}" | cut -d: -f2 | tr -d '\n' >"${SECRETS}/n8n-owner-hash")
@@ -388,7 +397,7 @@ xoay_khoa_box() {
   rm -f "${SECRETS}/authelia-session-secret" "${SECRETS}/cau-noi-jwt-secret"
   # Bộ cài (Ansible lookup password) sinh lại các file vừa xóa; n8n-webhook-key cần có NGAY cho bao_cao_n8n ở lần chạy sau
   secret n8n-webhook-key >/dev/null
-  echo "Đã đổi: mật khẩu quản trị Trợ lý AI và giám sát (trong dịch vụ); đã tạo mới: mật khẩu chủ n8n, mật khẩu biểu mẫu (nhanvien, kythuat), khóa webhook n8n, WEBUI_SECRET_KEY, khóa phiên đăng nhập một lần (mọi người đăng nhập lại), khóa ký JWT của cầu nối."
+  echo "Đã đổi: mật khẩu quản trị Trợ lý AI, giám sát, CSDL (trong dịch vụ); đã tạo mới: mật khẩu chủ n8n, mật khẩu biểu mẫu (nhanvien, kythuat), khóa webhook n8n, WEBUI_SECRET_KEY, khóa phiên đăng nhập một lần (mọi người đăng nhập lại), khóa ký JWT của cầu nối."
 }
 
 cmd_xoay_khoa() {
