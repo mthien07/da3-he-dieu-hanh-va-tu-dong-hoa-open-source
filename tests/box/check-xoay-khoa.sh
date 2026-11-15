@@ -39,8 +39,17 @@ S=/etc/onebee-box/secrets
 st() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 cp ${S}/webui-admin-password /root/admin-cu
 cp ${S}/n8n-owner-password /root/n8n-cu
+for f in authelia-session-secret cau-noi-jwt-secret authelia-storage-key; do cp "${S}/${f}" "/root/${f}-cu"; done
 onebee-box xoay-khoa --box --dong-y > /root/xoay-box.log 2>&1 || { tail -40 /root/xoay-box.log; exit 1; }
 if cmp -s ${S}/webui-admin-password /root/admin-cu || cmp -s ${S}/n8n-owner-password /root/n8n-cu; then echo 'FAIL  Bí mật không đổi'; exit 1; fi
+for f in authelia-session-secret cau-noi-jwt-secret; do
+  [ -s "${S}/${f}" ] && ! cmp -s "${S}/${f}" "/root/${f}-cu" || { echo "FAIL  xoay-khoa --box không đổi ${f}"; exit 1; }
+done
+cmp -s ${S}/authelia-storage-key /root/authelia-storage-key-cu || { echo 'FAIL  xoay-khoa --box đổi authelia-storage-key (mất mọi ghi danh hai lớp)'; exit 1; }
+for ct in onebee-authelia onebee-cau-noi; do
+  [ "$(docker inspect -f '{{.State.Running}}' "${ct}")" = true ] || { echo "FAIL  ${ct} không chạy lại sau xoay khóa"; exit 1; }
+done
+echo 'PASS  xoay-khoa --box: khóa phiên đăng nhập một lần và khóa ký JWT của cầu nối đổi; khóa CSDL định danh giữ nguyên; hai dịch vụ chạy lại'
 for _ in $(seq 40); do curl -s -m 5 http://127.0.0.1:3000/health | grep -q true && curl -s -m 5 http://127.0.0.1:5678/healthz | grep -q ok && break; sleep 3; done
 signin() { st -X POST http://127.0.0.1:3000/api/v1/auths/signin -H 'Content-Type: application/json' -d "{\"email\":\"quantri@onebee.lan\",\"password\":\"$1\"}"; }
 [ "$(signin "$(cat /root/admin-cu)")" != 200 ] || { echo 'FAIL  Mật khẩu quản trị Trợ lý AI cũ còn dùng được'; exit 1; }

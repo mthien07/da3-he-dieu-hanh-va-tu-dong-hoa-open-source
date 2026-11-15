@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Kiểm tra bật/tắt HTTPS (rà soát bảo mật F3, Pha 4) trên máy test, SAU khi Box và máy trạm ketoan-01 đã chạy ở chế độ HTTP:
 # chốt chặn máy chưa nhận CA → bật HTTPS → Caddy là nơi duy nhất công bố cổng, TLS đúng CA riêng, http:// bị chuyển 308, cookie Secure, CORS,
-# CSP sandbox của biểu mẫu n8n còn nguyên, máy trạm sao lưu/hỏi AI/báo tình trạng qua HTTPS → tắt HTTPS lại về HTTP.
+# CSP sandbox của biểu mẫu n8n còn nguyên, máy trạm sao lưu/hỏi AI/báo tình trạng qua HTTPS → đăng nhập một lần + cổng API
+# (check-sso-cong-api.sh) → chạy lại bộ cài không đổi gì → tắt HTTPS lại về HTTP.
 # Cách dùng: check-https.sh <container-Box> <container-máy-trạm>   (chưa chạy trên máy tác giả — cần Docker lồng, xem tests/README.md)
 set -euo pipefail
 BOX="$1"; CLIENT="$2"
@@ -85,6 +86,9 @@ tram "grep -q '^RESTIC_REPOSITORY=rest:https://' /etc/onebee/may-tram.env && gre
   grep -q ManagedBookmarks /etc/firefox/policies/policies.json || { echo 'FAIL  Thiếu dấu trang https của Firefox'; exit 1; }
   echo 'PASS  Firefox được đặt trang chủ + dấu trang https'"
 box "onebee-box may-tram | grep -A3 '^ketoan-01 ' | head -4"
+
+echo "===== HTTPS: ĐĂNG NHẬP MỘT LẦN + CỔNG API ====="
+"$(dirname "$0")/check-sso-cong-api.sh" "${BOX}"
 
 echo "===== HTTPS: CHẠY LẠI BỘ CÀI KHÔNG ĐỔI GÌ ====="
 cai lan-2-https
