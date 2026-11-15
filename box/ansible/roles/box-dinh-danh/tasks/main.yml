@@ -13,12 +13,18 @@
   loop:
     - {path: "{{ onebee_box_dir }}/authelia", mode: "0750"}
     - {path: "{{ onebee_box_data }}/authelia", mode: "0700"}   # tệp người dùng (bản băm mật khẩu), ghi danh hai lớp, mã xác minh
+    - {path: "{{ onebee_box_dir }}/cau-noi", mode: "0755"}
 
 - name: Kiểm khóa bí mật của dịch vụ định danh đã có chưa
   ansible.builtin.stat:
     path: "{{ onebee_box_secrets }}/{{ item }}"
   loop: [authelia-session-secret, authelia-storage-key, authelia-jwt-secret]
   register: onebee_dd_khoa_cu
+
+- name: Kiểm khóa ký JWT của cầu nối danh tính đã có chưa
+  ansible.builtin.stat:
+    path: "{{ onebee_box_secrets }}/cau-noi-jwt-secret"
+  register: onebee_cn_khoa_cu
 
 # Sinh một lần (lookup password ghi tệp 0600 khi chưa có). authelia-storage-key mã hóa ghi danh hai lớp trong CSDL:
 # KHÔNG xoay (mất là mọi người phải ghi danh lại). Chỉ giữ số đếm trong biến, không giữ khóa
@@ -29,6 +35,13 @@
           lookup('ansible.builtin.password', onebee_box_secrets ~ '/authelia-storage-key', chars=['ascii_letters', 'digits'], length=64),
           lookup('ansible.builtin.password', onebee_box_secrets ~ '/authelia-jwt-secret', chars=['ascii_letters', 'digits'], length=64)]
          | length }}
+  no_log: true
+
+# Khóa ký JWT dùng chung giữa cầu nối và dịch vụ dữ liệu: 64 ký tự hex (QĐ4). Xoay bằng onebee-box xoay-khoa --box
+- name: Sinh khóa ký JWT của cầu nối danh tính (lần đầu, hoặc sau onebee-box xoay-khoa --box)
+  ansible.builtin.set_fact:
+    onebee_cn_so_khoa: >-
+      {{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/cau-noi-jwt-secret', chars=['digits', 'abcdef'], length=64) | length }}
   no_log: true
 
 # Authelia không chạy với danh sách người dùng rỗng → tệp đầu tiên có một tài khoản hệ thống ĐÃ KHÓA, mật khẩu ngẫu nhiên không ai biết
@@ -69,6 +82,15 @@
     group: root
     mode: "0640"
 
+- name: Cài mã cầu nối danh tính
+  ansible.builtin.copy:
+    src: onebee-cau-noi-danh-tinh.py
+    dest: "{{ onebee_box_dir }}/cau-noi/onebee-cau-noi-danh-tinh.py"
+    owner: root
+    group: root
+    mode: "0644"
+  register: onebee_cn_ma
+
 # Cấu hình hoặc khóa đổi → tạo lại container (khóa sinh lại là tệp mới; phiên đang mở bị hủy — đúng ý của xoay khóa)
 - name: Khởi chạy / cập nhật dịch vụ định danh
   ansible.builtin.command: >-
@@ -82,6 +104,19 @@
   retries: 5
   delay: 30
   until: onebee_dd_up.rc == 0
+
+- name: Khởi chạy / cập nhật cầu nối danh tính
+  ansible.builtin.command: >-
+    docker compose up -d --no-deps
+    {{ '--force-recreate' if (onebee_cn_ma is changed or not onebee_cn_khoa_cu.stat.exists) else '' }}
+    cau-noi
+  args:
+    chdir: "{{ onebee_box_dir }}"
+  register: onebee_cn_up
+  changed_when: onebee_cn_up.stderr is search('Creat|Recreat|Start|Pull')
+  retries: 5
+  delay: 30
+  until: onebee_cn_up.rc == 0
 
 - name: Chờ dịch vụ định danh sẵn sàng
   ansible.builtin.command: docker exec onebee-authelia wget -q -O /dev/null http://127.0.0.1:9091/dangnhap/api/health

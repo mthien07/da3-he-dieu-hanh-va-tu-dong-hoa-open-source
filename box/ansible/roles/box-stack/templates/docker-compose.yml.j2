@@ -226,6 +226,28 @@ services:
       - {{ onebee_box_secrets }}/authelia-storage-key:/run/secrets/authelia-storage-key:ro
       - {{ onebee_box_secrets }}/authelia-jwt-secret:/run/secrets/authelia-jwt-secret:ro
 
+  # Cầu nối danh tính (mã trong repo: box-dinh-danh/files/onebee-cau-noi-danh-tinh.py, chỉ thư viện chuẩn Python): tin Remote-User/Remote-Groups
+  # do Caddy chép từ Authelia, ký JWT 60 giây cho dịch vụ dữ liệu. Chỉ Caddy nối tới được (mạng sso), không công bố cổng.
+  cau-noi:
+    image: {{ onebee_box_images.python }}
+    container_name: onebee-cau-noi
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
+    networks: [sso]
+    command: ["python3", "-I", "/app/onebee-cau-noi-danh-tinh.py"]
+    environment:
+      TZ: {{ onebee_timezone }}
+      PYTHONDONTWRITEBYTECODE: "1"
+      CAU_NOI_PHIA_SAU: http://postgrest:3000
+      CAU_NOI_JWT_SECRET_FILE: /run/secrets/cau-noi-jwt-secret
+    volumes:
+      - ./cau-noi:/app:ro
+      - {{ onebee_box_secrets }}/cau-noi-jwt-secret:/run/secrets/cau-noi-jwt-secret:ro
+
 networks:
   sso:
     internal: true   # không có đường ra ngoài; chỉ các container được khai vào mạng này nói chuyện với nhau
