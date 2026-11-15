@@ -39,13 +39,13 @@ CREATE TABLE onebee.don_hang (
   thoi_gian_duyet timestamp without time zone,
   UNIQUE (nguon, dong),
   CHECK ((nguon IS NULL) = (dong IS NULL)),
-  CHECK (so_luong_kg > 0 AND don_gia >= 0),
+  CONSTRAINT so_luong_duong_don_gia_khong_am CHECK (so_luong_kg > 0 AND don_gia >= 0),
   CHECK (thanh_tien >= 0),
   -- NULL: dòng sổ cũ, không qua quy trình duyệt; dòng mới luôn có trạng thái
   CHECK (trang_thai_duyet IN ('CHO_DUYET', 'DA_DUYET', 'TU_CHOI')),
   CHECK (nguon IS NOT NULL OR trang_thai_duyet IS NOT NULL),
   -- Không ai tự duyệt đơn của mình
-  CHECK (nguoi_duyet IS NULL OR nguoi_duyet <> nguoi_tao)
+  CONSTRAINT khong_tu_duyet CHECK (nguoi_duyet IS NULL OR nguoi_duyet <> nguoi_tao)
 );
 ALTER TABLE onebee.don_hang ENABLE ROW LEVEL SECURITY;
 ALTER TABLE onebee.don_hang FORCE ROW LEVEL SECURITY;
@@ -67,10 +67,10 @@ CREATE TABLE onebee.yeu_cau_ho_tro (
   UNIQUE (nguon, dong),
   CHECK ((nguon IS NULL) = (dong IS NULL)),
   -- Danh mục loại sự cố: box/ansible/roles/box-n8n/vars/main.yml (onebee_ho_tro_loai)
-  CHECK (nguon IS NOT NULL OR loai IN ('File không mở được / sai định dạng', 'Phần mềm chỉ chạy trên Windows', 'Máy in / máy quét',
-                                       'Mạng / Internet', 'Gõ tiếng Việt', 'Máy chậm / treo', 'Sao lưu / mất file', 'Khác')),
+  CONSTRAINT loai_trong_danh_muc CHECK (nguon IS NOT NULL OR loai IN ('File không mở được / sai định dạng', 'Phần mềm chỉ chạy trên Windows', 'Máy in / máy quét',
+                                                                 'Mạng / Internet', 'Gõ tiếng Việt', 'Máy chậm / treo', 'Sao lưu / mất file', 'Khác')),
   -- Mức độ: đúng giá trị sổ cũ ghi (biểu mẫu 07-yeu-cau-ho-tro: "Gấp (đang dừng việc)" → gap, "Bình thường" → binh-thuong)
-  CHECK (nguon IS NOT NULL OR muc_do IN ('gap', 'binh-thuong'))
+  CONSTRAINT muc_do_trong_danh_muc CHECK (nguon IS NOT NULL OR muc_do IN ('gap', 'binh-thuong'))
 );
 ALTER TABLE onebee.yeu_cau_ho_tro ENABLE ROW LEVEL SECURITY;
 ALTER TABLE onebee.yeu_cau_ho_tro FORCE ROW LEVEL SECURITY;
@@ -89,8 +89,8 @@ CREATE TABLE onebee.xu_ly_ho_tro (
   CHECK ((nguon IS NULL) = (dong IS NULL)),
   CHECK (so_phut >= 0),
   -- Danh mục cách xử lý: box/ansible/roles/box-n8n/vars/main.yml (onebee_ho_tro_cach_xu_ly)
-  CHECK (nguon IS NOT NULL OR cach_xu_ly IN ('Hướng dẫn người dùng', 'Sửa cấu hình', 'Cài thêm phần mềm', 'Thay phần cứng',
-                                             'Quay về Windows (máy/phần mềm)', 'Chưa xử lý được'))
+  CONSTRAINT cach_xu_ly_trong_danh_muc CHECK (nguon IS NOT NULL OR cach_xu_ly IN ('Hướng dẫn người dùng', 'Sửa cấu hình', 'Cài thêm phần mềm', 'Thay phần cứng',
+                                                                       'Quay về Windows (máy/phần mềm)', 'Chưa xử lý được'))
 );
 ALTER TABLE onebee.xu_ly_ho_tro ENABLE ROW LEVEL SECURITY;
 ALTER TABLE onebee.xu_ly_ho_tro FORCE ROW LEVEL SECURITY;

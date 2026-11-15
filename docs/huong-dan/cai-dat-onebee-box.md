@@ -129,6 +129,31 @@ Khi dấu tạm tắt còn, mỗi lần chạy bộ cài và `onebee-box chan-do
 Sao lưu Box có cả tài khoản và ghi danh hai lớp (`/srv/onebee/authelia`). `xoay-khoa --box` đổi khóa phiên (mọi người đăng nhập lại) và
 khóa ký JWT; khóa mã hóa ghi danh hai lớp (`authelia-storage-key`) không xoay. `in-khoa` không in mật khẩu người dùng (Box chỉ giữ bản băm).
 
+## 3c. Dữ liệu và sao lưu (cơ sở dữ liệu PostgreSQL, API dữ liệu)
+Đơn hàng, yêu cầu hỗ trợ, xử lý, khảo sát, tình trạng máy trạm nằm trong một cơ sở dữ liệu PostgreSQL (`onebee-postgres`, lược đồ `onebee`).
+API dữ liệu (PostgREST, `onebee-postgrest`) chỉ đi qua cổng `https://box.<mã>.onebee.internal/api/<bảng>` sau đăng nhập một lần —
+hai dịch vụ này không mở cổng nào ra LAN. Ai được làm gì do chính CSDL kiểm (phân quyền tới từng dòng):
+
+| Nhóm | Được làm |
+|---|---|
+| `nhan_vien` | Thêm đơn hàng, yêu cầu hỗ trợ, khảo sát; chỉ thấy dòng mình tạo; không sửa, không xóa |
+| `ky_thuat` | Như nhân viên; thấy mọi yêu cầu hỗ trợ và tình trạng máy; ghi dòng xử lý |
+| `quan_ly` | Như nhân viên; thấy mọi đơn và yêu cầu; duyệt/từ chối đơn của **người khác** (không tự duyệt đơn của mình); khảo sát chỉ xem tổng hợp theo tuần (`/api/khao_sat_tong_hop`), không thấy góp ý |
+
+Ví dụ duyệt đơn: `PATCH /api/don_hang?id=eq.12` với `{"trang_thai_duyet":"DA_DUYET","ly_do_duyet":"Đủ hàng"}` — người duyệt và giờ duyệt do CSDL tự ghi.
+
+n8n vẫn ghi sổ CSV như cũ (biểu mẫu đơn hàng, hỗ trợ, khảo sát). Chuyển sổ cũ vào CSDL:
+```bash
+sudo onebee-box chuyen-du-lieu   # chạy lại bao nhiêu lần cũng được: chỉ nạp dòng mới; in số dòng tệp / mới nạp / tổng trong bảng
+```
+Lần đầu mỗi tệp được chép sang `<tên>.truoc-chuyen`; tệp gốc không bị sửa. Tệp có dòng hỏng (thiếu cột, sai kiểu số) bị từ chối **cả tệp**,
+lệnh in tên tệp + số dòng lỗi: sửa dòng đó trong tệp rồi chạy lại. `bao-cao-tuan` tự chuyển trước rồi đọc từ CSDL.
+
+Sao lưu: `sao-luu` kết xuất CSDL (`/srv/onebee/postgres-ket-xuat/onebee.dump`) **trước** khi tạm dừng dịch vụ rồi đưa vào bản sao lưu;
+kết xuất lỗi thì cả lần sao lưu báo lỗi. `khoi-phuc-toan-bo` đổ lại bản kết xuất vào CSDL. Mỗi lần nâng cấp có thay đổi lược đồ, bộ cài
+kết xuất trước vào `postgres-ket-xuat/truoc-luoc-do-<tệp>.dump`. `chan-doan` báo khi CSDL hay API dữ liệu không trả lời, hoặc bản kết xuất
+cũ quá 48 giờ. `xoay-khoa --box` đổi cả mật khẩu CSDL (đổi trong CSDL trước, rồi mới ghi tệp bí mật).
+
 ## 4. Cấp cho máy trạm (sao lưu, Trợ lý AI, quản lý tập trung)
 Trên Box:
 ```bash
@@ -165,7 +190,7 @@ Máy trạm cài bản v0.1 (file `sao-luu.env`) được bộ cài tự đổi 
 ## Khôi phục toàn bộ khi hỏng ổ Box
 1. Cài lại Ubuntu Server 24.04 + chạy `sudo ./box/onebee-box-install.sh` (như máy mới).
 2. Gắn ổ sao lưu cũ vào `/mnt/onebee-sao-luu` (mục 3). Chép file khóa đã in từ `in-khoa` (hoặc gõ tay dòng `restic-box`).
-3. `sudo onebee-box khoi-phuc-toan-bo /đường/dẫn/khoa.txt` — lấy lại dữ liệu Trợ lý AI, n8n, giám sát, sổ hỗ trợ, thư mục chung,
+3. `sudo onebee-box khoi-phuc-toan-bo /đường/dẫn/khoa.txt` — lấy lại dữ liệu Trợ lý AI, n8n, giám sát, sổ hỗ trợ, CSDL (đơn hàng…), thư mục chung,
    toàn bộ khóa bí mật (mật khẩu cũ dùng lại được), khóa SSH quản trị máy trạm.
 4. Chạy lại bộ cài, rồi `sudo onebee-box khoi-phuc-thu`. **Máy trạm không phải làm gì**: sao lưu, `hoi`, cập nhật từ Box chạy tiếp
    (kho sao lưu máy trạm là bản sao nên không nằm trong bản sao lưu Box — máy trạm tự tạo kho mới ở lần sao lưu sau).

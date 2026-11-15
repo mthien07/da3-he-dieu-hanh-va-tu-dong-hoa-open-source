@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Diễn tập hỏng ổ Box (chạy trên máy test): in khóa ra "giấy" → xóa sạch dữ liệu + khóa + cấu hình Box → cài lại Box
-# → onebee-box khoi-phuc-toan-bo bằng khóa đã in → mật khẩu, tài khoản, sổ hỗ trợ trở lại; máy trạm sao lưu, hỏi AI,
+# → onebee-box khoi-phuc-toan-bo bằng khóa đã in → mật khẩu, tài khoản, sổ hỗ trợ, CSDL (dòng đánh dấu) trở lại; máy trạm sao lưu, hỏi AI,
 # nhận cập nhật như cũ mà không phải cấu hình lại. (Giữ lại model AI đã tải để test đỡ tải lại ~4 GB.)
 # Cách dùng: check-khoi-phuc-toan-bo.sh <container-Box> <container-máy-trạm>
 set -euo pipefail
@@ -12,6 +12,14 @@ S=/etc/onebee-box/secrets
 # Máy đã THU HỒI trước khi hỏng ổ: sau khôi phục không được "sống lại" dù bản sao lưu còn mật khẩu cũ của máy
 box "onebee-box them-may tam-01 >/dev/null && onebee-box thu-hoi-may tam-01 --dong-y >/dev/null
   ! grep -q '^tam-01:' /srv/onebee/restic/.htpasswd"
+
+# Dòng đánh dấu trong CSDL (chế độ HTTP: ghi thẳng bằng psql, không qua cổng API) — phải còn nguyên sau khôi phục toàn bộ
+box "dau=\"Dấu khôi phục \$(date +%s%N)\"; echo \"\${dau}\" > /root/cu-dau-csdl
+  docker exec -i onebee-postgres psql -X -q -At -U postgres -d onebee -v ON_ERROR_STOP=1 -v dau=\"\${dau}\" >/dev/null <<'SQL'
+INSERT INTO onebee.don_hang (khach_hang, mat_hang, so_luong_kg, don_gia, thanh_tien, nguoi_tao, ghi_chu)
+  VALUES ('Khách diễn tập', 'Hàng diễn tập', 1, 1, 1, 'quantri', :'dau');
+SQL
+  docker exec onebee-postgres psql -X -At -U postgres -d onebee -c 'SELECT count(*) FROM onebee.don_hang' > /root/cu-so-don-csdl"
 
 box "onebee-box in-khoa > /root/khoa-in-ra-giay.txt
   cp ${S}/webui-admin-password /root/cu-webui; cp ${S}/n8n-owner-password /root/cu-n8n; cp ${S}/ca/root.sha256 /root/cu-ca-sha
@@ -40,6 +48,13 @@ box "/root/onebee-test/box/onebee-box-install.sh > /root/cai-lai.log 2>&1 || { t
     -d \"{\\\"emailOrLdapLoginId\\\":\\\"quantri@onebee.lan\\\",\\\"password\\\":\\\"\$(cat /root/cu-n8n)\\\"}\")
   [ \"\${code}\" = 200 ] || { echo \"FAIL  Mật khẩu chủ n8n cũ không dùng được (\${code})\"; exit 1; }
   [ \"\$(wc -l < /srv/onebee/ho-tro/yeu-cau.csv)\" = \"\$(cat /root/cu-so-yeu-cau)\" ] || { echo 'FAIL  Mất sổ yêu cầu hỗ trợ'; exit 1; }
+  dau=\"\$(cat /root/cu-dau-csdl)\"
+  [ \"\$(docker exec -i onebee-postgres psql -X -q -At -U postgres -d onebee -v dau=\"\${dau}\" <<<\"SELECT count(*) FROM onebee.don_hang WHERE ghi_chu = :'dau';\")\" = 1 ] \
+    && [ \"\$(docker exec onebee-postgres psql -X -At -U postgres -d onebee -c 'SELECT count(*) FROM onebee.don_hang')\" = \"\$(cat /root/cu-so-don-csdl)\" ] \
+    || { echo 'FAIL  Mất dòng đánh dấu / đơn hàng trong CSDL sau khôi phục toàn bộ'; exit 1; }
+  docker exec onebee-cau-noi python3 -I -c \"import urllib.request; urllib.request.urlopen('http://postgrest:3001/ready', timeout=10)\" \
+    || { echo 'FAIL  Dịch vụ dữ liệu (PostgREST) không nối được CSDL sau khôi phục (mật khẩu vai trò?)'; exit 1; }
+  echo 'PASS  CSDL sau khôi phục toàn bộ: dòng đánh dấu ghi trước khi hỏng ổ còn nguyên, đủ số đơn hàng; PostgREST nối được CSDL'
   onebee-box khoi-phuc-thu | tail -1
   ! grep -q '^tam-01:' /srv/onebee/restic/.htpasswd || { echo 'FAIL  Máy đã thu hồi lại có quyền vào kho HTTP sau khôi phục'; exit 1; }
   [ ! -e /srv/onebee/may-da-cap/tam-01 ] && [ -e ${S}/thu-hoi/tam-01 ] || { echo 'FAIL  Máy đã thu hồi lại được nhận báo cáo sau khôi phục'; exit 1; }

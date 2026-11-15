@@ -78,7 +78,7 @@ kq2="$(sql nhan_vien an <<<"DELETE FROM onebee.don_hang WHERE id = ${id_a:-0};")
 
 id_b="$(sql quan_ly binh <<<"INSERT INTO onebee.don_hang (khach_hang, mat_hang, so_luong_kg, don_gia, thanh_tien) VALUES ('Khách mẫu B', 'Sáp ong mẫu', 1, 50000, 50000) RETURNING id;")" || true
 kq="$(sql quan_ly binh <<<"UPDATE onebee.don_hang SET trang_thai_duyet = 'DA_DUYET' WHERE id = ${id_b:-0};")" && rc=0 || rc=$?
-[[ "${id_b}" =~ ^[0-9]+$ && ${rc} -ne 0 && "${kq}" == *"check constraint"* && "$(chu -c "SELECT trang_thai_duyet FROM onebee.don_hang WHERE id = ${id_b:-0}")" == CHO_DUYET ]] \
+[[ "${id_b}" =~ ^[0-9]+$ && ${rc} -ne 0 && "${kq}" == *'check constraint "khong_tu_duyet"'* && "$(chu -c "SELECT trang_thai_duyet FROM onebee.don_hang WHERE id = ${id_b:-0}")" == CHO_DUYET ]] \
   && pass "(d) quan_ly binh duyệt đơn của chính mình bị từ chối (ràng buộc nguoi_duyet <> nguoi_tao), đơn vẫn chờ duyệt" \
   || fail "(d) binh tự duyệt: id='${id_b}' rc=${rc} ${kq}"
 
@@ -94,7 +94,7 @@ gia_mao="$(sql quan_ly lan <<<"UPDATE onebee.don_hang SET nguoi_duyet = 'ai-do' 
 
 kq="$(sql nhan_vien an <<<"INSERT INTO onebee.yeu_cau_ho_tro (may, loai, muc_do, mo_ta) VALUES ('ketoan-01', 'Gõ tiếng Việt', 'rat-gap', 'mẫu');")" && rc=0 || rc=$?
 dung="$(sql nhan_vien an <<<"INSERT INTO onebee.yeu_cau_ho_tro (may, loai, muc_do, mo_ta) VALUES ('ketoan-01', 'Gõ tiếng Việt', 'gap', 'mẫu') RETURNING ma;")" || true
-[[ ${rc} -ne 0 && "${kq}" == *"check constraint"* && "${dung}" =~ ^[0-9]{6}-[0-9]{6}-[0-9]{2}$ ]] \
+[[ ${rc} -ne 0 && "${kq}" == *'check constraint "muc_do_trong_danh_muc"'* && "${dung}" =~ ^[0-9]{6}-[0-9]{6}-[0-9]{2}$ ]] \
   && pass "(f) thêm yêu cầu hỗ trợ có mức độ ngoài danh mục bị từ chối (mức độ đúng danh mục thì nhận, mã dạng yyMMdd-HHmmss-NN)" \
   || fail "(f) mức độ ngoài danh mục: rc=${rc} ${kq} / hợp lệ: ${dung}"
 

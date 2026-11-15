@@ -1,5 +1,18 @@
 # Nhật ký thay đổi
 
+## Chưa phát hành — Dữ liệu cấu trúc: PostgreSQL và API tự sinh (lõi DX-OS, ADR 0006)
+Đã kiểm bằng unit test và `check-csdl-rls.sh` (PostgreSQL thật từ image đã ghim, chạy trong CI); bộ kiểm Box (`check-du-lieu-qua-cong.sh`,
+bài khôi phục toàn bộ) chạy trên máy ảo VMware `onebee-kiem-box`. Chưa thử trên Box thật.
+### Thêm
+- Role `box-du-lieu`: PostgreSQL 18.7 + pgvector 0.8.7, PostgREST 16.5 sau cầu nối danh tính (`/api/<bảng>`); lược đồ `onebee`
+  (đơn hàng có duyệt, yêu cầu/xử lý hỗ trợ, khảo sát ẩn danh, tình trạng máy trạm) áp dụng có ghi sổ (`onebee.lich_su_luoc_do`).
+- `onebee-box chuyen-du-lieu`: nạp sổ CSV/JSON cũ vào CSDL, chạy lại chỉ nạp dòng mới; `bao-cao-tuan` đọc từ CSDL.
+- `chan-doan`: PostgreSQL nhận kết nối, PostgREST trả lời, kết xuất CSDL không cũ quá 48 giờ.
+### Bảo mật
+- Phân quyền tới cấp dòng (RLS bật và ép trên mọi bảng); không có vai trò ẩn danh; không ai tự duyệt đơn của mình (ràng buộc trong CSDL).
+- PostgreSQL và PostgREST không công bố cổng, bỏ capability; mạng riêng: chỉ cầu nối tới được PostgREST, chỉ PostgREST tới được PostgreSQL.
+- Sao lưu kết xuất CSDL trước khi tạm dừng dịch vụ; `xoay-khoa --box` đổi mật khẩu CSDL bằng `ALTER ROLE` trước khi ghi tệp bí mật.
+
 ## Chưa phát hành — Đăng nhập một lần và cổng API (lõi DX-OS, ADR 0006)
 Đã kiểm bằng unit test (Caddy thật, cầu nối thật); bộ kiểm Box (`check-sso-cong-api.sh`) chạy trên máy ảo VMware `onebee-kiem-box`. Chưa thử trên Box thật, chưa thử trình duyệt điện thoại.
 ### Thêm
