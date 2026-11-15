@@ -87,6 +87,11 @@ sang `/srv/onebee/restic/<tên>.cu-<ngày giờ>`, mật khẩu cũ ở `/etc/on
 Máy mới sao lưu từ đầu vào kho mới (kho cũ không tự dọn bản — xóa tay khi không cần). Nhật ký các lệnh
 này ở `/var/log/onebee-box/` (chỉ root đọc).
 
+### Tên của Box trên máy trạm
+Cấu hình máy có dòng `BOX_TEN=box.<mã>.onebee.internal`; bộ cài máy trạm ghi dòng `/etc/hosts` `<BOX_IP> <BOX_TEN> # onebee-box`
+(đổi IP thì dòng được thay, cấu hình cũ không có `BOX_TEN` thì dòng bị gỡ). Đăng nhập một lần chỉ mở bằng tên này — tài khoản người dùng:
+[cai-dat-onebee-box.md](cai-dat-onebee-box.md) mục 3b. Box cũ chưa in `BOX_TEN`: chạy `sudo onebee-box dong-bo-may --tat-ca` sau khi nâng cấp Box.
+
 ## 3. Hỗ trợ từ xa (người dùng phải đồng ý)
 1. Người dùng mở menu → **"Cho phép hỗ trợ từ xa (OneBee)"** → hộp thoại hiện **địa chỉ** và **mã 8 số** → đọc cho kỹ thuật.
 2. Kỹ thuật mở phần mềm xem VNC bất kỳ (TigerVNC Viewer, Remmina…) → nhập `<địa chỉ>:5900` → nhập mã.

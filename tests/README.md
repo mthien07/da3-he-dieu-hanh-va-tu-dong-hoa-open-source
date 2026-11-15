@@ -21,6 +21,11 @@ Các bài unit mới: `test_onebee_ca.py` (CA, ràng buộc tên bằng openssl/
 `tests/box/check-mdns-dashboard.sh` (chạy trên Box, trong `run-box-test-in-systemd-container.sh`): avahi chạy, `onebee.local` phân giải ra IP cổng mạng chính (không IPv6), quảng bá `_http._tcp` cổng 80, `http://onebee.local` có trang chủ, số liệu tình trạng mới.
 `tests/desktop/test_mo_truy_cap_tu_xa.py` kiểm `scripts/mo-truy-cap-tu-xa.sh` (bật/tắt Tailscale SSH và chia sẻ màn hình GNOME) bằng lệnh giả (`tailscale`, `grdctl`, `gsettings`…); **chưa chạy trên máy thật** — phiếu `docs/kiem-thu-tren-may-that.md` mục E2.
 `tests/box/check-https.sh` (Docker lồng, chạy trong `run-box-test-in-systemd-container.sh`): chốt chặn, bật/tắt HTTPS, cổng, TLS, 308, cookie Secure, CORS, CSP n8n, máy trạm qua HTTPS.
+Đăng nhập một lần + cổng API: `test_onebee_dinh_danh.py` (cấu hình Authelia, luật nhóm, lệnh them-nguoi/xoa-nguoi/ma-xac-nhan với docker giả),
+`test_onebee_cau_noi_danh_tinh.py` (cầu nối chạy thật: 401/403, vai trò cao nhất, JWT 60 giây, bỏ Authorization/Cookie, 413, 502, nhật ký),
+`test_onebee_caddy_sso.py` (Caddy thật, Authelia/Ollama/Kuma giả: giả mạo Remote-User, /ai/ chỉ 2 đường dẫn POST, vào bằng IP, SSO tạm tắt);
+`check-sso-cong-api.sh` (9 mục PASS, Authelia thật, gọi từ `check-https.sh` khi HTTPS đang bật: ghi danh TOTP bằng mã từ `ma-xac-nhan`,
+`tat-sso-tam`/`bat-sso-lai`, không công bố cổng, xoay khóa làm cookie cũ hết hiệu lực).
 `tests/desktop/check-exe-handler.sh`: kiểm tra bộ trợ lý bắt file Windows `.exe` / `.msi` (onebee-windows-app-helper), đăng ký MIME handler hệ thống và nhận diện gợi ý ứng dụng thay thế (Zalo, Chrome, Unikey, Foxit, VLC, Ultraviewer, WINE/máy ảo).
 `tests/desktop/test_onebee_locale_ansible.py`: mọi lệnh gọi `ansible-playbook` trong bộ cài Desktop, bộ cài Box và `onebee-box` chạy bằng `C.UTF-8` dù người chạy đặt
 `LANG=vi_VN` (Python hiểu là bảng mã TCVN) hay locale chưa tạo trên máy (`ansible-playbook` giả ghi lại locale hiệu lực).

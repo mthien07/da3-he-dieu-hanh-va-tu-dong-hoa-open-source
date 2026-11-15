@@ -361,7 +361,9 @@ class OnebeeBoxShell(unittest.TestCase):
 
     def test_xoay_khoa_box_doi_bi_mat_va_chay_bo_cai(self):
         for f, nd in (("webui-admin-password", "admin-cu"), ("n8n-owner-password", "n8n-cu"), ("n8n-owner-hash", "h-cu"), ("webui-secret-key", "sk-cu"),
-                      ("bieu-mau-nhanvien", "nv-cu"), ("bieu-mau-kythuat", "kt-cu"), ("n8n-webhook-key", "wh-cu")):
+                      ("bieu-mau-nhanvien", "nv-cu"), ("bieu-mau-kythuat", "kt-cu"), ("n8n-webhook-key", "wh-cu"),
+                      ("authelia-session-secret", "ss-cu"), ("cau-noi-jwt-secret", "jwt-cu"), ("authelia-storage-key", "sk-cu"),
+                      ("authelia-jwt-secret", "aj-cu")):
             open(f"{self.t}/secrets/{f}", "w").write(nd)
         bo_cai = f"{self.t}/bo-cai.sh"
         open(bo_cai, "w").write(f"#!/bin/sh\necho chay > {self.t}/out/bo-cai.log\n")
@@ -374,8 +376,11 @@ class OnebeeBoxShell(unittest.TestCase):
         n8n = open(f"{self.t}/secrets/n8n-owner-password").read()
         self.assertNotEqual(n8n, "n8n-cu")
         self.assertTrue(open(f"{self.t}/secrets/n8n-owner-hash").read().startswith("$2"))      # bcrypt
-        for f in ("webui-secret-key", "bieu-mau-nhanvien", "bieu-mau-kythuat"):
+        for f in ("webui-secret-key", "bieu-mau-nhanvien", "bieu-mau-kythuat", "authelia-session-secret", "cau-noi-jwt-secret"):
             self.assertFalse(os.path.exists(f"{self.t}/secrets/{f}"), f)                      # để bộ cài (Ansible) sinh lại
+        # Khóa mã hóa CSDL định danh giữ nguyên (xóa là mất mọi ghi danh hai lớp); khóa JWT đặt lại mật khẩu không xoay
+        self.assertEqual(open(f"{self.t}/secrets/authelia-storage-key").read(), "sk-cu")
+        self.assertEqual(open(f"{self.t}/secrets/authelia-jwt-secret").read(), "aj-cu")
         self.assertNotEqual(open(f"{self.t}/secrets/n8n-webhook-key").read(), "wh-cu")
         self.assertTrue(os.path.exists(f"{self.t}/out/bo-cai.log"))                            # đã chạy bộ cài để áp dụng
 

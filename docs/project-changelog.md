@@ -1,5 +1,20 @@
 # Nhật ký thay đổi
 
+## Chưa phát hành — Đăng nhập một lần và cổng API (lõi DX-OS, ADR 0006)
+Đã kiểm bằng unit test (Caddy thật, cầu nối thật); bộ kiểm Box (`check-sso-cong-api.sh`) chạy trên máy ảo VMware `onebee-kiem-box`. Chưa thử trên Box thật, chưa thử trình duyệt điện thoại.
+### Thêm
+- Dịch vụ định danh Authelia 4.39.28 (role `box-dinh-danh`): nhóm `nhan_vien` một lớp, `ky_thuat`/`quan_ly` hai lớp (TOTP);
+  lệnh `onebee-box them-nguoi`, `xoa-nguoi`, `danh-sach-nguoi`, `ma-xac-nhan` (mã xác minh ghi danh hai lớp khi chưa có email).
+- Chỉ khi HTTPS bật, trên tên `box.<mã>.onebee.internal`: `/dangnhap/`, `/api/` (qua cầu nối danh tính ký JWT 60 giây, phía sau là dịch vụ
+  dữ liệu sẽ có ở bản sau), `/ai/` (chỉ `POST /ai/api/chat`, `/ai/api/generate`), `/files/` (503 tới khi có kho tệp). Vào bằng IP chỉ có trang chủ.
+- Trang giám sát sau đăng nhập một lần (chỉ kỹ thuật, hai lớp), Uptime Kuma không đòi đăng nhập lần hai.
+- `onebee-box tat-sso-tam` / `bat-sso-lai`: lối thoát khi dịch vụ định danh hỏng (dữ liệu khóa 503, giám sát về mật khẩu riêng).
+- Cấu hình máy trạm có dòng `BOX_TEN`; máy trạm ghi dòng `/etc/hosts` cho tên Box.
+### Bảo mật
+- Caddy xóa `Remote-*`, `Authorization`, `Proxy-Authorization` do máy khách gửi trước mọi bước xác thực; cầu nối bỏ thêm `Cookie`.
+- Authelia và cầu nối không công bố cổng, bỏ mọi capability, chỉ nằm trong mạng Docker nội bộ `sso` cùng Caddy (n8n không gọi thẳng được).
+- Sao lưu Box gồm `/srv/onebee/authelia`; `xoay-khoa --box` đổi khóa phiên và khóa ký JWT, giữ khóa mã hóa ghi danh hai lớp.
+
 ## [1.2.0] — 14/11/2026 — Trải nghiệm người dùng: Trung tâm OneBee, tự phục vụ, Trợ lý AI dùng được ngay
 Đã chạy phiếu kiểm trải nghiệm tự động trên máy ảo Linux Mint 22.3 kèm một Box thử (`reports/trai-nghiem/261113-may-ao-vmware-mint-22-3.md`): các mục không đạt đã sửa hoặc ghi là giới hạn đã biết. Chưa có người xác nhận lại các mục về cảm nhận và chưa thử trên máy thật hay từ điện thoại.
 Bản 1.1.0 trên GitHub không có file tải (phiên bản trong bộ cài chưa được nâng). Bản 1.2.0 là bản có file tải kế tiếp.

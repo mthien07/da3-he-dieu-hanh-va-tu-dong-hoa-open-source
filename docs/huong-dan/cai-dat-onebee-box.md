@@ -98,12 +98,43 @@ Thử trước trên 1 máy Windows 10 và 1 máy Linux Mint rồi mới áp cho
    - `sudo onebee-box khoi-phuc-thu` — phải thấy dòng `ĐẠT`
    Chưa gắn ổ thì lệnh sao lưu **từ chối chạy** (không ghi vào ổ hệ thống) — lịch 23:00 sẽ báo lỗi trong nhật ký.
 
+## 3b. Tài khoản (đăng nhập một lần)
+Chỉ có khi đã bật HTTPS. Một tài khoản dùng cho dữ liệu (`/api/`), kho tệp (`/files/`), hỏi đáp AI qua API (`/ai/`) và trang giám sát.
+Mở bằng **tên** `https://box.<mã đơn vị>.onebee.internal/dangnhap/` — vào bằng IP thì chỉ có trang chủ (ADR 0006, QĐ2).
+Máy trạm OneBee tự có dòng `/etc/hosts` cho tên này (dòng `BOX_TEN` trong cấu hình máy, đẩy bằng `dong-bo-may`). Điện thoại, máy ngoài quản lý:
+thêm bản ghi DNS tĩnh `box.<mã>.onebee.internal → <IP Box>` trên router của đơn vị (hoặc một dòng hosts), và vẫn phải cài CA của Box.
+
+| Nhóm | Ai | Đăng nhập |
+|---|---|---|
+| `nhan_vien` | Nhân viên | Mật khẩu |
+| `ky_thuat` | Kỹ thuật (thêm: trang giám sát) | Mật khẩu + mã TOTP trên điện thoại |
+| `quan_ly` | Quản lý | Mật khẩu + mã TOTP trên điện thoại |
+
+```bash
+sudo onebee-box them-nguoi an nhan_vien      # in mật khẩu tạm MỘT lần — đưa trực tiếp, không gửi qua Zalo/email
+sudo onebee-box danh-sach-nguoi
+sudo onebee-box xoa-nguoi an                 # mất quyền ngay ở lần gọi kế tiếp, ghi danh TOTP cũng bị xóa
+```
+Ghi danh hai lớp (kỹ thuật, quản lý) khi Box chưa có email: người dùng đăng nhập, bấm ghi danh TOTP trên trang; trang đòi mã xác minh 8 ký tự —
+quản trị chạy `sudo onebee-box ma-xac-nhan` và đọc mã cho đúng người đó. Khóa TOTP chỉ hiện trên máy người dùng.
+Trang giám sát (`https://box.<mã>.onebee.internal:3001/`) chỉ mở cho nhóm `ky_thuat` đã qua hai lớp, không phải đăng nhập Uptime Kuma lần nữa.
+
+Dịch vụ định danh hỏng, không ai đăng nhập được:
+```bash
+sudo onebee-box tat-sso-tam   # /api/, /files/, /ai/ trả 503 (dữ liệu khóa, không mở toang); giám sát dùng mật khẩu riêng (in-khoa)
+sudo docker logs --tail 50 onebee-authelia
+sudo onebee-box bat-sso-lai   # sau khi đã sửa
+```
+Khi dấu tạm tắt còn, mỗi lần chạy bộ cài và `onebee-box chan-doan` đều cảnh báo.
+Sao lưu Box có cả tài khoản và ghi danh hai lớp (`/srv/onebee/authelia`). `xoay-khoa --box` đổi khóa phiên (mọi người đăng nhập lại) và
+khóa ký JWT; khóa mã hóa ghi danh hai lớp (`authelia-storage-key`) không xoay. `in-khoa` không in mật khẩu người dùng (Box chỉ giữ bản băm).
+
 ## 4. Cấp cho máy trạm (sao lưu, Trợ lý AI, quản lý tập trung)
 Trên Box:
 ```bash
 sudo onebee-box them-may ketoan-01
 ```
-Dán các dòng in ra (12 dòng: `MAY_TRAM`, `BOX_IP`, `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`, `HOI_URL`, `HOI_API_KEY`, `TINH_TRANG_URL`, `TINH_TRANG_KEY`,
+Dán các dòng in ra (13 dòng: `MAY_TRAM`, `BOX_IP`, `BOX_TEN`, `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`, `HOI_URL`, `HOI_API_KEY`, `TINH_TRANG_URL`, `TINH_TRANG_KEY`,
 `QUAN_TRI_SSH_KEY`, `BOX_CA`, `BOX_CA_VAN_TAY`, `BOX_HTTPS`; không có `HOI_API_KEY`/`TINH_TRANG_KEY` khi đã tắt 2 biến chuyển tiếp) vào máy trạm tại
 `/etc/onebee/may-tram.env`, rồi chạy lại `sudo ./desktop/onebee-install.sh` trên máy trạm. Máy trạm sẽ:
 - tự sao lưu `/home` lúc 12:00 hằng ngày (máy tắt thì chạy bù khi bật); sao lưu ngay: `sudo onebee-sao-luu`;

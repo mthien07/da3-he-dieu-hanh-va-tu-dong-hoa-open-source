@@ -92,7 +92,7 @@ moi_thu_khoe() {
   echo "0.50 0.40 0.30 1/200 12345" >"${T}/proc/loadavg"
   ban_sao_luu 2
   rm -rf "${T}/secrets/ca"; "${T}/lib/onebee-ca.sh" "${T}/secrets/ca" kiem-thu 127.0.0.1 >/dev/null 2>&1
-  rm -f "${T}/secrets/https-da-bat"
+  rm -f "${T}/secrets/https-da-bat" "${T}/secrets/sso-tam-tat"
 }
 # Bản sao lưu Box mới nhất cách đây $1 giờ (rỗng = kho chưa có bản nào)
 ban_sao_luu() {
@@ -147,7 +147,7 @@ assert d["thoi_diem"][:2] == "20"' "${OUT}" 2>"${T}/py-loi"; then pass "Mọi d�
 else fail "Mọi dịch vụ sống: JSON sai — $(tail -1 "${T}/py-loi")"; echo "${OUT}" | head -c 600; echo; fi
 if [[ "${RC}" == 0 ]]; then pass "Mọi dịch vụ sống: mã thoát 0"; else fail "Mọi dịch vụ sống: mã thoát ${RC} (mong 0)"; fi
 [[ "$(khong_ok)" == "" ]] || fail "Mọi dịch vụ sống: có mục không OK: $(khong_ok)"
-for c in onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server; do
+for c in onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server onebee-authelia onebee-cau-noi; do
   [[ "$(trang_thai docker "${c}")" == ok ]] || fail "Thiếu mục container ${c} trong hạng mục Docker"
 done
 if grep -q 'gemma4:e2b-it-qat' "${SIM}/docker-exec.log" && grep -q 'http://ollama:11434/api/generate' "${SIM}/docker-exec.log"; then pass "Thử AI: gửi prompt tới Ollama cổng 11434 bằng đúng model trong group_vars"; else fail "Thử AI không gọi Ollama đúng model/cổng: $(cat "${SIM}/docker-exec.log" 2>/dev/null)"; fi
@@ -242,6 +242,11 @@ kich_ban "CA trung gian còn 10 ngày (< 15) → CẢNH BÁO" 1 "ssl/ca_trung_gi
 chay; if grep -q 'onebee-box gia-han-ca' <<<"${OUT}"; then pass "Gợi ý gia hạn CA"; else fail "Thiếu gợi ý gia-han-ca"; fi
 moi_thu_khoe; rm -f "${T}/secrets/ca/root.crt"
 kich_ban "Mất chứng chỉ CA gốc → LỖI" 2 "ssl/ca_goc=loi"
+moi_thu_khoe; : >"${T}/secrets/sso-tam-tat"
+kich_ban "Đăng nhập một lần đang tạm tắt (tat-sso-tam) → CẢNH BÁO" 1 "ssl/sso=canh_bao"
+chay; if grep -q 'onebee-box bat-sso-lai' <<<"${OUT}"; then pass "Gợi ý bat-sso-lai"; else fail "Thiếu gợi ý bat-sso-lai"; fi
+moi_thu_khoe; echo "exited" >"${SIM}/ct-onebee-authelia"
+kich_ban "Dịch vụ định danh dừng → chỉ container authelia LỖI" 2 "docker/onebee-authelia=loi"
 
 # HTTPS đang bật: đọc chứng chỉ thật đang phục vụ ở cổng 443 (cần quyền root để mở cổng 443)
 if [[ ${EUID} -eq 0 ]] && command -v openssl >/dev/null; then

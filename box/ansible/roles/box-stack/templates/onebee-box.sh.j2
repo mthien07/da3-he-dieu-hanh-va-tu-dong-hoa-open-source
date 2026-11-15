@@ -379,9 +379,12 @@ xoay_khoa_box() {
   # Khóa gửi tình trạng dùng chung (nếu còn dùng): bộ cài sinh lại; cmd_xoay_khoa đẩy xuống mọi máy ngay sau bộ cài
   [[ "${TINH_TRANG_KHOA_CHUNG}" != true ]] || rm -f "${SECRETS}/tinh-trang-key"
   rm -f "${SECRETS}/webui-secret-key" "${SECRETS}/bieu-mau-nhanvien" "${SECRETS}/bieu-mau-kythuat" "${SECRETS}/n8n-webhook-key"
+  # Đăng nhập một lần: khóa phiên (mọi cookie phiên cũ hết hiệu lực) và khóa ký JWT của cầu nối — bộ cài sinh lại, tạo lại hai dịch vụ.
+  # KHÔNG xóa authelia-storage-key: khóa mã hóa ghi danh hai lớp trong CSDL, mất là mọi người phải ghi danh lại
+  rm -f "${SECRETS}/authelia-session-secret" "${SECRETS}/cau-noi-jwt-secret"
   # Bộ cài (Ansible lookup password) sinh lại các file vừa xóa; n8n-webhook-key cần có NGAY cho bao_cao_n8n ở lần chạy sau
   secret n8n-webhook-key >/dev/null
-  echo "Đã đổi: mật khẩu quản trị Trợ lý AI và giám sát (trong dịch vụ); đã tạo mới: mật khẩu chủ n8n, mật khẩu biểu mẫu (nhanvien, kythuat), khóa webhook n8n, WEBUI_SECRET_KEY."
+  echo "Đã đổi: mật khẩu quản trị Trợ lý AI và giám sát (trong dịch vụ); đã tạo mới: mật khẩu chủ n8n, mật khẩu biểu mẫu (nhanvien, kythuat), khóa webhook n8n, WEBUI_SECRET_KEY, khóa phiên đăng nhập một lần (mọi người đăng nhập lại), khóa ký JWT của cầu nối."
 }
 
 cmd_xoay_khoa() {

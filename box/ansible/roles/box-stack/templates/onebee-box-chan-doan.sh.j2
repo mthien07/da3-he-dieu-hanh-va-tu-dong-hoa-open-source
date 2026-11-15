@@ -18,8 +18,9 @@ NGUONG_CHUNG_CHI_NGAY=15
 CHAN_DOAN_HM_MA=(mang tai_nguyen docker ai samba sao_luu ssl)
 CHAN_DOAN_HM_TEN=("Mạng" "Tài nguyên (ổ đĩa, RAM, CPU)" "Dịch vụ Docker" "Trợ lý AI" "Thư mục chung (Samba)" "Bản sao lưu" "Chứng chỉ bảo mật (SSL)")
 # Container của Box và tên dễ hiểu (cùng thứ tự)
-CHAN_DOAN_CT=(onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server)
-CHAN_DOAN_CT_TEN=("Cổng web" "Bộ chạy model AI" "Giao diện Trợ lý AI" "Tự động hóa" "Giám sát" "Nhận sao lưu máy trạm")
+CHAN_DOAN_CT=(onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server onebee-authelia onebee-cau-noi)
+CHAN_DOAN_CT_TEN=("Cổng web" "Bộ chạy model AI" "Giao diện Trợ lý AI" "Tự động hóa" "Giám sát" "Nhận sao lưu máy trạm" "Đăng nhập một lần"
+  "Cầu nối danh tính")
 CHAN_DOAN_KQ=()   # mỗi phần tử: hạng mục, mã, trạng thái, tên, chi tiết, gợi ý — ngăn cách bằng \x1f (không bị gộp ô trống như tab)
 
 # ghi_kq <hạng mục> <mã> <ok|canh_bao|loi> <tên> <chi tiết> [gợi ý]
@@ -251,6 +252,10 @@ kiem_chung_chi() {
   kiem_ngay_het ca_goc "CA gốc của Box" "$(ca_con_ngay root)" \
     "Xoay CA: đặt onebee_box_xoay_ca: true trong group_vars, chạy lại bộ cài, rồi: sudo onebee-box dong-bo-may --tat-ca"
   kiem_ngay_het ca_trung_gian "CA trung gian (cấp chứng chỉ HTTPS)" "$(ca_con_ngay inter)" "Gia hạn ngay: sudo onebee-box gia-han-ca"
+  if [[ -e "${SECRETS}/sso-tam-tat" ]]; then
+    ghi_kq ssl sso canh_bao "Đăng nhập một lần" "Đang TẠM TẮT từ $(cat "${SECRETS}/sso-tam-tat" 2>/dev/null) — dữ liệu (/api/, /files/, /ai/) khóa 503" \
+      "Sửa dịch vụ định danh (sudo docker logs --tail 50 onebee-authelia) rồi chạy: sudo onebee-box bat-sso-lai"
+  fi
   if ! https_bat; then
     ghi_kq ssl https ok "Chứng chỉ HTTPS (cổng 443)" "HTTPS chưa bật — Box dùng HTTP trong LAN"
     return 0
