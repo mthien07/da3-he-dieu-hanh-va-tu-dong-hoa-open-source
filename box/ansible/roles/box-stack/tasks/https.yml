@@ -41,3 +41,8 @@
 - name: Ghi nhận trạng thái HTTPS có đổi không
   ansible.builtin.set_fact:
     onebee_https_doi: "{{ (onebee_https_hieu_luc | bool) != (onebee_https_dau_cu.stat.exists | bool) }}"
+
+# Đăng nhập một lần (Authelia) chỉ có ở chế độ HTTPS, trên tên box.<mã>.onebee.internal
+- name: Chốt đăng nhập một lần có hiệu lực không
+  ansible.builtin.set_fact:
+    onebee_sso_hieu_luc: "{{ onebee_https_hieu_luc | bool }}"

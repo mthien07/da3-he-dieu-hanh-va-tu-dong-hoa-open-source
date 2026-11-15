@@ -143,6 +143,11 @@
   </section>
 
   <p class="note"><a href="/onebee-ca.crt">Chứng chỉ OneBee Box</a> — chỉ cài khi đã đối chiếu vân tay với bản in của quản trị (<code>sudo onebee-box in-ca</code>)</p>
+{% if onebee_sso_hieu_luc %}
+  <p class="note">Tài khoản OneBee (đăng nhập một lần cho dữ liệu, kho tệp, giám sát): mở bằng tên
+    <a href="https://box.{{ onebee_box_ma_don_vi }}.onebee.internal/dangnhap/">https://box.{{ onebee_box_ma_don_vi }}.onebee.internal/</a>
+    — vào bằng địa chỉ IP chỉ có trang này.</p>
+{% endif %}
   <p class="note">OneBee Box {{ onebee_box_version }} · HTX OneBee</p>
 </main>
 <script>

@@ -109,7 +109,18 @@ def tao_xu_ly(khoa, phia_sau):
                     self.rfile.read(2)
                 return b"".join(phan)
             n = int(self.headers.get("Content-Length") or 0)
-            if n < 0 or n > TOI_DA:
+            if n < 0:
+                raise QuaLon
+            if n > TOI_DA:
+                # Đọc bỏ thân (tối đa 2 MB, chờ tối đa 5 giây) rồi mới trả 413: đóng kết nối khi bên gửi (Caddy) còn đang gửi
+                # thì bên gửi chỉ thấy kết nối đứt (502) thay vì câu trả lời 413
+                self.connection.settimeout(5)
+                con = min(n, 2 * TOI_DA)
+                try:
+                    while con > 0 and (manh := self.rfile.read(min(con, 65536))):
+                        con -= len(manh)
+                except OSError:
+                    pass
                 raise QuaLon
             return self.rfile.read(n) if n else b""
 

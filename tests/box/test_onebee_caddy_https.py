@@ -82,7 +82,9 @@ class CaddyHttps(unittest.TestCase):
         t = cls.t
         v = yaml.safe_load(open(os.path.join(ROOT, "box/ansible/group_vars/all.yml"), encoding="utf-8"))
         c = cls.cong
+        # Đăng nhập một lần tắt: các cổng ứng dụng tới thẳng dịch vụ (tuyến SSO kiểm ở test_onebee_caddy_sso.py)
         v.update(onebee_box_ip="127.0.0.1", onebee_box_ma_don_vi="anphu", onebee_https_hieu_luc=True, onebee_kuma_dia_chi=kuma,
+                 onebee_sso_hieu_luc=False,
                  onebee_box_ports={"portal": 80, "open_webui": c["open_webui"], "n8n": c["n8n"], "rest_server": c["rest_server"],
                                    "uptime_kuma": c["uptime_kuma"]})
         env = jinja2.Environment(keep_trailing_newline=True, trim_blocks=True)   # Ansible mặc định trim_blocks=True

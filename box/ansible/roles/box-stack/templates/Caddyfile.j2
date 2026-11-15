@@ -51,18 +51,104 @@
 	header -Server
 }
 
-{{ dia_chi(443) }} {
-	import onebee_tls
-	root * /srv
-	file_server
-	header {
-		X-Content-Type-Options nosniff
-		X-Frame-Options DENY
-		Referrer-Policy no-referrer
+{# Đăng nhập một lần (ADR 0006): forward_auth chép đúng tài liệu Authelia 4.39.28 (integration/proxies/caddy.md).
+   Authelia trả 200 kèm Remote-* (Caddy chép vào yêu cầu), 302/303 tới trang đăng nhập, 401 (Accept: application/json) hoặc 403 #}
+(onebee_sso) {
+	forward_auth authelia:9091 {
+		uri /api/authz/forward-auth
+		copy_headers Remote-User Remote-Groups Remote-Email Remote-Name
 	}
-	# Số liệu tình trạng trên trang chủ đổi mỗi phút (onebee-trang-thai-web.timer) → trình duyệt không giữ bản cũ
-	header /trang-thai.json Cache-Control no-store
 }
+
+{# Danh tính do máy khách tự gửi không bao giờ tới dịch vụ phía sau: xóa ở đầu khối trang (request_header chạy TRƯỚC mọi handle/forward_auth) #}
+(onebee_bo_danh_tinh_may_khach) {
+	request_header -Remote-User
+	request_header -Remote-Groups
+	request_header -Remote-Email
+	request_header -Remote-Name
+	request_header -Authorization
+	request_header -Proxy-Authorization
+}
+
+{% macro trang_chu() %}
+	handle {
+		root * /srv
+		file_server
+		header {
+			X-Content-Type-Options nosniff
+			X-Frame-Options DENY
+			Referrer-Policy no-referrer
+		}
+		# Số liệu tình trạng trên trang chủ đổi mỗi phút (onebee-trang-thai-web.timer) → trình duyệt không giữ bản cũ
+		header /trang-thai.json Cache-Control no-store
+	}
+{% endmacro %}
+{% set ten_box = 'box.' ~ onebee_box_ma_don_vi ~ '.onebee.internal' %}
+{# Vào bằng IP: chỉ trang chủ (công khai, không có dữ liệu nội bộ). Tuyến lõi chỉ phục vụ trên tên (QĐ2) → chuyển sang tên #}
+https://{{ onebee_box_ip }}:443 {
+	import onebee_tls
+	@tuyen_loi path /dangnhap /dangnhap/* /api/* /files/* /ai/*
+	handle @tuyen_loi {
+		redir https://{{ ten_box }}{uri} 308
+	}
+{{ trang_chu() }}}
+
+https://{{ ten_box }}:443 {
+	import onebee_tls
+	import onebee_bo_danh_tinh_may_khach
+	# Trang đăng nhập (Authelia, đường dẫn con /dangnhap — QĐ3)
+	handle /dangnhap* {
+		reverse_proxy authelia:9091
+	}
+{% if onebee_sso_hieu_luc | bool %}
+	# route giữ đúng thứ tự: xác thực trên đường dẫn gốc (luật Authelia khớp ^/api/) rồi mới tới dịch vụ.
+	# Không dùng handle_path: nó bỏ tiền tố TRƯỚC forward_auth
+	handle /api/* {
+		route {
+			import onebee_sso
+			request_body {
+				max_size 1MB
+			}
+			reverse_proxy cau-noi:8080
+		}
+	}
+	# AI: chỉ hai đường dẫn hỏi đáp; mọi API khác của Ollama (xóa/tải mô hình, liệt kê…) trả 404, kể cả khi đã đăng nhập
+	@ai_hoi_dap {
+		method POST
+		path /ai/api/chat /ai/api/generate
+	}
+	handle @ai_hoi_dap {
+		route {
+			import onebee_sso
+			request_header -Cookie
+			request_body {
+				max_size 1MB
+			}
+			uri strip_prefix /ai
+			reverse_proxy ollama:11434 {
+				flush_interval -1
+			}
+		}
+	}
+	handle /ai/* {
+		respond 404
+	}
+	handle /files/* {
+		route {
+			import onebee_sso
+			header Content-Type "text/plain; charset=utf-8"
+			respond "Chưa cài kho tệp trên OneBee Box" 503
+		}
+	}
+{% else %}
+	# Đăng nhập một lần đang TẠM TẮT (onebee-box tat-sso-tam): không ai vào được dữ liệu — không mở toang khi định danh hỏng
+	@tuyen_loi path /api/* /files/* /ai/*
+	handle @tuyen_loi {
+		header Content-Type "text/plain; charset=utf-8"
+		respond "Đăng nhập một lần đang tạm tắt để sửa — dữ liệu tạm khóa, thử lại sau" 503
+	}
+{% endif %}
+{{ trang_chu() }}}
 
 {{ dia_chi(cong.open_webui) }} {
 	import onebee_tls
@@ -86,8 +172,33 @@
 	}
 	reverse_proxy rest-server:8000
 }
-{% if kuma_san_sang %}
+{% if kuma_san_sang and (onebee_sso_hieu_luc | bool) %}
 
+{# Giám sát sau đăng nhập một lần: chỉ ky_thuat, hai lớp (QĐ7). Luật Authelia không phân biệt cổng → Authelia thấy đường dẫn có tiền tố
+   /giam-sat (luật riêng của trang giám sát); tiền tố bỏ trước khi tới Uptime Kuma. Uptime Kuma tắt đăng nhập riêng (onebee-kuma.js) #}
+https://{{ ten_box }}:{{ cong.uptime_kuma }} {
+	import onebee_tls
+	import onebee_bo_danh_tinh_may_khach
+	route {
+		uri strip_prefix /giam-sat
+		forward_auth authelia:9091 {
+			uri /api/authz/forward-auth
+			header_up X-Forwarded-Uri /giam-sat{http.request.uri}
+			copy_headers Remote-User Remote-Groups Remote-Email Remote-Name
+		}
+		reverse_proxy uptime-kuma:3001 {
+			stream_close_delay 5m
+		}
+	}
+}
+
+https://{{ onebee_box_ip }}:{{ cong.uptime_kuma }} {
+	import onebee_tls
+	redir https://{{ ten_box }}:{{ cong.uptime_kuma }}{uri} 308
+}
+{% elif kuma_san_sang %}
+
+{# Đăng nhập một lần tạm tắt: Uptime Kuma tự đòi đăng nhập (bộ cài bật lại đăng nhập riêng trước khi mở cổng này) #}
 {{ dia_chi(cong.uptime_kuma) }} {
 	import onebee_tls
 	reverse_proxy uptime-kuma:3001 {
