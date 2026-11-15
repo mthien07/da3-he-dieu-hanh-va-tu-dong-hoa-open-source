@@ -63,7 +63,8 @@ box "sed -i -E 's#^  smtp_host: .*#  smtp_host: \"mailpit\"#; s#^  smtp_port: .*
 
 echo "===== LẦN 1: cài đặt (quản trị SSH từ máy Mint tiếng Việt mang theo LANG=vi_VN — locale Box chưa có) ====="
 box 'LANG=vi_VN /root/onebee-test/box/onebee-box-install.sh > /tmp/run1.log 2>&1 || { tail -40 /tmp/run1.log; exit 1; }; tail -3 /tmp/run1.log'
-box 'grep -q "Khởi động lại giám sát / cổng Caddy với cổng mới" /tmp/run1.log || { echo "FAIL  Lần cài đầu không mở giám sát theo 2 bước"; exit 1; }
+# Tiêu đề TASK in ra cả khi task bị bỏ qua → phải thấy dòng "changed" ngay sau tiêu đề
+box 'grep -A2 "Khởi động lại giám sát / cổng Caddy với cổng mới" /tmp/run1.log | grep -q "^changed:" || { echo "FAIL  Lần cài đầu không mở giám sát theo 2 bước"; exit 1; }
      echo "PASS  Lần cài đầu: giám sát chỉ mở trong Box tới khi có tài khoản quản trị, rồi mới mở ra LAN"'
 echo "===== LẦN 2: kiểm tra idempotent ====="
 box '/root/onebee-test/box/onebee-box-install.sh > /tmp/run2.log 2>&1

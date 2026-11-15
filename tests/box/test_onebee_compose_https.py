@@ -179,6 +179,18 @@ class GiamSatSauDangNhapMotLan(unittest.TestCase):
             self.assertEqual(tinh(bt, onebee_kuma_xong=self.stat(quan_tri), onebee_kuma_dau_tat_rieng=self.stat(tat_rieng),
                                   onebee_sso_hieu_luc=sso), mong, (quan_tri, tat_rieng, sso))
 
+    def test_dieu_kien_block_khong_doi_giua_chung(self):
+        """Ansible đánh giá lại `when` của block ở TỪNG task: task trong block đổi biến mà điều kiện dùng thì các task sau bị bỏ qua
+        (đã gặp: lần cài đầu không sinh lại docker-compose.yml với cổng giám sát mở ra LAN → lần cài hai còn changed)."""
+        import re as _re
+        for t in yaml.safe_load(open(TASKS_MAIN, encoding="utf-8")):
+            if "block" not in t or "when" not in t:
+                continue
+            dk = " ".join(t["when"] if isinstance(t["when"], list) else [str(t["when"])])
+            for con in t["block"]:
+                for bien in (con.get("ansible.builtin.set_fact") or {}):
+                    self.assertIsNone(_re.search(rf"\b{bien}\b", dk), f"block '{t['name']}': điều kiện dùng {bien} mà task '{con['name']}' đổi")
+
     def test_cau_hinh_kuma_tat_dang_nhap_rieng_theo_sso(self):
         task = next(t for t in yaml.safe_load(open(TASKS_MAIN, encoding="utf-8")) if t.get("name") == "Cấu hình Uptime Kuma (tài khoản, theo dõi dịch vụ, email báo)")
         self.assertIn("-e KUMA_TAT_DANG_NHAP", task["ansible.builtin.shell"])
