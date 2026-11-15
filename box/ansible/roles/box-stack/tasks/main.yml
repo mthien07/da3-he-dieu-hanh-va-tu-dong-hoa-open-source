@@ -94,11 +94,11 @@
     path: "{{ onebee_box_secrets }}/uptime-kuma-da-co-quan-tri"
   register: onebee_kuma_xong
 
-# Chưa có tài khoản quản trị: cổng Uptime Kuma chỉ mở trong Box (127.0.0.1) → không ai trong LAN giành được trang
-# "tạo tài khoản đầu tiên" lúc mới cài; tạo xong mới mở ra LAN (bước "Mở giám sát ra mạng LAN" bên dưới)
-- name: Chọn địa chỉ mở cổng giám sát
-  ansible.builtin.set_fact:
-    onebee_kuma_dia_chi: "{{ '0.0.0.0' if onebee_kuma_xong.stat.exists else '127.0.0.1' }}"
+# Dấu "Uptime Kuma đang tắt đăng nhập riêng" (disableAuth, chỉ bật khi đứng sau đăng nhập một lần) — ghi/xóa sau bước cấu hình Kuma
+- name: Kiểm giám sát có đang tắt đăng nhập riêng không
+  ansible.builtin.stat:
+    path: "{{ onebee_box_secrets }}/uptime-kuma-tat-dang-nhap-rieng"
+  register: onebee_kuma_dau_tat_rieng
 
 # Nâng cấp n8n chạy migration CSDL SQLite lúc khởi động, không quay lui được → chép nguyên thư mục dữ liệu n8n trước khi
 # đổi image (lúc n8n đã dừng). Hoàn tác: dừng n8n, trả thư mục chép về chỗ cũ, ghim lại image cũ, chạy lại bộ cài.
@@ -232,6 +232,16 @@
 # Bật HTTPS hay giữ HTTP (chốt chặn: mọi máy đã cấp phải nhận CA trước) → onebee_https_hieu_luc, onebee_https_doi
 - name: Quyết định bật HTTPS
   ansible.builtin.include_tasks: https.yml
+
+# Chưa có tài khoản quản trị: cổng Uptime Kuma chỉ mở trong Box (127.0.0.1) → không ai trong LAN giành được trang
+# "tạo tài khoản đầu tiên" lúc mới cài; tạo xong mới mở ra LAN (bước "Mở giám sát ra mạng LAN" bên dưới).
+# Kuma đang tắt đăng nhập riêng mà lần chạy này không có đăng nhập một lần che (tắt HTTPS, tat-sso-tam): cũng chỉ mở trong Box
+# cho tới khi bước cấu hình Kuma bật lại đăng nhập riêng — không có lúc nào trang giám sát mở cho cả LAN mà không đòi đăng nhập
+- name: Chọn địa chỉ mở cổng giám sát
+  ansible.builtin.set_fact:
+    onebee_kuma_dia_chi: >-
+      {{ '0.0.0.0' if (onebee_kuma_xong.stat.exists and ((onebee_sso_hieu_luc | bool) or not onebee_kuma_dau_tat_rieng.stat.exists))
+         else '127.0.0.1' }}
 
 # Trang chủ dựng cẩm nang và lối vào mẫu soạn văn bản từ 2 file dữ liệu dùng chung với máy trạm và Trợ lý AI
 - name: Đọc nguồn chung cẩm nang và gợi ý của Trợ lý cho trang chủ
@@ -418,8 +428,9 @@
   retries: 120
   delay: 5
   changed_when: false
-  when: (onebee_https_hieu_luc | bool) and not onebee_kuma_xong.stat.exists
+  when: (onebee_https_hieu_luc | bool) and (onebee_kuma_dia_chi == '127.0.0.1' or (onebee_sso_hieu_luc | bool))
 
+# Sau đăng nhập một lần thì cổng 3001 đòi phiên (chuyển tới trang đăng nhập) → kiểm trong container ở bước trên
 - name: Chờ Uptime Kuma sẵn sàng (HTTPS qua Caddy)
   ansible.builtin.uri:
     url: "https://{{ onebee_box_ip }}:{{ onebee_box_ports.uptime_kuma }}/"
@@ -429,7 +440,7 @@
   until: onebee_kuma_https.status in [200, 302, 401] and ('Uptime Kuma' in onebee_kuma_https.content)
   retries: 120
   delay: 5
-  when: (onebee_https_hieu_luc | bool) and onebee_kuma_xong.stat.exists
+  when: (onebee_https_hieu_luc | bool) and onebee_kuma_dia_chi == '0.0.0.0' and not (onebee_sso_hieu_luc | bool)
 
 # Dịch vụ đã chuyển xong → ghi/xóa dấu HTTPS (các lệnh onebee-box, kể cả "dong-bo-tro-ly" ở role sau, từ đây gọi theo chế độ mới)
 - name: Ghi nhận trạng thái HTTPS
@@ -455,7 +466,8 @@
 - name: Cấu hình Uptime Kuma (tài khoản, theo dõi dịch vụ, email báo)
   ansible.builtin.shell: >-
     set -o pipefail;
-    docker exec -i -w /app -e KUMA_USER -e KUMA_PASS -e KUMA_MONITORS -e KUMA_SMTP -e KUMA_TRUST_PROXY onebee-uptime-kuma
+    docker exec -i -w /app -e KUMA_USER -e KUMA_PASS -e KUMA_MONITORS -e KUMA_SMTP -e KUMA_TRUST_PROXY -e KUMA_TAT_DANG_NHAP
+    onebee-uptime-kuma
     node - < /usr/local/lib/onebee-box/onebee-kuma.js
   args:
     executable: /bin/bash
@@ -465,6 +477,8 @@
     KUMA_MONITORS: "{{ onebee_kuma_monitors | to_json }}"
     KUMA_SMTP: "{{ (onebee_kuma_smtp | to_json) if onebee_box_email.smtp_host else '' }}"
     KUMA_TRUST_PROXY: "{{ '1' if (onebee_https_hieu_luc | bool) else '0' }}"
+    # Sau đăng nhập một lần (chỉ ky_thuat, hai lớp): tắt đăng nhập riêng của Kuma để kỹ thuật không đăng nhập hai lần (QĐ7)
+    KUMA_TAT_DANG_NHAP: "{{ '1' if (onebee_sso_hieu_luc | bool) else '0' }}"
   vars:
     # Theo dõi nội bộ luôn gọi http://<dịch vụ> trong mạng Docker (không phụ thuộc HTTPS); khi bật HTTPS thêm theo dõi cổng Caddy
     # (ignoreTls: trong container Kuma tên "portal" không khớp chứng chỉ của IP Box — chỉ kiểm Caddy còn trả lời)
@@ -504,8 +518,24 @@
   when: onebee_kuma.rc == 0
   register: onebee_kuma_ghi
 
-- name: Mở giám sát ra mạng LAN (sau khi đã có tài khoản quản trị)
-  when: onebee_kuma.rc == 0 and onebee_kuma_ghi is changed
+- name: Ghi nhận giám sát đang tắt đăng nhập riêng (đứng sau đăng nhập một lần)
+  ansible.builtin.copy:
+    dest: "{{ onebee_box_secrets }}/uptime-kuma-tat-dang-nhap-rieng"
+    content: "1\n"
+    owner: root
+    group: root
+    mode: "0600"
+  when: onebee_kuma.rc == 0 and (onebee_sso_hieu_luc | bool)
+
+- name: Ghi nhận giám sát đã bật lại đăng nhập riêng
+  ansible.builtin.file:
+    path: "{{ onebee_box_secrets }}/uptime-kuma-tat-dang-nhap-rieng"
+    state: absent
+  when: onebee_kuma.rc == 0 and not (onebee_sso_hieu_luc | bool)
+
+# Lần đầu (vừa tạo tài khoản quản trị) hoặc vừa bật lại đăng nhập riêng của Kuma khi không còn đăng nhập một lần che
+- name: Mở giám sát ra mạng LAN (khi đã có tài khoản quản trị và trang giám sát đòi đăng nhập)
+  when: onebee_kuma.rc == 0 and onebee_kuma_dia_chi == '127.0.0.1'
   block:
     - name: Mở cổng giám sát cho mạng LAN
       ansible.builtin.set_fact:

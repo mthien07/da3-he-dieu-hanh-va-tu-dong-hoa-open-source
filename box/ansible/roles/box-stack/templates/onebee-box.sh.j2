@@ -30,6 +30,8 @@
 #   onebee-box xoa-nguoi <tên>     Xóa tài khoản (kèm ghi danh hai lớp); người đó mất quyền ngay
 #   onebee-box danh-sach-nguoi     Liệt kê tài khoản và nhóm (không in mật khẩu)
 #   onebee-box ma-xac-nhan         In mã xác minh mới nhất (người dùng ghi danh hai lớp trên trang đăng nhập khi Box chưa có email)
+#   onebee-box tat-sso-tam         Dịch vụ định danh hỏng: TẠM tắt đăng nhập một lần (dữ liệu khóa 503, giám sát dùng mật khẩu riêng)
+#   onebee-box bat-sso-lai         Bật lại đăng nhập một lần sau khi đã sửa
 set -euo pipefail
 LIB=/usr/local/lib/onebee-box
 # shellcheck source=/dev/null
@@ -532,6 +534,36 @@ print("Mã xác minh:", ma)
 PY
 }
 
+# ---- Lối thoát khi đăng nhập một lần hỏng (không ai đăng nhập được) ----
+# Dấu ${SSO_TAM_TAT} được bộ cài đọc: dựng lại Caddyfile KHÔNG có forward_auth — /api/, /files/, /ai/ trả 503 (dữ liệu khóa, không mở toang),
+# trang giám sát quay về mật khẩu riêng của Uptime Kuma (bộ cài bật lại đăng nhập riêng trước khi mở cổng). Mỗi lần chạy bộ cài đều cảnh báo.
+SSO_TAM_TAT="${SECRETS}/sso-tam-tat"
+
+chay_bo_cai_ap_dung() {
+  local bo_cai
+  bo_cai="$(cat "${LIB}/duong-dan-bo-cai" 2>/dev/null || true)"
+  [[ -x "${bo_cai}" ]] || die "KHÔNG tìm thấy bộ cài — chạy NGAY bộ cài OneBee Box (sudo ./box/onebee-box-install.sh) để áp dụng"
+  echo "Chạy bộ cài để dựng lại cổng Caddy (vài phút)..."
+  "${bo_cai}" 9>&- || die "Bộ cài chưa xong — chạy lại NGAY: sudo ${bo_cai}"
+}
+
+cmd_tat_sso_tam() {
+  https_bat || die "HTTPS chưa bật — Box chưa dùng đăng nhập một lần, không có gì để tắt"
+  (umask 077; date '+%F %T' >"${SSO_TAM_TAT}")
+  warn "TẠM TẮT đăng nhập một lần. Trong lúc này /api/, /files/, /ai/ trả 503 (không ai vào được dữ liệu),"
+  warn "trang giám sát đòi mật khẩu riêng của Uptime Kuma (tài khoản quantri, mật khẩu: sudo onebee-box in-khoa)."
+  warn "Sửa xong dịch vụ định danh (xem: sudo docker logs --tail 50 onebee-authelia) thì chạy: sudo onebee-box bat-sso-lai"
+  chay_bo_cai_ap_dung
+  echo "Đã tạm tắt đăng nhập một lần."
+}
+
+cmd_bat_sso_lai() {
+  [[ -e "${SSO_TAM_TAT}" ]] || { echo "Đăng nhập một lần đang bật — không có gì để làm."; return 0; }
+  rm -f "${SSO_TAM_TAT}"
+  chay_bo_cai_ap_dung
+  echo "Đã bật lại đăng nhập một lần: /api/, /files/, /ai/ và trang giám sát lại đòi đăng nhập qua https://box.${BOX_MA_DON_VI}.onebee.internal/dangnhap/"
+}
+
 # Không cho 2 lệnh sao lưu / xoay khóa chạy chồng nhau (lịch tự động + chạy tay)
 lay_khoa() { exec 9>/run/onebee-box.lock; flock -n 9 || die "Đang có lệnh sao lưu / xoay khóa khác chạy — thử lại sau"; }
 with_lock() { lay_khoa; "$@"; }
@@ -567,6 +599,8 @@ case "${1:-}" in
   xoa-nguoi) shift; cmd_xoa_nguoi "$@" ;;
   danh-sach-nguoi) cmd_danh_sach_nguoi ;;
   ma-xac-nhan) cmd_ma_xac_nhan ;;
+  tat-sso-tam) with_lock cmd_tat_sso_tam ;;
+  bat-sso-lai) with_lock cmd_bat_sso_lai ;;
   email-thu) bao_cao_n8n THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
                && echo "Đã chuyển cho n8n gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
   *) sed -n '/^set -euo/q; 2,$s/^# //p' "$0"; exit 1 ;;

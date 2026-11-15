@@ -42,7 +42,20 @@
   ansible.builtin.set_fact:
     onebee_https_doi: "{{ (onebee_https_hieu_luc | bool) != (onebee_https_dau_cu.stat.exists | bool) }}"
 
-# Đăng nhập một lần (Authelia) chỉ có ở chế độ HTTPS, trên tên box.<mã>.onebee.internal
+# Đăng nhập một lần (Authelia) chỉ có ở chế độ HTTPS, trên tên box.<mã>.onebee.internal.
+# Dấu ${SECRETS}/sso-tam-tat (onebee-box tat-sso-tam, khi dịch vụ định danh hỏng): tuyến lõi trả 503, giám sát dùng đăng nhập riêng
+- name: Dấu tạm tắt đăng nhập một lần
+  ansible.builtin.stat:
+    path: "{{ onebee_box_secrets }}/sso-tam-tat"
+  register: onebee_sso_dau
+
 - name: Chốt đăng nhập một lần có hiệu lực không
   ansible.builtin.set_fact:
-    onebee_sso_hieu_luc: "{{ onebee_https_hieu_luc | bool }}"
+    onebee_sso_hieu_luc: "{{ (onebee_https_hieu_luc | bool) and not onebee_sso_dau.stat.exists }}"
+
+- name: Cảnh báo đăng nhập một lần đang tạm tắt
+  ansible.builtin.debug:
+    msg: >-
+      CẢNH BÁO: đăng nhập một lần đang TẠM TẮT (dấu {{ onebee_box_secrets }}/sso-tam-tat): /api/, /files/, /ai/ trả 503,
+      trang giám sát dùng mật khẩu riêng của Uptime Kuma. Sửa xong dịch vụ định danh thì chạy: sudo onebee-box bat-sso-lai
+  when: onebee_sso_dau.stat.exists
