@@ -8,7 +8,8 @@
 #   onebee-box dong-bo-may <ten-may>|--tat-ca    Đẩy lại cấu hình (may-tram.env) từ Box xuống máy trạm (qua SSH, như trên)
 #   onebee-box thu-hoi-may <ten-may> [--dong-y]  Thu hồi máy trạm (khóa Trợ lý AI, kho sao lưu HTTP, ghim SSH, chỗ báo tình trạng)
 #   onebee-box ghim-lai-may <ten-may>            Máy cài lại hệ điều hành: bỏ khóa SSH đã ghim để ghim lại
-#   onebee-box bao-cao-tuan [YYYY-MM-DD]   Nhật ký tuần: yêu cầu hỗ trợ, khảo sát, tình trạng máy (Markdown)
+#   onebee-box bao-cao-tuan [YYYY-MM-DD]   Nhật ký tuần: yêu cầu hỗ trợ, khảo sát, tình trạng máy (Markdown) — đọc từ CSDL sau khi chuyển sổ cũ
+#   onebee-box chuyen-du-lieu      Chuyển sổ cũ (CSV đơn hàng, hỗ trợ, khảo sát; JSON tình trạng máy) vào CSDL — chạy lại chỉ nạp dòng mới
 #   onebee-box dong-bo-tro-ly      Tạo/cập nhật "Trợ lý OneBee" (model Gemma + lời dặn tiếng Việt) trong Open WebUI
 #   onebee-box dong-bo-prompts     Nạp lại kho mẫu prompt hành chính chuẩn (NĐ 30, Luật HTX)
 #   onebee-box dong-bo-tri-thuc    Cập nhật bộ tri thức cơ sở RAG (Thư viện Pháp lý HTX)
@@ -194,8 +195,11 @@ cmd_bao_cao_tuan() {
   local ngay="${1:-$(date +%F)}"
   local -a may=()
   [[ "${ngay}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || die "Ngày theo dạng YYYY-MM-DD, ví dụ $(date +%F)"
+  # n8n vẫn ghi sổ CSV → chuyển dòng mới vào CSDL trước rồi mới đọc. Chuyển lỗi (vd một tệp có dòng hỏng) thì vẫn báo cáo,
+  # kèm cảnh báo (dòng lỗi đã in ra ở trên): báo cáo thiếu dòng mới của tệp đó, không im lặng bỏ qua
+  chuyen_du_lieu >/dev/null || warn "Chuyển sổ cũ vào CSDL chưa xong (xem lỗi ở trên) — báo cáo có thể thiếu dòng mới. Sửa rồi chạy: sudo onebee-box chuyen-du-lieu"
   mapfile -t may < <(gio_sao_luu_may)
-  may_tram_py payload DAT "" "${may[@]}" | python3 /usr/local/lib/onebee-box/onebee-bao-cao-tuan.py "${DATA}/ho-tro" "${ngay}"
+  may_tram_py payload DAT "" "${may[@]}" | python3 /usr/local/lib/onebee-box/onebee-bao-cao-tuan.py csdl "${ngay}"
 }
 
 cmd_may_tram() {
@@ -581,6 +585,7 @@ case "${1:-}" in
   them-may) shift; cmd_them_may "$@" ;;
   may-tram) cmd_may_tram ;;
   bao-cao-tuan) shift; cmd_bao_cao_tuan "$@" ;;
+  chuyen-du-lieu) chuyen_du_lieu ;;
   dong-bo-mat-khau-csdl) dong_bo_mat_khau_csdl ;;   # bộ cài gọi (role box-du-lieu)
   cap-nhat-may) shift; cmd_cap_nhat_may "$@" ;;
   dong-bo-may) shift; cmd_dong_bo_may "$@" ;;

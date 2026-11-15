@@ -141,6 +141,7 @@ class OnebeeBoxShell(unittest.TestCase):
         open(self.cmd, "w", encoding="utf-8").write(sua(render(env, "onebee-box.sh.j2", **v)))
         shutil.copy(os.path.join(ROLES, "box-fleet/files/onebee-may-tram.py"), f"{lib}/onebee-may-tram.py")
         shutil.copy(os.path.join(ROLES, "box-fleet/files/onebee-bao-cao-tuan.py"), f"{lib}/onebee-bao-cao-tuan.py")
+        shutil.copy(os.path.join(ROLES, "box-du-lieu/files/onebee-chuyen-du-lieu.py"), f"{lib}/onebee-chuyen-du-lieu.py")
         shutil.copy(os.path.join(ROLES, "box-stack/files/onebee-ca.sh"), f"{lib}/onebee-ca.sh")
         # CA riêng của Box (bộ cài sinh bước này trước khi sinh các lệnh)
         subprocess.run([f"{lib}/onebee-ca.sh", f"{t}/secrets/ca", "kiem-thu", "192.168.1.10"], check=True, capture_output=True)
@@ -748,6 +749,32 @@ class OnebeeBoxShell(unittest.TestCase):
     def bo_cai_log(self):
         p = f"{self.t}/out/bo-cai.log"
         return open(p).read().split() if os.path.exists(p) else []
+
+    def test_chuyen_du_lieu_nap_so_cu_cua_thu_muc_du_lieu_vao_csdl(self):
+        os.makedirs(f"{self.t}/data/ho-tro")
+        open(f"{self.t}/data/ho-tro/khao-sat.csv", "w").write("2026-10-09 16:00,4,5,5,4,5,mẫu\n")
+        r = self.chay("chuyen-du-lieu")
+        self.assertIn("khao_sat", r.stdout)                                                      # bảng tổng kết
+        self.assertIn("docker exec -i onebee-postgres psql -U postgres -d onebee", self.docker_log())
+        self.assertTrue(os.path.exists(f"{self.t}/data/ho-tro/khao-sat.csv.truoc-chuyen"))
+
+    def test_bao_cao_tuan_chuyen_so_cu_truoc_roi_doc_tu_csdl(self):
+        r = self.chay("bao-cao-tuan", "2026-10-12")
+        log = self.docker_log().splitlines()
+        nap = [i for i, d in enumerate(log) if d.startswith("docker exec -i onebee-postgres psql")]
+        doc = [i for i, d in enumerate(log) if d.startswith("docker exec onebee-postgres psql") and "COPY (SELECT" in d]
+        self.assertTrue(nap and doc, log)
+        self.assertLess(max(nap), min(doc))                                                      # chuyển dữ liệu xong mới đọc
+        self.assertNotIn("Số dòng mới nạp", r.stdout)                                            # bảng tổng kết không lẫn vào báo cáo
+        self.assertIn("2026", r.stdout)
+
+    def test_bao_cao_tuan_van_chay_khi_chuyen_du_lieu_loi_nhung_canh_bao(self):
+        os.makedirs(f"{self.t}/data/ho-tro")
+        open(f"{self.t}/data/ho-tro/xu-ly.csv", "w").write("261005-080000-11,2026-10-05 08:45,Sửa cấu hình,không-phải-số,\n")
+        r = self.chay("bao-cao-tuan", "2026-10-12")
+        self.assertIn("xu-ly.csv", r.stderr)
+        self.assertIn("CẢNH BÁO", r.stderr)
+        self.assertIn("onebee-box chuyen-du-lieu", r.stderr)
 
     def test_tat_sso_tam_ghi_dau_canh_bao_va_chay_bo_cai(self):
         self.bo_cai_ghi_dau()
