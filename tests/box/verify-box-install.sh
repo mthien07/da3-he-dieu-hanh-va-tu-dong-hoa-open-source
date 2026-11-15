@@ -98,7 +98,7 @@ check "CA riêng: thư mục 700, khóa 600, gốc + trung gian có ràng buộc
 check "CA riêng: Box tin CA của chính nó; chứng chỉ gốc công khai tại /onebee-ca.crt; khóa CA không gắn vào container nào" bash -c \
   "openssl verify -CApath /etc/ssl/certs /etc/onebee-box/secrets/ca/inter.crt >/dev/null \
    && curl -sf http://127.0.0.1/onebee-ca.crt | cmp - /etc/onebee-box/secrets/ca/root.crt \
-   && ! docker inspect \$(docker ps -q) --format '{{range .Mounts}}{{.Source}} {{end}}' | grep -q 'secrets/ca'"
+   && ! docker inspect \$(docker ps -q) --format '{{range .Mounts}}{{.Source}} {{end}}' | grep -Eq 'secrets/ca(/| |\$)'"
 check "onebee-box in-ca in vân tay đúng chứng chỉ gốc" bash -c \
   "onebee-box in-ca | grep -q \"\$(sha256sum < <(openssl x509 -in /etc/onebee-box/secrets/ca/root.crt -outform DER) | cut -d' ' -f1 | tr a-f A-F | sed 's/../&:/g; s/:\$//')\""
 check "File .env chỉ root đọc (600)" bash -c "[ \"\$(stat -c %a /opt/onebee-box/.env)\" = 600 ]"
