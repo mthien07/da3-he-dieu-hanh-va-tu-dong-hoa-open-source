@@ -36,6 +36,8 @@ Clonezilla (sao lưu/nhân bản ổ đĩa, chỉ dùng như công cụ khi cài
 | Uptime Kuma | MIT | |
 | restic, rest-server | BSD-2-Clause | |
 | Caddy | Apache-2.0 | |
+| Authelia 4.39.28 (đăng nhập một lần, hai lớp) | Apache-2.0 | Tệp giấy phép đúng tag: https://raw.githubusercontent.com/authelia/authelia/v4.39.28/LICENSE (ADR 0006) |
+| Python 3.14.10 (image `python:3.14.10-slim-trixie`, chạy cầu nối danh tính — mã cầu nối trong repo, MIT) | PSF-2.0 (Python-2.0) | Gói Debian trong image giữ giấy phép riêng; https://raw.githubusercontent.com/python/cpython/v3.14.10/LICENSE |
 
 Giấy phép phần Box ghi theo trang của từng dự án — cần kiểm lại khi nâng phiên bản và trước khi phát hành v1.0.
 

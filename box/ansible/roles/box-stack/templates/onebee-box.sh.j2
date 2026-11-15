@@ -26,6 +26,10 @@
 #   onebee-box dat-telegram        Cấu hình Bot Token và Chat ID nhận tin cảnh báo Telegram
 #   onebee-box canh-bao <MỨC> <TIÊU_ĐỀ> [NỘI_DUNG]  Gửi cảnh báo tức thời qua Telegram & n8n
 #   onebee-box email-thu           Gửi 1 email thử qua n8n (kiểm tra cấu hình email)
+#   onebee-box them-nguoi <tên> <nhóm>   Tạo tài khoản đăng nhập một lần (nhóm: {{ onebee_box_nhom_nguoi_dung | join(', ') }}); in mật khẩu tạm MỘT lần
+#   onebee-box xoa-nguoi <tên>     Xóa tài khoản (kèm ghi danh hai lớp); người đó mất quyền ngay
+#   onebee-box danh-sach-nguoi     Liệt kê tài khoản và nhóm (không in mật khẩu)
+#   onebee-box ma-xac-nhan         In mã xác minh mới nhất (người dùng ghi danh hai lớp trên trang đăng nhập khi Box chưa có email)
 set -euo pipefail
 LIB=/usr/local/lib/onebee-box
 # shellcheck source=/dev/null
@@ -468,6 +472,66 @@ EOF
   /usr/local/bin/onebee-canh-bao INFO "Kiểm tra kết nối Telegram" "OneBee Box đã kết nối thành công với bot Telegram này."
 }
 
+# ---- Tài khoản đăng nhập một lần (Authelia) ----
+# Mật khẩu tạm do Authelia sinh và băm trong container (--random): mật khẩu không nằm trên dòng lệnh nào (ps), không ghi vào tệp hay nhật ký —
+# chỉ in ra màn hình đúng một lần. Tệp người dùng chỉ giữ bản băm argon2id.
+cmd_them_nguoi() {
+  local ten="${1:-}" nhom="${2:-}" kq mk bam
+  [[ "${ten}" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]] \
+    || die "Cách dùng: sudo onebee-box them-nguoi <tên> <nhóm> — tên chỉ gồm chữ thường không dấu, số, dấu gạch (vd: an, ke-toan-1)"
+  trong_mang "${nhom}" "${NHOM_NGUOI_DUNG[@]}" || die "Nhóm phải là một trong: ${NHOM_NGUOI_DUNG[*]}"
+  [[ -f "${NGUOI_DUNG_TEP}" ]] || die "Chưa có tệp người dùng ${NGUOI_DUNG_TEP} — chạy bộ cài OneBee Box"
+  ! nguoi_dung_py co "${NGUOI_DUNG_TEP}" "${ten}" || die "Đã có tài khoản ${ten} (đổi nhóm/cấp lại mật khẩu: xoa-nguoi rồi them-nguoi)"
+  kq="$(docker exec onebee-authelia authelia crypto hash generate argon2 --random --random.length 16 --random.charset alphanumeric)" \
+    || die "Không tạo được mật khẩu: dịch vụ định danh (onebee-authelia) chưa chạy — xem: sudo onebee-box trang-thai"
+  mk="$(sed -n 's/^Random Password: //p' <<<"${kq}")"
+  bam="$(sed -n 's/^Digest: //p' <<<"${kq}")"
+  [[ "${mk}" =~ ^[A-Za-z0-9]{16}$ && "${bam}" == '$argon2id$'* ]] || die "Dịch vụ định danh trả kết quả lạ — chưa tạo tài khoản ${ten}"
+  ONEBEE_BAM="${bam}" nguoi_dung_py them "${NGUOI_DUNG_TEP}" "${ten}" "${nhom}" "${ten}@${BOX_MA_DON_VI}.onebee.internal"
+  echo "Đã tạo tài khoản ${ten} (nhóm ${nhom}). Đăng nhập tại: https://box.${BOX_MA_DON_VI}.onebee.internal/dangnhap/"
+  echo "Mật khẩu tạm (chỉ hiện MỘT lần, đưa trực tiếp cho người dùng, không gửi qua Zalo/email): ${mk}"
+  if [[ "${nhom}" != nhan_vien ]]; then
+    echo "Nhóm ${nhom} cần hai lớp: lần đầu đăng nhập, người dùng tự ghi danh mã TOTP trên điện thoại; mã xác minh 8 ký tự: sudo onebee-box ma-xac-nhan"
+  fi
+}
+
+cmd_xoa_nguoi() {
+  local ten="${1:-}"
+  [[ "${ten}" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]] || die "Cách dùng: sudo onebee-box xoa-nguoi <tên>"
+  nguoi_dung_py xoa "${NGUOI_DUNG_TEP}" "${ten}" || die "Không có tài khoản ${ten} (xem: sudo onebee-box danh-sach-nguoi)"
+  # Ghi danh hai lớp của người cũ: xóa để người mới trùng tên phải tự ghi danh lại (chưa ghi danh thì lệnh này báo lỗi — bỏ qua)
+  docker exec onebee-authelia authelia storage user totp delete "${ten}" --config /config/configuration.yml >/dev/null 2>&1 || true
+  echo "Đã xóa tài khoản ${ten}: phiên đang mở của người này hết hiệu lực ở yêu cầu kế tiếp."
+}
+
+cmd_danh_sach_nguoi() {
+  [[ -f "${NGUOI_DUNG_TEP}" ]] || die "Chưa có tệp người dùng ${NGUOI_DUNG_TEP} — chạy bộ cài OneBee Box"
+  nguoi_dung_py ds "${NGUOI_DUNG_TEP}"
+}
+
+# Mã xác minh (8 ký tự) Authelia ghi vào tệp thông báo khi người dùng ghi danh hai lớp — quản trị đọc rồi đưa trực tiếp cho đúng người đó.
+# Tệp chỉ giữ thông báo mới nhất. Mã hết hạn sau vài phút; không ghi mã vào nhật ký.
+cmd_ma_xac_nhan() {
+  [[ -s "${THONG_BAO_TEP}" ]] || die "Chưa có mã xác minh nào (người dùng chưa bấm ghi danh hai lớp trên trang đăng nhập)"
+  python3 -I - "${THONG_BAO_TEP}" <<'PY'
+import re, sys
+dong = open(sys.argv[1], encoding="utf-8", errors="replace").read().splitlines()
+bd = max((i for i, d in enumerate(dong) if d.startswith("Date: ")), default=0)
+dong = dong[bd:]
+lay = lambda tien_to: next((d[len(tien_to):].strip() for d in dong if d.startswith(tien_to)), "")
+ma = ""
+for i, d in enumerate(dong):
+    if "one-time code" in d:
+        ma = next((x.strip() for x in dong[i + 1:] if x.strip() and not set(x.strip()) <= {"-"}), "")
+        break
+if not re.fullmatch(r"[A-Za-z0-9]{6,16}", ma):
+    sys.exit("LỖI: tệp thông báo không có mã xác minh")
+print("Người nhận:", lay("Recipient: ").strip("{}"))
+print("Lúc (giờ UTC):", lay("Date: ")[:19])
+print("Mã xác minh:", ma)
+PY
+}
+
 # Không cho 2 lệnh sao lưu / xoay khóa chạy chồng nhau (lịch tự động + chạy tay)
 lay_khoa() { exec 9>/run/onebee-box.lock; flock -n 9 || die "Đang có lệnh sao lưu / xoay khóa khác chạy — thử lại sau"; }
 with_lock() { lay_khoa; "$@"; }
@@ -499,7 +563,11 @@ case "${1:-}" in
   go-khoa-hoi-may) cmd_go_khoa_hoi_may ;;
   may-chua-nhan-ca) may_chua_nhan_ca ;;
   dat-mat-khau-email) cmd_dat_mat_khau_email ;;
+  them-nguoi) shift; cmd_them_nguoi "$@" ;;
+  xoa-nguoi) shift; cmd_xoa_nguoi "$@" ;;
+  danh-sach-nguoi) cmd_danh_sach_nguoi ;;
+  ma-xac-nhan) cmd_ma_xac_nhan ;;
   email-thu) bao_cao_n8n THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
                && echo "Đã chuyển cho n8n gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
-  *) sed -n '2,26p' "$0" | sed 's/^# //'; exit 1 ;;
+  *) sed -n '/^set -euo/q; 2,$s/^# //p' "$0"; exit 1 ;;
 esac

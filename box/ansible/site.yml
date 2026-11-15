@@ -13,6 +13,7 @@
     - box-firewall   # trước khi mở dịch vụ: từ lần chạy đầu chỉ mạng LAN vào được
     - samba
     - box-stack
+    - box-dinh-danh   # đăng nhập một lần (Authelia): cấu hình, tệp người dùng, bí mật rồi mới chạy dịch vụ
     - box-ai
     - box-n8n
     - box-backup
