@@ -41,6 +41,7 @@
   no_log: true
 
 - name: Khởi động lại động cơ quy trình khi cấu hình luồng thay đổi
+  # noqa: no-handler — cần khởi động lại ngay để bước sau kiểm /healthz, không đợi cuối play
   ansible.builtin.command: docker restart onebee-quy-trinh
   when: onebee_quy_trinh_cfg is changed
   changed_when: true
