@@ -241,6 +241,18 @@ class OnebeeBoxShell(unittest.TestCase):
         webui_truoc = open(f"{self.t}/out/webui.log").read()
         self.assertEqual(webui_truoc.strip().splitlines(), ["cap-khoa ketoan-01"])
 
+    def test_cau_hinh_may_co_ten_box_ngay_sau_ip(self):
+        """Máy trạm (role ket-noi-box) ghi dòng /etc/hosts <IP Box> box.<mã>.onebee.internal từ hai dòng này (đăng nhập một lần chỉ mở bằng tên)."""
+        for https in (False, True):
+            if https:
+                open(f"{self.t}/secrets/https-da-bat", "w").write("1\n")
+            dong = [l for l in self.chay("them-may", "ketoan-01").stdout.splitlines() if "=" in l and not l.startswith("#")]
+            khoa = [l.split("=", 1)[0] for l in dong]
+            i = khoa.index("BOX_IP")
+            self.assertEqual(dong[i], "BOX_IP=192.168.1.10")
+            self.assertEqual(dong[i + 1], "BOX_TEN=box.kiem-thu.onebee.internal")
+            self.assertEqual(khoa.count("BOX_TEN"), 1)
+
     def test_in_ca_in_van_tay_va_rang_buoc(self):
         r = self.chay("in-ca").stdout
         vt = open(f"{self.t}/secrets/ca/root.sha256").read().strip().upper()
