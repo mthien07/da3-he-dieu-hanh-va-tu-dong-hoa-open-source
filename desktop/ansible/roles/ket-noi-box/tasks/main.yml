@@ -133,6 +133,9 @@
     regexp: '^.*# onebee-box$'
     line: "{{ onebee_kn.BOX_IP }} {{ onebee_kn.BOX_TEN }} # onebee-box"
     state: present
+    # Trong container (bộ kiểm, CI) /etc/hosts là tệp Docker gắn vào: đổi tên đè lên báo "Device or resource busy"
+    # → ghi thẳng vào tệp khi không đổi tên được
+    unsafe_writes: true
   when: >-
     onebee_kn.BOX_TEN | default('') is match('^box[.][a-z0-9-]+[.]onebee[.]internal$')
     and onebee_kn.BOX_IP | default('') is match('^[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+$')
@@ -142,6 +145,7 @@
     path: /etc/hosts
     regexp: '^.*# onebee-box$'
     state: absent
+    unsafe_writes: true   # như trên
   when: >-
     not (onebee_kn.BOX_TEN | default('') is match('^box[.][a-z0-9-]+[.]onebee[.]internal$')
          and onebee_kn.BOX_IP | default('') is match('^[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+$'))
