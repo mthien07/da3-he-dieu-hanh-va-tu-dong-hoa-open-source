@@ -719,6 +719,67 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertNotEqual(self.chay("cap-nhat-may", "ketoan-01", kiem=False).returncode, 0)
         self.assertEqual(os.listdir(f"{self.t}/tmp"), [])
 
+    # ---- Lối thoát khi đăng nhập một lần hỏng: tat-sso-tam / bat-sso-lai ----
+    def bo_cai_ghi_dau(self, rc=0):
+        """Bộ cài giả: ghi lại dấu SSO lúc nó chạy (bộ cài thật dựng lại Caddyfile theo dấu này)."""
+        bo_cai = f"{self.t}/bo-cai.sh"
+        open(bo_cai, "w").write(f"#!/bin/sh\n[ -e {self.t}/secrets/sso-tam-tat ] && echo tat >> {self.t}/out/bo-cai.log"
+                                f" || echo bat >> {self.t}/out/bo-cai.log\nexit {rc}\n")
+        os.chmod(bo_cai, 0o755)
+        open(f"{self.t}/lib/duong-dan-bo-cai", "w").write(bo_cai + "\n")
+
+    def bo_cai_log(self):
+        p = f"{self.t}/out/bo-cai.log"
+        return open(p).read().split() if os.path.exists(p) else []
+
+    def test_tat_sso_tam_ghi_dau_canh_bao_va_chay_bo_cai(self):
+        self.bo_cai_ghi_dau()
+        open(f"{self.t}/secrets/https-da-bat", "w").write("1\n")
+        r = self.chay("tat-sso-tam")
+        dau = f"{self.t}/secrets/sso-tam-tat"
+        self.assertTrue(os.path.exists(dau))
+        self.assertEqual(stat.S_IMODE(os.stat(dau).st_mode), 0o600)
+        self.assertEqual(self.bo_cai_log(), ["tat"])            # dấu ghi TRƯỚC khi bộ cài dựng lại Caddyfile
+        ra = r.stdout + r.stderr
+        self.assertIn("CẢNH BÁO", ra)
+        self.assertIn("503", ra)                                 # nói rõ dữ liệu bị khóa, không mở toang
+        self.assertIn("bat-sso-lai", ra)
+        r = self.chay("bat-sso-lai")
+        self.assertFalse(os.path.exists(dau))
+        self.assertEqual(self.bo_cai_log(), ["tat", "bat"])
+        self.assertIn("Đã bật lại", r.stdout)
+        r = self.chay("bat-sso-lai")                             # đang bật sẵn: không chạy bộ cài nữa
+        self.assertEqual(self.bo_cai_log(), ["tat", "bat"])
+        self.assertIn("đang bật", r.stdout)
+
+    def test_tat_sso_tam_khi_chua_bat_https_thi_tu_choi(self):
+        self.bo_cai_ghi_dau()
+        r = self.chay("tat-sso-tam", kiem=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("HTTPS", r.stderr)
+        self.assertFalse(os.path.exists(f"{self.t}/secrets/sso-tam-tat"))
+        self.assertEqual(self.bo_cai_log(), [])
+
+    def test_tat_sso_tam_bo_cai_loi_thi_bao_loi_giu_dau(self):
+        self.bo_cai_ghi_dau(rc=2)
+        open(f"{self.t}/secrets/https-da-bat", "w").write("1\n")
+        r = self.chay("tat-sso-tam", kiem=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("bộ cài", r.stderr.lower())
+        self.assertTrue(os.path.exists(f"{self.t}/secrets/sso-tam-tat"))   # chạy lại bộ cài là áp dụng tiếp
+
+    def test_tat_sso_tam_khong_chay_chong_voi_sao_luu(self):
+        self.bo_cai_ghi_dau()
+        open(f"{self.t}/secrets/https-da-bat", "w").write("1\n")
+        import fcntl
+        with open(f"{self.t}/onebee-box.lock", "w") as khoa:                                    # sao lưu đêm đang giữ khóa
+            fcntl.flock(khoa, fcntl.LOCK_EX)
+            r = self.chay("tat-sso-tam", kiem=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Đang có lệnh", r.stderr)
+        self.assertEqual(self.bo_cai_log(), [])
+        self.assertFalse(os.path.exists(f"{self.t}/secrets/sso-tam-tat"))
+
 
 if __name__ == "__main__":
     unittest.main()

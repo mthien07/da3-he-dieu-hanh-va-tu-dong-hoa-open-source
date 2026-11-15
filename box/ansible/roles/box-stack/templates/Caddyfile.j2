@@ -53,12 +53,14 @@
 
 {# Đăng nhập một lần (ADR 0006): forward_auth chép đúng tài liệu Authelia 4.39.28 (integration/proxies/caddy.md).
    Authelia trả 200 kèm Remote-* (Caddy chép vào yêu cầu), 302/303 tới trang đăng nhập, 401 (Accept: application/json) hoặc 403 #}
+{% if onebee_sso_hieu_luc | bool %}
 (onebee_sso) {
 	forward_auth authelia:9091 {
 		uri /api/authz/forward-auth
 		copy_headers Remote-User Remote-Groups Remote-Email Remote-Name
 	}
 }
+{% endif %}
 
 {# Danh tính do máy khách tự gửi không bao giờ tới dịch vụ phía sau: xóa ở đầu khối trang (request_header chạy TRƯỚC mọi handle/forward_auth) #}
 (onebee_bo_danh_tinh_may_khach) {

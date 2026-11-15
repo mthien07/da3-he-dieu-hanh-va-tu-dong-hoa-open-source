@@ -299,5 +299,37 @@ class CaddySso(unittest.TestCase):
         self.assertEqual(AUTHELIA_THAY.ds, [])
 
 
+@unittest.skipUnless(CADDY, "cần caddy (ONEBEE_TEST_CADDY)")
+class CaddySsoTamTat(CaddySso):
+    """onebee-box tat-sso-tam: tuyến lõi trả 503 (không mở toang dữ liệu), giám sát về đăng nhập riêng của Uptime Kuma."""
+
+    def setUp(self):
+        if not self.caddy or getattr(self, "_sso", True) is not False:
+            type(self).dung_caddy(sso=False)
+            type(self)._sso = False
+        for g in (AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY):
+            g.ds.clear()
+
+    def test_tuyen_loi_tra_503_ca_khi_co_phien(self):
+        for duong, them in (("/api/toi", ()), ("/files/x", ()), ("/ai/api/chat", ("-X", "POST", "-d", "{}"))):
+            for phien in ((), ("-b", "authelia_session=phien-an"), ("-H", "Remote-User: an", "-H", "Remote-Groups: quan_ly")):
+                self.assertEqual(self.ten(duong, *them, *phien)[0], "503", (duong, phien))
+        self.assertEqual((PHIA_SAU_THAY.ds, OLLAMA_THAY.ds, AUTHELIA_THAY.ds), ([], [], []))
+        self.assertEqual(self.ten("/")[:2], ("200", "OneBee Box trang chu"))
+        self.assertNotIn("forward_auth", self.nd_goc)
+
+    def test_giam_sat_ve_dang_nhap_rieng_cua_uptime_kuma(self):
+        k = self.cong["uptime_kuma"]
+        self.assertEqual(self.ten("/dashboard", cong=k)[0], "200")
+        self.assertEqual(curl("--cacert", f"{self.t}/ca/root.crt", f"https://127.0.0.1:{k}/dashboard")[0], "200")
+        self.assertEqual(AUTHELIA_THAY.ds, [])
+
+    # Các bài của lớp cha chỉ đúng khi đăng nhập một lần bật
+    test_a_chua_co_phien_goi_api_toi_nhan_401 = test_b_phien_hop_le_nhan_200_tu_cau_noi = None
+    test_c_may_khach_tu_gui_remote_user_khong_co_tac_dung = test_d_authorization_cua_may_khach_khong_toi_phia_sau = None
+    test_e_ai_chi_mo_hai_duong_dan_post = test_f_files_co_phien_nhan_503 = test_j_than_qua_1mb_bi_chan = None
+    test_k_giam_sat_chi_ky_thuat_hai_lop = None
+
+
 if __name__ == "__main__":
     unittest.main()
