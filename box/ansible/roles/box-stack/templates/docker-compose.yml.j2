@@ -196,3 +196,29 @@ services:
       OPTIONS: "--private-repos --append-only"
     volumes:
       - {{ onebee_box_data }}/restic:/data
+
+  seaweedfs:
+    image: {{ onebee_box_images.seaweedfs }}
+    container_name: onebee-seaweedfs
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ["no-new-privileges:true"]
+    command: ["server", "-dir=/data", "-filer=true", "-volume.max=10"]
+    volumes:
+      - {{ onebee_box_data }}/seaweedfs:/data
+
+  kho-tep:
+    image: {{ onebee_box_images.python }}
+    container_name: onebee-kho-tep
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ["no-new-privileges:true"]
+    depends_on: [seaweedfs]
+    command: ["python3", "/usr/local/lib/onebee-box/onebee-kho-tep.py", "serve"]
+    environment:
+      PORT: "8080"
+      KHO_TEP_DIR: /data/kho-tep
+      SEAWEED_FILER_URL: http://seaweedfs:8888
+    volumes:
+      - /usr/local/lib/onebee-box/onebee-kho-tep.py:/usr/local/lib/onebee-box/onebee-kho-tep.py:ro
+      - {{ onebee_box_data }}/kho-tep:/data/kho-tep

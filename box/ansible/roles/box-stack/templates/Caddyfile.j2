@@ -53,8 +53,6 @@
 
 {{ dia_chi(443) }} {
 	import onebee_tls
-	root * /srv
-	file_server
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
@@ -62,6 +60,19 @@
 	}
 	# Số liệu tình trạng trên trang chủ đổi mỗi phút (onebee-trang-thai-web.timer) → trình duyệt không giữ bản cũ
 	header /trang-thai.json Cache-Control no-store
+	handle /files/* {
+		route {
+			uri strip_prefix /files
+			request_body {
+				max_size 10MB
+			}
+			reverse_proxy kho-tep:8080
+		}
+	}
+	handle {
+		root * /srv
+		file_server
+	}
 }
 
 {{ dia_chi(cong.open_webui) }} {
@@ -98,8 +109,6 @@
 {% else %}
 # Cổng 80: trang chủ cho mọi tên gọi Box (IP, {{ onebee_box_ten_mdns }}.local qua mDNS)
 :80 {
-	root * /srv
-	file_server
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
@@ -107,5 +116,18 @@
 		-Server
 	}
 	header /trang-thai.json Cache-Control no-store
+	handle /files/* {
+		route {
+			uri strip_prefix /files
+			request_body {
+				max_size 10MB
+			}
+			reverse_proxy kho-tep:8080
+		}
+	}
+	handle {
+		root * /srv
+		file_server
+	}
 }
 {% endif %}

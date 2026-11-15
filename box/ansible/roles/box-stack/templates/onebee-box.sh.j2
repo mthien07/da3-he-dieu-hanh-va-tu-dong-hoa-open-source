@@ -26,6 +26,7 @@
 #   onebee-box dat-telegram        Cấu hình Bot Token và Chat ID nhận tin cảnh báo Telegram
 #   onebee-box canh-bao <MỨC> <TIÊU_ĐỀ> [NỘI_DUNG]  Gửi cảnh báo tức thời qua Telegram & n8n
 #   onebee-box email-thu           Gửi 1 email thử qua n8n (kiểm tra cấu hình email)
+#   onebee-box cap-nhat-chu-ky-clamav <thư-mục>  Nạp chữ ký ClamAV ngoại tuyến (.cvd/.cld) từ USB vào Box
 set -euo pipefail
 LIB=/usr/local/lib/onebee-box
 # shellcheck source=/dev/null
@@ -488,6 +489,7 @@ case "${1:-}" in
   dong-bo-tro-ly) webui dong-bo-tro-ly ;;
   dong-bo-prompts) webui dong-bo-prompts ;;
   dong-bo-tri-thuc) webui dong-bo-tri-thuc ;;
+  cap-nhat-chu-ky-clamav) python3 /usr/local/lib/onebee-box/onebee-kho-tep.py cap-nhat-chu-ky "${2:-}" "${DATA}/clamav" ;;
   khoi-tao) with_lock cmd_khoi_tao ;;
   sao-luu) with_lock cmd_sao_luu_co_bao_cao ;;
   khoi-phuc-thu) with_lock cmd_khoi_phuc_thu ;;

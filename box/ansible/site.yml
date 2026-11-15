@@ -12,6 +12,7 @@
     - docker
     - box-firewall   # trước khi mở dịch vụ: từ lần chạy đầu chỉ mạng LAN vào được
     - samba
+    - box-kho-tep
     - box-stack
     - box-ai
     - box-n8n

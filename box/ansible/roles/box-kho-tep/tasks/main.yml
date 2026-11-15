@@ -1,0 +1,27 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Kho tệp đối tượng (SeaweedFS 4.53) và kiểm dịch mã độc từng lượt (ClamAV 1.5.4 clamscan)
+
+- name: Tạo thư mục dữ liệu SeaweedFS, chữ ký ClamAV và vùng kiểm dịch tệp
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode | default('0700') }}"
+  loop:
+    - {path: "{{ onebee_box_data }}/seaweedfs"}
+    - {path: "{{ onebee_box_data }}/clamav", mode: "0755"}
+    - {path: "{{ onebee_box_data }}/kho-tep"}
+    - {path: "{{ onebee_box_data }}/kho-tep/cho-quet"}
+    - {path: "{{ onebee_box_data }}/kho-tep/cach-ly"}
+    - {path: "{{ onebee_box_data }}/kho-tep/doi-tuong"}
+
+- name: Cài đặt dịch vụ cổng tệp và kiểm dịch mã độc (onebee-kho-tep.py)
+  ansible.builtin.copy:
+    src: onebee-kho-tep.py
+    dest: /usr/local/lib/onebee-box/onebee-kho-tep.py
+    owner: root
+    group: root
+    mode: "0755"
