@@ -4,6 +4,7 @@
 # → trang giám sát: chưa phiên thì sang trang đăng nhập, nhân viên 403, kỹ thuật qua hai lớp (ghi danh TOTP bằng mã xác minh) vào được
 # không phải đăng nhập Uptime Kuma lần nữa → tat-sso-tam / bat-sso-lai → không container nào của SSO công bố cổng
 # → xoay-khoa --box làm cookie phiên cũ hết hiệu lực.
+# Tài khoản an, binh, kt và thư mục /root/sso (mật khẩu tạm, cookie, khóa TOTP của kt) để lại cho check-du-lieu-qua-cong.sh — bài đó dọn.
 # Cách dùng: check-sso-cong-api.sh <container-Box>
 set -euo pipefail
 BOX="$1"
@@ -169,18 +170,20 @@ echo 'PASS  tat-sso-tam: tuyến lõi 503 (không mở toang), Kuma đòi đăng
 EOF
 
 box <<'EOF'
-for ct in onebee-authelia onebee-cau-noi; do
+# Cầu nối còn ở mạng riêng api (chỉ nó và dịch vụ dữ liệu PostgREST)
+for x in "onebee-authelia onebee-box_sso " "onebee-cau-noi onebee-box_api onebee-box_sso "; do
+  ct="${x%% *}"
   [ "$(docker inspect -f '{{.State.Running}}' "${ct}")" = true ] || { echo "FAIL  ${ct} không chạy"; exit 1; }
   [ -z "$(docker port "${ct}")" ] || { echo "FAIL  ${ct} công bố cổng: $(docker port "${ct}")"; exit 1; }
   m="$(docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' "${ct}")"
-  [ "${m}" = "onebee-box_sso " ] || { echo "FAIL  ${ct} nằm ngoài mạng riêng sso: ${m}"; exit 1; }
+  [ "${m}" = "${x#* }" ] || { echo "FAIL  ${ct} nằm ngoài mạng riêng: ${m}"; exit 1; }
 done
 # n8n (nút Code chạy mã tùy ý) nằm ở mạng default: không phân giải/không nối được tới cầu nối và dịch vụ định danh
 for dich in http://cau-noi:8080/api/toi http://authelia:9091/api/health; do
   docker exec onebee-n8n node -e "fetch('${dich}', {signal: AbortSignal.timeout(5000)}).then(() => process.exit(0), () => process.exit(7))" && rc=0 || rc=$?
   [ "${rc}" = 7 ] || { echo "FAIL  n8n gọi thẳng được ${dich} (mã ${rc})"; exit 1; }
 done
-echo 'PASS  onebee-authelia, onebee-cau-noi không công bố cổng (docker port rỗng), chỉ ở mạng sso; n8n không gọi thẳng được cầu nối'
+echo 'PASS  onebee-authelia, onebee-cau-noi không công bố cổng (docker port rỗng), chỉ ở mạng sso (cầu nối thêm mạng api); n8n không gọi thẳng được cầu nối'
 EOF
 
 echo "===== ĐĂNG NHẬP MỘT LẦN: XOAY KHÓA ====="
@@ -197,5 +200,4 @@ for _ in $(seq 30); do docker exec onebee-authelia wget -q -O /dev/null http://1
 [ "$(ma -H 'Accept: application/json' -b "${D}/jar-an" "https://${TEN}/api/toi")" = 401 ] || { echo 'FAIL  Cookie phiên cũ vẫn dùng được sau xoay-khoa --box'; exit 1; }
 [ "$(dang_nhap an "${D}/mk-an" "${D}/jar-an")" = 200 ] || { echo 'FAIL  Sau xoay khóa không đăng nhập lại được'; exit 1; }
 echo 'PASS  xoay-khoa --box: cookie phiên cũ nhận 401, đăng nhập lại được; khóa CSDL định danh (ghi danh hai lớp) giữ nguyên'
-rm -rf "${D}"
 EOF

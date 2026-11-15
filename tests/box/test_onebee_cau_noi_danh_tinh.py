@@ -302,7 +302,7 @@ class CauNoi(unittest.TestCase):
 
 
 class TrienKhai(unittest.TestCase):
-    """Cầu nối trong compose và bộ cài: không cổng, không quyền, chỉ ở mạng sso; khóa 64 ký tự hex sinh một lần."""
+    """Cầu nối trong compose và bộ cài: không cổng, không quyền, chỉ ở mạng sso (với Caddy) và api (với PostgREST); khóa 64 ký tự hex sinh một lần."""
 
     def test_compose_va_bo_cai(self):
         sys.path.insert(0, HERE)
@@ -315,7 +315,7 @@ class TrienKhai(unittest.TestCase):
             self.assertEqual(dv["image"], dd.bien()["onebee_box_images"]["python"])
             self.assertIn("no-new-privileges:true", dv["security_opt"])
             self.assertEqual((dv["cap_drop"], dv["read_only"]), (["ALL"], True))
-            self.assertEqual(dv["networks"], ["sso"])
+            self.assertEqual(dv["networks"], ["sso", "api"])
             self.assertIn("logging", dv)
             self.assertEqual(dv["command"], ["python3", "-I", "/app/onebee-cau-noi-danh-tinh.py"])
             self.assertIn("./cau-noi:/app:ro", dv["volumes"])
