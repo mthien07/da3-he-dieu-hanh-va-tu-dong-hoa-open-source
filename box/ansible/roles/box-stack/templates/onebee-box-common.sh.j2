@@ -164,9 +164,13 @@ dat_mat_khau_csdl() {
   [[ "$2" =~ ^[A-Za-z0-9]{16,}$ ]] || { warn "Mật khẩu CSDL của $1 không đúng dạng"; return 1; }
   printf "ALTER ROLE %s PASSWORD '%s';\n" "$1" "$2" | csdl >/dev/null
 }
-# mat_khau_csdl_dung <vai trò> <mật khẩu>: đăng nhập thử qua TCP (đúng đường PostgREST đi); mật khẩu đi qua stdin
+# mat_khau_csdl_dung <vai trò> <mật khẩu>: đăng nhập thử qua TCP (đúng đường PostgREST đi); mật khẩu đi qua stdin.
+# Nối vào IP của container trên mạng Docker, KHÔNG qua 127.0.0.1: image cho 127.0.0.1 đăng nhập kiểu trust (pg_hba.conf)
+# nên sai mật khẩu vẫn vào được → không bao giờ ALTER ROLE → PostgREST bị từ chối mật khẩu, khởi động lại liên tục
 mat_khau_csdl_dung() {
-  printf '%s\n' "$2" | docker exec -i onebee-postgres sh -c 'read -r PGPASSWORD; export PGPASSWORD; exec psql -X -q -w -h 127.0.0.1 -U "$1" -d onebee -Atc "SELECT 1"' _ "$1" >/dev/null 2>&1
+  printf '%s\n' "$2" | docker exec -i onebee-postgres sh -c 'read -r PGPASSWORD; export PGPASSWORD
+    ip="$(getent hosts "$(cat /etc/hostname)" | cut -d" " -f1)"; [ -n "${ip}" ] || exit 1
+    exec psql -X -q -w -h "${ip}" -U "$1" -d onebee -Atc "SELECT 1"' _ "$1" >/dev/null 2>&1
 }
 # Mật khẩu trong CSDL khớp tệp bí mật (bộ cài gọi sau khi áp dụng lược đồ; khoi-phuc-toan-bo gọi sau khi lấy lại tệp bí mật cũ).
 # In "đã đổi" khi có ALTER ROLE (để bộ cài Ansible báo changed đúng)
