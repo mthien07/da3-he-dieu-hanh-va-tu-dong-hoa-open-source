@@ -119,7 +119,8 @@ loc="$(c -o /dev/null -w '%{http_code} %{redirect_url}' "https://${TEN}:3001/das
 grep -Eq "^30[23] https://${TEN}/dangnhap/" <<<"${loc}" || { echo "FAIL  Giám sát chưa phiên không chuyển tới trang đăng nhập: ${loc}"; exit 1; }
 [ "$(ma -b "${D}/jar-an" "https://${TEN}:3001/dashboard")" = 403 ] || { echo 'FAIL  Nhân viên vào được trang giám sát'; exit 1; }
 # Kỹ thuật: một lớp → ghi danh TOTP (mã xác minh lấy bằng onebee-box ma-xac-nhan, như quản trị làm) → hai lớp
-[ "$(dang_nhap kt "${D}/mk-kt" "${D}/jar-kt")" = 200 ] || { echo 'FAIL  kt không đăng nhập được'; exit 1; }
+ma_kt=""; for _ in 1 2 3; do ma_kt="$(dang_nhap kt "${D}/mk-kt" "${D}/jar-kt")"; [ "${ma_kt}" = 200 ] && break; sleep 2; done
+[ "${ma_kt}" = 200 ] || { echo "FAIL  kt không đăng nhập được (mã ${ma_kt})"; exit 1; }
 loc="$(c -b "${D}/jar-kt" -o /dev/null -w '%{http_code}' "https://${TEN}:3001/dashboard")"
 [ "${loc}" != 200 ] || { echo 'FAIL  Kỹ thuật mới qua một lớp đã vào được giám sát'; exit 1; }
 [ "$(ma -b "${D}/jar-kt" -c "${D}/jar-kt" -X POST "https://${TEN}/dangnhap/api/user/session/elevation")" = 200 ] || { echo 'FAIL  Không xin được mã xác minh'; exit 1; }

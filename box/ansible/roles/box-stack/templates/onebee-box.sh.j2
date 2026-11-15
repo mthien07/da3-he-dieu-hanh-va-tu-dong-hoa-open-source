@@ -366,15 +366,21 @@ xoay_khoa_may() {
 # Phía Box: mật khẩu quản trị Trợ lý AI + giám sát + vai trò CSDL (đổi trong dịch vụ trước), mật khẩu chủ n8n, mật khẩu biểu mẫu, khóa webhook n8n,
 # WEBUI_SECRET_KEY (hủy mọi phiên đăng nhập Open WebUI). Phần Ansible áp dụng (.env, thông tin đăng nhập n8n) cần chạy lại bộ cài ngay sau đó
 xoay_khoa_box() {
-  local moi
+  local moi lan rc=0
   moi="$(ngau_nhien 24)"
   ONEBEE_MAT_KHAU_MOI="${moi}" webui doi-mat-khau-quan-tri
   (umask 077; printf '%s' "${moi}" >"${SECRETS}/webui-admin-password")
   if [[ -e "${SECRETS}/uptime-kuma-da-co-quan-tri" ]]; then
     moi="$(ngau_nhien 24)"
-    KUMA_USER=quantri KUMA_PASS="$(cat "${SECRETS}/uptime-kuma-password")" KUMA_PASS_MOI="${moi}" \
-      docker exec -i -w /app -e KUMA_USER -e KUMA_PASS -e KUMA_PASS_MOI onebee-uptime-kuma node - </usr/local/lib/onebee-box/onebee-kuma.js \
-      || die "Không đổi được mật khẩu giám sát — các mật khẩu khác CHƯA đổi thêm. Kiểm tra: sudo onebee-box trang-thai"
+    # Uptime Kuma mở cổng web trước khi đọc xong CSDL (vừa khởi động lại) → mã 1 là chưa sẵn sàng, thử lại giống bộ cài (mã 3 = sai mật khẩu, dừng ngay)
+    for lan in 1 2 3 4 5 6; do
+      [[ "${lan}" -eq 1 ]] || sleep 5
+      KUMA_USER=quantri KUMA_PASS="$(cat "${SECRETS}/uptime-kuma-password")" KUMA_PASS_MOI="${moi}" \
+        docker exec -i -w /app -e KUMA_USER -e KUMA_PASS -e KUMA_PASS_MOI onebee-uptime-kuma node - </usr/local/lib/onebee-box/onebee-kuma.js \
+        && { rc=0; break; } || rc=$?
+      [[ "${rc}" -eq 1 ]] || break
+    done
+    [[ "${rc}" -eq 0 ]] || die "Không đổi được mật khẩu giám sát — các mật khẩu khác CHƯA đổi thêm. Kiểm tra: sudo onebee-box trang-thai"
     (umask 077; printf '%s' "${moi}" >"${SECRETS}/uptime-kuma-password")
   fi
   # CSDL: đổi trong PostgreSQL (ALTER ROLE) TRƯỚC, ghi tệp bí mật SAU — lỗi thì giữ tệp cũ (vẫn khớp CSDL) và dừng.
