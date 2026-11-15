@@ -1,0 +1,565 @@
+<!-- SPDX-License-Identifier: MIT -->
+<!-- Copyright (c) 2026 Dương Minh Thiện, HTX OneBee -->
+{# Sổ điều hành HTX — Ứng dụng minh họa 4 trụ cột H-P-D-I trên lõi DX-OS Open-Core (Giai đoạn 6 & 9).
+   Phục vụ tại /so-dieu-hanh/ sau lớp xác thực tập trung Authelia (forward_auth). #}
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sổ điều hành HTX — OneBee DX-OS{% if onebee_box_ten_don_vi %} ({{ onebee_box_ten_don_vi | e }}){% endif %}</title>
+<style>
+  :root { --navy:#0E1B2C; --card:#17304A; --honey:#F5A524; --teal:#2DD4BF; --red:#F87171; --text:#F8FAFC; --sub:#94A3B8; --border:#274666; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; font-family:"Noto Sans",system-ui,sans-serif; background:var(--navy); color:var(--text); padding:20px 16px; line-height:1.5; }
+  main { width:min(1040px,100%); margin:0 auto; }
+  header { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; border-bottom:1px solid var(--border); padding-bottom:14px; margin-bottom:18px; }
+  h1 { margin:0; font-size:clamp(22px,4vw,30px); }
+  .badge { display:inline-block; padding:4px 10px; border-radius:999px; background:var(--card); border:1px solid var(--teal); color:var(--teal); font-size:13px; font-weight:600; }
+  .demo-banner { background:#2A1F0D; border:1px solid var(--honey); border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:14px; }
+  nav.tabs { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:8px; margin-bottom:20px; }
+  nav.tabs button { padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:15px; font-weight:600; cursor:pointer; text-align:left; }
+  nav.tabs button[aria-selected="true"] { border-color:var(--honey); background:#214263; color:var(--honey); }
+  section.tab-panel { display:none; }
+  section.tab-panel.active { display:block; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; margin-bottom:18px; }
+  .card { background:var(--card); border-radius:12px; padding:16px; border:1px solid var(--border); }
+  .card h3 { margin:0 0 10px; font-size:17px; color:var(--honey); }
+  label { display:block; font-size:14px; color:var(--sub); margin:8px 0 4px; }
+  input, select, textarea { width:100%; padding:9px 11px; border-radius:8px; border:1px solid var(--border); background:#0B1522; color:var(--text); font-family:inherit; font-size:14px; }
+  button.btn { margin-top:12px; padding:9px 16px; border-radius:8px; border:none; background:var(--honey); color:#0B1522; font-weight:700; cursor:pointer; font-size:14px; }
+  button.btn.secondary { background:var(--teal); }
+  button.btn.danger { background:var(--red); color:#fff; }
+  button.btn:disabled { opacity:0.45; cursor:not-allowed; }
+  table { width:100%; border-collapse:collapse; font-size:14px; margin-top:10px; }
+  th, td { padding:8px 10px; border-bottom:1px solid var(--border); text-align:left; }
+  th { color:var(--sub); font-weight:600; }
+  .status-msg { margin-top:10px; padding:8px 12px; border-radius:8px; background:#0B1522; font-size:14px; }
+  .poka-yoke { color:var(--honey); font-size:12px; display:block; margin-top:4px; }
+  .nguon-rag { margin-top:8px; font-size:13px; color:var(--teal); }
+</style>
+</head>
+<body>
+<main>
+{% if onebee_box_che_do_demo | default(false) | bool %}
+  <div class="demo-banner" id="demo-banner">
+    <b>Chế độ chạy thử công khai (Demo OLP 2026):</b> Dữ liệu mẫu tự động nạp lại lúc <b>03:00</b> hằng đêm.
+    Tài khoản thử nghiệm: <code>an</code> (nhóm <code>nhan_vien</code>) · <code>kythuat</code> (nhóm <code>ky_thuat</code>) · <code>binh</code> (nhóm <code>quan_ly</code>).
+  </div>
+{% endif %}
+  <header>
+    <div>
+      <h1>Sổ điều hành HTX — OneBee DX-OS</h1>
+      <small style="color:var(--sub)">Ứng dụng minh họa 4 trụ cột H-P-D-I trên lõi nguồn mở chuẩn OSI · <a href="/" style="color:var(--teal)">Về trang chủ Box</a></small>
+    </div>
+    <div id="ho-so-sso">
+      <span class="badge" id="sso-ten">Đang kiểm tra phiên SSO…</span>
+      <span class="badge" id="sso-vai-tro">—</span>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Bốn trụ cột H-P-D-I">
+    <button type="button" role="tab" aria-selected="true" data-tab="tab-h">[H] Bàn làm việc số &amp; Hồ sơ</button>
+    <button type="button" role="tab" aria-selected="false" data-tab="tab-p">[P] Quy trình, Biểu mẫu &amp; Duyệt</button>
+    <button type="button" role="tab" aria-selected="false" data-tab="tab-d">[D] Bảng điều hành dữ liệu</button>
+    <button type="button" role="tab" aria-selected="false" data-tab="tab-i">[I] Trợ lý AI &amp; Tri thức NĐ 30</button>
+  </nav>
+
+  <!-- [H] Bàn làm việc số -->
+  <section id="tab-h" class="tab-panel active" role="tabpanel">
+    <div class="grid">
+      <div class="card">
+        <h3>Danh tính một cửa (SSO — Authelia)</h3>
+        <p>Tài khoản: <b id="h-user">—</b></p>
+        <p>Họ tên: <b id="h-name">—</b></p>
+        <p>Nhóm quyền PostgreSQL RLS: <code id="h-role">—</code></p>
+        <p style="color:var(--sub);font-size:13px">Mọi yêu cầu tới <code>/api/</code>, <code>/files/</code>, <code>/ai/</code> đều được cổng Caddy xác thực qua Authelia và cấp JWT ngắn hạn 60 giây.</p>
+      </div>
+      <div class="card">
+        <h3>Lối tắt công việc hằng ngày</h3>
+        <ul>
+          <li>Soạn thảo chuẩn Nghị định 30: mở <b>LibreOffice Writer/Calc</b> (giao diện thẻ Ribbon)</li>
+          <li>Thư mục chung Samba: <code>\\{{ onebee_box_ten_mdns }}.local\{{ onebee_box_samba_share }}</code></li>
+          <li>Giám sát dịch vụ (chỉ <code>ky_thuat</code>): <a href="/giam-sat/" style="color:var(--teal)">Uptime Kuma sau SSO</a></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- [P] Quy trình & Phê duyệt -->
+  <section id="tab-p" class="tab-panel" role="tabpanel">
+    <div class="grid">
+      <div class="card">
+        <h3>1. Tạo đơn hàng mới (luồng chờ duyệt)</h3>
+        <form id="form-don-hang">
+          <label>Mã đơn hàng</label>
+          <input name="ma_don" required placeholder="VD: DH-2026-001">
+          <label>Khách hàng / Xã viên</label>
+          <input name="khach_hang" required placeholder="VD: HTX Nông nghiệp An Phú">
+          <label>Mặt hàng</label>
+          <input name="mat_hang" required placeholder="VD: Mật ong hoa nhãn loại 1 (lít)">
+          <label>Số lượng</label>
+          <input name="so_luong" type="number" step="0.01" min="0.01" value="10" required>
+          <label>Đơn giá (VNĐ)</label>
+          <input name="don_gia" type="number" step="1000" min="0" value="180000" required>
+          <label>Tệp chứng từ đính kèm (quét mã độc ClamAV)</label>
+          <input type="file" id="tep-don-hang">
+          <label>Ghi chú</label>
+          <input name="ghi_chu" placeholder="Ghi chú giao hàng">
+          <button type="submit" class="btn">Gửi đơn hàng (chờ duyệt)</button>
+        </form>
+        <div id="kq-don-hang" class="status-msg" hidden></div>
+      </div>
+
+      <div class="card">
+        <h3>2. Báo cần hỗ trợ kỹ thuật</h3>
+        <form id="form-ho-tro">
+          <label>Mã yêu cầu</label>
+          <input name="ma" required placeholder="VD: HT-2026-01">
+          <label>Tên máy trạm</label>
+          <input name="may_tram" required placeholder="VD: ketoan-01">
+          <label>Loại sự cố</label>
+          <select name="loai">
+            <option>File không mở được / sai định dạng</option>
+            <option>Phần mềm chỉ chạy trên Windows</option>
+            <option>Máy in / máy quét</option>
+            <option>Mạng / Internet</option>
+            <option>Gõ tiếng Việt</option>
+            <option>Máy chậm / treo</option>
+            <option>Sao lưu / mất file</option>
+            <option>Khác</option>
+          </select>
+          <label>Mức độ</label>
+          <select name="muc_do">
+            <option value="thuong">Bình thường</option>
+            <option value="gap">Gấp (cần phản hồi trong 4 giờ làm việc)</option>
+          </select>
+          <label>Mô tả chi tiết</label>
+          <textarea name="mo_ta" rows="2" required placeholder="Mô tả triệu chứng lỗi"></textarea>
+          <button type="submit" class="btn secondary">Gửi yêu cầu hỗ trợ</button>
+        </form>
+        <div id="kq-ho-tro" class="status-msg" hidden></div>
+      </div>
+
+      <div class="card">
+        <h3>3. Khảo sát hài lòng (ẩn danh)</h3>
+        <form id="form-khao-sat">
+          <label>Máy ổn định, nhanh (1–5)</label>
+          <input name="diem_on_dinh" type="number" min="1" max="5" value="5" required>
+          <label>Mở/sửa/gửi file Word, Excel (1–5)</label>
+          <input name="diem_van_ban" type="number" min="1" max="5" value="5" required>
+          <label>Gõ tiếng Việt (1–5)</label>
+          <input name="diem_tieng_viet" type="number" min="1" max="5" value="5" required>
+          <label>Được hỗ trợ kịp thời (1–5)</label>
+          <input name="diem_ho_tro" type="number" min="1" max="5" value="5" required>
+          <label>Muốn tiếp tục dùng (1–5)</label>
+          <input name="diem_tiep_tuc" type="number" min="1" max="5" value="5" required>
+          <label>Góp ý thêm (ẩn danh, không ghi tên người gửi)</label>
+          <input name="gop_y" placeholder="Ý kiến của bạn">
+          <button type="submit" class="btn">Gửi phiếu ẩn danh</button>
+        </form>
+        <div id="kq-khao-sat" class="status-msg" hidden></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>4. Hàng đợi phê duyệt của Quản lý (có chốt chặn Poka-yoke chống tự duyệt)</h3>
+      <p style="color:var(--sub);font-size:13px">
+        Quy tắc Poka-yoke: Người tạo đơn (<code>nguoi_tao</code>) không được phép tự phê duyệt đơn của chính mình ở cả giao diện, quy trình Node-RED lẫn ràng buộc <code>CHECK</code> trong PostgreSQL. Khi từ chối (<code>TU_CHOI</code>), bắt buộc nhập lý do.
+      </p>
+      <label>Lý do duyệt / từ chối (bắt buộc khi bấm Từ chối)</label>
+      <input id="ly-do-duyet" placeholder="Nhập lý do phê duyệt hoặc lý do từ chối...">
+      <div id="thong-bao-duyet" class="status-msg" hidden></div>
+      <table>
+        <thead>
+          <tr><th>Mã đơn</th><th>Khách hàng</th><th>Mặt hàng</th><th>Thành tiền</th><th>Người tạo</th><th>Trạng thái</th><th>Thao tác (nhóm quan_ly)</th></tr>
+        </thead>
+        <tbody id="bang-cho-duyet">
+          <tr><td colspan="7">Đang tải danh sách đơn hàng…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- [D] Bảng điều hành -->
+  <section id="tab-d" class="tab-panel" role="tabpanel">
+    <div id="d-chan-quyen" class="status-msg" hidden>Bảng điều hành dành cho Ban Giám đốc (<code>quan_ly</code>). Tài khoản nhân viên chỉ xem được các bản ghi do mình tạo theo chính sách PostgreSQL RLS.</div>
+    <div class="grid">
+      <div class="card"><h3>Tổng số đơn hàng</h3><div id="d-tong-don" style="font-size:28px;font-weight:700">0</div><small id="d-chi-tiet-don" style="color:var(--sub)">—</small></div>
+      <div class="card"><h3>Yêu cầu hỗ trợ kỹ thuật</h3><div id="d-tong-ht" style="font-size:28px;font-weight:700">0</div><small id="d-chi-tiet-ht" style="color:var(--sub)">—</small></div>
+      <div class="card"><h3>Máy trạm báo tình trạng</h3><div id="d-tong-may" style="font-size:28px;font-weight:700">0</div><small id="d-chi-tiet-may" style="color:var(--sub)">—</small></div>
+      <div class="card"><h3>Kho tệp &amp; Kiểm dịch ClamAV</h3><div id="d-tong-tep" style="font-size:28px;font-weight:700">0</div><small id="d-chi-tiet-tep" style="color:var(--sub)">—</small></div>
+      <div class="card"><h3>Điểm khảo sát ẩn danh</h3><div id="d-diem-ks" style="font-size:28px;font-weight:700">—</div><small id="d-chi-tiet-ks" style="color:var(--sub)">Ẩn điểm nếu chưa đủ 3 phiếu</small></div>
+    </div>
+  </section>
+
+  <!-- [I] Trợ lý AI & Tri thức -->
+  <section id="tab-i" class="tab-panel" role="tabpanel">
+    <div class="card">
+      <h3>Trợ lý AI nội bộ &amp; Kho tri thức pháp lý (Nghị định 30/2020/NĐ-CP &amp; Luật HTX 2023)</h3>
+      <p style="color:var(--sub);font-size:13px">Chạy trực tiếp trên dịch vụ <code>onebee-ai-rag</code> (MIT) + <code>Ollama ({{ onebee_box_ai_model }})</code> tại đơn vị, không gửi dữ liệu ra Internet.</p>
+      <div id="nut-mau-ai" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>
+      <label>Câu hỏi hoặc yêu cầu soạn thảo văn bản</label>
+      <textarea id="o-cau-hoi-ai" rows="4" placeholder="Nhập câu hỏi về thể thức văn bản Nghị định 30, Luật HTX 2023 hoặc chọn mẫu ở trên…"></textarea>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button type="button" class="btn" id="btn-gui-ai">Hỏi Trợ lý AI (kèm RAG)</button>
+        <button type="button" class="btn secondary" id="btn-tom-tat-tuan">Nhờ Trợ lý tóm tắt tuần này (không lộ PII)</button>
+      </div>
+      <div id="kq-ai" class="status-msg" hidden></div>
+      <div id="nguon-ai" class="nguon-rag" hidden></div>
+      <p id="luu-y-ai" style="color:var(--sub);font-size:12px;margin-top:8px">Lưu ý: Kết quả do mô hình AI sinh tự động mang tính chất tham khảo — người ký duyệt cần kiểm tra lại số liệu và căn cứ văn bản trước khi ban hành chính thức.</p>
+    </div>
+  </section>
+</main>
+
+<script>
+  var HOSO = { user: "", name: "", role: "nhan_vien", groups: [] };
+
+  // Chuyển thẻ H-P-D-I
+  document.querySelectorAll("nav.tabs button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll("nav.tabs button").forEach(function (b) { b.setAttribute("aria-selected", "false"); });
+      document.querySelectorAll("section.tab-panel").forEach(function (p) { p.classList.remove("active"); });
+      btn.setAttribute("aria-selected", "true");
+      document.getElementById(btn.getAttribute("data-tab")).classList.add("active");
+    });
+  });
+
+  function hienThongBao(id, chu, loi) {
+    var el = document.getElementById(id);
+    el.hidden = false;
+    el.style.borderLeft = "4px solid " + (loi ? "var(--red)" : "var(--teal)");
+    el.textContent = chu;
+  }
+
+  function oBang(chu, ma) {
+    var td = document.createElement("td");
+    if (ma) {
+      var c = document.createElement(ma);
+      c.textContent = chu;
+      td.appendChild(c);
+    } else {
+      td.textContent = chu;
+    }
+    return td;
+  }
+
+  function taiHoSo() {
+    fetch("/api/ho-so", { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) {
+        HOSO = d;
+        document.getElementById("sso-ten").textContent = d.name + " (" + d.user + ")";
+        document.getElementById("sso-vai-tro").textContent = "Vai trò: " + d.role;
+        document.getElementById("h-user").textContent = d.user;
+        document.getElementById("h-name").textContent = d.name;
+        document.getElementById("h-role").textContent = d.role;
+        taiDuLieuDieuHanh();
+      })
+      .catch(function () {
+        document.getElementById("sso-ten").textContent = "Chưa đăng nhập SSO";
+      });
+  }
+
+  function taiDuLieuDieuHanh() {
+    fetch("/api/don_hang?order=id.desc", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (ds) {
+        if (!Array.isArray(ds)) ds = [];
+        document.getElementById("d-tong-don").textContent = ds.length;
+        var cho = ds.filter(function (x) { return x.trang_thai_duyet === "CHO_DUYET"; }).length;
+        var duyet = ds.filter(function (x) { return x.trang_thai_duyet === "DA_DUYET"; }).length;
+        var tuchoi = ds.filter(function (x) { return x.trang_thai_duyet === "TU_CHOI"; }).length;
+        document.getElementById("d-chi-tiet-don").textContent = duyet + " đã duyệt · " + cho + " chờ duyệt · " + tuchoi + " từ chối";
+
+        var tbody = document.getElementById("bang-cho-duyet");
+        tbody.replaceChildren();
+        if (!ds.length) {
+          var trRong = document.createElement("tr");
+          var tdRong = oBang("Chưa có đơn hàng nào.");
+          tdRong.colSpan = 7;
+          trRong.appendChild(tdRong);
+          tbody.appendChild(trRong);
+          return;
+        }
+        ds.forEach(function (d) {
+          var tr = document.createElement("tr");
+          var tuDuyet = d.nguoi_tao === HOSO.user;
+          var laQuanLy = HOSO.role === "quan_ly";
+          tr.appendChild(oBang(d.ma_don || ""));
+          tr.appendChild(oBang(d.khach_hang || ""));
+          tr.appendChild(oBang(d.mat_hang || ""));
+          tr.appendChild(oBang(Number(d.thanh_tien || (d.so_luong * d.don_gia) || 0).toLocaleString("vi-VN") + " đ"));
+          tr.appendChild(oBang(d.nguoi_tao || "", "code"));
+          var tdTt = oBang(d.trang_thai_duyet || "", "b");
+          if (d.nguoi_duyet) {
+            tdTt.appendChild(document.createTextNode(" (" + d.nguoi_duyet + ")"));
+          }
+          tr.appendChild(tdTt);
+
+          var tdHanhDong = document.createElement("td");
+          if (d.trang_thai_duyet === "CHO_DUYET" && laQuanLy) {
+            if (tuDuyet) {
+              var btnKhoa = document.createElement("button");
+              btnKhoa.className = "btn";
+              btnKhoa.disabled = true;
+              btnKhoa.textContent = "Duyệt";
+              var nhanPy = document.createElement("span");
+              nhanPy.className = "poka-yoke";
+              nhanPy.textContent = "Chốt chặn Poka-yoke: không tự duyệt đơn do chính mình tạo";
+              tdHanhDong.appendChild(btnKhoa);
+              tdHanhDong.appendChild(nhanPy);
+            } else {
+              var btnDuyet = document.createElement("button");
+              btnDuyet.className = "btn";
+              btnDuyet.textContent = "Duyệt";
+              btnDuyet.addEventListener("click", function () { xuLyPheDuyet(d.id, d.ma_don, d.nguoi_tao, "DA_DUYET"); });
+              var btnTuChoi = document.createElement("button");
+              btnTuChoi.className = "btn danger";
+              btnTuChoi.style.marginLeft = "6px";
+              btnTuChoi.textContent = "Từ chối";
+              btnTuChoi.addEventListener("click", function () { xuLyPheDuyet(d.id, d.ma_don, d.nguoi_tao, "TU_CHOI"); });
+              tdHanhDong.appendChild(btnDuyet);
+              tdHanhDong.appendChild(btnTuChoi);
+            }
+          } else {
+            tdHanhDong.textContent = "—";
+          }
+          tr.appendChild(tdHanhDong);
+          tbody.appendChild(tr);
+        });
+      });
+
+    fetch("/api/yeu_cau_ho_tro", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (ds) {
+        if (!Array.isArray(ds)) ds = [];
+        document.getElementById("d-tong-ht").textContent = ds.length;
+        var gap = ds.filter(function (x) { return x.muc_do === "gap"; }).length;
+        document.getElementById("d-chi-tiet-ht").textContent = gap + " yêu cầu gấp";
+      });
+
+    fetch("/api/tinh_trang_may", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (ds) {
+        if (!Array.isArray(ds)) ds = [];
+        document.getElementById("d-tong-may").textContent = ds.length;
+        document.getElementById("d-chi-tiet-may").textContent = ds.filter(function (x) { return x.hop_le_chu_ky; }).length + " máy có chữ ký HMAC hợp lệ";
+      });
+
+    fetch("/api/khao_sat", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (ds) {
+        if (!Array.isArray(ds)) ds = [];
+        if (ds.length >= 3) {
+          var tb = ds.reduce(function (s, x) { return s + Number(x.diem_tiep_tuc || 5); }, 0) / ds.length;
+          document.getElementById("d-diem-ks").textContent = tb.toFixed(1) + " / 5";
+          document.getElementById("d-chi-tiet-ks").textContent = ds.length + " phiếu ẩn danh";
+        } else {
+          document.getElementById("d-diem-ks").textContent = "Ẩn danh";
+          document.getElementById("d-chi-tiet-ks").textContent = ds.length + "/3 phiếu (chưa đủ 3 phiếu để hiện điểm)";
+        }
+      });
+
+    fetch("/files/", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : { tep: [] }; })
+      .then(function (d) {
+        var ds = Array.isArray(d.tep) ? d.tep : [];
+        document.getElementById("d-tong-tep").textContent = ds.length;
+        var sach = ds.filter(function (x) { return x.trang_thai_quet === "CLEAN"; }).length;
+        var cachLy = ds.filter(function (x) { return x.trang_thai_quet === "INFECTED"; }).length;
+        document.getElementById("d-chi-tiet-tep").textContent = sach + " sạch · " + cachLy + " cách ly";
+      });
+
+    document.getElementById("d-chan-quyen").hidden = (HOSO.role === "quan_ly");
+  }
+
+  function xuLyPheDuyet(idDon, maDon, nguoiTao, quyetDinh) {
+    var lyDo = document.getElementById("ly-do-duyet").value.trim();
+    if (quyetDinh === "TU_CHOI" && lyDo.length < 3) {
+      hienThongBao("thong-bao-duyet", "Từ chối phê duyệt bắt buộc phải nhập lý do (ít nhất 3 ký tự).", true);
+      return;
+    }
+    var payloadDuyet = {
+      loai: "don_hang",
+      id: idDon,
+      ma_don: maDon,
+      nguoi_tao: nguoiTao,
+      trang_thai_duyet: quyetDinh,
+      ly_do_duyet: lyDo || (quyetDinh === "DA_DUYET" ? "Đồng ý duyệt" : "")
+    };
+    fetch("/webhook/onebee-phe-duyet", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payloadDuyet)
+    }).catch(function () { return null; });
+    fetch("/api/don_hang?ma_don=eq." + encodeURIComponent(maDon), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "Prefer": "return=representation" },
+      body: JSON.stringify({
+        trang_thai_duyet: quyetDinh,
+        nguoi_duyet: HOSO.user,
+        ly_do_duyet: payloadDuyet.ly_do_duyet,
+        thoi_gian_duyet: new Date().toISOString()
+      })
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (e) { throw new Error(e.message || e.loi || "Không thể phê duyệt"); });
+      hienThongBao("thong-bao-duyet", "Đã cập nhật trạng thái " + quyetDinh + " cho đơn " + maDon, false);
+      taiDuLieuDieuHanh();
+    }).catch(function (e) {
+      hienThongBao("thong-bao-duyet", "Lỗi phê duyệt: " + e.message, true);
+    });
+  }
+
+  // Biểu mẫu tạo đơn hàng + tải tệp đính kèm qua ClamAV
+  document.getElementById("form-don-hang").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var fd = new FormData(ev.target);
+    var tepInput = document.getElementById("tep-don-hang");
+    var tep = tepInput.files && tepInput.files[0];
+
+    var guiDon = function (ghiChuTep) {
+      var body = {
+        ma_don: fd.get("ma_don"),
+        khach_hang: fd.get("khach_hang"),
+        mat_hang: fd.get("mat_hang"),
+        so_luong: Number(fd.get("so_luong")),
+        don_gia: Number(fd.get("don_gia")),
+        ghi_chu: (fd.get("ghi_chu") || "") + (ghiChuTep ? " [Tệp: " + ghiChuTep + "]" : "")
+      };
+      fetch("/api/don_hang", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Prefer": "return=representation" },
+        body: JSON.stringify(body)
+      }).then(function (r) {
+        if (!r.ok) return r.json().then(function (e) { throw new Error(e.message || "Lỗi lưu đơn hàng"); });
+        hienThongBao("kq-don-hang", "Đã tạo đơn hàng ở trạng thái CHO_DUYET" + (ghiChuTep ? " (kèm tệp sạch " + ghiChuTep + ")" : ""), false);
+        ev.target.reset();
+        taiDuLieuDieuHanh();
+      }).catch(function (e) {
+        hienThongBao("kq-don-hang", "Không gửi được đơn hàng: " + e.message, true);
+      });
+    };
+
+    if (tep) {
+      fetch("/files/" + encodeURIComponent(tep.name), { method: "PUT", body: tep })
+        .then(function (r) { return r.json().then(function (d) { return { status: r.status, data: d }; }); })
+        .then(function (res) {
+          if (res.status === 422 || res.data.trang_thai_quet === "INFECTED") {
+            hienThongBao("kq-don-hang", "CẢNH BÁO: Tệp đính kèm bị chặn do nghi nhiễm mã độc (" + (res.data.clamd || "INFECTED") + ") — đơn hàng chưa được gửi!", true);
+            return;
+          }
+          guiDon(res.data.duong_dan || tep.name);
+        })
+        .catch(function () { hienThongBao("kq-don-hang", "Lỗi tải tệp đính kèm lên kho kiểm dịch", true); });
+    } else {
+      guiDon("");
+    }
+  });
+
+  document.getElementById("form-ho-tro").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var fd = new FormData(ev.target);
+    fetch("/api/yeu_cau_ho_tro", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ma: fd.get("ma"),
+        may_tram: fd.get("may_tram"),
+        loai: fd.get("loai"),
+        muc_do: fd.get("muc_do"),
+        mo_ta: fd.get("mo_ta")
+      })
+    }).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      hienThongBao("kq-ho-tro", "Đã ghi nhận yêu cầu hỗ trợ kỹ thuật.", false);
+      ev.target.reset();
+      taiDuLieuDieuHanh();
+    }).catch(function () {
+      hienThongBao("kq-ho-tro", "Không gửi được yêu cầu hỗ trợ.", true);
+    });
+  });
+
+  document.getElementById("form-khao-sat").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var fd = new FormData(ev.target);
+    fetch("/api/khao_sat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        diem_on_dinh: Number(fd.get("diem_on_dinh")),
+        diem_van_ban: Number(fd.get("diem_van_ban")),
+        diem_tieng_viet: Number(fd.get("diem_tieng_viet")),
+        diem_ho_tro: Number(fd.get("diem_ho_tro")),
+        diem_tiep_tuc: Number(fd.get("diem_tiep_tuc")),
+        gop_y: fd.get("gop_y") || ""
+      })
+    }).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      hienThongBao("kq-khao-sat", "Cảm ơn bạn! Phiếu khảo sát ẩn danh đã được ghi nhận.", false);
+      ev.target.reset();
+      taiDuLieuDieuHanh();
+    }).catch(function () {
+      hienThongBao("kq-khao-sat", "Không gửi được phiếu khảo sát.", true);
+    });
+  });
+
+  // Trợ lý AI & RAG
+  fetch("/ai/mau")
+    .then(function (r) { return r.ok ? r.json() : { mau: [] }; })
+    .then(function (d) {
+      var vung = document.getElementById("nut-mau-ai");
+      (d.mau || []).forEach(function (m) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "btn secondary";
+        b.textContent = m.title + " (" + m.command + ")";
+        b.addEventListener("click", function () {
+          document.getElementById("o-cau-hoi-ai").value = m.content;
+        });
+        vung.appendChild(b);
+      });
+    });
+
+  document.getElementById("btn-gui-ai").addEventListener("click", function () {
+    var q = document.getElementById("o-cau-hoi-ai").value.trim();
+    if (!q) return;
+    hienThongBao("kq-ai", "Đang hỏi Trợ lý AI OneBee và tra cứu kho tri thức RAG…", false);
+    fetch("/ai/hoi", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cau_hoi: q })
+    }).then(function (r) { return r.json(); })
+      .then(function (d) {
+        hienThongBao("kq-ai", d.tra_loi || d.loi || "Không có phản hồi", Boolean(d.loi));
+        var ng = document.getElementById("nguon-ai");
+        if (d.nguon_trich_dan && d.nguon_trich_dan.length) {
+          ng.hidden = false;
+          ng.textContent = "Nguồn tri thức trích dẫn: " + d.nguon_trich_dan.map(function (x) { return x.tai_lieu + " (" + x.muc + ")"; }).join(" · ");
+        } else {
+          ng.hidden = true;
+        }
+      }).catch(function () {
+        hienThongBao("kq-ai", "Chưa kết nối được dịch vụ AI nội bộ.", true);
+      });
+  });
+
+  document.getElementById("btn-tom-tat-tuan").addEventListener("click", function () {
+    var tomTatSoLieu = "Tổng đơn hàng: " + document.getElementById("d-tong-don").textContent +
+      " (" + document.getElementById("d-chi-tiet-don").textContent + "). Yêu cầu hỗ trợ: " +
+      document.getElementById("d-tong-ht").textContent + " (" + document.getElementById("d-chi-tiet-ht").textContent + ").";
+    hienThongBao("kq-ai", "Đang tóm tắt số liệu điều hành (ẩn danh, không gửi PII)…", false);
+    fetch("/ai/tom-tat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ noi_dung: tomTatSoLieu })
+    }).then(function (r) { return r.json(); })
+      .then(function (d) {
+        hienThongBao("kq-ai", d.tom_tat || d.loi || "Không có phản hồi", Boolean(d.loi));
+      });
+  });
+
+  taiHoSo();
+</script>
+</body>
+</html>

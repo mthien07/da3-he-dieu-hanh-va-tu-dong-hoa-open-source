@@ -32,6 +32,7 @@
     - {path: "{{ onebee_box_dir }}/portal"}
     - {path: "{{ onebee_box_dir }}/portal/caddy"}
     - {path: "{{ onebee_box_dir }}/portal/site"}
+    - {path: "{{ onebee_box_dir }}/portal/site/so-dieu-hanh"}
     - {path: "{{ onebee_box_dir }}/portal/site-http"}
     - {path: "{{ onebee_box_data }}/caddy", mode: "0700"}
     - {path: "{{ onebee_box_data }}/caddy/data", mode: "0700"}
@@ -258,6 +259,7 @@
   loop:
     - {src: docker-compose.yml.j2, dest: docker-compose.yml}
     - {src: index.html.j2, dest: portal/site/index.html}
+    - {src: so-dieu-hanh.html.j2, dest: portal/site/so-dieu-hanh/index.html}
     - {src: huong-dan-ca.html.j2, dest: portal/site-http/index.html}
 
 - name: Sinh cấu hình cổng Caddy
