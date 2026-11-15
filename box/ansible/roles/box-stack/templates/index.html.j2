@@ -51,6 +51,12 @@
   kbd { background:#0B1522; border:1px solid #334155; border-radius:4px; padding:1px 6px; font-family:inherit; font-size:14px; white-space:nowrap; }
   .note { margin-top:20px; color:var(--sub); font-size:14px; }
   .note a { color:var(--teal); }
+  .demo-banner { margin:16px 0 22px; padding:16px 18px; border-radius:12px; background:var(--card); border:2px solid var(--honey); }
+  .demo-banner p { margin:0 0 8px; }
+  .demo-banner a { color:var(--teal); }
+  .demo-bang { width:100%; border-collapse:collapse; margin:10px 0; font-size:14px; }
+  .demo-bang th, .demo-bang td { text-align:left; padding:6px 8px; border-bottom:1px solid #26415E; }
+  .demo-bang th { color:var(--honey); }
 </style>
 </head>
 <body>
@@ -60,6 +66,21 @@
   <p class="don-vi">{{ onebee_box_ten_don_vi | e }}</p>
 {% endif %}
   <p class="sub">Máy chủ nội bộ — dữ liệu ở lại trong đơn vị. Vào trang này bằng tên <code id="ten-box">{{ onebee_box_ten_mdns }}.local</code>, không cần nhớ IP.</p>
+{% if onebee_box_che_do_demo | default(false) | bool %}
+  <section id="khung-demo-olp" class="demo-banner" aria-label="Bản chạy thử công khai OLP 2026">
+    <p><strong>Bản chạy thử công khai OLP 2026 — Dữ liệu giả lập, tự đặt lại lúc 03:00 mỗi ngày</strong></p>
+    <p>Giới hạn tệp tải lên trên cổng thử nghiệm: <strong>≤ 5 MB</strong> · Giới hạn hỏi Trợ lý AI: <code>10 lượt/phút</code>. Không đưa dữ liệu cá nhân thật vào hệ thống thử.</p>
+    <table class="demo-bang">
+      <thead><tr><th>Tài khoản</th><th>Nhóm &amp; Quyền hạn</th><th>Lưu ý đăng nhập</th></tr></thead>
+      <tbody>
+        <tr><td><code>nhanvien1</code></td><td>Nhân viên văn thư (<code>nhan_vien</code>, 1FA)</td><td>Tạo đơn hàng, gửi yêu cầu hỗ trợ, tải PDF, hỏi Trợ lý AI</td></tr>
+        <tr><td><code>kythuat1</code></td><td>Kỹ thuật viên (<code>ky_thuat</code>, 2FA TOTP)</td><td>Theo dõi tình trạng máy trạm, xử lý hỗ trợ, xem Uptime Kuma</td></tr>
+        <tr><td><code>quanly1</code></td><td>Quản lý HTX (<code>quan_ly</code>, 2FA TOTP)</td><td>Phê duyệt đơn hàng 2 bước, xem số liệu điều hành tổng hợp</td></tr>
+      </tbody>
+    </table>
+    <p><a href="/dangnhap/">Mở trang đăng nhập SSO</a> · <a href="/ai/">Mở Trợ lý AI RAG</a></p>
+  </section>
+{% endif %}
 
   <section id="trang-thai" aria-labelledby="h-trang-thai">
     <h2 id="h-trang-thai">Tình trạng hệ thống</h2>
@@ -154,7 +175,11 @@
   var host = window.location.hostname;
   // Mở trang chủ bằng onebee.local mà dịch vụ cũng theo tên đó thì Trợ lý AI là origin khác với biểu tượng trên máy trạm (mở bằng IP)
   // → đăng nhập lại; HTTPS còn hỏng hẳn (chứng chỉ không cấp cho .local). Dịch vụ luôn theo IP Box, trừ tên Tailscale của kỹ thuật.
+{% if onebee_box_che_do_demo | default(false) | bool and (onebee_box_domain | default('') | length > 0) %}
+  var hostDichVu = (host === "box.{{ onebee_box_ma_don_vi }}.onebee.internal" || host === "{{ onebee_box_domain | e }}") ? host : "{{ onebee_box_ip }}";
+{% else %}
   var hostDichVu = host === "box.{{ onebee_box_ma_don_vi }}.onebee.internal" ? host : "{{ onebee_box_ip }}";
+{% endif %}
   document.querySelectorAll("a.card[data-port]").forEach(function (a) {
     var goc = window.location.protocol + "//" + hostDichVu + ":" + a.getAttribute("data-port") + "/";
     a.href = goc + (a.getAttribute("data-path") || "");

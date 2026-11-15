@@ -142,3 +142,9 @@ onebee_box_khoa_tinh_trang_chung: true
 # onebee_box_ma_don_vi / onebee_box_dia_chi, chạy bộ cài, rồi đặt lại false.
 # CA cũ được cất ở /etc/onebee-box/secrets/ca.cu-<ngày giờ>; CA mới tự đẩy xuống mọi máy trạm (máy tắt: dong-bo-may khi bật lại).
 onebee_box_xoay_ca: false
+
+# Chế độ chạy thử công khai trên Internet (mặc định false cho triển khai nội bộ trong LAN).
+# Khi bật true và khai báo onebee_box_domain (ví dụ demo.onebee.vn), Caddy tự cấp chứng chỉ Let's Encrypt
+# cho tên miền công khai, bật biểu ngữ demo + 3 tài khoản mẫu và hẹn giờ 03:00 nạp lại dữ liệu giả lập.
+onebee_box_che_do_demo: false
+onebee_box_domain: ""

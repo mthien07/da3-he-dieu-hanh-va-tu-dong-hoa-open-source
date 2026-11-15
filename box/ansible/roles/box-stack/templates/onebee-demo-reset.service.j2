@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+[Unit]
+Description=Đặt lại dữ liệu giả lập cho bản chạy thử công khai OneBee DX-OS OLP 2026
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'docker exec -i onebee-postgres psql -U onebee -d onebee_dxos -v ON_ERROR_STOP=1 < {{ onebee_box_dir }}/nap-du-lieu-demo.sql'

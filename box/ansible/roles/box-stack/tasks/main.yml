@@ -581,3 +581,32 @@
 - name: Báo kết quả cấu hình giám sát
   ansible.builtin.debug:
     msg: "{{ onebee_kuma.stdout_lines | default([]) }}"
+
+- name: Triển khai cấu hình và lịch đặt lại dữ liệu cho bản chạy thử công khai
+  when: onebee_box_che_do_demo | default(false) | bool
+  block:
+    - name: Chép script SQL nạp dữ liệu giả lập lên Box demo
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../scripts/nap-du-lieu-demo.sql"
+        dest: "{{ onebee_box_dir }}/nap-du-lieu-demo.sql"
+        owner: root
+        group: root
+        mode: "0640"
+
+    - name: Cài dịch vụ và bộ hẹn giờ đặt lại dữ liệu demo lúc 03:00 mỗi ngày
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "/etc/systemd/system/{{ item }}"
+        owner: root
+        group: root
+        mode: "0644"
+      loop:
+        - onebee-demo-reset.service
+        - onebee-demo-reset.timer
+
+    - name: Bật lịch đặt lại dữ liệu demo hằng ngày lúc 03:00
+      ansible.builtin.systemd_service:
+        name: onebee-demo-reset.timer
+        enabled: true
+        state: started
+        daemon_reload: true

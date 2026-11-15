@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Mẫu inventory Ansible triển khai OneBee DX-OS bản chạy thử công khai trên VPS Ubuntu 24.04.
+# Sao chép thành inventory.demo.ini (đã nằm trong .gitignore hoặc không commit mật khẩu thật),
+# điền địa chỉ IP VPS và tên miền thật đã trỏ DNS A/AAAA về VPS rồi chạy:
+#   ANSIBLE_CONFIG=box/ansible/ansible.cfg ansible-playbook -i box/ansible/inventory.demo.ini box/ansible/site.yml
+
+[onebee_box]
+demo-olp ansible_host=203.0.113.10 ansible_user=root
+
+[onebee_box:vars]
+onebee_box_ma_don_vi=demo
+onebee_box_ten_don_vi="OneBee DX-OS — Bản chạy thử công khai OLP 2026"
+onebee_box_dia_chi=203.0.113.10
+onebee_box_che_do_demo=true
+onebee_box_domain=demo.onebee.vn
+onebee_box_https=false

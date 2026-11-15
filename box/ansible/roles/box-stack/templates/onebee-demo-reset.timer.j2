@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+[Unit]
+Description=Hẹn giờ đặt lại dữ liệu giả lập lúc 03:00 mỗi ngày cho bản demo OneBee DX-OS
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

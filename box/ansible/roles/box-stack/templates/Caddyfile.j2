@@ -1,4 +1,47 @@
 # Quản lý bởi OneBee OS — cổng vào của OneBee Box
+{% set demo_hoat_dong = (onebee_box_che_do_demo | default(false) | bool) and ((onebee_box_domain | default('') | trim | length) > 0) %}
+{% set demo_domain = onebee_box_domain | default('') | trim %}
+{% if (onebee_https_hieu_luc | bool) or demo_hoat_dong %}
+{# Đăng nhập một lần (ADR 0006): forward_auth chép đúng tài liệu Authelia 4.39.28 (integration/proxies/caddy.md).
+   Authelia trả 200 kèm Remote-* (Caddy chép vào yêu cầu), 302/303 tới trang đăng nhập, 401 (Accept: application/json) hoặc 403 #}
+{% if onebee_sso_hieu_luc | bool %}
+(onebee_sso) {
+	forward_auth authelia:9091 {
+		uri /api/authz/forward-auth
+		copy_headers Remote-User Remote-Groups Remote-Email Remote-Name
+	}
+}
+{% endif %}
+
+{# Danh tính do máy khách tự gửi không bao giờ tới dịch vụ phía sau: xóa ở đầu khối trang (request_header chạy TRƯỚC mọi handle/forward_auth) #}
+(onebee_bo_danh_tinh_co_ban) {
+	request_header -Remote-User
+	request_header -Remote-Groups
+	request_header -Remote-Email
+	request_header -Remote-Name
+	request_header -X-OneBee-SSO
+	request_header -Proxy-Authorization
+}
+
+(onebee_bo_danh_tinh_may_khach) {
+	import onebee_bo_danh_tinh_co_ban
+	request_header -Authorization
+}
+
+{% macro trang_chu() %}
+	handle {
+		root * /srv
+		file_server
+		header {
+			X-Content-Type-Options nosniff
+			X-Frame-Options DENY
+			Referrer-Policy no-referrer
+		}
+		# Số liệu tình trạng trên trang chủ đổi mỗi phút (onebee-trang-thai-web.timer) → trình duyệt không giữ bản cũ
+		header /trang-thai.json Cache-Control no-store
+	}
+{% endmacro %}
+{% endif %}
 {% if onebee_https_hieu_luc | bool %}
 {% set cong = onebee_box_ports %}
 {% set kuma_san_sang = onebee_kuma_dia_chi | default('0.0.0.0') == '0.0.0.0' %}
@@ -51,45 +94,6 @@
 	header -Server
 }
 
-{# Đăng nhập một lần (ADR 0006): forward_auth chép đúng tài liệu Authelia 4.39.28 (integration/proxies/caddy.md).
-   Authelia trả 200 kèm Remote-* (Caddy chép vào yêu cầu), 302/303 tới trang đăng nhập, 401 (Accept: application/json) hoặc 403 #}
-{% if onebee_sso_hieu_luc | bool %}
-(onebee_sso) {
-	forward_auth authelia:9091 {
-		uri /api/authz/forward-auth
-		copy_headers Remote-User Remote-Groups Remote-Email Remote-Name
-	}
-}
-{% endif %}
-
-{# Danh tính do máy khách tự gửi không bao giờ tới dịch vụ phía sau: xóa ở đầu khối trang (request_header chạy TRƯỚC mọi handle/forward_auth) #}
-(onebee_bo_danh_tinh_co_ban) {
-	request_header -Remote-User
-	request_header -Remote-Groups
-	request_header -Remote-Email
-	request_header -Remote-Name
-	request_header -X-OneBee-SSO
-	request_header -Proxy-Authorization
-}
-
-(onebee_bo_danh_tinh_may_khach) {
-	import onebee_bo_danh_tinh_co_ban
-	request_header -Authorization
-}
-
-{% macro trang_chu() %}
-	handle {
-		root * /srv
-		file_server
-		header {
-			X-Content-Type-Options nosniff
-			X-Frame-Options DENY
-			Referrer-Policy no-referrer
-		}
-		# Số liệu tình trạng trên trang chủ đổi mỗi phút (onebee-trang-thai-web.timer) → trình duyệt không giữ bản cũ
-		header /trang-thai.json Cache-Control no-store
-	}
-{% endmacro %}
 {% set ten_box = 'box.' ~ onebee_box_ma_don_vi ~ '.onebee.internal' %}
 {# Vào bằng IP: chỉ trang chủ (công khai, không có dữ liệu nội bộ). Tuyến lõi chỉ phục vụ trên tên (QĐ2) → chuyển sang tên #}
 https://{{ onebee_box_ip }}:443 {
@@ -247,7 +251,7 @@ https://{{ onebee_box_ip }}:{{ cong.uptime_kuma }} {
 	}
 }
 {% endif %}
-{% else %}
+{% elif not demo_hoat_dong %}
 # Cổng 80: trang chủ cho mọi tên gọi Box (IP, {{ onebee_box_ten_mdns }}.local qua mDNS)
 :80 {
 	root * /srv
@@ -260,4 +264,99 @@ https://{{ onebee_box_ip }}:{{ cong.uptime_kuma }} {
 	}
 	header /trang-thai.json Cache-Control no-store
 }
+{% endif %}
+{% if demo_hoat_dong %}
+
+{# Bản chạy thử công khai OLP 2026: tên miền Internet thật, dùng Let's Encrypt ACME mặc định của Caddy (KHÔNG tls internal).
+   Giới hạn kích thước tải lên 5MB trên các tuyến nghiệp vụ và gắn tiêu đề nhận diện chế độ demo/giới hạn tần suất AI. #}
+https://{{ demo_domain }} {
+	header -Server
+	header X-OneBee-Demo-Mode 1
+	import onebee_bo_danh_tinh_co_ban
+	@khong_phai_ai_cli_demo {
+		not path /ai-cli/*
+	}
+	request_header @khong_phai_ai_cli_demo -Authorization
+	handle /dangnhap* {
+		reverse_proxy authelia:9091
+	}
+{% if onebee_sso_hieu_luc | bool %}
+	handle /api/* {
+		route {
+			import onebee_sso
+			request_body {
+				max_size 5MB
+			}
+			reverse_proxy cau-noi:8080
+		}
+	}
+	@ai_hoi_dap_demo {
+		method POST
+		path /ai/api/chat /ai/api/generate
+	}
+	handle @ai_hoi_dap_demo {
+		route {
+			import onebee_sso
+			request_header -Cookie
+			request_body {
+				max_size 5MB
+			}
+			header X-OneBee-RateLimit-AI 10r/m
+			uri strip_prefix /ai
+			reverse_proxy ollama:11434 {
+				flush_interval -1
+			}
+		}
+	}
+	@ai_rag_demo {
+		path /ai /ai/ /ai/hoi /ai/tom-tat /ai/mau /ai/health /ai/api/v1/*
+	}
+	handle @ai_rag_demo {
+		route {
+			import onebee_sso
+			request_header -Cookie
+			request_body {
+				max_size 5MB
+			}
+			header X-OneBee-RateLimit-AI 10r/m
+			reverse_proxy ai-rag:8092 {
+				header_up X-OneBee-SSO 1
+				flush_interval -1
+			}
+		}
+	}
+	handle /ai-cli/* {
+		route {
+			request_header -Cookie
+			request_body {
+				max_size 5MB
+			}
+			header X-OneBee-RateLimit-AI 10r/m
+			uri strip_prefix /ai-cli
+			reverse_proxy ai-rag:8092 {
+				flush_interval -1
+			}
+		}
+	}
+	handle /ai/* {
+		respond 404
+	}
+	handle /files/* {
+		route {
+			import onebee_sso
+			request_body {
+				max_size 5MB
+			}
+			header Content-Type "text/plain; charset=utf-8"
+			respond "Chưa cài kho tệp trên OneBee Box" 503
+		}
+	}
+{% else %}
+	@tuyen_loi_demo path /api/* /files/* /ai/* /ai-cli/*
+	handle @tuyen_loi_demo {
+		header Content-Type "text/plain; charset=utf-8"
+		respond "Đăng nhập một lần đang tạm tắt để sửa — dữ liệu tạm khóa, thử lại sau" 503
+	}
+{% endif %}
+{{ trang_chu() }}}
 {% endif %}
