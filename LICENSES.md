@@ -32,7 +32,9 @@ Clonezilla (sao lưu/nhân bản ổ đĩa, chỉ dùng như công cụ khi cài
 | Model nhúng Nomic Embed Text (`nomic-embed-text:v1.5`, Nomic AI) | Apache-2.0 | Dùng cho kho tri thức pgvector; tải bằng Ollama |
 | Mailpit (chỉ dùng trong kiểm thử, không cài cho khách) | MIT | |
 | vncsnapshot (chỉ dùng trong kiểm thử hỗ trợ từ xa) | GPL | Gói Ubuntu |
-| Node-RED | Apache-2.0 | Động cơ quy trình của Box: dùng, sửa, phân phối lại được, chỉ cần giữ thông báo bản quyền và tệp giấy phép. |
+| Node-RED 5.0.9 | Apache-2.0 | Động cơ quy trình của Box: dùng, sửa, phân phối lại được, chỉ cần giữ thông báo bản quyền và tệp giấy phép. https://raw.githubusercontent.com/node-red/node-red/5.0.9/LICENSE |
+| node-red-node-email 5.2.5 (nút gửi thư SMTP) | Apache-2.0 | Gói npm khai `Apache-2.0` |
+| cvdupdate 1.2.0 (tải chữ ký ClamAV ở máy có Internet, chép sang Box không có mạng) | Apache-2.0 | Chỉ chạy ở máy kỹ thuật, không cài trên Box |
 | Uptime Kuma | MIT | |
 | restic, rest-server | BSD-2-Clause | |
 | Caddy | Apache-2.0 | |
