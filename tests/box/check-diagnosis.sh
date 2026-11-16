@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # shellcheck disable=SC2016  # thân các lệnh giả viết trong nháy đơn: biến phải mở rộng lúc lệnh giả chạy, không phải lúc tạo
-# Kiểm thử lệnh "onebee-box chan-doan" (7 hạng mục: mạng, tài nguyên, Docker, Trợ lý AI, Samba, sao lưu, chứng chỉ) mà KHÔNG cần Box thật:
+# Kiểm thử lệnh "onebee-box chan-doan" (8 hạng mục: mạng, tài nguyên, Docker, Trợ lý AI, Samba, kho tệp, sao lưu, chứng chỉ) mà KHÔNG cần Box thật:
 # dựng các mẫu .j2 thành lệnh trong thư mục tạm, thay ping/ip/docker/systemctl/restic/mountpoint/runuser/df/tailscale bằng bản GIẢ
 # (trạng thái đặt bằng file trong $SIM), openssl và CA riêng của Box là THẬT (onebee-ca.sh).
 # Mỗi kịch bản: mọi dịch vụ sống → toàn [OK], mã thoát 0; tắt/làm hỏng ĐÚNG 1 thứ → đúng mục đó báo cảnh báo/lỗi, các mục khác vẫn OK.
@@ -62,7 +64,7 @@ gia restic '[[ -s "${RESTIC_PASSWORD_FILE:-}" && "${RESTIC_REPOSITORY:-}" == */r
 [[ ! -e "${SIM}/restic-chua-tao" ]] || { echo "Fatal: unable to open config file: no such file" >&2; exit 10; }
 cat "${SIM}/restic-snapshots"'
 # docker: $SIM/docker-tat = dịch vụ docker ngừng; $SIM/ct-<tên> = "<Status> [<Health>]" (mặc định running); $SIM/ct-<tên>-mat = không có container
-# docker exec onebee-open-webui curl ... ollama:11434 → in thân + dòng "<mã HTTP> <giây>" từ $SIM/ai (mặc định "200 1.2"); ghi lại tham số
+# docker exec onebee-ai-rag python3 ... kiem-ollama → in "<mã HTTP> <giây>" từ $SIM/ai (mặc định "200 1.2"); ghi lại tham số
 gia docker '[[ ! -e "${SIM}/docker-tat" ]] || { echo "Cannot connect to the Docker daemon" >&2; exit 1; }
 case "$1" in
   info) echo ok ;;
@@ -76,9 +78,11 @@ case "$1" in
   exec) printf "%s\n" "$*" >>"${SIM}/docker-exec.log"
     st="$(cat "${SIM}/ct-$2" 2>/dev/null || echo running)"
     [[ "${st}" == running* && ! -e "${SIM}/ct-$2-mat" ]] || { echo "Error response from daemon: container $2 is not running" >&2; exit 1; }
+    # PostgreSQL: $SIM/pg-hong = không nhận kết nối; PostgREST (hỏi /ready qua cầu nối): $SIM/postgrest-hong = không trả lời
+    [[ "$2 $3" != "onebee-postgres pg_isready" ]] || { [[ ! -e "${SIM}/pg-hong" ]] || { echo "127.0.0.1:5432 - no response"; exit 2; }; exit 0; }
+    [[ "$2" != onebee-cau-noi ]] || { [[ "$*" == *"http://postgrest:3001/ready"* && ! -e "${SIM}/postgrest-hong" ]] || exit 1; exit 0; }
     read -r ma giay <<<"$(cat "${SIM}/ai" 2>/dev/null || echo "200 1.2")"
-    [[ "${ma}" == 200 ]] && printf "{\"response\":\"ok\",\"done\":true}" || printf "{\"error\":\"model not found\"}"
-    printf "\n%s %s" "${ma}" "${giay}"; [[ "${ma}" != 000 ]] || exit 28 ;;
+    printf "%s %s" "${ma}" "${giay}"; [[ "${ma}" != 000 ]] || exit 28 ;;
   *) exit 0 ;;
 esac'
 export SIM PATH="${T}/bin:${PATH}" ONEBEE_PROC="${T}/proc" NO_COLOR=1
@@ -91,8 +95,11 @@ moi_thu_khoe() {
   printf 'MemTotal:       16000000 kB\nMemFree:         4000000 kB\nMemAvailable:    8000000 kB\n' >"${T}/proc/meminfo"
   echo "0.50 0.40 0.30 1/200 12345" >"${T}/proc/loadavg"
   ban_sao_luu 2
+  mkdir -p "${T}/data/postgres-ket-xuat"; echo "kết xuất" >"${T}/data/postgres-ket-xuat/onebee.dump"   # kết xuất CSDL vừa làm
+  mkdir -p "${T}/data/seaweedfs" "${T}/data/kho-tep" "${T}/data/clamav"
+  touch -d '1 hour ago' "${T}/data/clamav/daily.cvd"   # chữ ký ClamAV vừa cập nhật
   rm -rf "${T}/secrets/ca"; "${T}/lib/onebee-ca.sh" "${T}/secrets/ca" kiem-thu 127.0.0.1 >/dev/null 2>&1
-  rm -f "${T}/secrets/https-da-bat"
+  rm -f "${T}/secrets/https-da-bat" "${T}/secrets/sso-tam-tat"
 }
 # Bản sao lưu Box mới nhất cách đây $1 giờ (rỗng = kho chưa có bản nào)
 ban_sao_luu() {
@@ -137,35 +144,43 @@ moi_thu_khoe
 chay --json
 if python3 -c 'import json, sys
 d = json.loads(sys.argv[1])
-assert [h["ma"] for h in d["hang_muc"]] == ["mang", "tai_nguyen", "docker", "ai", "samba", "sao_luu", "ssl"], d["hang_muc"]
-assert d["ket_luan"] == "ok" and d["dem"]["loi"] == 0 and d["dem"]["canh_bao"] == 0 and d["dem"]["ok"] >= 15, d["dem"]
+assert [h["ma"] for h in d["hang_muc"]] == ["mang", "tai_nguyen", "docker", "ai", "samba", "kho_tep", "sao_luu", "ssl"], d["hang_muc"]   # 8 hạng mục
+assert d["ket_luan"] == "ok" and d["dem"]["loi"] == 0 and d["dem"]["canh_bao"] == 0 and d["dem"]["ok"] >= 17, d["dem"]
 for h in d["hang_muc"]:
     assert h["ten"] and h["trang_thai"] == "ok" and h["muc"], h
     for m in h["muc"]:
         assert set(m) == {"ma", "ten", "trang_thai", "chi_tiet", "goi_y"} and m["ten"] and m["chi_tiet"], m
-assert d["thoi_diem"][:2] == "20"' "${OUT}" 2>"${T}/py-loi"; then pass "Mọi dịch vụ sống: JSON đủ 7 hạng mục, toàn OK"
+assert d["thoi_diem"][:2] == "20"' "${OUT}" 2>"${T}/py-loi"; then pass "Mọi dịch vụ sống: JSON đủ 8 hạng mục, toàn OK"
 else fail "Mọi dịch vụ sống: JSON sai — $(tail -1 "${T}/py-loi")"; echo "${OUT}" | head -c 600; echo; fi
 if [[ "${RC}" == 0 ]]; then pass "Mọi dịch vụ sống: mã thoát 0"; else fail "Mọi dịch vụ sống: mã thoát ${RC} (mong 0)"; fi
 [[ "$(khong_ok)" == "" ]] || fail "Mọi dịch vụ sống: có mục không OK: $(khong_ok)"
-for c in onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server; do
-  [[ "$(trang_thai docker "${c}")" == ok ]] || fail "Thiếu mục container ${c} trong hạng mục Docker"
+for c in onebee-portal onebee-ollama onebee-ai-rag onebee-quy-trinh onebee-uptime-kuma onebee-rest-server onebee-authelia onebee-cau-noi \
+         onebee-postgres onebee-postgrest onebee-seaweedfs onebee-kho-tep postgres_ket_noi postgrest_tra_loi; do
+  [[ "$(trang_thai docker "${c}")" == ok ]] || fail "Thiếu mục ${c} trong hạng mục Docker"
 done
-if grep -q 'gemma4:e2b-it-qat' "${SIM}/docker-exec.log" && grep -q 'http://ollama:11434/api/generate' "${SIM}/docker-exec.log"; then pass "Thử AI: gửi prompt tới Ollama cổng 11434 bằng đúng model trong group_vars"; else fail "Thử AI không gọi Ollama đúng model/cổng: $(cat "${SIM}/docker-exec.log" 2>/dev/null)"; fi
+[[ "$(trang_thai kho_tep chu_ky_clamav)" == ok ]] || fail "Thiếu mục chữ ký ClamAV trong hạng mục Kho tệp"
+[[ "$(trang_thai kho_tep thu_muc)" == ok ]] || fail "Thiếu mục thư mục kho tệp trong hạng mục Kho tệp"
+[[ "$(trang_thai sao_luu ket_xuat_csdl)" == ok ]] || fail "Thiếu mục kết xuất CSDL trong hạng mục Sao lưu"
+if grep -q 'onebee-postgres pg_isready -q -h 127.0.0.1 -U postgres -d onebee' "${SIM}/docker-exec.log" \
+   && grep -q 'onebee-cau-noi python3 -I -c .*http://postgrest:3001/ready' "${SIM}/docker-exec.log"; then
+  pass "Thử CSDL: pg_isready qua TCP trong onebee-postgres; PostgREST hỏi /ready (cổng quản trị) từ cầu nối danh tính"
+else fail "Thử CSDL/PostgREST không gọi đúng: $(grep -E 'postgres|cau-noi' "${SIM}/docker-exec.log")"; fi
+if grep -q 'onebee-ai-rag python3 -I /app/onebee-ai-rag.py kiem-ollama' "${SIM}/docker-exec.log"; then pass "Thử AI: gọi dịch vụ Trợ lý AI, dịch vụ hỏi Ollama cổng 11434 bằng model trong group_vars"; else fail "Thử AI không gọi đúng dịch vụ: $(cat "${SIM}/docker-exec.log" 2>/dev/null)"; fi
 
 chay
 if [[ "${RC}" == 0 ]] && grep -q '\[OK\]' <<<"${OUT}" && ! grep -q 'LỖI\|CẢNH BÁO' <<<"${OUT}" \
-   && grep -q '^KẾT LUẬN' <<<"${OUT}" && [[ "$(grep -c '^[1-7]\. ' <<<"${OUT}")" == 7 ]]; then pass "Bảng chữ: 7 hạng mục, [OK], có kết luận"
+   && grep -q '^KẾT LUẬN' <<<"${OUT}" && [[ "$(grep -c '^[1-8]\. ' <<<"${OUT}")" == 8 ]]; then pass "Bảng chữ: 8 hạng mục, [OK], có kết luận"
 else fail "Bảng chữ sai (mã ${RC}):"; echo "${OUT}"; fi
 if grep -q $'\e\[' <<<"${OUT}"; then fail "Có mã màu khi không phải terminal / NO_COLOR"; else pass "Không in mã màu khi ra file / NO_COLOR"; fi
 
 # ===== 2. Tắt đúng 1 dịch vụ → báo đúng chỗ =====
-moi_thu_khoe; echo "exited" >"${SIM}/ct-onebee-n8n"
-kich_ban "Tắt n8n → chỉ container n8n LỖI, mã thoát 2" 2 "docker/onebee-n8n=loi"
+moi_thu_khoe; echo "exited" >"${SIM}/ct-onebee-quy-trinh"
+kich_ban "Tắt động cơ quy trình (Node-RED) → chỉ container quy-trinh LỖI, mã thoát 2" 2 "docker/onebee-quy-trinh=loi"
 chay
-if grep -q '\[LỖI\].*onebee-n8n' <<<"${OUT}" && grep -q 'docker compose' <<<"${OUT}" && grep -q '^KẾT LUẬN.*1 lỗi' <<<"${OUT}"; then pass "Bảng chữ: dòng [LỖI] n8n kèm gợi ý chạy lại, kết luận nêu 1 lỗi"; else fail "Bảng chữ khi tắt n8n thiếu [LỖI]/gợi ý/kết luận"; echo "${OUT}"; fi
+if grep -q '\[LỖI\].*onebee-quy-trinh' <<<"${OUT}" && grep -q 'docker compose' <<<"${OUT}" && grep -q '^KẾT LUẬN.*1 lỗi' <<<"${OUT}"; then pass "Bảng chữ: dòng [LỖI] động cơ quy trình kèm gợi ý chạy lại, kết luận nêu 1 lỗi"; else fail "Bảng chữ khi tắt động cơ quy trình thiếu [LỖI]/gợi ý/kết luận"; echo "${OUT}"; fi
 
-moi_thu_khoe; echo "exited" >"${SIM}/ct-onebee-open-webui"
-kich_ban "Tắt Open WebUI → container LỖI và không thử được AI (LỖI)" 2 "docker/onebee-open-webui=loi ai/ollama=loi"
+moi_thu_khoe; echo "exited" >"${SIM}/ct-onebee-ai-rag"
+kich_ban "Tắt dịch vụ Trợ lý AI → container LỖI và không thử được AI (LỖI)" 2 "docker/onebee-ai-rag=loi ai/ollama=loi"
 moi_thu_khoe; echo "running unhealthy" >"${SIM}/ct-onebee-ollama"
 kich_ban "Container Ollama unhealthy → LỖI" 2 "docker/onebee-ollama=loi"
 moi_thu_khoe; echo "running starting" >"${SIM}/ct-onebee-rest-server"
@@ -176,6 +191,31 @@ moi_thu_khoe; : >"${SIM}/docker-tat"
 chay --json
 if [[ "${RC}" == 2 && "$(trang_thai docker docker)" == loi && "$(trang_thai ai ollama)" == loi ]]; then pass "Dịch vụ Docker ngừng → Docker LỖI, AI LỖI, lệnh vẫn chạy hết các hạng mục"; else fail "Docker ngừng: mã ${RC}, docker=$(trang_thai docker docker), ai=$(trang_thai ai ollama)"; fi
 [[ "$(trang_thai samba smbd)" == ok && "$(trang_thai sao_luu ban_moi_nhat)" == ok ]] || fail "Docker ngừng làm hỏng kết quả các hạng mục khác"
+
+# ===== Dữ liệu cấu trúc =====
+moi_thu_khoe; : >"${SIM}/pg-hong"
+kich_ban "PostgreSQL không nhận kết nối → LỖI" 2 "docker/postgres_ket_noi=loi"
+chay; if grep -q 'docker logs --tail 50 onebee-postgres' <<<"${OUT}"; then pass "Gợi ý xem nhật ký onebee-postgres"; else fail "Thiếu gợi ý nhật ký onebee-postgres"; fi
+moi_thu_khoe; : >"${SIM}/postgrest-hong"
+kich_ban "PostgREST không trả lời /ready → LỖI" 2 "docker/postgrest_tra_loi=loi"
+moi_thu_khoe; echo "exited" >"${SIM}/ct-onebee-postgres"; : >"${SIM}/pg-hong"; : >"${SIM}/postgrest-hong"
+kich_ban "Container PostgreSQL dừng → container, kết nối CSDL, PostgREST đều LỖI" 2 "docker/onebee-postgres=loi docker/postgres_ket_noi=loi docker/postgrest_tra_loi=loi"
+moi_thu_khoe; touch -d '50 hours ago' "${T}/data/postgres-ket-xuat/onebee.dump"
+kich_ban "Kết xuất CSDL gần nhất cách 50 giờ (> 48 giờ) → CẢNH BÁO" 1 "sao_luu/ket_xuat_csdl=canh_bao"
+moi_thu_khoe; touch -d '47 hours ago' "${T}/data/postgres-ket-xuat/onebee.dump"
+kich_ban "Kết xuất CSDL cách 47 giờ → vẫn OK" 0 ""
+moi_thu_khoe; rm -f "${T}/data/postgres-ket-xuat/onebee.dump"
+kich_ban "Chưa có tệp kết xuất CSDL → CẢNH BÁO" 1 "sao_luu/ket_xuat_csdl=canh_bao"
+chay; if grep -q 'onebee-box sao-luu' <<<"${OUT}"; then pass "Gợi ý sao lưu ngay khi thiếu kết xuất"; else fail "Thiếu gợi ý sao-luu khi thiếu kết xuất"; fi
+
+# ===== Kho tệp =====
+moi_thu_khoe; rm -f "${T}/data/clamav"/*.cvd
+kich_ban "Chưa có chữ ký ClamAV → LỖI" 2 "kho_tep/chu_ky_clamav=loi"
+chay; if grep -q 'cap-nhat-chu-ky-clamav' <<<"${OUT}"; then pass "Gợi ý nộp chữ ký ClamAV ngoại tuyến"; else fail "Thiếu gợi ý cap-nhat-chu-ky-clamav"; fi
+moi_thu_khoe; touch -d '10 days ago' "${T}/data/clamav/daily.cvd"
+kich_ban "Chữ ký ClamAV cũ 10 ngày → CẢNH BÁO" 1 "kho_tep/chu_ky_clamav=canh_bao"
+moi_thu_khoe; rm -rf "${T}/data/kho-tep"
+kich_ban "Thiếu thư mục kho tệp → LỖI" 2 "kho_tep/thu_muc=loi"
 
 # ===== Mạng =====
 moi_thu_khoe; rm -f "${SIM}/ping-192.168.1.1"
@@ -229,7 +269,7 @@ moi_thu_khoe; : >"${SIM}/restic-chua-tao"
 kich_ban "Chưa tạo kho sao lưu → LỖI" 2 "sao_luu/ban_moi_nhat=loi"
 chay; if grep -q 'onebee-box khoi-tao' <<<"${OUT}"; then pass "Gợi ý chạy khoi-tao khi chưa có kho"; else fail "Thiếu gợi ý khoi-tao"; fi
 moi_thu_khoe; : >"${SIM}/o-sao-luu-chua-gan"
-kich_ban "Chưa gắn ổ sao lưu → LỖI (không đọc kho)" 2 "sao_luu/o_sao_luu=loi sao_luu/ban_moi_nhat=loi"
+kich_ban "Chưa gắn ổ sao lưu → LỖI (không đọc kho); kết xuất CSDL trên ổ dữ liệu vẫn kiểm" 2 "sao_luu/o_sao_luu=loi sao_luu/ban_moi_nhat=loi"
 
 # ===== Chứng chỉ =====
 # CA trung gian còn 10 ngày (ký lại bằng khóa CA gốc thật, giữ nguyên khóa trung gian)
@@ -242,6 +282,11 @@ kich_ban "CA trung gian còn 10 ngày (< 15) → CẢNH BÁO" 1 "ssl/ca_trung_gi
 chay; if grep -q 'onebee-box gia-han-ca' <<<"${OUT}"; then pass "Gợi ý gia hạn CA"; else fail "Thiếu gợi ý gia-han-ca"; fi
 moi_thu_khoe; rm -f "${T}/secrets/ca/root.crt"
 kich_ban "Mất chứng chỉ CA gốc → LỖI" 2 "ssl/ca_goc=loi"
+moi_thu_khoe; : >"${T}/secrets/sso-tam-tat"
+kich_ban "Đăng nhập một lần đang tạm tắt (tat-sso-tam) → CẢNH BÁO" 1 "ssl/sso=canh_bao"
+chay; if grep -q 'onebee-box bat-sso-lai' <<<"${OUT}"; then pass "Gợi ý bat-sso-lai"; else fail "Thiếu gợi ý bat-sso-lai"; fi
+moi_thu_khoe; echo "exited" >"${SIM}/ct-onebee-authelia"
+kich_ban "Dịch vụ định danh dừng → chỉ container authelia LỖI" 2 "docker/onebee-authelia=loi"
 
 # HTTPS đang bật: đọc chứng chỉ thật đang phục vụ ở cổng 443 (cần quyền root để mở cổng 443)
 if [[ ${EUID} -eq 0 ]] && command -v openssl >/dev/null; then

@@ -1,0 +1,148 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Bản chạy thử công khai: nạp dữ liệu giả lập, tự đặt lại lúc 03:00 mỗi ngày, tạo tài khoản mẫu.
+# Bật bằng onebee_box_che_do_demo trong group_vars; tắt thì gỡ bộ hẹn giờ và không nạp lại dữ liệu.
+# Chạy sau box-du-lieu (lược đồ đã áp dụng) và box-dinh-danh (dịch vụ định danh đã chạy) — them-nguoi cần Authelia.
+
+- name: Bản chạy thử công khai — dữ liệu mẫu, tài khoản mẫu và lịch đặt lại
+  when: onebee_box_che_do_demo | default(false) | bool
+  block:
+    - name: Cài tệp dữ liệu mẫu
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../scripts/nap-du-lieu-demo.sql"
+        dest: /usr/local/lib/onebee-box/nap-du-lieu-demo.sql
+        owner: root
+        group: root
+        mode: "0640"
+
+    - name: Tạo tệp mật khẩu tài khoản mẫu (chỉ root đọc)
+      ansible.builtin.copy:
+        content: ""
+        dest: "{{ onebee_box_secrets }}/tai-khoan-demo.txt"
+        force: false
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Liệt kê tài khoản đang có
+      ansible.builtin.command: /usr/local/sbin/onebee-box danh-sach-nguoi
+      register: onebee_demo_nguoi
+      changed_when: false
+
+    - name: Tạo tài khoản mẫu còn thiếu (mật khẩu tạm chỉ lưu trên Box)
+      ansible.builtin.shell: |
+        set -o pipefail
+        out="$(/usr/local/sbin/onebee-box them-nguoi {{ item.ten }} {{ item.nhom }})"
+        pw="$(sed -n 's/^Mật khẩu tạm[^:]*: //p' <<<"${out}")"
+        [ -n "${pw}" ] || { echo 'LỖI: them-nguoi không in mật khẩu tạm' >&2; exit 1; }
+        (umask 077; printf '%s\t%s\n' '{{ item.ten }}' "${pw}" >> "{{ onebee_box_secrets }}/tai-khoan-demo.txt")
+      args:
+        executable: /bin/bash
+      loop: "{{ onebee_demo_tai_khoan }}"
+      loop_control:
+        label: "{{ item.ten }}"
+      when: onebee_demo_nguoi.stdout is not search('(?m)^' ~ item.ten ~ ' ')
+      changed_when: true
+      no_log: true
+
+    - name: Cài dịch vụ và bộ hẹn giờ đặt lại dữ liệu lúc 03:00
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "/etc/systemd/system/{{ item }}"
+        owner: root
+        group: root
+        mode: "0644"
+      loop:
+        - onebee-demo-reset.service
+        - onebee-demo-reset.timer
+
+    - name: Bật bộ hẹn giờ đặt lại dữ liệu
+      ansible.builtin.systemd_service:
+        name: onebee-demo-reset.timer
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Đếm dòng dữ liệu mẫu hiện có
+      ansible.builtin.command:
+        argv:
+          - docker
+          - exec
+          - onebee-postgres
+          - psql
+          - -X
+          - -q
+          - -At
+          - -U
+          - postgres
+          - -d
+          - onebee
+          - -c
+          - "SELECT count(*) FROM onebee.don_hang WHERE nguon = 'nap-du-lieu-demo'"
+      register: onebee_demo_so_dong
+      changed_when: false
+
+    - name: Đọc tệp dữ liệu mẫu
+      ansible.builtin.slurp:
+        src: /usr/local/lib/onebee-box/nap-du-lieu-demo.sql
+      register: onebee_demo_sql
+      when: onebee_demo_so_dong.stdout | trim == '0'
+
+    # Chỉ nạp khi Box chưa có dòng mẫu nào: bộ cài chạy lại vẫn changed=0; lịch 03:00 làm việc đặt lại hằng ngày.
+    - name: Nạp dữ liệu mẫu lần đầu
+      ansible.builtin.command:
+        argv:
+          - docker
+          - exec
+          - -i
+          - onebee-postgres
+          - psql
+          - -X
+          - -q
+          - -U
+          - postgres
+          - -d
+          - onebee
+          - -v
+          - ON_ERROR_STOP=1
+        stdin: "{{ onebee_demo_sql.content | b64decode }}"
+      when: onebee_demo_so_dong.stdout | trim == '0'
+      changed_when: true
+
+- name: Bản chạy thử công khai — tắt thì gỡ lịch đặt lại dữ liệu
+  when: not (onebee_box_che_do_demo | default(false) | bool)
+  block:
+    - name: Kiểm tra tệp dịch vụ và bộ hẹn giờ của chế độ demo
+      ansible.builtin.stat:
+        path: "/etc/systemd/system/{{ item }}"
+      loop:
+        - onebee-demo-reset.service
+        - onebee-demo-reset.timer
+      register: onebee_demo_tep
+
+    - name: Dừng và tắt bộ hẹn giờ đặt lại dữ liệu
+      ansible.builtin.systemd_service:
+        name: onebee-demo-reset.timer
+        enabled: false
+        state: stopped
+      when: onebee_demo_tep.results | selectattr('stat.exists') | list | length > 0
+
+    - name: Gỡ tệp dịch vụ và bộ hẹn giờ
+      ansible.builtin.file:
+        path: "/etc/systemd/system/{{ item.item }}"
+        state: absent
+      loop: "{{ onebee_demo_tep.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      when: item.stat.exists
+
+    - name: Nạp lại cấu hình systemd
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+      when: onebee_demo_tep.results | selectattr('stat.exists') | list | length > 0
+
+    - name: Gỡ tệp dữ liệu mẫu
+      ansible.builtin.file:
+        path: /usr/local/lib/onebee-box/nap-du-lieu-demo.sql
+        state: absent

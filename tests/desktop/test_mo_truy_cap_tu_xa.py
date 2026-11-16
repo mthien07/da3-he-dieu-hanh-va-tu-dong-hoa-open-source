@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử script mo-truy-cap-tu-xa.sh — cầu nối TẠM để kỹ thuật vào máy Ubuntu 24.04 mới cài.
 Kiểm thử bằng lệnh giả: chặn đầu vào sai; bật trên GNOME (RDP, mật khẩu chỉ ở file 0600); không phải GNOME chỉ bật SSH;
 chạy qua SSH bằng root; --tat gỡ hết. Chưa chạy trên máy thật.

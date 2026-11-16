@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử lệnh `onebee-bao-ho-tro`: mở biểu mẫu "Báo cần hỗ trợ" của Box với tên máy (và loại sự cố, mô tả) đã điền sẵn.
 Địa chỉ biểu mẫu chỉ lấy từ file cấu hình do root ghi; tham số của người dùng được mã hóa phần trăm. Chạy: python3 -m unittest"""
 import importlib.machinery

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử nhanh cho giao diện kiểu Windows (role theme + office): file override gsettings, ghim ứng dụng, Ribbon LibreOffice.
 Không cần Cinnamon/LibreOffice thật. Chạy: python3 -m unittest"""
 import configparser
@@ -190,11 +192,15 @@ class LenhMoTroLyAi(unittest.TestCase):
         r = subprocess.run(["bash", "-n", LAUNCHER], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
 
-    def test_chi_mo_dia_chi_http_https(self):
+    def test_huong_dan_dung_lenh_hoi_khong_mo_giao_dien_web(self):
         with open(LAUNCHER, encoding="utf-8") as f:
             ma = f.read()
-        self.assertIn("^https?://[^[:space:]]+$", ma)
-        self.assertIn('exec xdg-open "${url}"', ma)
+        self.assertIn("hoi <câu hỏi>", ma)
+        self.assertIn("hoi --tom-tat", ma)
+        self.assertIn("hoi --dan-khoa", ma)
+        self.assertIn("zenity --info", ma)
+        self.assertNotIn("xdg-open", ma)
+        self.assertNotIn("HOI_URL", ma)
 
 
 class RibbonLibreOffice(unittest.TestCase):

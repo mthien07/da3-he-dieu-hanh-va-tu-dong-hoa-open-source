@@ -12,7 +12,7 @@ chênh lệch thì trình bày rõ lý do (theo rủi ro đã ghi trong plan Pha
 | Gói | Gồm | Không gồm |
 |---|---|---|
 | **Máy trạm** (theo máy) | Sao lưu nguyên ổ Windows (Clonezilla), cài Linux Mint + OneBee OS Desktop, chuyển file người dùng, cấu hình máy in | Mua bản quyền phần mềm khác, sửa phần cứng |
-| **Box** (1 lần / đơn vị) | Cài OneBee Box: Trợ lý AI tại chỗ, n8n + các quy trình mẫu, thư mục chung, sao lưu 2 tầng, quản lý máy trạm, email báo cáo | Máy chủ + ổ sao lưu (khách mua, OneBee tư vấn cấu hình) |
+| **Box** (1 lần / đơn vị) | Cài OneBee Box: Trợ lý AI tại chỗ, động cơ quy trình Node-RED + các quy trình mẫu, thư mục chung, sao lưu 2 tầng, quản lý máy trạm, email báo cáo | Máy chủ + ổ sao lưu (khách mua, OneBee tư vấn cấu hình) |
 | **Đào tạo** | 3 buổi theo `docs/huong-dan/dao-tao-buoi-1-3.md`, tờ phím tắt | Đào tạo nghiệp vụ kế toán, phần mềm riêng của khách |
 | **Bảo trì** (theo tháng) | Theo dõi email báo cáo hằng ngày, cập nhật máy trạm từ Box, hỗ trợ qua biểu mẫu + từ xa (có đồng ý), nhật ký tuần/báo cáo tháng, diễn tập khôi phục | Thay thế phần cứng, khôi phục dữ liệu không nằm trong phạm vi sao lưu |
 

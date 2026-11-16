@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: MIT
+# Quản lý bởi OneBee OS — đặt lại dữ liệu giả lập cho bản chạy thử công khai
+[Unit]
+Description=OneBee OS — đặt lại dữ liệu giả lập bản chạy thử công khai
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'docker exec -i onebee-postgres psql -X -q -U postgres -d onebee -v ON_ERROR_STOP=1 < /usr/local/lib/onebee-box/nap-du-lieu-demo.sql'

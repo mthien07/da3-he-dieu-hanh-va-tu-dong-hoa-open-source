@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # shellcheck shell=bash
 # shellcheck disable=SC2034  # biến dùng ở các file nạp thư viện này
 # Thư viện dùng chung cho lệnh onebee-box (quản lý bởi OneBee OS, không sửa tay)
@@ -58,7 +60,7 @@ may_da_cap() {
   done
 }
 
-# Thư mục file đánh dấu máy đã cấp: n8n (gắn chỉ đọc) chỉ nhận báo cáo tình trạng của máy có file <tên> ở đây.
+# Thư mục file đánh dấu máy đã cấp: động cơ quy trình (gắn chỉ đọc) chỉ nhận báo cáo tình trạng của máy có file <tên> ở đây.
 # In "đã đổi" khi có thay đổi (để bộ cài Ansible báo changed đúng)
 MAY_DA_CAP_DIR="${DATA}/may-da-cap"
 dong_bo_ten_may() {
@@ -136,13 +138,83 @@ compose() { docker compose --project-directory "${BOX_DIR}" "$@"; }
 # (HasBeenManuallyStopped) → khởi động lại Box thì kho sao lưu KHÔNG tự chạy lại dù restart: unless-stopped (bắt được khi chạy A4).
 nap_lai_kho_http() { docker exec onebee-rest-server kill -HUP 1 >/dev/null 2>&1 || true; }
 
-# Gọi công cụ quản lý Open WebUI (tạo Trợ lý OneBee, cấp khóa API cho máy trạm)
-webui() {
-  WEBUI_URL="$(dia_chi_noi_bo):{{ onebee_box_ports.open_webui }}" ONEBEE_WEBUI_PUBLIC_URL="$(https_bat && echo "https://${BOX_ADDRESS}:{{ onebee_box_ports.open_webui }}" || true)" \
-  WEBUI_ADMIN_EMAIL={{ onebee_box_admin_email | quote }} \
-  WEBUI_ADMIN_PASSWORD="$(cat "${SECRETS}/webui-admin-password")" ONEBEE_AI_MODEL="{{ onebee_box_ai_model }}" \
-  ONEBEE_LOI_DAN=/usr/local/lib/onebee-box/tro-ly-onebee-loi-dan.md ONEBEE_SECRETS="${SECRETS}" \
-    python3 /usr/local/lib/onebee-box/onebee-webui.py "$@"
+# Cấp / liệt kê / thu hồi khóa API của Trợ lý AI. Kho khóa nằm trong thư mục dữ liệu gắn vào dịch vụ (chỉ lưu bản băm)
+hoi_khoa() { AI_DU_LIEU="${DATA}/ai-rag" python3 -I /usr/local/lib/onebee-box/onebee-ai-rag.py khoa "$@"; }
+
+# ---- Đăng nhập một lần (role box-dinh-danh) ----
+NGUOI_DUNG_TEP="${DATA}/authelia/users_database.yml"   # Box quản lý; bộ cài chỉ tạo khi chưa có
+THONG_BAO_TEP="${DATA}/authelia/thong-bao.txt"         # mã xác minh ghi danh hai lớp (notifier filesystem)
+NHOM_NGUOI_DUNG=({{ onebee_box_nhom_nguoi_dung | join(' ') }})
+nguoi_dung_py() { python3 -I /usr/local/lib/onebee-box/onebee-nguoi-dung.py "$@"; }
+# Trợ lý AI chỉ phục vụ trên tên Box qua HTTPS (tuyến lõi, ADR 0006 QĐ2)
+AI_URL="https://box.{{ onebee_box_ma_don_vi }}.onebee.internal"
+
+# ---- Động cơ quy trình (role box-quy-trinh): không công bố cổng, chỉ gọi được qua Caddy trên tên Box ----
+TEN_BOX="box.{{ onebee_box_ma_don_vi }}.onebee.internal"
+QUY_TRINH_GOC="https://${TEN_BOX}"
+CA_BOX="${SECRETS}/ca/root.crt"
+# Địa chỉ gốc của động cơ quy trình: HTTPS qua tên Box (sau Caddy, có CA riêng) hay HTTP qua cổng 80 của Caddy khi chưa bật HTTPS
+quy_trinh_goc() { if https_bat; then printf 'https://%s' "${TEN_BOX}"; else printf 'http://127.0.0.1'; fi; }
+# quy_trinh_curl: gọi webhook qua Caddy trên chính Box (không phụ thuộc DNS của LAN)
+quy_trinh_curl() {
+  if https_bat; then
+    curl --cacert "${CA_BOX}" --resolve "${TEN_BOX}:443:127.0.0.1" -fsS -m 30 "$@"
+  else
+    curl -fsS -m 30 "$@"
+  fi
 }
-AI_PORT="{{ onebee_box_ports.open_webui }}"
-N8N_PORT="{{ onebee_box_ports.n8n }}"
+
+# ---- Dữ liệu cấu trúc (role box-du-lieu): PostgreSQL trong container onebee-postgres, chỉ nối qua docker exec ----
+KET_XUAT_DIR="${DATA}/postgres-ket-xuat"   # onebee.dump (sao lưu đêm) + truoc-luoc-do-*.dump (trước mỗi lần đổi lược đồ)
+# psql bằng quyền chủ CSDL (socket trong container, không mật khẩu); câu lệnh qua stdin hoặc tham số
+csdl() { docker exec -i onebee-postgres psql -X -q -U postgres -d onebee -v ON_ERROR_STOP=1 "$@"; }
+# Vai trò CSDL có mật khẩu lưu trong tệp bí mật: "<vai trò>:<tệp>" (postgres: chủ CSDL; xac_thuc: PostgREST đăng nhập)
+VAI_TRO_CSDL=(postgres:postgres-password xac_thuc:postgrest-password)
+# dat_mat_khau_csdl <vai trò> <mật khẩu>: ALTER ROLE qua stdin (mật khẩu không nằm trên dòng lệnh, không vào nhật ký lệnh)
+dat_mat_khau_csdl() {
+  [[ "$2" =~ ^[A-Za-z0-9]{16,}$ ]] || { warn "Mật khẩu CSDL của $1 không đúng dạng"; return 1; }
+  printf "ALTER ROLE %s PASSWORD '%s';\n" "$1" "$2" | csdl >/dev/null
+}
+# mat_khau_csdl_dung <vai trò> <mật khẩu>: đăng nhập thử qua TCP (đúng đường PostgREST đi); mật khẩu đi qua stdin.
+# Nối vào IP của container trên mạng Docker, KHÔNG qua 127.0.0.1: image cho 127.0.0.1 đăng nhập kiểu trust (pg_hba.conf)
+# nên sai mật khẩu vẫn vào được → không bao giờ ALTER ROLE → PostgREST bị từ chối mật khẩu, khởi động lại liên tục
+mat_khau_csdl_dung() {
+  printf '%s\n' "$2" | docker exec -i onebee-postgres sh -c 'read -r PGPASSWORD; export PGPASSWORD
+    ip="$(getent hosts "$(cat /etc/hostname)" | cut -d" " -f1)"; [ -n "${ip}" ] || exit 1
+    exec psql -X -q -w -h "${ip}" -U "$1" -d onebee -Atc "SELECT 1"' _ "$1" >/dev/null 2>&1
+}
+# Mật khẩu trong CSDL khớp tệp bí mật (bộ cài gọi sau khi áp dụng lược đồ; khoi-phuc-toan-bo gọi sau khi lấy lại tệp bí mật cũ).
+# In "đã đổi" khi có ALTER ROLE (để bộ cài Ansible báo changed đúng)
+dong_bo_mat_khau_csdl() {
+  local muc vt mk doi=0
+  for muc in "${VAI_TRO_CSDL[@]}"; do
+    vt="${muc%%:*}"
+    mk="$(secret_co_san "${muc#*:}")"
+    mat_khau_csdl_dung "${vt}" "${mk}" && continue
+    dat_mat_khau_csdl "${vt}" "${mk}" || { warn "Không đặt được mật khẩu CSDL cho ${vt} (PostgreSQL chưa chạy?)"; return 1; }
+    doi=1
+  done
+  [[ ${doi} -eq 0 ]] || echo "đã đổi"
+}
+# Kết xuất toàn bộ CSDL (pg_dump -Fc) ra ${KET_XUAT_DIR}/onebee.dump: ghi tệp tạm rồi đổi tên (bản cũ còn nguyên nếu lỗi)
+ket_xuat_csdl() {
+  local f="${KET_XUAT_DIR}/onebee.dump"
+  install -d -m 0700 "${KET_XUAT_DIR}"
+  if docker exec onebee-postgres pg_dump -U postgres -d onebee -Fc >"${f}.moi" && [[ -s "${f}.moi" ]]; then
+    mv "${f}.moi" "${f}"
+  else
+    rm -f "${f}.moi"
+    return 1
+  fi
+}
+# Chờ PostgreSQL nhận kết nối TCP (tối đa ~2 phút; lần đầu image khởi tạo bằng máy chủ tạm chỉ nghe socket)
+cho_csdl() {
+  local lan
+  for lan in $(seq 60); do
+    docker exec onebee-postgres pg_isready -q -h 127.0.0.1 -U postgres -d onebee >/dev/null 2>&1 && return 0
+    sleep 2
+  done
+  return 1
+}
+# Chuyển sổ cũ (CSV bản cũ còn ghi, JSON tình trạng máy) vào CSDL: chạy lại nhiều lần, chỉ nạp dòng mới
+chuyen_du_lieu() { python3 -I /usr/local/lib/onebee-box/onebee-chuyen-du-lieu.py "${DATA}"; }

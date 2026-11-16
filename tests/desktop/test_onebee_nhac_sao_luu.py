@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử lệnh `onebee-nhac-sao-luu`: người đang đăng nhập nhận một thông báo (tối đa một lần mỗi ngày) khi máy đã nối Box
 mà quá 72 giờ chưa sao lưu. Đường dẫn được thay bằng biến môi trường, `notify-send` là lệnh giả ghi tham số ra file.
 Chạy: python3 -m unittest tests/desktop/test_onebee_nhac_sao_luu.py"""
@@ -33,7 +35,7 @@ class NhacSaoLuu(unittest.TestCase):
     def noi_box(self, cach_day_gio=1000):
         """Tạo file dấu hiệu máy đã nối Box, thời điểm sửa cách đây `cach_day_gio` giờ."""
         with open(self.hoi_conf, "w", encoding="utf-8") as f:
-            f.write("HOI_URL=http://192.168.1.10:3000\n")
+            f.write("HOI_URL=https://box.anphu.onebee.internal\n")
         t = time.time() - cach_day_gio * GIO
         os.utime(self.hoi_conf, (t, t))
 

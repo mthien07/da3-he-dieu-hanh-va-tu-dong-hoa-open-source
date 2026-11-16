@@ -1,8 +1,11 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # shellcheck shell=bash
 # Tự chẩn đoán OneBee Box (quản lý bởi OneBee OS, không sửa tay). Được lệnh onebee-box nạp vào: sudo onebee-box chan-doan [--json]
-# 7 hạng mục: mạng, tài nguyên (ổ đĩa, RAM, CPU), container Docker, Trợ lý AI, thư mục chung (Samba), bản sao lưu, chứng chỉ.
+# 8 hạng mục: mạng, tài nguyên (ổ đĩa, RAM, CPU), container Docker, Trợ lý AI, thư mục chung (Samba), kho tệp (chữ ký ClamAV),
+# bản sao lưu, chứng chỉ.
 # Chỉ đọc và thử, không sửa gì (thử ghi thư mục chung bằng 1 file tạm, xóa ngay). Mã thoát: 0 = mọi mục OK, 1 = có cảnh báo, 2 = có lỗi.
-# --json: cùng kết quả dạng JSON (n8n, trang chủ đọc): {ket_luan, dem, hang_muc: [{ma, ten, trang_thai, muc: [{ma, ten, trang_thai, chi_tiet, goi_y}]}]}
+# --json: cùng kết quả dạng JSON (trang chủ đọc): {ket_luan, dem, hang_muc: [{ma, ten, trang_thai, muc: [{ma, ten, trang_thai, chi_tiet, goi_y}]}]}
 
 CHAN_DOAN_MODEL="{{ onebee_box_ai_model }}"
 CHAN_DOAN_SAMBA_USER="{{ onebee_box_samba_user }}"
@@ -14,12 +17,16 @@ NGUONG_RAM_TRONG_KB=1572864  # 1,5 GB: ít hơn thì Ollama dễ bị hệ đi�
 NGUONG_AI_GIAY=5
 NGUONG_SAO_LUU_GIO=26        # sao lưu chạy 23:00 hằng đêm (+ 2 giờ dự phòng)
 NGUONG_CHUNG_CHI_NGAY=15
+NGUONG_KET_XUAT_GIO=48       # kết xuất CSDL chạy cùng sao lưu đêm: quá 2 ngày là sao lưu đêm đã hỏng ít nhất 1 lần
 
-CHAN_DOAN_HM_MA=(mang tai_nguyen docker ai samba sao_luu ssl)
-CHAN_DOAN_HM_TEN=("Mạng" "Tài nguyên (ổ đĩa, RAM, CPU)" "Dịch vụ Docker" "Trợ lý AI" "Thư mục chung (Samba)" "Bản sao lưu" "Chứng chỉ bảo mật (SSL)")
+CHAN_DOAN_HM_MA=(mang tai_nguyen docker ai samba kho_tep sao_luu ssl)
+CHAN_DOAN_HM_TEN=("Mạng" "Tài nguyên (ổ đĩa, RAM, CPU)" "Dịch vụ Docker" "Trợ lý AI" "Thư mục chung (Samba)" "Kho tệp và kiểm dịch"
+  "Bản sao lưu" "Chứng chỉ bảo mật (SSL)")
 # Container của Box và tên dễ hiểu (cùng thứ tự)
-CHAN_DOAN_CT=(onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server)
-CHAN_DOAN_CT_TEN=("Cổng web" "Bộ chạy model AI" "Giao diện Trợ lý AI" "Tự động hóa" "Giám sát" "Nhận sao lưu máy trạm")
+CHAN_DOAN_CT=(onebee-portal onebee-ollama onebee-ai-rag onebee-quy-trinh onebee-uptime-kuma onebee-rest-server onebee-authelia onebee-cau-noi
+  onebee-postgres onebee-postgrest onebee-seaweedfs onebee-kho-tep)
+CHAN_DOAN_CT_TEN=("Cổng web" "Bộ chạy model AI" "Dịch vụ Trợ lý AI" "Động cơ quy trình" "Giám sát" "Nhận sao lưu máy trạm" "Đăng nhập một lần"
+  "Cầu nối danh tính" "Cơ sở dữ liệu" "Dịch vụ dữ liệu (API)" "Kho tệp đối tượng (SeaweedFS)" "Cổng kho tệp và kiểm dịch")
 CHAN_DOAN_KQ=()   # mỗi phần tử: hạng mục, mã, trạng thái, tên, chi tiết, gợi ý — ngăn cách bằng \x1f (không bị gộp ô trống như tab)
 
 # ghi_kq <hạng mục> <mã> <ok|canh_bao|loi> <tên> <chi tiết> [gợi ý]
@@ -122,7 +129,7 @@ kiem_docker() {
   local i c ten st he
   local -A trang=()
   if ! timeout 20 docker info >/dev/null 2>&1; then
-    ghi_kq docker docker loi "Dịch vụ Docker" "Docker không chạy — Trợ lý AI, n8n, trang chủ, nhận sao lưu máy trạm đều ngừng" \
+    ghi_kq docker docker loi "Dịch vụ Docker" "Docker không chạy — Trợ lý AI, động cơ quy trình, trang chủ, nhận sao lưu máy trạm đều ngừng" \
       "sudo systemctl restart docker, rồi chạy lại: sudo onebee-box chan-doan"
     return 0
   fi
@@ -157,25 +164,36 @@ for d in ds:
       ghi_kq docker "${c}" ok "${ten}" "Đang chạy$([[ "${he}" == healthy ]] && echo ' (khỏe)')"
     fi
   done
+  if timeout 15 docker exec onebee-postgres pg_isready -q -h 127.0.0.1 -U postgres -d onebee >/dev/null 2>&1; then
+    ghi_kq docker postgres_ket_noi ok "PostgreSQL nhận kết nối" "Cơ sở dữ liệu onebee trả lời"
+  else
+    ghi_kq docker postgres_ket_noi loi "PostgreSQL nhận kết nối" "Không nối được cơ sở dữ liệu onebee — API dữ liệu (/api/) và báo cáo tuần ngừng" \
+      "Xem lỗi: sudo docker logs --tail 50 onebee-postgres; khởi động lại: sudo docker restart onebee-postgres"
+  fi
+  # Image PostgREST không có shell: hỏi cổng quản trị /ready từ cầu nối danh tính (cùng mạng riêng) — 200 = đã nối được CSDL
+  if timeout 15 docker exec onebee-cau-noi python3 -I -c "import urllib.request; urllib.request.urlopen('http://postgrest:3001/ready', timeout=10)" \
+       >/dev/null 2>&1; then
+    ghi_kq docker postgrest_tra_loi ok "Dịch vụ dữ liệu (PostgREST) trả lời" "Sẵn sàng, đã nối cơ sở dữ liệu"
+  else
+    ghi_kq docker postgrest_tra_loi loi "Dịch vụ dữ liệu (PostgREST) trả lời" "Không trả lời hoặc chưa nối được cơ sở dữ liệu — /api/ trả lỗi" \
+      "Xem lỗi: sudo docker logs --tail 50 onebee-postgrest; khởi động lại: sudo docker restart onebee-postgrest (cần PostgreSQL chạy trước)"
+  fi
 }
 
-# Gửi 1 câu hỏi ngắn tới Ollama (cổng 11434 trong mạng Docker — Ollama không mở cổng ra LAN) qua container Open WebUI, đo thời gian
+# Gửi 1 câu hỏi ngắn tới Ollama (cổng 11434 trong mạng Docker — Ollama không mở cổng ra LAN) qua dịch vụ Trợ lý AI, đo thời gian
 kiem_ai() {
-  local yc kq dong ma giay
-  yc="$(printf '{"model": "%s", "prompt": "test", "stream": false, "options": {"num_predict": 8}}' "${CHAN_DOAN_MODEL}")"
-  kq="$(timeout 150 docker exec onebee-open-webui curl -s -m 120 -H 'Content-Type: application/json' -d "${yc}" \
-        -w '\n%{http_code} %{time_total}' http://ollama:11434/api/generate 2>/dev/null)" || true
-  dong="${kq##*$'\n'}"
-  read -r ma giay <<<"${dong}"
-  if [[ -z "${kq}" ]]; then
+  local kq ma giay
+  kq="$(timeout 150 docker exec onebee-ai-rag python3 -I /app/onebee-ai-rag.py kiem-ollama 2>/dev/null)" || true
+  read -r ma giay <<<"${kq}"
+  if [[ -z "${kq}" || "${ma}" == 000 ]]; then
     ghi_kq ai ollama loi "Model ${CHAN_DOAN_MODEL}" "Không gọi được Ollama (container Trợ lý AI không chạy?)" \
-      "Xem mục Dịch vụ Docker ở trên; khởi động lại: sudo docker restart onebee-ollama onebee-open-webui"
+      "Xem mục Dịch vụ Docker ở trên; khởi động lại: sudo docker restart onebee-ollama onebee-ai-rag"
   elif [[ "${ma}" == 404 ]]; then
     ghi_kq ai ollama loi "Model ${CHAN_DOAN_MODEL}" "Ollama chưa có model này" \
       "Tải model (vài GB): sudo docker exec onebee-ollama ollama pull ${CHAN_DOAN_MODEL}"
   elif [[ "${ma}" != 200 ]]; then
     ghi_kq ai ollama loi "Model ${CHAN_DOAN_MODEL}" "Ollama không trả lời trong 120 giây (mã ${ma:-?})" \
-      "Khởi động lại: sudo docker restart onebee-ollama onebee-open-webui; vẫn lỗi thì xem: sudo docker logs --tail 50 onebee-ollama"
+      "Khởi động lại: sudo docker restart onebee-ollama onebee-ai-rag; vẫn lỗi thì xem: sudo docker logs --tail 50 onebee-ollama"
   elif lon_hon "${giay}" "${NGUONG_AI_GIAY}"; then
     ghi_kq ai ollama canh_bao "Model ${CHAN_DOAN_MODEL}" "Trả lời thử sau ${giay} giây (chậm, quá ${NGUONG_AI_GIAY} giây)" \
       "Lần đầu sau khi bật Box phải nạp model vào RAM — chạy lại sau 1 phút; vẫn chậm thì Box thiếu RAM/CPU (xem mục Tài nguyên)"
@@ -203,8 +221,53 @@ kiem_samba() {
   fi
 }
 
+# Kho tệp: chữ ký ClamAV quá cũ thì tệp mới không được bảo vệ; thiếu chữ ký thì dịch vụ từ chối quét (không coi là sạch)
+kiem_kho_tep() {
+  local f moi=0 ten_moi="" ngay
+  if [[ -d "${DATA}/seaweedfs" && -d "${DATA}/kho-tep" ]]; then
+    ghi_kq kho_tep thu_muc ok "Thư mục kho tệp" "Có ${DATA}/seaweedfs và ${DATA}/kho-tep"
+  else
+    ghi_kq kho_tep thu_muc loi "Thư mục kho tệp" "Thiếu ${DATA}/seaweedfs hoặc ${DATA}/kho-tep — kho tệp không lưu được" \
+      "Chạy lại bộ cài OneBee Box để tạo thư mục và dịch vụ kho tệp"
+    return 0
+  fi
+  for f in "${DATA}/clamav"/*.cvd "${DATA}/clamav"/*.cld; do
+    [[ -f "${f}" ]] || continue
+    if (( $(stat -c %Y "${f}") > moi )); then
+      moi="$(stat -c %Y "${f}")"
+      ten_moi="${f}"
+    fi
+  done
+  if (( moi == 0 )); then
+    ghi_kq kho_tep chu_ky_clamav loi "Chữ ký ClamAV" "Chưa có tệp chữ ký (.cvd/.cld) — dịch vụ kho tệp từ chối quét" \
+      "Nộp chữ ký ngoại tuyến: sudo onebee-box cap-nhat-chu-ky-clamav <thư mục chứa main.cvd, daily.cvd, bytecode.cvd>"
+  else
+    ngay=$(( ($(date +%s) - moi) / 86400 ))
+    if (( ngay > 7 )); then
+      ghi_kq kho_tep chu_ky_clamav canh_bao "Chữ ký ClamAV" "Cũ ${ngay} ngày ($(date -r "${ten_moi}" '+%d/%m/%Y'))" \
+        "Nộp chữ ký mới: sudo onebee-box cap-nhat-chu-ky-clamav <thư mục chữ ký tải từ máy có Internet>"
+    else
+      ghi_kq kho_tep chu_ky_clamav ok "Chữ ký ClamAV" "Cập nhật $(date -r "${ten_moi}" '+%d/%m/%Y')"
+    fi
+  fi
+}
+
 kiem_sao_luu() {
-  local gio
+  local gio kx="${KET_XUAT_DIR}/onebee.dump"
+  # Kết xuất CSDL nằm trên ổ dữ liệu (sao lưu đêm làm trước khi chụp) — kiểm cả khi chưa gắn ổ sao lưu
+  if [[ ! -s "${kx}" ]]; then
+    ghi_kq sao_luu ket_xuat_csdl canh_bao "Kết xuất cơ sở dữ liệu gần nhất" "Chưa có tệp kết xuất ${kx} (sao lưu đêm chưa chạy lần nào hoặc đã lỗi)" \
+      "Sao lưu ngay: sudo onebee-box sao-luu"
+  else
+    gio=$(( ($(date +%s) - $(stat -c %Y "${kx}")) / 3600 ))
+    if (( gio > NGUONG_KET_XUAT_GIO )); then
+      ghi_kq sao_luu ket_xuat_csdl canh_bao "Kết xuất cơ sở dữ liệu gần nhất" "Cách đây ${gio} giờ (quá ${NGUONG_KET_XUAT_GIO} giờ — sao lưu đêm có thể đã lỗi)" \
+        "Xem nhật ký: sudo journalctl -u onebee-box-sao-luu -n 50; sao lưu ngay: sudo onebee-box sao-luu"
+    else
+      ghi_kq sao_luu ket_xuat_csdl ok "Kết xuất cơ sở dữ liệu gần nhất" "Cách đây ${gio} giờ"
+    fi
+  fi
+  gio=""
   if ! mountpoint -q "${BACKUP_MOUNT}"; then
     ghi_kq sao_luu o_sao_luu loi "Ổ sao lưu" "Chưa gắn ổ vào ${BACKUP_MOUNT} — sao lưu đêm không chạy" \
       "Gắn ổ sao lưu ngoài theo hướng dẫn cài Box (mục ổ sao lưu)"
@@ -251,6 +314,10 @@ kiem_chung_chi() {
   kiem_ngay_het ca_goc "CA gốc của Box" "$(ca_con_ngay root)" \
     "Xoay CA: đặt onebee_box_xoay_ca: true trong group_vars, chạy lại bộ cài, rồi: sudo onebee-box dong-bo-may --tat-ca"
   kiem_ngay_het ca_trung_gian "CA trung gian (cấp chứng chỉ HTTPS)" "$(ca_con_ngay inter)" "Gia hạn ngay: sudo onebee-box gia-han-ca"
+  if [[ -e "${SECRETS}/sso-tam-tat" ]]; then
+    ghi_kq ssl sso canh_bao "Đăng nhập một lần" "Đang TẠM TẮT từ $(cat "${SECRETS}/sso-tam-tat" 2>/dev/null) — dữ liệu (/api/, /files/, /ai/) khóa 503" \
+      "Sửa dịch vụ định danh (sudo docker logs --tail 50 onebee-authelia) rồi chạy: sudo onebee-box bat-sso-lai"
+  fi
   if ! https_bat; then
     ghi_kq ssl https ok "Chứng chỉ HTTPS (cổng 443)" "HTTPS chưa bật — Box dùng HTTP trong LAN"
     return 0
@@ -335,6 +402,7 @@ cmd_chan_doan() {
   kiem_docker
   kiem_ai
   kiem_samba
+  kiem_kho_tep
   kiem_sao_luu
   kiem_chung_chi
   if [[ ${json} -eq 1 ]]; then in_json_chan_doan; else in_bang_chan_doan; fi

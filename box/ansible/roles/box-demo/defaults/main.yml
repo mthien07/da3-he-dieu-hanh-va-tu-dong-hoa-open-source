@@ -1,0 +1,9 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Tài khoản mẫu của bản chạy thử công khai. Mật khẩu tạm do `onebee-box them-nguoi` sinh ra lúc tạo,
+# chỉ lưu trên Box tại {{ onebee_box_secrets }}/tai-khoan-demo.txt (chỉ root đọc) — không nằm trong kho mã.
+onebee_demo_tai_khoan:
+  - {ten: nhanvien1, nhom: nhan_vien}
+  - {ten: kythuat1, nhom: ky_thuat}
+  - {ten: quanly1, nhom: quan_ly}

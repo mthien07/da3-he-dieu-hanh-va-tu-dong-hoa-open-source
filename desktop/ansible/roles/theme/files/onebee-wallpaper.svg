@@ -1,23 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
-  <!-- Hình nền OneBee OS — màu nhận diện: navy #0E1B2C, mật ong #F5A524, ngọc #2DD4BF -->
+<!-- Hình nền OneBee: chỉ logo trên nền chuyển sắc một tông. Xuất PNG (đường dẫn đích giữ nguyên):
+     rsvg-convert -w 2560 -h 1440 onebee-wallpaper.svg -o onebee-wallpaper.png -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2560 1440" width="2560" height="1440">
   <defs>
-    <radialGradient id="glow" cx="30%" cy="45%" r="75%">
-      <stop offset="0" stop-color="#17304A"/>
-      <stop offset="1" stop-color="#0E1B2C"/>
+    <radialGradient id="nen" cx="50%" cy="46%" r="75%">
+      <stop offset="0" stop-color="#16263B"/>
+      <stop offset="0.55" stop-color="#0C1626"/>
+      <stop offset="1" stop-color="#050A12"/>
     </radialGradient>
-    <pattern id="hex" width="84" height="146" patternUnits="userSpaceOnUse" patternTransform="scale(1.2)">
-      <path d="M42 0 L84 24 L84 73 L42 97 L0 73 L0 24 Z M42 97 L42 146" fill="none" stroke="#F5A524" stroke-opacity="0.05" stroke-width="2"/>
-    </pattern>
   </defs>
-  <rect width="1920" height="1080" fill="url(#glow)"/>
-  <rect width="1920" height="1080" fill="url(#hex)"/>
-  <g transform="translate(560 540)">
-    <polygon points="0,-150 130,-75 130,75 0,150 -130,75 -130,-75" fill="#F5A524"/>
-    <polygon points="0,-112 97,-56 97,56 0,112 -97,56 -97,-56" fill="#0E1B2C"/>
-    <polyline points="-52,-38 -4,0 -52,38" fill="none" stroke="#F5A524" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
-    <line x1="14" y1="36" x2="56" y2="36" stroke="#2DD4BF" stroke-width="22" stroke-linecap="round"/>
+  <rect width="2560" height="1440" fill="url(#nen)"/>
+  <g transform="translate(1280 720) scale(1.5) translate(-100 -100)">
+    <polygon points="100,8 180,54 180,146 100,192 20,146 20,54" fill="#F5A524"/>
+    <polygon points="100,30 161,65 161,135 100,170 39,135 39,65" fill="#0A111C"/>
+    <path d="M68 78 L96 100 L68 122" stroke="#F5A524" stroke-width="13" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="104" y="114" width="36" height="12" rx="6" fill="#F5A524"/>
   </g>
-  <text x="760" y="530" font-family="Noto Sans, DejaVu Sans, sans-serif" font-size="112" font-weight="700" fill="#F8FAFC">OneBee OS</text>
-  <text x="764" y="610" font-family="Noto Sans, DejaVu Sans, sans-serif" font-size="46" fill="#2DD4BF">Máy cũ chạy mới · Dữ liệu ở nhà</text>
-  <text x="764" y="670" font-family="Noto Sans, DejaVu Sans, sans-serif" font-size="28" fill="#94A3B8">HTX OneBee · Tây Ninh</text>
 </svg>

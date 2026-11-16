@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử phần logic của Trung tâm OneBee (onebee-trung-tam): đọc cẩm nang phím tắt, đọc thông tin đơn vị, dấu "đã xem"
 của lần đăng nhập đầu, 6 ô của trang Bắt đầu, tham số dòng lệnh, đọc kết quả tự kiểm tra máy. Phần logic không cần GTK nên test chạy được cả trên máy
 không có màn hình (macOS, CI lint); giao diện thật được kiểm trong container Linux Mint.

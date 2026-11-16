@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: MIT
+# Mẫu inventory triển khai OneBee Box cho bản chạy thử công khai (máy chủ Ubuntu 24.04 có địa chỉ công khai).
+# Sao chép thành box/ansible/inventory.demo.ini rồi điền IP và tên miền thật — KHÔNG commit tệp đã điền.
+# SSH vào máy chủ bằng khóa riêng của người triển khai (dùng ssh-agent hoặc ansible_ssh_private_key_file trỏ tới
+# khóa nằm ngoài kho mã); không đặt mật khẩu SSH trong tệp này.
+# Chạy: ANSIBLE_CONFIG=box/ansible/ansible.cfg ansible-playbook -i box/ansible/inventory.demo.ini box/ansible/site.yml
+# Địa chỉ dưới đây là dải tài liệu (RFC 5737), không phải IP thật.
+
+[box]
+demo-olp ansible_host=203.0.113.10 ansible_user=root
+
+[box:vars]
+# Mã đơn vị quyết định tên Box nằm trong chứng chỉ CA riêng: box.<mã>.onebee.internal
+onebee_box_ma_don_vi=demo
+onebee_box_dia_chi=203.0.113.10
+onebee_box_ten_don_vi="OneBee OS — Bản chạy thử công khai"
+# Bật dữ liệu giả lập, lịch đặt lại 03:00 và thanh thông báo demo trên Sổ điều hành.
+onebee_box_che_do_demo=true
+# Lõi (đăng nhập, /api/, Sổ điều hành) chỉ chạy ở chế độ HTTPS. Bản công khai cần tên miền và chứng chỉ
+# do người triển khai cấp; chứng chỉ CA riêng của Box chỉ dùng cho máy trạm trong LAN.
+onebee_box_https=true

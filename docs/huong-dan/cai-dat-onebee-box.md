@@ -5,8 +5,8 @@ OneBee Box là 1 máy chủ đặt tại đơn vị, trong mạng LAN. Dịch v�
 | Dịch vụ | Địa chỉ trong LAN | Dùng để |
 |---|---|---|
 | Trang chủ (Dashboard) | `http://onebee.local/` hoặc `http://<ip-box>/` | Tình trạng Box (CPU, RAM, ổ trống, Trợ lý AI, thư mục chung, sao lưu), lối tắt các dịch vụ, cẩm nang |
-| Trợ lý AI (Open WebUI + Ollama) | `http://<ip-box>:3000` | Hỏi đáp, soạn thảo — AI chạy tại chỗ, không gửi dữ liệu ra ngoài |
-| Tự động hóa (n8n) | `http://<ip-box>:5678` | Quy trình tự động |
+| Trợ lý AI (dịch vụ `/ai/` + Ollama) | `https://box.<mã>.onebee.internal/ai/` (qua lệnh `hoi` trên máy trạm) | Hỏi đáp, tóm tắt, tra kho tri thức — AI chạy tại chỗ, không gửi dữ liệu ra ngoài; chỉ mở khi đã bật HTTPS |
+| Quy trình tự động (Node-RED) | `https://box.<mã>.onebee.internal/quy-trinh/` | Sau đăng nhập một lần + mật khẩu trình soạn |
 | Giám sát (Uptime Kuma) | `http://<ip-box>:3001` | Theo dõi dịch vụ còn chạy không |
 | Thư mục chung (Samba) | `smb://onebee.local/chung` (Windows: `\\onebee.local\chung`) | Chia sẻ file trong đơn vị |
 | Kho sao lưu máy trạm | cổng 8000 | Máy trạm OneBee OS tự sao lưu lên |
@@ -18,11 +18,9 @@ Tên chỉ dùng trong cùng mạng LAN (không qua router sang mạng khác, kh
 Khi đã bật HTTPS, `http://onebee.local` mở trang hướng dẫn cài chứng chỉ (trang chủ ở `https://<ip-box>/`, chứng chỉ không cấp cho tên `.local`).
 Kiểm tra trên Box: `avahi-resolve-host-name -4 onebee.local`, hoặc chạy `sudo tests/box/check-mdns-dashboard.sh`.
 
-**Mở Trợ lý AI đúng địa chỉ:** dùng IP LAN của Box (`http://<ip-box>:3000`; `https://` khi đã bật HTTPS) hoặc, với kỹ thuật qua Tailscale,
-`box.<mã đơn vị>.onebee.internal`. Đây cũng là địa chỉ mà biểu tượng Trợ lý AI trên máy trạm và các thẻ dịch vụ ở trang chủ Box dùng
-(vào trang chủ bằng `onebee.local` thì thẻ vẫn mở bằng IP; vào bằng tên Tailscale thì thẻ giữ tên đó) — một địa chỉ nên đăng nhập một lần. Mở bằng tên/IP khác (tên DNS của router, IP Tailscale trần, đường hầm SSH `localhost`) thì trang vẫn hiện nhưng
-chat thời gian thực bị chặn im lặng. Cần dùng địa chỉ đó thì khai trong `box/ansible/group_vars/all.yml`:
-`onebee_box_cors_them: ["http://onebee-box.lan:3000"]` (đầy đủ giao thức + tên + cổng, không đường dẫn, không `*`) rồi chạy lại bộ cài.
+**Dùng Trợ lý AI:** chỉ qua lệnh `hoi` trên máy trạm, gọi `https://box.<mã đơn vị>.onebee.internal/ai/…` và ghim CA riêng của Box.
+Không còn cổng 3000 hay giao diện web riêng; bật HTTPS xong mới dùng được Trợ lý. Mỗi người dùng khóa API riêng do
+`sudo onebee-box them-nguoi <tên> <nhóm>` cấp; không cần khai thêm Origin/CORS.
 ## 1. Chuẩn bị
 - Máy 64-bit cài **Ubuntu Server 24.04 LTS**, nối mạng LAN, nên đặt IP cố định (trên router hoặc netplan).
 - Ổ dữ liệu đủ lớn cho thư mục chung + sao lưu máy trạm. **1 ổ ngoài riêng** để Box tự sao lưu.
@@ -36,7 +34,7 @@ chat thời gian thực bị chặn im lặng. Cần dùng địa chỉ đó th�
   Tường lửa lọc **mọi cổng mạng** trừ `lo` và mạng Docker: qua cổng mạng chính chỉ mạng LAN cho phép; card mạng phụ, `wg0`, `tun0` bị chặn hết;
   qua **Tailscale** chỉ máy kỹ thuật khai trong `onebee_box_tailscale_cho_phep` (vd `["100.64.1.2"]`) vào được web/SSH/thư mục chung — để trống là chặn hết kết nối Tailscale
   (bộ cài cảnh báo nếu Box đang nối Tailscale mà chưa khai). Kết nối mới qua Tailscale bị lọc ở bảng `mangle` (trước các quy tắc tailscaled tự chèn), nên vẫn đúng khi
-  tailscaled khởi động lại. Nên đặt thêm ACL phía Tailscale làm lớp thứ hai: `tag:kythuat` → Box tcp 22, 80, 443, 3000, 5678, 3001; thiết bị khác trong tailnet không vào được Box.
+  tailscaled khởi động lại. Nên đặt thêm ACL phía Tailscale làm lớp thứ hai: `tag:kythuat` → Box tcp 22, 80, 443, 3001; thiết bị khác trong tailnet không vào được Box.
   IPv6: SSH/thư mục chung chỉ nhận mạng nội bộ IPv6 (`fe80::/10`, `fc00::/7`); địa chỉ IPv6 toàn cầu bị **từ chối ngay** (không im lặng) để máy khách lùi về IPv4 ngay thay vì chờ hết giờ (chưa kiểm trên Windows thật — phiếu B15).
   Đổi dải IP của mạng LAN (thay router): khởi động lại Box hoặc chạy `sudo systemctl restart onebee-tuong-lua` để tường lửa nhận dải mới.
 
@@ -65,11 +63,11 @@ Mật khẩu và khóa đang đi qua LAN dạng rõ ở chế độ HTTP. Bật 
 1. Cài/cập nhật Box như trên → bộ cài tự đẩy CA xuống mọi máy trạm đã cấp (máy tắt thì bật lên rồi `sudo onebee-box dong-bo-may --tat-ca`).
 2. Kiểm: `sudo onebee-box may-chua-nhan-ca` không in tên máy nào.
 3. Đặt `onebee_box_https: true` trong `box/ansible/group_vars/all.yml`, chạy lại bộ cài. Nếu còn máy chưa nhận CA, bộ cài **giữ HTTP** và nêu tên máy.
-4. Từ đó dùng `https://<ip-box>[:cổng]`; các cổng 3000/5678/3001/8000 do Caddy giữ (cổng backend đóng hẳn); `http://` tới các cổng này tự chuyển sang `https://`.
+4. Từ đó dùng `https://<ip-box>[:cổng]`; các cổng 443/3001/8000 do Caddy giữ (cổng backend đóng hẳn; động cơ quy trình không có cổng riêng); `http://` tới các cổng này tự chuyển sang `https://`.
    Máy trạm nhận URL https + chứng chỉ CA, Firefox mở sẵn Box bằng https. **Máy tắt lúc chuyển**: bật lên rồi `sudo onebee-box dong-bo-may <tên>` (trong 30 ngày với máy đã ghim khóa SSH).
 5. **Thiết bị không do OneBee quản lý** (laptop kỹ thuật, điện thoại, máy của quản lý): tải `http://<ip-box>/onebee-ca.crt`, đối chiếu vân tay SHA-256 với `sudo onebee-box in-ca` (hoặc bản in `in-khoa`) rồi mới cài.
    Sau khi đã cài, **mọi** cảnh báo chứng chỉ ở địa chỉ Box là dấu hiệu bị tấn công — không bấm "tiếp tục", báo kỹ thuật.
-6. Kỹ thuật vào Box qua Tailscale: thêm dòng `/etc/hosts` `<IP Tailscale của Box> box.<mã đơn vị>.onebee.internal`, mở `https://box.<mã đơn vị>.onebee.internal:3000` (mở bằng IP 100.x trần không dùng được).
+6. Kỹ thuật vào Box qua Tailscale: thêm dòng `/etc/hosts` `<IP Tailscale của Box> box.<mã đơn vị>.onebee.internal`, mở `https://box.<mã đơn vị>.onebee.internal/` (Trợ lý AI hỏi bằng lệnh `hoi` trên máy trạm; mở bằng IP 100.x trần không dùng được).
    Mỗi khách dùng **một hồ sơ Firefox riêng** (CA của khách A chỉ cấp cho tên của khách A, nhưng các khách hay trùng dải `192.168.1.x`).
 7. Hoàn tác: `onebee_box_https: false` → chạy lại bộ cài (máy trạm tự nhận cờ `BOX_HTTPS=0`, về HTTP).
 Hết hạn CA trung gian (1 năm) được gia hạn tự động mỗi đêm khi lệnh sao lưu 23:00 chạy — bước gia hạn chạy trước khi kiểm ổ sao lưu, nên vẫn chạy cả khi chưa gắn ổ;
@@ -84,8 +82,9 @@ Thử trước trên 1 máy Windows 10 và 1 máy Linux Mint rồi mới áp cho
 0. **SSH vào Box chỉ bằng khóa** (Box giữ khóa vào được mọi máy trạm): từ máy kỹ thuật `ssh-copy-id <tài-khoản>@<ip-box>`,
    thử `ssh <tài-khoản>@<ip-box>` vào được, rồi chạy lại `sudo ./box/onebee-box-install.sh` → Box tắt đăng nhập SSH bằng mật khẩu
    và không cho root. Chưa có khóa thì bộ cài giữ nguyên mật khẩu và in cảnh báo (không tự khóa anh ở ngoài).
-1. **Trợ lý AI** và **n8n**: tài khoản quản trị `quantri@onebee.lan` đã tạo sẵn, đăng ký tự do đã tắt. Mật khẩu: `sudo onebee-box in-khoa`
-   (dòng `webui-admin-password`, `n8n-owner-password`). Model AI (`gemma4:e2b-it-qat`) tự tải khi cài.
+1. **Trợ lý AI**: tài khoản quản trị `quantri@onebee.lan` đã tạo sẵn, đăng ký tự do đã tắt. Mật khẩu: `sudo onebee-box in-khoa`
+   (dòng `webui-admin-password`). Model AI (`gemma4:e2b-it-qat`) tự tải khi cài. Trình soạn luồng Node-RED dùng tài khoản `kythuat`,
+   mật khẩu dòng `quy-trinh-soan-luong`.
 2. **Giám sát (Uptime Kuma, `:3001`)**: tài khoản `quantri` tạo sẵn (mật khẩu dòng `uptime-kuma-password`), đã có 5 mục theo dõi
    các dịch vụ của Box; khi đã cấu hình email, dịch vụ nào ngừng sẽ có email báo.
 3. **Email báo cáo**: làm theo mục 4 của [dung-tro-ly-ai-va-quy-trinh-tu-dong.md](dung-tro-ly-ai-va-quy-trinh-tu-dong.md).
@@ -98,12 +97,68 @@ Thử trước trên 1 máy Windows 10 và 1 máy Linux Mint rồi mới áp cho
    - `sudo onebee-box khoi-phuc-thu` — phải thấy dòng `ĐẠT`
    Chưa gắn ổ thì lệnh sao lưu **từ chối chạy** (không ghi vào ổ hệ thống) — lịch 23:00 sẽ báo lỗi trong nhật ký.
 
+## 3b. Tài khoản (đăng nhập một lần)
+Chỉ có khi đã bật HTTPS. Một tài khoản dùng cho dữ liệu (`/api/`), kho tệp (`/files/`), hỏi đáp AI qua API (`/ai/`) và trang giám sát.
+Mở bằng **tên** `https://box.<mã đơn vị>.onebee.internal/dangnhap/` — vào bằng IP thì chỉ có trang chủ (ADR 0006, QĐ2).
+Máy trạm OneBee tự có dòng `/etc/hosts` cho tên này (dòng `BOX_TEN` trong cấu hình máy, đẩy bằng `dong-bo-may`). Điện thoại, máy ngoài quản lý:
+thêm bản ghi DNS tĩnh `box.<mã>.onebee.internal → <IP Box>` trên router của đơn vị (hoặc một dòng hosts), và vẫn phải cài CA của Box.
+
+| Nhóm | Ai | Đăng nhập |
+|---|---|---|
+| `nhan_vien` | Nhân viên | Mật khẩu |
+| `ky_thuat` | Kỹ thuật (thêm: trang giám sát) | Mật khẩu + mã TOTP trên điện thoại |
+| `quan_ly` | Quản lý | Mật khẩu + mã TOTP trên điện thoại |
+
+```bash
+sudo onebee-box them-nguoi an nhan_vien      # in mật khẩu tạm MỘT lần — đưa trực tiếp, không gửi qua Zalo/email
+sudo onebee-box danh-sach-nguoi
+sudo onebee-box xoa-nguoi an                 # mất quyền ngay ở lần gọi kế tiếp, ghi danh TOTP cũng bị xóa
+```
+Ghi danh hai lớp (kỹ thuật, quản lý) khi Box chưa có email: người dùng đăng nhập, bấm ghi danh TOTP trên trang; trang đòi mã xác minh 8 ký tự —
+quản trị chạy `sudo onebee-box ma-xac-nhan` và đọc mã cho đúng người đó. Khóa TOTP chỉ hiện trên máy người dùng.
+Trang giám sát (`https://box.<mã>.onebee.internal:3001/`) chỉ mở cho nhóm `ky_thuat` đã qua hai lớp, không phải đăng nhập Uptime Kuma lần nữa.
+
+Dịch vụ định danh hỏng, không ai đăng nhập được:
+```bash
+sudo onebee-box tat-sso-tam   # /api/, /files/, /ai/ trả 503 (dữ liệu khóa, không mở toang); giám sát dùng mật khẩu riêng (in-khoa)
+sudo docker logs --tail 50 onebee-authelia
+sudo onebee-box bat-sso-lai   # sau khi đã sửa
+```
+Khi dấu tạm tắt còn, mỗi lần chạy bộ cài và `onebee-box chan-doan` đều cảnh báo.
+Sao lưu Box có cả tài khoản và ghi danh hai lớp (`/srv/onebee/authelia`). `xoay-khoa --box` đổi khóa phiên (mọi người đăng nhập lại) và
+khóa ký JWT; khóa mã hóa ghi danh hai lớp (`authelia-storage-key`) không xoay. `in-khoa` không in mật khẩu người dùng (Box chỉ giữ bản băm).
+
+## 3c. Dữ liệu và sao lưu (cơ sở dữ liệu PostgreSQL, API dữ liệu)
+Đơn hàng, yêu cầu hỗ trợ, xử lý, khảo sát, tình trạng máy trạm nằm trong một cơ sở dữ liệu PostgreSQL (`onebee-postgres`, lược đồ `onebee`).
+API dữ liệu (PostgREST, `onebee-postgrest`) chỉ đi qua cổng `https://box.<mã>.onebee.internal/api/<bảng>` sau đăng nhập một lần —
+hai dịch vụ này không mở cổng nào ra LAN. Ai được làm gì do chính CSDL kiểm (phân quyền tới từng dòng):
+
+| Nhóm | Được làm |
+|---|---|
+| `nhan_vien` | Thêm đơn hàng, yêu cầu hỗ trợ, khảo sát; chỉ thấy dòng mình tạo; không sửa, không xóa |
+| `ky_thuat` | Như nhân viên; thấy mọi yêu cầu hỗ trợ và tình trạng máy; ghi dòng xử lý |
+| `quan_ly` | Như nhân viên; thấy mọi đơn và yêu cầu; duyệt/từ chối đơn của **người khác** (không tự duyệt đơn của mình); khảo sát chỉ xem tổng hợp theo tuần (`/api/khao_sat_tong_hop`), không thấy góp ý |
+
+Ví dụ duyệt đơn: `PATCH /api/don_hang?id=eq.12` với `{"trang_thai_duyet":"DA_DUYET","ly_do_duyet":"Đủ hàng"}` — người duyệt và giờ duyệt do CSDL tự ghi.
+
+Bản cũ vẫn ghi sổ CSV (biểu mẫu đơn hàng, hỗ trợ, khảo sát). Chuyển sổ cũ vào CSDL:
+```bash
+sudo onebee-box chuyen-du-lieu   # chạy lại bao nhiêu lần cũng được: chỉ nạp dòng mới; in số dòng tệp / mới nạp / tổng trong bảng
+```
+Lần đầu mỗi tệp được chép sang `<tên>.truoc-chuyen`; tệp gốc không bị sửa. Tệp có dòng hỏng (thiếu cột, sai kiểu số) bị từ chối **cả tệp**,
+lệnh in tên tệp + số dòng lỗi: sửa dòng đó trong tệp rồi chạy lại. `bao-cao-tuan` tự chuyển trước rồi đọc từ CSDL.
+
+Sao lưu: `sao-luu` kết xuất CSDL (`/srv/onebee/postgres-ket-xuat/onebee.dump`) **trước** khi tạm dừng dịch vụ rồi đưa vào bản sao lưu;
+kết xuất lỗi thì cả lần sao lưu báo lỗi. `khoi-phuc-toan-bo` đổ lại bản kết xuất vào CSDL. Mỗi lần nâng cấp có thay đổi lược đồ, bộ cài
+kết xuất trước vào `postgres-ket-xuat/truoc-luoc-do-<tệp>.dump`. `chan-doan` báo khi CSDL hay API dữ liệu không trả lời, hoặc bản kết xuất
+cũ quá 48 giờ. `xoay-khoa --box` đổi cả mật khẩu CSDL (đổi trong CSDL trước, rồi mới ghi tệp bí mật).
+
 ## 4. Cấp cho máy trạm (sao lưu, Trợ lý AI, quản lý tập trung)
 Trên Box:
 ```bash
 sudo onebee-box them-may ketoan-01
 ```
-Dán các dòng in ra (12 dòng: `MAY_TRAM`, `BOX_IP`, `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`, `HOI_URL`, `HOI_API_KEY`, `TINH_TRANG_URL`, `TINH_TRANG_KEY`,
+Dán các dòng in ra (13 dòng: `MAY_TRAM`, `BOX_IP`, `BOX_TEN`, `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`, `HOI_URL`, `HOI_API_KEY`, `TINH_TRANG_URL`, `TINH_TRANG_KEY`,
 `QUAN_TRI_SSH_KEY`, `BOX_CA`, `BOX_CA_VAN_TAY`, `BOX_HTTPS`; không có `HOI_API_KEY`/`TINH_TRANG_KEY` khi đã tắt 2 biến chuyển tiếp) vào máy trạm tại
 `/etc/onebee/may-tram.env`, rồi chạy lại `sudo ./desktop/onebee-install.sh` trên máy trạm. Máy trạm sẽ:
 - tự sao lưu `/home` lúc 12:00 hằng ngày (máy tắt thì chạy bù khi bật); sao lưu ngay: `sudo onebee-sao-luu`;
@@ -115,7 +170,7 @@ Máy trạm cài bản v0.1 (file `sao-luu.env`) được bộ cài tự đổi 
 | Lệnh | Việc |
 |---|---|
 | `sudo onebee-box trang-thai` | Dịch vụ đang chạy, dung lượng ổ |
-| `sudo onebee-box chan-doan [--json]` | **Tự chẩn đoán** khi có sự cố: mạng (router < 5 ms, Internet, Tailscale), ổ `/` và dữ liệu (> 80% vàng, > 90% đỏ), RAM trống (< 1,5 GB), tải CPU, 6 container, AI trả lời thử (> 5 giây là chậm), Samba ghi được, bản sao lưu Box (> 26 giờ), CA và chứng chỉ HTTPS (< 15 ngày) — mỗi dòng [OK]/[CẢNH BÁO]/[LỖI] kèm gợi ý sửa. Mã thoát 0/1/2; `--json` cho n8n/trang chủ |
+| `sudo onebee-box chan-doan [--json]` | **Tự chẩn đoán** khi có sự cố: mạng (router < 5 ms, Internet, Tailscale), ổ `/` và dữ liệu (> 80% vàng, > 90% đỏ), RAM trống (< 1,5 GB), tải CPU, các container, AI trả lời thử (> 5 giây là chậm), Samba ghi được, bản sao lưu Box (> 26 giờ), CA và chứng chỉ HTTPS (< 15 ngày) — mỗi dòng [OK]/[CẢNH BÁO]/[LỖI] kèm gợi ý sửa. Mã thoát 0/1/2; `--json` cho trang chủ |
 | `sudo onebee-box them-may <tên>` | Cấp cho máy trạm: sao lưu, khóa Trợ lý AI, quản lý tập trung |
 | `sudo onebee-box may-tram` | Tình trạng các máy trạm (sao lưu, cập nhật, ổ đĩa, liên lạc cuối) |
 | `sudo onebee-box cap-nhat-may <tên>` / `--tat-ca` | Cập nhật phần mềm máy trạm từ Box (lần đầu máy phải chứng minh rồi mới ghim khóa SSH) |
@@ -123,7 +178,8 @@ Máy trạm cài bản v0.1 (file `sao-luu.env`) được bộ cài tự đổi 
 | `sudo onebee-box thu-hoi-may <tên>` | Thu hồi máy (mất máy, nghỉ việc, nghi giả mạo); giữ kho sao lưu |
 | `sudo onebee-box ghim-lai-may <tên>` | Máy cài lại hệ điều hành: bỏ khóa SSH đã ghim để ghim lại |
 | `sudo onebee-box bao-cao-tuan [YYYY-MM-DD]` | Nhật ký tuần: yêu cầu hỗ trợ, khảo sát, tình trạng máy (ẩn tên) |
-| `sudo onebee-box dong-bo-tro-ly` | Tạo/cập nhật "Trợ lý OneBee" trong Open WebUI |
+| `sudo onebee-box nap-tri-thuc` | Nạp kho tri thức (NĐ 30, mẫu soạn văn bản, tài liệu đơn vị) vào CSDL |
+| `sudo onebee-box cap-khoa-hoi <tên>` / `go-khoa-hoi <tên>` | Cấp lại / thu hồi khóa Trợ lý AI của một người |
 | `sudo onebee-box dat-mat-khau-email` / `email-thu` | Đặt mật khẩu hộp thư gửi / gửi email thử |
 | `sudo onebee-box khoi-tao` | Tạo kho sao lưu Box trên ổ ngoài (1 lần) |
 | `sudo onebee-box sao-luu` | Sao lưu Box ra ổ ngoài ngay + dọn bản cũ (tự chạy 23:00 hằng ngày) |
@@ -134,26 +190,24 @@ Máy trạm cài bản v0.1 (file `sao-luu.env`) được bộ cài tự đổi 
 ## Khôi phục toàn bộ khi hỏng ổ Box
 1. Cài lại Ubuntu Server 24.04 + chạy `sudo ./box/onebee-box-install.sh` (như máy mới).
 2. Gắn ổ sao lưu cũ vào `/mnt/onebee-sao-luu` (mục 3). Chép file khóa đã in từ `in-khoa` (hoặc gõ tay dòng `restic-box`).
-3. `sudo onebee-box khoi-phuc-toan-bo /đường/dẫn/khoa.txt` — lấy lại dữ liệu Trợ lý AI, n8n, giám sát, sổ hỗ trợ, thư mục chung,
+3. `sudo onebee-box khoi-phuc-toan-bo /đường/dẫn/khoa.txt` — lấy lại dữ liệu Trợ lý AI, động cơ quy trình, giám sát, sổ hỗ trợ, CSDL (đơn hàng…), thư mục chung,
    toàn bộ khóa bí mật (mật khẩu cũ dùng lại được), khóa SSH quản trị máy trạm.
 4. Chạy lại bộ cài, rồi `sudo onebee-box khoi-phuc-thu`. **Máy trạm không phải làm gì**: sao lưu, `hoi`, cập nhật từ Box chạy tiếp
    (kho sao lưu máy trạm là bản sao nên không nằm trong bản sao lưu Box — máy trạm tự tạo kho mới ở lần sao lưu sau).
 Đã diễn tập tự động trong container (`tests/box/check-khoi-phuc-toan-bo.sh`); nên diễn tập 1 lần trên máy ảo trước khi bán.
 
 ## Nâng cấp phiên bản dịch vụ
-Phiên bản các dịch vụ (Caddy, Ollama, Open WebUI, n8n, Uptime Kuma, rest-server) ghim cả **tag lẫn digest** trong
-`box/ansible/group_vars/all.yml` (`onebee_box_images`). Nâng cấp = sửa cả hai rồi chạy lại bộ cài. Với n8n, mỗi lần đổi image bộ cài
-**tự dừng n8n và chép nguyên thư mục dữ liệu** sang `/srv/onebee/n8n.truoc-<phiên-bản-cũ>` (n8n chạy migration CSDL khi khởi động,
-không quay lui được). Hoàn tác: `docker compose stop n8n` (trong `/opt/onebee-box`) → xóa `/srv/onebee/n8n` → đổi tên thư mục chép về
-`/srv/onebee/n8n` → ghim lại image cũ → chạy lại bộ cài. Thư mục chép không tự xóa — xóa tay khi đã dùng ổn:
-`sudo rm -rf /srv/onebee/n8n.truoc-*`. n8n 2.40.x đã ngừng nhận bản vá (bản cuối 2.40.7).
+Phiên bản các dịch vụ (Caddy, Ollama, dịch vụ Trợ lý AI dùng image Python, Node-RED, Uptime Kuma, rest-server, PostgreSQL, PostgREST) ghim cả **tag lẫn digest** trong
+`box/ansible/group_vars/all.yml` (`onebee_box_images`). Nâng cấp = sửa cả hai rồi chạy lại bộ cài. Node-RED giữ luồng trong
+`/srv/onebee/node-red`; nâng cấp không chạy migration CSDL, nhưng nên sao lưu thư mục này trước khi đổi image. Hoàn tác:
+ghim lại image cũ rồi chạy lại bộ cài.
 
 ## Quyền riêng tư
 Box giữ mật khẩu kho sao lưu của từng máy trạm (để tự dọn bản cũ) → người quản trị Box **đọc được** bản sao lưu `/home`
 của mọi máy. Box còn có **quyền quản trị (root) trên máy trạm** qua SSH để cập nhật. Cần thông báo 2 điều này cho đơn vị
-khi triển khai, và giữ Box kín (chỉ kỹ thuật viên có mật khẩu). Chat Trợ lý AI của nhân viên: tài khoản quản trị Open WebUI bị chặn
-không xem/xuất được, nhưng quản trị vẫn đặt lại được mật khẩu nhân viên rồi đăng nhập, và người có root trên Box vẫn đọc được
-file dữ liệu — cũng cần nói rõ với đơn vị.
+khi triển khai, và giữ Box kín (chỉ kỹ thuật viên có mật khẩu). Lịch sử hỏi Trợ lý AI của nhân viên: mỗi người chỉ đọc được dòng
+của chính mình, nhưng người có quyền root trên Box vẫn đọc được CSDL (`onebee.lich_su_hoi_ai`) và bản sao lưu, và quản trị vẫn cấp lại
+được khóa Trợ lý AI của nhân viên — cũng cần nói rõ với đơn vị.
 
 ## Giới hạn đã biết
 - Chưa giới hạn dung lượng từng máy trạm trên Box; theo dõi bằng `sudo onebee-box trang-thai`.

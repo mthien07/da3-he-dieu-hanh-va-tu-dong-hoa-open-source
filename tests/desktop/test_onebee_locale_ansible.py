@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử: mọi chỗ bộ cài gọi `ansible-playbook` chạy được bất kể locale của người chạy.
 
 Mint cài bằng tiếng Việt ghi `LANG=vi_VN` (không có `.UTF-8`). Python chuẩn hóa tên này thành bảng mã TCVN, và ansible-core
