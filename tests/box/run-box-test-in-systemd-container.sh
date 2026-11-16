@@ -5,6 +5,7 @@
 # → quản lý tập trung (báo tình trạng, cập nhật qua SSH) → email báo cáo → Box dọn bản cũ
 # → tường lửa: máy trong LAN vào được, máy ngoài mạng cho phép bị chặn
 # → diễn tập hỏng ổ Box: cài lại + khôi phục toàn bộ bằng khóa in ra giấy
+# → bật HTTPS: Sổ điều hành H-P-D-I (check-https.sh gọi check-so-dieu-hanh.sh trong phần HTTPS)
 # → bản giả mạo ngày tương lai bị phát hiện → chưa gắn ổ ngoài thì từ chối → khởi động lại Box, dịch vụ tự lên.
 # Biến: ONEBEE_TEST_EXTRA_CA (CA proxy), ONEBEE_TEST_FULL_WEBUI=1 (dùng image Open WebUI đầy đủ thay bản slim),
 #       ONEBEE_TEST_KEEP=1 (giữ container để xem lại).

@@ -31,6 +31,11 @@ check "Docker đang chạy và bật cùng máy" bash -c "systemctl is-active do
 for c in onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server onebee-postgres onebee-postgrest; do
   check "Container ${c} đang chạy" bash -c "[ \"\$(docker inspect -f '{{.State.Running}}' ${c})\" = true ]"
 done
+check "Ứng dụng Sổ điều hành có trang tĩnh trong portal (HTML, CSS, JS)" bash -c \
+  "[ -s /opt/onebee-box/portal/site/so-dieu-hanh/index.html ] \
+   && [ -s /opt/onebee-box/portal/site/so-dieu-hanh/so-dieu-hanh.css ] \
+   && [ -s /opt/onebee-box/portal/site/so-dieu-hanh/so-dieu-hanh.js ]"
+check "Tuyến /so-dieu-hanh/ không tồn tại ở chế độ HTTP (404)" code_in http://127.0.0.1/so-dieu-hanh/ 404
 check "Trang giới thiệu :80 hiển thị OneBee Box" bash -c "curl -s -m 10 http://127.0.0.1/ | grep -q 'OneBee Box'"
 check "Open WebUI :3000 khỏe (/health)" bash -c "curl -s -m 10 http://127.0.0.1:3000/health | grep -q true"
 check "n8n :5678 khỏe (/healthz)" bash -c "curl -s -m 10 http://127.0.0.1:5678/healthz | grep -q ok"

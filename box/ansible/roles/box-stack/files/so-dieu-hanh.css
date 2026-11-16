@@ -1,0 +1,42 @@
+/* SPDX-License-Identifier: MIT */
+/* Quản lý bởi OneBee OS. Kiểu của Sổ điều hành; không tải gì từ Internet. */
+:root { --nen: #0f1b2b; --the: #17304a; --vien: #274666; --chu: #f4f7fb; --phu: #9fb2c7; --nhan: #f5a524; --tot: #2dd4bf; --loi: #f87171; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--nen); color: var(--chu); font-family: system-ui, "Noto Sans", "Segoe UI", sans-serif; line-height: 1.5; padding: 16px; }
+main { width: min(1080px, 100%); margin: 0 auto; }
+a { color: var(--tot); }
+header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; border-bottom: 1px solid var(--vien); padding-bottom: 12px; margin-bottom: 16px; }
+h1 { margin: 0; font-size: clamp(22px, 4vw, 30px); }
+h2 { margin: 0 0 10px; font-size: 17px; color: var(--nhan); }
+p { margin: 6px 0; }
+.don-vi { margin: 2px 0; color: var(--tot); font-weight: 600; }
+.phu { color: var(--phu); font-size: 13px; }
+.ho-so { display: flex; flex-wrap: wrap; gap: 8px; }
+.huy-hieu { display: inline-block; padding: 4px 10px; border: 1px solid var(--tot); border-radius: 999px; color: var(--tot); font-size: 13px; font-weight: 600; }
+nav.the { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin-bottom: 16px; }
+nav.the button { padding: 12px; border: 1px solid var(--vien); border-radius: 10px; background: var(--the); color: var(--chu); font: inherit; font-weight: 600; cursor: pointer; text-align: left; }
+nav.the button[aria-selected="true"] { border-color: var(--nhan); color: var(--nhan); background: #214263; }
+.khu { display: none; }
+.khu.hien { display: block; }
+.luoi { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 14px; }
+.the-noi-dung { background: var(--the); border: 1px solid var(--vien); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+.luoi > .the-noi-dung { margin-bottom: 0; }
+label { display: block; margin: 8px 0 4px; font-size: 14px; color: var(--phu); }
+input, select, textarea { width: 100%; padding: 9px 11px; border: 1px solid var(--vien); border-radius: 8px; background: #0b1522; color: var(--chu); font: inherit; font-size: 14px; }
+input[type="file"] { padding: 6px; }
+.nut { margin-top: 12px; padding: 9px 16px; border: 0; border-radius: 8px; background: var(--nhan); color: #0b1522; font: inherit; font-weight: 700; cursor: pointer; }
+.nut.phu-nut { background: var(--tot); }
+.nut.tu-choi { background: var(--loi); color: #fff; margin-left: 6px; }
+.nut:disabled { opacity: .45; cursor: not-allowed; }
+.hang-nut { display: flex; flex-wrap: wrap; gap: 10px; }
+.thong-bao { margin-top: 10px; padding: 8px 12px; border-left: 4px solid var(--tot); border-radius: 6px; background: #0b1522; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.thong-bao.loi { border-left-color: var(--loi); }
+.cuon { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+th, td { padding: 8px 10px; border-bottom: 1px solid var(--vien); text-align: left; vertical-align: top; }
+th { color: var(--phu); font-weight: 600; }
+.so-lon { font-size: 28px; font-weight: 700; }
+.chan { color: var(--nhan); font-size: 12px; display: block; margin-top: 4px; }
+ul { margin: 6px 0; padding-left: 20px; }
+code { font-size: 13px; }
+@media (max-width: 480px) { body { padding: 10px; } }

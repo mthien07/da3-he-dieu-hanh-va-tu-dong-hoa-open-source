@@ -2,7 +2,9 @@
 # Kiểm tra bật/tắt HTTPS (rà soát bảo mật F3, Pha 4) trên máy test, SAU khi Box và máy trạm ketoan-01 đã chạy ở chế độ HTTP:
 # chốt chặn máy chưa nhận CA → bật HTTPS → Caddy là nơi duy nhất công bố cổng, TLS đúng CA riêng, http:// bị chuyển 308, cookie Secure, CORS,
 # CSP sandbox của biểu mẫu n8n còn nguyên, máy trạm sao lưu/hỏi AI/báo tình trạng qua HTTPS → đăng nhập một lần + cổng API
-# (check-sso-cong-api.sh) → phân quyền dòng qua cổng API (check-du-lieu-qua-cong.sh) → chạy lại bộ cài không đổi gì → tắt HTTPS lại về HTTP.
+# (check-sso-cong-api.sh) → Sổ điều hành H-P-D-I: gửi đơn kèm tệp, kiểm dịch, duyệt, bảng điều hành, tóm tắt
+# (check-so-dieu-hanh.sh) → phân quyền dòng qua cổng API (check-du-lieu-qua-cong.sh) → chạy lại bộ cài không đổi gì
+# → tắt HTTPS lại về HTTP.
 # Cách dùng: check-https.sh <container-Box> <container-máy-trạm>   (chưa chạy trên máy tác giả — cần Docker lồng, xem tests/README.md)
 set -euo pipefail
 BOX="$1"; CLIENT="$2"
@@ -84,11 +86,19 @@ tram "grep -q '^RESTIC_REPOSITORY=rest:https://' /etc/onebee/may-tram.env && gre
   echo 'PASS  Máy trạm sao lưu (restic rest:https), hỏi Trợ lý AI và báo tình trạng qua HTTPS, chỉ tin CA riêng của Box'
   grep -q 'http://' /etc/firefox/policies/policies.json && { echo 'FAIL  Chính sách Firefox còn địa chỉ http'; exit 1; }
   grep -q ManagedBookmarks /etc/firefox/policies/policies.json || { echo 'FAIL  Thiếu dấu trang https của Firefox'; exit 1; }
-  echo 'PASS  Firefox được đặt trang chủ + dấu trang https'"
+  echo 'PASS  Firefox được đặt trang chủ + dấu trang https'
+  grep -q '^HO_TRO_URL=https://box\.[a-z0-9-]*\.onebee\.internal/so-dieu-hanh/$' /etc/onebee-ho-tro.conf \
+    || { echo 'FAIL  Mục menu Báo cần hỗ trợ không trỏ ứng dụng Sổ điều hành trên tên Box'; cat /etc/onebee-ho-tro.conf 2>/dev/null; exit 1; }
+  grep -qx 'Exec=onebee-bao-ho-tro' /usr/share/applications/onebee-bao-ho-tro.desktop \
+    || { echo 'FAIL  Thiếu mục menu Báo cần hỗ trợ'; exit 1; }
+  echo 'PASS  Menu máy trạm \"Báo cần hỗ trợ\" mở Sổ điều hành trên tên Box qua HTTPS'"
 box "onebee-box may-tram | grep -A3 '^ketoan-01 ' | head -4"
 
 echo "===== HTTPS: ĐĂNG NHẬP MỘT LẦN + CỔNG API ====="
 "$(dirname "$0")/check-sso-cong-api.sh" "${BOX}"
+
+echo "===== HTTPS: SỔ ĐIỀU HÀNH H-P-D-I ====="
+"$(dirname "$0")/check-so-dieu-hanh.sh" "${BOX}"
 
 echo "===== HTTPS: DỮ LIỆU QUA CỔNG API (PHÂN QUYỀN DÒNG) ====="
 "$(dirname "$0")/check-du-lieu-qua-cong.sh" "${BOX}"

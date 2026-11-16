@@ -140,7 +140,9 @@ class TrangChu(unittest.TestCase):
     def test_loi_tat_tro_ly_ai_thu_muc_chung_ho_tro_cam_nang(self):
         h = self.html
         self.assertIn('data-port="3000"', h)                                          # Trợ lý AI
-        self.assertIn('data-port="5678" data-path="form/onebee-ho-tro"', h)          # Yêu cầu hỗ trợ (biểu mẫu n8n)
+        self.assertIn("Sổ điều hành", h)                                              # ứng dụng H-P-D-I thay biểu mẫu n8n
+        self.assertIn("Bật HTTPS", h)                                                 # ở chế độ HTTP, ứng dụng chưa tồn tại
+        self.assertNotIn("form/onebee-ho-tro", h)
         self.assertIn('id="smb-win"', h)                                              # \\onebee.local\chung (Windows)
         self.assertIn('id="smb"', h)                                                  # smb://onebee.local/chung
         self.assertIn('href="#cam-nang"', h)
