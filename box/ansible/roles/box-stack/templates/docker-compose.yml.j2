@@ -118,6 +118,14 @@ services:
       ONEBEE_CAU_HINH: /cau-hinh
     # Chỉ mạng default: mô-đun gọi lại API qua tên Box trỏ tới Caddy trong mạng này, không đi thẳng vào cầu nối/PostgREST
     networks: [default]
+    # Kiểm tra mặc định của image đọc /data/settings.js (cấu hình ở đây nằm ở /cau-hinh) nên luôn báo unhealthy → kiểm đúng cổng và
+    # đường dẫn trình soạn trong settings.js: có phản hồi HTTP dưới 500 (200 khi đã bật đăng nhập) là tiến trình đang sống
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:1880/quy-trinh/auth/login', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     volumes:
       - ./quy-trinh:/cau-hinh:ro
       - {{ onebee_box_data }}/node-red:/data
