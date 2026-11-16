@@ -32,7 +32,7 @@ Clonezilla (sao lưu/nhân bản ổ đĩa, chỉ dùng như công cụ khi cài
 | Mailpit (chỉ dùng trong kiểm thử, không cài cho khách) | MIT | |
 | vncsnapshot (chỉ dùng trong kiểm thử hỗ trợ từ xa) | GPL | Gói Ubuntu |
 | Open WebUI | BSD-3 + điều khoản thương hiệu (từ v0.6.6) | >50 người dùng/30 ngày: không được gỡ/đổi thương hiệu "Open WebUI". OneBee không đổi tên/logo. |
-| n8n | Sustainable Use License (fair-code, **không** phải nguồn mở chuẩn OSI) | Theo n8n: chỉ giúp khách dựng n8n nội bộ của chính khách thì không cần giấy phép thương mại. Không bán n8n như dịch vụ host chung. |
+| Node-RED | Apache-2.0 | Động cơ quy trình của Box: dùng, sửa, phân phối lại được, chỉ cần giữ thông báo bản quyền và tệp giấy phép. |
 | Uptime Kuma | MIT | |
 | restic, rest-server | BSD-2-Clause | |
 | Caddy | Apache-2.0 | |
@@ -44,4 +44,4 @@ Clonezilla (sao lưu/nhân bản ổ đĩa, chỉ dùng như công cụ khi cài
 
 Giấy phép phần Box ghi theo trang của từng dự án — cần kiểm lại khi nâng phiên bản và trước khi phát hành v1.0.
 
-→ Khi giới thiệu sản phẩm là "mã nguồn mở", phải nói rõ n8n là fair-code và điều khoản thương hiệu của Open WebUI.
+→ Khi giới thiệu sản phẩm là "mã nguồn mở", phải nói rõ điều khoản thương hiệu của Open WebUI (nếu còn thành phần này).

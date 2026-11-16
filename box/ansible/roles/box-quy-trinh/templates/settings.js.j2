@@ -1,0 +1,48 @@
+// Quản lý bởi OneBee OS (box/ansible/roles/box-quy-trinh) — sửa mẫu trong repo rồi chạy lại bộ cài, không sửa tay.
+// Cấu hình Node-RED của OneBee Box (image: group_vars onebee_box_images.node_red). Gắn CHỈ ĐỌC vào container (/cau-hinh).
+// Tệp này KHÔNG chứa mật khẩu hay khóa: bản băm mật khẩu trình soạn luồng và SHA-256 của các khóa đọc từ cau-hinh.json (root:1000, 0640).
+'use strict';
+const fs = require('fs');
+const path = require('path');
+
+const THU_MUC = process.env.ONEBEE_CAU_HINH || '/cau-hinh';
+const ch = JSON.parse(fs.readFileSync(path.join(THU_MUC, 'cau-hinh.json'), 'utf8'));
+
+module.exports = {
+  uiPort: 1880,
+  uiHost: '0.0.0.0',   // chỉ trong mạng Docker: dịch vụ không công bố cổng nào, chỉ Caddy và lệnh trên Box gọi tới
+  flowFile: 'flows.json',
+  flowFilePretty: true,
+  // Trình soạn luồng (nơi chạy mã tùy ý) tách khỏi điểm nhận: Caddy chỉ mở /quy-trinh/ trên tên Box, sau đăng nhập một lần
+  // (nhóm ky_thuat, hai lớp); điểm nhận nằm dưới /webhook/
+  httpAdminRoot: '/quy-trinh',
+  httpNodeRoot: '/webhook',
+  // Lớp thứ hai của trình soạn luồng: tài khoản riêng, mật khẩu ở {{ onebee_box_secrets }}/quy-trinh-soan-luong (onebee-box in-khoa)
+  adminAuth: {
+    type: 'credentials',
+    sessionExpiryTime: 28800,
+    users: [{ username: 'kythuat', password: ch.soan_luong_hash, permissions: '*' }],
+  },
+  // Không cài thêm gói (Box có thể không có Internet; mọi thành phần phải có trong repo hoặc image đã ghim)
+  externalModules: {
+    autoInstall: false,
+    palette: { allowInstall: false, allowUpload: false, allowUpdate: false },
+    modules: { allowInstall: false },
+  },
+  functionExternalModules: false,
+  functionGlobalContext: { onebee: require(path.join(THU_MUC, 'onebee-quy-trinh.js')) },
+  exportGlobalContextKeys: false,
+  // Không gọi ra Internet: không kiểm bản mới, không danh mục gói, không thống kê
+  diagnostics: { enabled: false, ui: false },
+  telemetry: { enabled: false, updateNotification: false },
+  runtimeState: { enabled: false, ui: false },
+  editorTheme: {
+    page: { title: 'OneBee Box — Quy trình tự động' },
+    header: { title: 'OneBee Box — Quy trình tự động' },
+    palette: { catalogues: [] },
+    projects: { enabled: false },
+    tours: false,
+    multiplayer: { enabled: false },
+  },
+  logging: { console: { level: 'info', metrics: false, audit: false } },
+};

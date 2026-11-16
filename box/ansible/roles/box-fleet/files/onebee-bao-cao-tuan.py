@@ -3,7 +3,7 @@
 
   onebee-bao-cao-tuan.py <thu-muc-ho-tro> [YYYY-MM-DD] < tinh-trang-may.json
 
-Đọc sổ do n8n ghi: yeu-cau.csv (mã, giờ, máy, loại, mức độ, người báo, mô tả), xu-ly.csv (mã, giờ, cách xử lý, số phút,
+Đọc sổ do bản cũ ghi: yeu-cau.csv (mã, giờ, máy, loại, mức độ, người báo, mô tả), xu-ly.csv (mã, giờ, cách xử lý, số phút,
 ghi chú), khao-sat.csv (giờ, 5 điểm, góp ý). Tuần = thứ Hai–Chủ nhật chứa ngày đưa vào (mặc định hôm nay).
 KHÔNG in tên người báo, nội dung mô tả, ghi chú, góp ý (có thể lộ thông tin cá nhân/kinh doanh) → dán được vào báo cáo.
 Khảo sát chỉ hiện điểm khi tuần có từ 3 phiếu (giữ ẩn danh). Số liệu khớp ngưỡng đạt (reports/pilot/nguong-dat.md).
@@ -18,7 +18,7 @@ import subprocess
 import sys
 from collections import Counter
 
-# Nhãn phải khớp box-n8n/vars/main.yml (onebee_ho_tro_loai, onebee_ho_tro_cach_xu_ly) — unit test kiểm
+# Nhãn phải khớp box-quy-trinh/vars/main.yml (onebee_ho_tro_loai, onebee_ho_tro_cach_xu_ly) — unit test kiểm
 LOAI = ["File không mở được / sai định dạng", "Phần mềm chỉ chạy trên Windows", "Máy in / máy quét", "Mạng / Internet",
         "Gõ tiếng Việt", "Máy chậm / treo", "Sao lưu / mất file", "Khác"]
 CACH_XU_LY = ["Hướng dẫn người dùng", "Sửa cấu hình", "Cài thêm phần mềm", "Thay phần cứng",

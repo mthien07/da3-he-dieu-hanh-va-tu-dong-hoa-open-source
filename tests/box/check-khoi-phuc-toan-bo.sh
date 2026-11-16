@@ -21,8 +21,11 @@ INSERT INTO onebee.don_hang (khach_hang, mat_hang, so_luong_kg, don_gia, thanh_t
 SQL
   docker exec onebee-postgres psql -X -At -U postgres -d onebee -c 'SELECT count(*) FROM onebee.don_hang' > /root/cu-so-don-csdl"
 
+# Sổ hỗ trợ cũ (CSV) là dữ liệu mẫu có sẵn trước khi hỏng ổ: không còn biểu mẫu tự ghi, bài kiểm tự đặt bản mẫu
+box "[ -s /srv/onebee/ho-tro/yeu-cau.csv ] || cp /root/onebee-test/tests/box/fixtures/so-cu/ho-tro/yeu-cau.csv /srv/onebee/ho-tro/yeu-cau.csv"
+
 box "onebee-box in-khoa > /root/khoa-in-ra-giay.txt
-  cp ${S}/webui-admin-password /root/cu-webui; cp ${S}/n8n-owner-password /root/cu-n8n; cp ${S}/ca/root.sha256 /root/cu-ca-sha
+  cp ${S}/webui-admin-password /root/cu-webui; cp ${S}/quy-trinh-soan-luong /root/cu-soan; cp ${S}/ca/root.sha256 /root/cu-ca-sha
   wc -l < /srv/onebee/ho-tro/yeu-cau.csv > /root/cu-so-yeu-cau
   onebee-box sao-luu > /root/sl-truoc-hong.log 2>&1 || { tail -20 /root/sl-truoc-hong.log; exit 1; }
   docker rm -f mailpit >/dev/null 2>&1 || true
@@ -36,17 +39,18 @@ box "/root/onebee-test/box/onebee-box-install.sh > /root/cai-lai.log 2>&1 || { t
   echo 'PASS  Cài lại Box trên ổ mới (khóa bí mật mới, dữ liệu trống)'
   onebee-box khoi-phuc-toan-bo /root/khoa-in-ra-giay.txt > /root/khoi-phuc.log 2>&1 || { tail -20 /root/khoi-phuc.log; exit 1; }
   /root/onebee-test/box/onebee-box-install.sh > /root/cai-lai-2.log 2>&1 || { tail -30 /root/cai-lai-2.log; exit 1; }
-  cmp -s ${S}/webui-admin-password /root/cu-webui && cmp -s ${S}/n8n-owner-password /root/cu-n8n \
+  cmp -s ${S}/webui-admin-password /root/cu-webui && cmp -s ${S}/quy-trinh-soan-luong /root/cu-soan \
     || { echo 'FAIL  Khóa bí mật không trở lại như cũ'; exit 1; }
+  [ -s ${S}/quy-trinh-soan-hash ] && grep -Eq '^[$]2[aby][$]' ${S}/quy-trinh-soan-hash \
+    || { echo 'FAIL  Bản băm mật khẩu trình soạn luồng không được khôi phục'; exit 1; }
   cmp -s ${S}/ca/root.sha256 /root/cu-ca-sha || { echo 'FAIL  CA riêng sau khôi phục khác CA cũ — máy trạm sẽ không tin Box'; exit 1; }
   openssl verify -CApath /etc/ssl/certs ${S}/ca/inter.crt >/dev/null || { echo 'FAIL  Box không tin CA đã khôi phục'; exit 1; }
   code=\$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:3000/api/v1/auths/signin -H 'Content-Type: application/json' \
     -d \"{\\\"email\\\":\\\"quantri@onebee.lan\\\",\\\"password\\\":\\\"\$(cat /root/cu-webui)\\\"}\")
   [ \"\${code}\" = 200 ] || { echo \"FAIL  Mật khẩu quản trị Trợ lý AI cũ không dùng được (\${code})\"; exit 1; }
-  for _ in \$(seq 30); do curl -s -m 5 http://127.0.0.1:5678/healthz | grep -q ok && break; sleep 3; done
-  code=\$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:5678/rest/login -H 'Content-Type: application/json' \
-    -d \"{\\\"emailOrLdapLoginId\\\":\\\"quantri@onebee.lan\\\",\\\"password\\\":\\\"\$(cat /root/cu-n8n)\\\"}\")
-  [ \"\${code}\" = 200 ] || { echo \"FAIL  Mật khẩu chủ n8n cũ không dùng được (\${code})\"; exit 1; }
+  for _ in \$(seq 30); do docker exec onebee-quy-trinh node -e \"fetch('http://127.0.0.1:1880/webhook/suc-khoe').then(r => process.exit(r.status === 200 ? 0 : 1), () => process.exit(1))\" && break; sleep 3; done
+  docker exec onebee-quy-trinh node -e \"fetch('http://127.0.0.1:1880/webhook/suc-khoe').then(r => process.exit(r.status === 200 ? 0 : 1), () => process.exit(1))\" \
+    || { echo 'FAIL  Động cơ quy trình không khỏe sau khôi phục toàn bộ'; exit 1; }
   [ \"\$(wc -l < /srv/onebee/ho-tro/yeu-cau.csv)\" = \"\$(cat /root/cu-so-yeu-cau)\" ] || { echo 'FAIL  Mất sổ yêu cầu hỗ trợ'; exit 1; }
   dau=\"\$(cat /root/cu-dau-csdl)\"
   [ \"\$(docker exec -i onebee-postgres psql -X -q -At -U postgres -d onebee -v dau=\"\${dau}\" <<<\"SELECT count(*) FROM onebee.don_hang WHERE ghi_chu = :'dau';\")\" = 1 ] \
@@ -59,7 +63,7 @@ box "/root/onebee-test/box/onebee-box-install.sh > /root/cai-lai.log 2>&1 || { t
   ! grep -q '^tam-01:' /srv/onebee/restic/.htpasswd || { echo 'FAIL  Máy đã thu hồi lại có quyền vào kho HTTP sau khôi phục'; exit 1; }
   [ ! -e /srv/onebee/may-da-cap/tam-01 ] && [ -e ${S}/thu-hoi/tam-01 ] || { echo 'FAIL  Máy đã thu hồi lại được nhận báo cáo sau khôi phục'; exit 1; }
   [ -e /srv/onebee/may-da-cap/ketoan-01 ] || { echo 'FAIL  Sau khôi phục, máy ketoan-01 mất chỗ nhận báo cáo tình trạng'; exit 1; }
-  echo 'PASS  khoi-phuc-toan-bo bằng khóa in ra giấy: mật khẩu, tài khoản Trợ lý AI + n8n, sổ hỗ trợ trở lại như cũ'"
+  echo 'PASS  khoi-phuc-toan-bo bằng khóa in ra giấy: mật khẩu, tài khoản Trợ lý AI, mật khẩu trình soạn luồng, sổ hỗ trợ trở lại như cũ; động cơ quy trình khỏe'"
 
 # Máy trạm không cấu hình gì thêm: vẫn sao lưu (kho mới), hỏi AI (khóa cũ), báo tình trạng, nhận cập nhật (khóa SSH cũ)
 tram 'onebee-sao-luu >/dev/null

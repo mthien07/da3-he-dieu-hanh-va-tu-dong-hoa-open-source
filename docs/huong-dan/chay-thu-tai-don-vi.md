@@ -23,7 +23,7 @@ Cài: Box trước ([cai-dat-onebee-box.md](cai-dat-onebee-box.md)), cấu hình
 ## 2. Trong 4 tuần
 Hằng ngày (kỹ thuật, 5 phút): đọc email báo cáo 23:00 (sao lưu + tình trạng máy) và email yêu cầu hỗ trợ.
 Người dùng báo sự cố bằng menu **"Báo cần hỗ trợ (OneBee)"** (hoặc gọi điện — kỹ thuật tự nhập vào biểu mẫu để không sót).
-Xử lý xong: kỹ thuật mở `http://<ip-box>:5678/form/onebee-xu-ly` (tài khoản `kythuat`, mật khẩu dòng `bieu-mau-kythuat`
+Xử lý xong: kỹ thuật mở trang xử lý yêu cầu của Sổ điều hành (giai đoạn 4; tài khoản `kythuat`, mật khẩu dòng `bieu-mau-kythuat`
 trong `sudo onebee-box in-khoa`), nhập mã yêu cầu, cách xử lý, số phút.
 
 Cuối mỗi tuần (thứ Sáu):
@@ -35,7 +35,7 @@ Nhật ký không chứa tên người báo, nội dung mô tả, góp ý → đ
 
 ![Khảo sát ẩn danh](anh/06-khao-sat-an-danh.png)
 
-Cuối tuần 2 và tuần 4: gửi đường link khảo sát `http://<ip-box>:5678/form/onebee-khao-sat` (ẩn danh, 5 câu, 2 phút).
+Cuối tuần 2 và tuần 4: gửi đường link khảo sát trên Sổ điều hành (giai đoạn 4; ẩn danh, 5 câu, 2 phút).
 Cần ít nhất 3 phiếu thì nhật ký mới hiện điểm (giữ ẩn danh ở đơn vị nhỏ). Gửi link cho mọi người cùng lúc, **chạy
 `bao-cao-tuan` sau khi đã thu đủ phiếu** (chạy giữa chừng rồi chạy lại sau 1 phiếu mới có thể đoán ra điểm của người đó).
 
