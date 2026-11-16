@@ -202,7 +202,13 @@ box 'systemctl stop docker.socket docker.service
      systemctl start docker
      for _ in $(seq 60); do curl -s -m 5 http://127.0.0.1/ | grep -q "OneBee Box" && break; sleep 5; done
      [ "$(iptables -S DOCKER-USER | grep -c ONEBEE-LAN-DOCKER)" = 1 ] || { echo "FAIL  Docker lên lại: quy tắc DOCKER-USER mất hoặc nhân đôi"; iptables -S DOCKER-USER; exit 1; }'
-[[ "$(thu_cong)" == "80 3001 8000 445 " ]] || { echo "FAIL  Docker lên lại nhưng máy trạm chưa vào lại được"; exit 1; }
+# Nhiều dịch vụ khởi động lại cùng lúc: chờ máy trạm vào lại được (tối đa 2,5 phút) thay vì thử một lần
+for _ in $(seq 30); do mo="$(thu_cong)"; [[ "${mo}" == "80 3001 8000 445 " ]] && break; sleep 5; done
+if [[ "${mo}" != "80 3001 8000 445 " ]]; then
+  echo "FAIL  Docker lên lại nhưng máy trạm chưa vào lại được (mở: ${mo:-không cổng nào})"
+  docker exec "${BOX}" docker ps --format '{{.Names}} {{.Status}}' || true
+  exit 1
+fi
 echo "PASS  Dừng Docker vẫn giữ tường lửa SSH/Samba/Tailscale; Docker lên lại dùng tiếp quy tắc DOCKER-USER, máy trạm vào lại được"
 
 echo "===== TẮT TRỢ LÝ AI → LỆNH hoi BÁO LỖI DỄ HIỂU ====="
