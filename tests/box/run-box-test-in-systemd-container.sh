@@ -253,4 +253,8 @@ wait_systemd
 box 'for _ in $(seq 60); do curl -s -m 5 http://127.0.0.1:3000/health | grep -q true && curl -s -m 5 http://127.0.0.1:5678/healthz | grep -q ok && break; sleep 5; done
      /root/onebee-test/tests/box/verify-box-install.sh | tail -1'
 echo "PASS  Sau khởi động lại, dịch vụ tự chạy lại"
+
+echo "===== BẢN CHẠY THỬ CÔNG KHAI (DEMO) ====="
+"${REPO_ROOT}/tests/box/check-ban-demo.sh" "${BOX}"
+
 echo "TẤT CẢ BƯỚC KIỂM THỬ BOX ĐẠT"
