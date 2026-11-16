@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử tuyến đăng nhập một lần + cổng API trong Caddyfile HTTPS của Box bằng Caddy THẬT (ONEBEE_TEST_CADDY hoặc caddy trong PATH;
 không có thì bỏ qua). Phía sau là máy chủ HTTP giả: Authelia giả (forward-auth theo cookie + luật nhóm như cấu hình thật),
 Ollama, Uptime Kuma, PostgREST giả; cầu nối danh tính là mã THẬT (box-dinh-danh/files/onebee-cau-noi-danh-tinh.py).

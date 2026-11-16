@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Mọi file mẫu Jinja (*.j2) của Desktop/Box phải đọc được (bắt lỗi kiểu `${#mang[@]}` bị hiểu là chú thích Jinja)."""
 import glob
 import sys

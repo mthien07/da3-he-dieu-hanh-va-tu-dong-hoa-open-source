@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # LibreOffice giao diện + trợ giúp + kiểm tra chính tả tiếng Việt; lưu mặc định định dạng Microsoft Office; Ribbon + biểu tượng Colibre
 
 - name: Cài LibreOffice và gói tiếng Việt

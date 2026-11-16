@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Mã đơn vị, địa chỉ IP của Box và CA riêng (rà soát bảo mật F3, Pha 3). Chạy ĐẦU role box-stack:
 # mọi nơi khác (compose, lệnh onebee-box, quy trình n8n) dùng onebee_box_ip do bước này chốt.
 

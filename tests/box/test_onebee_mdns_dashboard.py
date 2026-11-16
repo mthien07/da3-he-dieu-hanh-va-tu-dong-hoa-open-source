@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử Task 01 — tên onebee.local (avahi mDNS) và trang chủ Dashboard cổng 80 của Box (không cần Box thật).
 Kiểm: box-base cài + bật avahi-daemon, cấu hình chỉ quảng bá IPv4 trên cổng mạng chính, không lộ thông tin máy, tệp dịch vụ http cổng 80;
 trang chủ có tên đơn vị (thoát HTML), lối tắt, cẩm nang, ô tình trạng, không tải gì từ Internet;

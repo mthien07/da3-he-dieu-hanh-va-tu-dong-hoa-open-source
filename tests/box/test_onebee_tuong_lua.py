@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử tường lửa OneBee Box (box-firewall/files/onebee-tuong-lua) bằng iptables GIẢ ghi lại từng lệnh (không đụng tường lửa thật).
 Kiểm cấu trúc quy tắc (rà soát bảo mật F5): lọc MỌI cổng mạng trừ lo/docker*/br-*; LAN chỉ qua cổng mạng chính; Tailscale chỉ địa chỉ khai báo;
 chạy lại không nhân đôi quy tắc. Chạy: python3 -m unittest"""

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm tra THẬT cấu hình LibreOffice (qua UNO) sau khi cài OneBee OS Desktop:
 định dạng lưu mặc định của Writer/Calc/Impress là Microsoft Office, đã tắt cảnh báo định dạng
 và giao diện mặc định là Ribbon (Tabbed Notebookbar).
