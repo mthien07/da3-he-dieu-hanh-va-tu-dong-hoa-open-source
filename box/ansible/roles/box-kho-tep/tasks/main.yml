@@ -114,6 +114,15 @@
     - onebee_clamav_chu_ky_sau.matched == 0
     - onebee_clamav_tai.rc | default(0) != 0
 
+# freshclam tạo tệp trong thư mục chữ ký và có thể đổi quyền thư mục — đặt lại sau khi tải/chép để lần cài sau không đổi gì
+- name: Giữ quyền thư mục chữ ký ClamAV ổn định
+  ansible.builtin.file:
+    path: "{{ onebee_box_data }}/clamav"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
 - name: Khởi chạy / cập nhật SeaweedFS
   ansible.builtin.command: docker compose up -d --no-deps seaweedfs
   args:
