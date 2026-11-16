@@ -246,7 +246,7 @@ const ban = {
 };
 process.stdout.write(vm.runInContext("taoLoiNhacTomTat(" + JSON.stringify(ban) + ")", ctx));
 ' >"${D}/noi-dung.txt" || { echo 'FAIL  chạy mã trang trong node để dựng lời nhắc tóm tắt'; exit 1; }
-docker exec onebee-quy-trinh rm -f /tmp/sdlh.js
+docker exec -u 0 onebee-quy-trinh rm -f /tmp/sdlh.js   # tệp do docker cp ghi bằng root; Node-RED chạy uid 1000
 grep -q "tiếng Việt" "${D}/noi-dung.txt" && grep -q "không bịa" "${D}/noi-dung.txt" \
   || { echo 'FAIL  lời nhắc tóm tắt thiếu dặn dò tiếng Việt/không bịa'; cat "${D}/noi-dung.txt"; exit 1; }
 ! grep -Eq "Nguyễn|Bình Minh|0912345678|bao-gia|Trần Thị Bình|sdlh-ql" "${D}/noi-dung.txt" \
