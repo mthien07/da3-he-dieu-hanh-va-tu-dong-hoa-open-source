@@ -56,7 +56,8 @@ grep -q 'path /ai/hoi /ai/tom-tat' "${COMPOSE%/*}/Caddyfile.j2" || fail "Caddy k
 ! grep -q 'header X-OneBee-Khoa \*' "${COMPOSE%/*}/Caddyfile.j2" || fail "Caddy còn nhận mọi giá trị X-OneBee-Khoa"
 pass "Caddy chỉ cho khóa đúng dạng obk-… vào tuyến /ai/ và giữ đúng hai đường hỏi đáp/tóm tắt"
 
-grep -q "nap-tri-thuc) with_lock cmd_nap_tri_thuc ;;" "${BOX_SCRIPT}" || fail "onebee-box.sh.j2 thiếu lệnh nap-tri-thuc"
+grep -q "nap-tri-thuc) cmd_nap_tri_thuc ;;" "${BOX_SCRIPT}" || fail "onebee-box.sh.j2 thiếu lệnh nap-tri-thuc"
+grep -q "nap-tri-thuc) with_lock" "${BOX_SCRIPT}" && fail "nap-tri-thuc lấy khóa lồng khi bộ cài đang giữ khóa" || true
 grep -q "cap-khoa-hoi) shift; cmd_cap_khoa_hoi" "${BOX_SCRIPT}" || fail "onebee-box.sh.j2 thiếu lệnh cap-khoa-hoi"
 grep -q "go-khoa-hoi) shift; cmd_go_khoa_hoi" "${BOX_SCRIPT}" || fail "onebee-box.sh.j2 thiếu lệnh go-khoa-hoi"
 pass "onebee-box có lệnh nạp tri thức và cấp/thu hồi khóa Trợ lý AI"
