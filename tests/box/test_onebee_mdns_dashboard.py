@@ -191,6 +191,48 @@ class TrangChu(unittest.TestCase):
         self.assertLess(len(h.encode()), 24 * 1024)   # 1 tệp, không thư viện ngoài → mở ngay trong LAN
 
 
+class TrangChuToiGian(unittest.TestCase):
+    """Giao diện tối giản: một màu nhấn, nền sáng/tối theo máy, không biểu tượng emoji, không viền màu, không chữ in hoa."""
+
+    TRANG = ("box-stack/templates/index.html.j2", "box-stack/templates/huong-dan-ca.html.j2")
+
+    def dung(self, mau):
+        return ve(mau, onebee_box_ip="192.168.1.10")
+
+    def test_khong_emoji(self):
+        for mau in self.TRANG:
+            h = self.dung(mau)
+            self.assertIsNone(re.search("[\U0001F000-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF]", h), mau)
+
+    def test_khong_vien_trai_mau_va_khong_chu_in_hoa(self):
+        for mau in self.TRANG:
+            h = self.dung(mau)
+            self.assertNotIn("border-left", h, mau)
+            self.assertNotIn("text-transform", h, mau)
+
+    def test_theo_che_do_sang_toi_cua_may(self):
+        for mau in self.TRANG:
+            h = self.dung(mau)
+            self.assertIn('<meta name="color-scheme" content="light dark">', h, mau)
+            self.assertIn("@media (prefers-color-scheme: dark)", h, mau)
+
+    def test_mot_mau_nhan_mat_ong(self):
+        h = self.dung(self.TRANG[0])
+        self.assertIn("#F5A524", h)
+        self.assertNotIn("#2DD4BF", h)   # màu ngọc cũ
+
+    def test_trang_chu_nhe_hon_20_kb_va_co_dong_tom_tat_tinh_trang(self):
+        h = self.dung(self.TRANG[0])
+        self.assertLess(len(h.encode()), 20 * 1024)
+        self.assertIn('id="tt-tom-tat"', h)
+        self.assertIn("Mọi thứ đang chạy bình thường", h)
+
+    def test_trang_huong_dan_ca_khong_tai_gi_tu_ngoai(self):
+        h = self.dung(self.TRANG[1])
+        self.assertIsNone(re.search(r'<(script|link|img|iframe)[^>]+(src|href)="(https?:)?//', h))
+        self.assertIn("/onebee-ca.crt", h)
+
+
 class TrangThaiWeb(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

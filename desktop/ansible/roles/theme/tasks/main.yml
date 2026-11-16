@@ -19,6 +19,31 @@
     group: root
     mode: "0644"
 
+# Áp hình nền OneBee cho người dùng một lần mỗi phiên bản giao diện: gschema override chỉ là mặc định nên không đổi được
+# phiên đang mở hay người dùng đã có giá trị riêng. Bộ cài gọi script ngay sau khi cài; autostart gọi ở mỗi lần đăng nhập.
+- name: Cài lệnh áp giao diện OneBee cho người dùng
+  ansible.builtin.copy:
+    src: onebee-ap-giao-dien
+    dest: /usr/local/bin/onebee-ap-giao-dien
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Tự áp giao diện OneBee khi người dùng đăng nhập Cinnamon
+  ansible.builtin.copy:
+    dest: /etc/xdg/autostart/onebee-ap-giao-dien.desktop
+    content: |
+      [Desktop Entry]
+      Type=Application
+      Name=Áp giao diện OneBee
+      Exec=/usr/local/bin/onebee-ap-giao-dien
+      OnlyShowIn=X-Cinnamon;
+      NoDisplay=true
+      X-GNOME-Autostart-enabled=true
+    owner: root
+    group: root
+    mode: "0644"
+
 - name: Kiểm tra máy có Cinnamon không
   ansible.builtin.stat:
     path: /usr/share/glib-2.0/schemas/org.cinnamon.desktop.background.gschema.xml
@@ -193,3 +218,6 @@
 
 - name: Mặc định của phiên làm việc (màn hình chào, cập nhật, đồng hồ, nút Bắt đầu, màn hình đăng nhập)
   ansible.builtin.include_tasks: phien-lam-viec.yml
+
+- name: Màn hình khởi động OneBee (Plymouth)
+  ansible.builtin.include_tasks: man-hinh-khoi-dong.yml
