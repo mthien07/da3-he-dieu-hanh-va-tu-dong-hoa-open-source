@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 name: CI
 
 on:
@@ -57,6 +59,8 @@ jobs:
           tests/box/check-offline-bundle.sh                    # kịch bản đóng gói USB offline
           tests/desktop/check-exe-handler.sh                   # trợ lý tập tin Windows (.exe/.msi)
           sudo -E env "PATH=${PATH}" tests/desktop/check-chan-doan-may-tram.sh   # onebee-chan-doan (root: mở cổng 445 giả)
+      - name: Giấy phép từng tệp (SPDX)
+        run: python3 scripts/chen-giay-phep.py --kiem
       - name: yamllint
         run: yamllint .
       - name: ansible-lint (Desktop)
