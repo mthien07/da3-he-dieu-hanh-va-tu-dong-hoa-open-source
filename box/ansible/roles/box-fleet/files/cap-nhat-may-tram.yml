@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Cập nhật máy trạm OneBee từ Box qua SSH (lệnh: sudo onebee-box cap-nhat-may <tên>|--tat-ca).
 # Máy trạm cho Box vào bằng tài khoản onebee-quantri (khóa SSH riêng của đơn vị, chỉ nhận kết nối từ IP của Box).
 # Lệnh onebee-box chỉ gọi playbook này cho máy đã ghim khóa SSH và chứng minh được là máy đã cấp (biết mật khẩu kho sao lưu).

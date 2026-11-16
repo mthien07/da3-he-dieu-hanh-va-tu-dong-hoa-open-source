@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử cầu nối danh tính (box-dinh-danh/files/onebee-cau-noi-danh-tinh.py): chạy THẬT bằng python3 trên một cổng tạm,
 dịch vụ dữ liệu phía sau (PostgREST) là máy chủ HTTP giả ghi lại mọi yêu cầu nhận được. Cầu nối đứng sau Caddy forward_auth:
 chỉ tin Remote-User/Remote-Groups (Caddy đã xóa bản do máy khách gửi), ký JWT 60 giây cho phía sau.

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra hỗ trợ từ xa (onebee-ho-tro) — chạy bằng người dùng thường trong container đã cài OneBee OS.
 # Cần: xvfb, xdotool, vncsnapshot (vncsnapshot đóng vai "máy kỹ thuật" kết nối VNC).
 set -euo pipefail

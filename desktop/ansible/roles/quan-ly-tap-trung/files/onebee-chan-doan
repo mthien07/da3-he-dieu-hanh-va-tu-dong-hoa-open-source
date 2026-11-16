@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # onebee-chan-doan — máy trạm tự kiểm tra: mạng (router, OneBee Box), dịch vụ trên Box (Trợ lý AI, thư mục chung, nhận sao lưu),
 # sao lưu của máy này (restic, lịch, lần cuối), ổ đĩa. In [OK] / [CẢNH BÁO] / [LỖI] kèm gợi ý — biết lỗi ở dây mạng/router, ở Box hay ở máy.
 # Chỉ đọc, không sửa gì. Nhân viên chạy được không cần sudo (địa chỉ Box lấy từ /etc/onebee-hoi.conf);

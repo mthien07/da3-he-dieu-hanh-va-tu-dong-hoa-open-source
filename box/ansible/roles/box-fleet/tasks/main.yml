@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Quản lý tập trung máy trạm: Box nhận tình trạng máy trạm (qua n8n), in báo cáo, cập nhật máy trạm qua SSH.
 
 - name: Cài ansible-core và SSH client (Box điều khiển máy trạm)

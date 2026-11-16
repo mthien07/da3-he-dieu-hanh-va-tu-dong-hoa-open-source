@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm phân quyền tới cấp dòng TỪ ĐẦU ĐẾN CUỐI qua cổng API trên Box đã BẬT HTTPS: trình duyệt/ứng dụng → Caddy → Authelia (phiên)
 # → cầu nối danh tính (JWT 60 giây) → PostgREST → RLS trong PostgreSQL. check-https.sh gọi bài này ngay sau check-sso-cong-api.sh
 # (bài đó để lại tài khoản an, binh, kt và /root/sso; bài này tạo thêm chi, ghi danh hai lớp cho binh, rồi dọn /root/sso).

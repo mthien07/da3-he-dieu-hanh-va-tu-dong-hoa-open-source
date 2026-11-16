@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra quản lý tập trung (chạy trên máy test, sau khi máy trạm ketoan-01 đã cài OneBee OS với cấu hình từ Box):
 # máy trạm báo tình trạng → Box in bảng + cảnh báo; khóa sai/tên bậy bị chặn; Box cập nhật máy trạm qua SSH;
 # SSH máy trạm chỉ nhận khóa của Box từ IP của Box, không nhận mật khẩu.

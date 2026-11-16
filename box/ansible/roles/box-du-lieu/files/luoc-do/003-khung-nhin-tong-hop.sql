@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: MIT
+-- Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 -- Khung nhìn tổng hợp khảo sát cho quản lý: số phiếu và điểm trung bình theo tuần (thứ Hai đầu tuần).
 -- Không có góp ý, không có dòng lẻ: quản lý không đọc được bảng khao_sat (khảo sát ẩn danh).
 -- Khung nhìn chạy bằng quyền chủ CSDL (không security_invoker) nên đọc được bảng mà người xem không có quyền.

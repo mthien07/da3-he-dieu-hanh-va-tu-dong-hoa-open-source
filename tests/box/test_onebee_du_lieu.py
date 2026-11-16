@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử phần dữ liệu cấu trúc của OneBee Box (không cần Docker): dịch vụ PostgreSQL + PostgREST trong docker-compose.yml.j2
 (không công bố cổng, no-new-privileges, ghim digest, chỉ cầu nối danh tính nối được tới API, dùng chung khóa ký JWT của cầu nối),
 các tệp lược đồ (RLS trên mọi bảng, không tự duyệt đơn, danh mục khớp biểu mẫu, đúng giao kèo cột), role box-du-lieu trong site.yml,
