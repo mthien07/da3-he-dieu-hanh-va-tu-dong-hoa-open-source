@@ -130,12 +130,42 @@
   delay: 30
   until: onebee_kho_tep_up.rc == 0
 
+# SeaweedFS khởi động lần đầu trên máy chậm có thể lâu hơn một phút (filer đăng ký với master);
+# chờ tối đa 4,5 phút trước khi coi là hỏng, kèm chẩn đoán để lần sau đọc được ngay.
 - name: Chờ dịch vụ cổng tệp và SeaweedFS sẵn sàng
-  ansible.builtin.command: >-
-    docker exec onebee-kho-tep python3 -I -c
-    "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/suc-khoe', timeout=5)"
-  register: onebee_kho_tep_san_sang
-  until: onebee_kho_tep_san_sang.rc == 0
-  retries: 30
-  delay: 2
-  changed_when: false
+  block:
+    - name: Chờ dịch vụ cổng tệp và SeaweedFS sẵn sàng
+      ansible.builtin.command: >-
+        docker exec onebee-kho-tep python3 -I -c
+        "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/suc-khoe', timeout=5)"
+      register: onebee_kho_tep_san_sang
+      until: onebee_kho_tep_san_sang.rc == 0
+      retries: 90
+      delay: 3
+      changed_when: false
+  rescue:
+    - name: Đọc trạng thái container khi kho tệp chưa sẵn sàng
+      ansible.builtin.command: docker compose ps --all
+      args:
+        chdir: "{{ onebee_box_dir }}"
+      register: onebee_kho_tep_ps
+      changed_when: false
+      failed_when: false
+
+    - name: In trạng thái container khi kho tệp chưa sẵn sàng
+      ansible.builtin.debug:
+        msg: "{{ onebee_kho_tep_ps.stdout }}"
+
+    - name: Đọc nhật ký SeaweedFS khi kho tệp chưa sẵn sàng
+      ansible.builtin.command: docker logs --tail 80 onebee-seaweedfs
+      register: onebee_seaweedfs_nhat_ky
+      changed_when: false
+      failed_when: false
+
+    - name: In nhật ký SeaweedFS khi kho tệp chưa sẵn sàng
+      ansible.builtin.debug:
+        msg: "{{ onebee_seaweedfs_nhat_ky.stdout }}{{ onebee_seaweedfs_nhat_ky.stderr }}"
+
+    - name: Dừng bộ cài vì kho tệp chưa sẵn sàng
+      ansible.builtin.fail:
+        msg: "Kho tệp chưa sẵn sàng sau 4,5 phút — xem trạng thái và nhật ký SeaweedFS ở trên."
