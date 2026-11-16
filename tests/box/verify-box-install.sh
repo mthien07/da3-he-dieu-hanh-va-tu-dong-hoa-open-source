@@ -60,8 +60,9 @@ check "Động cơ quy trình: trình soạn luồng có mật khẩu riêng (ad
    && grep -q \"httpAdminRoot: '/quy-trinh'\" /opt/onebee-box/quy-trinh/settings.js && grep -q 'allowInstall: false' /opt/onebee-box/quy-trinh/settings.js"
 check "Động cơ quy trình không công bố cổng nào (Caddy là cửa duy nhất)" bash -c "[ -z \"\$(docker port onebee-quy-trinh)\" ]"
 check "Các image dịch vụ ghim theo digest (@sha256)" bash -c \
-  "for c in onebee-portal onebee-ollama onebee-open-webui onebee-quy-trinh onebee-uptime-kuma onebee-rest-server; do \
+  "for c in onebee-portal onebee-ollama onebee-quy-trinh onebee-uptime-kuma onebee-rest-server; do \
      a=\$(docker inspect -f '{{.Config.Image}}' \$c 2>/dev/null) || { echo \"không đọc được image của \$c\"; exit 1; }; \
+     # Open WebUI do bài kiểm thay bằng bản -slim (không digest) cho nhanh; máy thật vẫn kiểm ở compose/unit test
      case \"\$a\" in *@sha256:*) ;; *) echo \"\$c dùng image chưa ghim digest: \$a\"; exit 1 ;; esac; \
    done"
 check "Open WebUI: tắt Functions/Tools; quản trị không đọc/xuất chat; tắt chia sẻ chat (biến môi trường)" bash -c \
