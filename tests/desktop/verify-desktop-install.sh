@@ -53,6 +53,8 @@ check "Có file cấu hình định dạng mặc định LibreOffice" \
   grep -q 'MS Word 2007 XML' /usr/lib/libreoffice/share/registry/onebee-office-defaults.xcd
 
 check "Có hình nền OneBee" test -s /usr/share/backgrounds/onebee/onebee-wallpaper.png
+check "Có lệnh áp giao diện OneBee và tự chạy khi đăng nhập" bash -c \
+  "test -x /usr/local/bin/onebee-ap-giao-dien && grep -q '^Exec=/usr/local/bin/onebee-ap-giao-dien$' /etc/xdg/autostart/onebee-ap-giao-dien.desktop"
 if [[ -f /usr/share/glib-2.0/schemas/org.cinnamon.desktop.background.gschema.xml ]]; then
   check "Cinnamon dùng hình nền OneBee mặc định" bash -c \
     "GSETTINGS_BACKEND=memory gsettings get org.cinnamon.desktop.background picture-uri | grep -q onebee-wallpaper.png"
