@@ -62,7 +62,7 @@ gia restic '[[ -s "${RESTIC_PASSWORD_FILE:-}" && "${RESTIC_REPOSITORY:-}" == */r
 [[ ! -e "${SIM}/restic-chua-tao" ]] || { echo "Fatal: unable to open config file: no such file" >&2; exit 10; }
 cat "${SIM}/restic-snapshots"'
 # docker: $SIM/docker-tat = dịch vụ docker ngừng; $SIM/ct-<tên> = "<Status> [<Health>]" (mặc định running); $SIM/ct-<tên>-mat = không có container
-# docker exec onebee-open-webui curl ... ollama:11434 → in thân + dòng "<mã HTTP> <giây>" từ $SIM/ai (mặc định "200 1.2"); ghi lại tham số
+# docker exec onebee-ai-rag python3 ... kiem-ollama → in "<mã HTTP> <giây>" từ $SIM/ai (mặc định "200 1.2"); ghi lại tham số
 gia docker '[[ ! -e "${SIM}/docker-tat" ]] || { echo "Cannot connect to the Docker daemon" >&2; exit 1; }
 case "$1" in
   info) echo ok ;;
@@ -80,8 +80,7 @@ case "$1" in
     [[ "$2 $3" != "onebee-postgres pg_isready" ]] || { [[ ! -e "${SIM}/pg-hong" ]] || { echo "127.0.0.1:5432 - no response"; exit 2; }; exit 0; }
     [[ "$2" != onebee-cau-noi ]] || { [[ "$*" == *"http://postgrest:3001/ready"* && ! -e "${SIM}/postgrest-hong" ]] || exit 1; exit 0; }
     read -r ma giay <<<"$(cat "${SIM}/ai" 2>/dev/null || echo "200 1.2")"
-    [[ "${ma}" == 200 ]] && printf "{\"response\":\"ok\",\"done\":true}" || printf "{\"error\":\"model not found\"}"
-    printf "\n%s %s" "${ma}" "${giay}"; [[ "${ma}" != 000 ]] || exit 28 ;;
+    printf "%s %s" "${ma}" "${giay}"; [[ "${ma}" != 000 ]] || exit 28 ;;
   *) exit 0 ;;
 esac'
 export SIM PATH="${T}/bin:${PATH}" ONEBEE_PROC="${T}/proc" NO_COLOR=1
@@ -151,7 +150,7 @@ assert d["thoi_diem"][:2] == "20"' "${OUT}" 2>"${T}/py-loi"; then pass "Mọi d�
 else fail "Mọi dịch vụ sống: JSON sai — $(tail -1 "${T}/py-loi")"; echo "${OUT}" | head -c 600; echo; fi
 if [[ "${RC}" == 0 ]]; then pass "Mọi dịch vụ sống: mã thoát 0"; else fail "Mọi dịch vụ sống: mã thoát ${RC} (mong 0)"; fi
 [[ "$(khong_ok)" == "" ]] || fail "Mọi dịch vụ sống: có mục không OK: $(khong_ok)"
-for c in onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server onebee-authelia onebee-cau-noi \
+for c in onebee-portal onebee-ollama onebee-ai-rag onebee-n8n onebee-uptime-kuma onebee-rest-server onebee-authelia onebee-cau-noi \
          onebee-postgres onebee-postgrest postgres_ket_noi postgrest_tra_loi; do
   [[ "$(trang_thai docker "${c}")" == ok ]] || fail "Thiếu mục ${c} trong hạng mục Docker"
 done
@@ -160,7 +159,7 @@ if grep -q 'onebee-postgres pg_isready -q -h 127.0.0.1 -U postgres -d onebee' "$
    && grep -q 'onebee-cau-noi python3 -I -c .*http://postgrest:3001/ready' "${SIM}/docker-exec.log"; then
   pass "Thử CSDL: pg_isready qua TCP trong onebee-postgres; PostgREST hỏi /ready (cổng quản trị) từ cầu nối danh tính"
 else fail "Thử CSDL/PostgREST không gọi đúng: $(grep -E 'postgres|cau-noi' "${SIM}/docker-exec.log")"; fi
-if grep -q 'gemma4:e2b-it-qat' "${SIM}/docker-exec.log" && grep -q 'http://ollama:11434/api/generate' "${SIM}/docker-exec.log"; then pass "Thử AI: gửi prompt tới Ollama cổng 11434 bằng đúng model trong group_vars"; else fail "Thử AI không gọi Ollama đúng model/cổng: $(cat "${SIM}/docker-exec.log" 2>/dev/null)"; fi
+if grep -q 'onebee-ai-rag python3 -I /app/onebee-ai-rag.py kiem-ollama' "${SIM}/docker-exec.log"; then pass "Thử AI: gọi dịch vụ Trợ lý AI, dịch vụ hỏi Ollama cổng 11434 bằng model trong group_vars"; else fail "Thử AI không gọi đúng dịch vụ: $(cat "${SIM}/docker-exec.log" 2>/dev/null)"; fi
 
 chay
 if [[ "${RC}" == 0 ]] && grep -q '\[OK\]' <<<"${OUT}" && ! grep -q 'LỖI\|CẢNH BÁO' <<<"${OUT}" \
@@ -174,8 +173,8 @@ kich_ban "Tắt n8n → chỉ container n8n LỖI, mã thoát 2" 2 "docker/onebe
 chay
 if grep -q '\[LỖI\].*onebee-n8n' <<<"${OUT}" && grep -q 'docker compose' <<<"${OUT}" && grep -q '^KẾT LUẬN.*1 lỗi' <<<"${OUT}"; then pass "Bảng chữ: dòng [LỖI] n8n kèm gợi ý chạy lại, kết luận nêu 1 lỗi"; else fail "Bảng chữ khi tắt n8n thiếu [LỖI]/gợi ý/kết luận"; echo "${OUT}"; fi
 
-moi_thu_khoe; echo "exited" >"${SIM}/ct-onebee-open-webui"
-kich_ban "Tắt Open WebUI → container LỖI và không thử được AI (LỖI)" 2 "docker/onebee-open-webui=loi ai/ollama=loi"
+moi_thu_khoe; echo "exited" >"${SIM}/ct-onebee-ai-rag"
+kich_ban "Tắt dịch vụ Trợ lý AI → container LỖI và không thử được AI (LỖI)" 2 "docker/onebee-ai-rag=loi ai/ollama=loi"
 moi_thu_khoe; echo "running unhealthy" >"${SIM}/ct-onebee-ollama"
 kich_ban "Container Ollama unhealthy → LỖI" 2 "docker/onebee-ollama=loi"
 moi_thu_khoe; echo "running starting" >"${SIM}/ct-onebee-rest-server"

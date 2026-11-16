@@ -15,7 +15,6 @@ onebee_box_ssh_dir: /etc/onebee-box/secrets/ssh  # khóa SSH quản trị máy t
 onebee_box_images:
   caddy: docker.io/library/caddy:2.11.4@sha256:0c994536bddb66445885237f1a5dcc1916bccea922661c76b4e9fc24061f9b52
   ollama: docker.io/ollama/ollama:0.34.4@sha256:8262851b2846b87c649eddf3e76beb270c52f4d1bc94559f47efde16b0841551
-  open_webui: ghcr.io/open-webui/open-webui:v0.11.4@sha256:9591b13f13843c7721c2b8eaf7382846c81b3ffe126526d1888d1fed50c6a33f
   n8n: docker.io/n8nio/n8n:2.42.6@sha256:526daa38b68e923cc00c5280d18b4da5d489f115a73bdbf3b8e452b184197a9a
   uptime_kuma: docker.io/louislam/uptime-kuma:2.5.5@sha256:c74379ac4509ce2d2c2633f509e67003ee2e45b6e995c5e43fc101f45a0e1fbe
   rest_server: docker.io/restic/rest-server:0.14.0@sha256:d2aff06f47eb38637dff580c3e6bce4af98f386c396a25d32eb6727ec96214a5
@@ -60,7 +59,6 @@ onebee_box_nhom_nguoi_dung: [nhan_vien, ky_thuat, quan_ly]
 # Cổng trong mạng LAN (KHÔNG mở các cổng này ra Internet trên router)
 onebee_box_ports:
   portal: 80  # trang chủ: tình trạng Box + lối tắt các dịch vụ (http://onebee.local)
-  open_webui: 3000  # Trợ lý AI
   n8n: 5678         # Tự động hóa
   uptime_kuma: 3001  # Giám sát
   rest_server: 8000  # Nhận sao lưu từ máy trạm
@@ -72,7 +70,7 @@ onebee_box_tuong_lua_bat: true
 onebee_box_lan_cho_phep: []
 # Kỹ thuật vào Box qua Tailscale: địa chỉ Tailscale (100.x.y.z hoặc dải) của MÁY KỸ THUẬT được vào web/SSH/thư mục chung của Box
 # (QĐ6, rà soát bảo mật F5). Để trống: mọi kết nối qua tailscale0 bị chặn. Cổng mạng lạ khác (card phụ, wg0, tun0) luôn bị chặn.
-# Nên kèm ACL phía Tailscale: tag:kythuat → Box tcp 22,80,443,3000,5678,3001; thiết bị khác trong tailnet không vào được Box.
+# Nên kèm ACL phía Tailscale: tag:kythuat → Box tcp 22,80,443,5678,3001; thiết bị khác trong tailnet không vào được Box.
 onebee_box_tailscale_cho_phep: []
 
 # SSH vào Box chỉ bằng khóa, không cho root — tự bật khi đã có khóa SSH của tài khoản quản trị (~/.ssh/authorized_keys)
@@ -81,13 +79,10 @@ onebee_box_ssh_chi_khoa: true
 # Trợ lý AI — dòng Gemma của Google (anh chốt 29/9). Chọn theo ADR 0003: bản nhẹ nhất vượt ngưỡng chất lượng
 # (chấm trên máy thử 29/9). Tốc độ còn phải đo trên máy Box thật.
 onebee_box_ai_model: gemma4:e2b-it-qat
-onebee_box_ai_models: ["{{ onebee_box_ai_model }}"]   # model tải sẵn khi cài
-onebee_box_admin_email: quantri@onebee.lan             # tài khoản quản trị Trợ lý AI (mật khẩu: onebee-box in-khoa)
-# Origin được phép dùng Trợ lý AI NGOÀI hai địa chỉ mặc định (http(s)://<IP Box>:3000 và http(s)://box.<mã>.onebee.internal:3000).
-# Mở Trợ lý AI bằng tên/IP khác (tên DNS của router, IP Tailscale trần, đường hầm SSH http://localhost:3000) thì chat thời gian thực
-# (WebSocket) bị chặn mà không báo lỗi. Khai đầy đủ giao thức + tên + cổng, không có đường dẫn, vd ["http://onebee-box.lan:3000"].
-# Áp dụng cho cả chế độ HTTP lẫn HTTPS (HTTPS thì ghi https://...). Để trống: chỉ hai địa chỉ mặc định. Không dùng "*".
-onebee_box_cors_them: []
+# Mô hình nhúng cho kho tri thức (pgvector); đổi mô hình thì lần nạp sau tự nhúng lại toàn bộ
+onebee_box_ai_model_nhung: nomic-embed-text:v1.5
+onebee_box_ai_models: ["{{ onebee_box_ai_model }}", "{{ onebee_box_ai_model_nhung }}"]   # model tải sẵn khi cài
+onebee_box_admin_email: quantri@onebee.lan             # tài khoản chủ n8n (mật khẩu: onebee-box in-khoa)
 
 # Chỉ cho các dải mạng nội bộ vào thư mục chung
 onebee_box_samba_hosts_allow: "127. 10. 172.16.0.0/12 192.168."
@@ -127,12 +122,11 @@ onebee_box_lich_han:
   - {ten: "Gửi báo cáo tình hình hoạt động quý cho xã viên (việc nội bộ — ví dụ)", loai: quy, ngay: 15}
 onebee_box_nhac_truoc_ngay: [7, 3, 1, 0]
 
-# Trợ lý AI theo từng nhân viên (Pha 4c): mỗi nhân viên dùng khóa riêng của mình (lệnh `hoi --dang-nhap` / `hoi --dan-khoa`).
-# true (chuyển tiếp): Box vẫn cấp tài khoản + khóa theo từng MÁY (may-<tên>@onebee.lan)
-#   để `hoi` chạy ngay ở nhân viên chưa thiết lập khóa riêng.
+# Trợ lý AI theo từng nhân viên: mỗi người dùng khóa riêng do `onebee-box them-nguoi` cấp (dán vào máy bằng `hoi --dan-khoa`).
+# true (chuyển tiếp): Box vẫn cấp thêm khóa theo từng MÁY (may-<tên>) để `hoi` chạy ngay ở nhân viên chưa có khóa riêng.
 #   Khóa máy nằm trong /etc/onebee-hoi.conf, mọi tài khoản trên máy đọc được (rà soát bảo mật F10).
-# false: thôi cấp tài khoản/khóa theo máy, thôi đẩy HOI_API_KEY xuống máy. Sau đó chạy: sudo onebee-box go-khoa-hoi-may
-#   (xóa các tài khoản may-<tên> cũ trên Open WebUI) — nhân viên nào chưa chạy `hoi --dang-nhap` sẽ không hỏi được nữa.
+# false: thôi cấp khóa theo máy, thôi đẩy HOI_API_KEY xuống máy. Sau đó chạy: sudo onebee-box go-khoa-hoi-may
+#   — nhân viên nào chưa có khóa riêng sẽ không hỏi được nữa.
 onebee_box_hoi_khoa_may: true
 
 # Khóa gửi tình trạng dùng chung (header X-OneBee-Key ở cửa n8n) — chỉ còn là bộ lọc rác, không phải danh tính máy

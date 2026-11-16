@@ -7,7 +7,7 @@ Quy ước: phần "chưa kiểm" là chưa chạy được trong môi trường
 
 | Pha | Nội dung | Trạng thái kiểm |
 |---|---|---|
-| 1 | n8n lên 2.42.6, ghim digest mọi image, tắt Agents/MCP/Plugins của Open WebUI, cảnh báo tài khoản sudo | Chạy thử đã được kiểm và Opus rà soát |
+| 1 | n8n lên 2.42.6, ghim digest mọi image, tắt Agents/MCP/Plugins của giao diện Trợ lý AI (bản cũ), cảnh báo tài khoản sudo | Chạy thử đã được kiểm và Opus rà soát |
 | 2 | Báo cáo tình trạng có chữ ký; SSH máy trạm phải chứng minh biết mật khẩu kho rồi mới ghim khóa; `thu-hoi-may`, `dong-bo-may` | Chạy thử đã được kiểm và Opus rà soát |
 | 3 | CA riêng mỗi Box, giới hạn chỉ cấp cho IP Box và `<mã>.onebee.internal`; role `ket-noi-box` cài CA lên máy trạm | Thử chuỗi CA thật bằng openssl, Python, curl |
 | 4 | HTTPS qua Caddy, bật bằng `onebee_box_https: true` (mặc định `false`) | Caddy 2.11.4 thật; Ansible 2.19 chạy được |
@@ -39,7 +39,7 @@ Chi tiết quan trọng:
 - Toàn bộ script Docker lồng chưa từng chạy: `check-https.sh`, `check-xoay-khoa.sh`, các sửa trong `run-box-test-in-systemd-container.sh`, `check-khoi-phuc-toan-bo.sh`, `verify-box-install.sh`. Bộ cài trong đó dùng ansible-core 2.16 của Ubuntu, nên đây là lần đầu code mới chạy trên 2.16.
 - [Unverified] Firefox và Chrome có áp ràng buộc tên của CA hay không; Windows có áp cho CA tự cài hay không.
 - n8n 2.42.6 nhận quy trình 06 và áp mật khẩu chủ mới khi khởi động lại.
-- Open WebUI v0.11.4 và Uptime Kuma 2.5.5 chạy đúng các lệnh đổi mật khẩu/khóa API.
+- giao diện Trợ lý AI (bản cũ) v0.11.4 và Uptime Kuma 2.5.5 chạy đúng các lệnh đổi mật khẩu/khóa API.
 - Hệ quả của việc đổi `WEBUI_SECRET_KEY`.
 - Tường lửa thật, Tailscale, Samba với Windows 10 và Mint, WebSocket chat qua Caddy, restic tải lớn qua Caddy.
 

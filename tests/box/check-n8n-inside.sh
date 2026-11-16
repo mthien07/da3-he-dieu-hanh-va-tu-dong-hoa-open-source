@@ -145,5 +145,5 @@ docker stop onebee-ollama >/dev/null
 for _ in $(seq 60); do subjects | grep -q "Ollama" && break; sleep 5; done
 subjects | grep -q "Ollama" || { echo "FAIL  Uptime Kuma không gửi email khi Ollama ngừng"; subjects; exit 1; }
 docker start onebee-ollama >/dev/null
-for _ in $(seq 30); do docker exec onebee-open-webui curl -s -m 5 http://ollama:11434/api/version | grep -q version && break; sleep 2; done
+for _ in $(seq 30); do docker exec onebee-ai-rag python3 -I -c "import urllib.request; print(urllib.request.urlopen('http://ollama:11434/api/version', timeout=5).read().decode())" 2>/dev/null | grep -q version && break; sleep 2; done
 echo "PASS  Dịch vụ ngừng (Ollama) → Uptime Kuma gửi email báo quản trị"
