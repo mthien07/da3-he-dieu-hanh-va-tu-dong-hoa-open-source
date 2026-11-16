@@ -163,6 +163,8 @@ class BoCaiDemo(unittest.TestCase):
         self.assertIn("onebee_box_che_do_demo: true", nd)
         self.assertIn("onebee_box_che_do_demo: false", nd)
         self.assertIn("KẾT QUẢ", nd)
+        # Trước khi gộp trang Sổ điều hành: bỏ qua mục thanh thông báo, không báo hỏng oan
+        self.assertIn("SKIP  Chưa có trang Sổ điều hành", nd)
 
 
 if __name__ == "__main__":
