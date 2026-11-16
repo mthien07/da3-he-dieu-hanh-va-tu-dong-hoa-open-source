@@ -20,6 +20,15 @@
     - {path: "{{ onebee_box_dir }}/clamav", mode: "0755"}
     - {path: /usr/local/lib/onebee-box, mode: "0755"}   # lệnh nộp chữ ký ngoại tuyến (các role khác cũng dùng thư mục này)
 
+# SeaweedFS chạy bằng uid 1000 trong container, không capability (compose user: "1000:1000"): thư mục dữ liệu phải thuộc uid đó
+- name: Giao thư mục dữ liệu SeaweedFS cho người dùng trong container
+  ansible.builtin.file:
+    path: "{{ onebee_box_data }}/seaweedfs"
+    state: directory
+    owner: "1000"
+    group: "1000"
+    mode: "0700"
+
 - name: Cài mã dịch vụ kho tệp (mount vào container và lệnh nộp chữ ký ngoại tuyến)
   ansible.builtin.copy:
     src: onebee-kho-tep.py

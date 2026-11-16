@@ -57,6 +57,9 @@ class CauHinhKhoTep(unittest.TestCase):
                 self.assertIn("no-new-privileges:true", s[ten]["security_opt"], (ten, https))
                 self.assertEqual(s[ten]["logging"], c["x-logging"], (ten, https))
         self.assertEqual(s["seaweedfs"]["image"], GIA_TRI["onebee_box_images"]["seaweedfs"])
+        # Bỏ hết capability thì entrypoint của image (chown + su-exec) không chạy được → chạy thẳng weed bằng uid 1000
+        self.assertEqual(s["seaweedfs"]["user"], "1000:1000")
+        self.assertEqual(s["seaweedfs"]["entrypoint"], ["/usr/bin/weed"])
         self.assertEqual(s["kho-tep"]["image"], "onebee/clamav-khong-unrar:1.5.4")
         self.assertEqual(s["seaweedfs"]["networks"], ["kho_tep"])
         self.assertEqual(set(s["kho-tep"]["networks"]), {"sso", "kho_tep"})

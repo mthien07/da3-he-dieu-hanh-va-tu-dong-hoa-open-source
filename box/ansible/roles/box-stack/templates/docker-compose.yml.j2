@@ -267,6 +267,10 @@ services:
     logging: *logging
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]
+    # Entrypoint của image chown /data rồi su-exec sang người dùng thường — cần capability mà dịch vụ đã bỏ hết.
+    # Chạy thẳng weed bằng uid 1000 (role box-kho-tep giao thư mục dữ liệu cho uid này), không cần capability nào.
+    user: "1000:1000"
+    entrypoint: ["/usr/bin/weed"]
     command: ["server", "-dir=/data", "-filer=true", "-volume.max=10"]
     networks: [kho_tep]
     volumes:
