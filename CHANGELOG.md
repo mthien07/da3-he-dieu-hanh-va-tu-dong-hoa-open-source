@@ -1,6 +1,6 @@
 # Nhật ký thay đổi
 
-## [1.3.0] — 17/11/2026 — Lõi DX-OS open-core (chưa phát hành)
+## [1.3.0] — 17/11/2026 — Lõi DX-OS open-core
 Thay đổi của lõi DX-OS dự thi OLP 2026. Đã kiểm bằng CI `box=true` trên Docker lồng và một lượt trên máy ảo VMware; **chưa thử trên Box thật**.
 - Động cơ quy trình Node-RED 5.0.9 thay n8n: luồng duyệt đơn, email báo cáo, nhắc hạn; trình soạn luồng có mật khẩu riêng ở lớp hai.
 - Kho tệp SeaweedFS 4.53 và kiểm dịch ClamAV 1.5.4 (image dựng cục bộ bỏ `libclamunrar`): tải lên 10 MB, quét từng lượt, tệp nhiễm bị cách ly.
