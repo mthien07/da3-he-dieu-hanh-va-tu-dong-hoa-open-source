@@ -256,4 +256,8 @@ echo "PASS  Sau khởi động lại, dịch vụ tự chạy lại"
 
 echo "===== BẤT BIẾN BẢO MẬT (HTTP) ====="
 box 'ONEBEE_HTTPS=0 /root/onebee-test/tests/box/kiem-bat-bien.sh'
+
+echo "===== BẢN CHẠY THỬ CÔNG KHAI (DEMO) ====="
+"${REPO_ROOT}/tests/box/check-ban-demo.sh" "${BOX}"
+
 echo "TẤT CẢ BƯỚC KIỂM THỬ BOX ĐẠT"

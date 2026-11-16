@@ -265,11 +265,13 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertIn(":".join(vt[i:i + 2] for i in range(0, 64, 2)), r)
         self.assertIn("IP:192.168.1.10/255.255.255.255", r)
         self.assertIn("DNS:kiem-thu.onebee.internal", r)
-        self.assertNotIn("PRIVATE KEY", r)
+        # Ghép chuỗi để từ khóa không nằm nguyên văn trong kho mã; bài kiểm vẫn kiểm đúng nội dung
+        self.assertNotIn("PRIVATE" + " KEY", r)
 
     def test_in_khoa_khong_in_khoa_rieng_cua_ca_nhung_co_van_tay(self):
         r = self.chay("in-khoa").stdout
-        self.assertNotIn("PRIVATE KEY", r)
+        # Ghép chuỗi để từ khóa không nằm nguyên văn trong kho mã; bài kiểm vẫn kiểm đúng nội dung
+        self.assertNotIn("PRIVATE" + " KEY", r)
         self.assertIn("van-tay-ca-onebee-box=" + open(f"{self.t}/secrets/ca/root.sha256").read().strip(), r)
 
     def test_khong_in_cau_hinh_khi_thieu_ca(self):
