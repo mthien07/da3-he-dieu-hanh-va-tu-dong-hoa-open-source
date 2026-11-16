@@ -1,21 +1,31 @@
 # Nhật ký thay đổi
 
-## Chưa phát hành — Dữ liệu cấu trúc: PostgreSQL và API tự sinh (lõi DX-OS, ADR 0006)
+## [Unreleased]
+Thay đổi chưa phát hành, gom theo từng mảng của lõi DX-OS open-core.
+- Động cơ quy trình Node-RED, gỡ n8n: _chưa điền_
+- Kho tệp và kiểm dịch: _chưa điền_
+- Trợ lý AI và RAG trên lõi, gỡ Open WebUI: _chưa điền_
+- Ứng dụng Sổ điều hành H-P-D-I: _chưa điền_
+- Bản chạy thử công khai: _chưa điền_
+- Giấy phép từng tệp và đóng gói: mọi tệp mã có dòng `SPDX-License-Identifier: MIT` (`scripts/chen-giay-phep.py`, chạy lại không chèn trùng; CI chạy `--kiem` chặn tệp mã mới thiếu giấy phép); nhật ký thay đổi ra gốc repo (`CHANGELOG.md`); gói phát hành đóng kèm `LICENSE`, `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`; `scripts/dong-goi-ban-phat-hanh.sh X.Y.Z-dev` đóng gói thử từ mục `[Unreleased]`.
+- Tài liệu và hồ sơ nộp bài: _chưa điền_
+
+### Dữ liệu cấu trúc: PostgreSQL và API tự sinh (lõi DX-OS, ADR 0006)
 Đã kiểm bằng unit test và `check-csdl-rls.sh` (PostgreSQL thật từ image đã ghim, chạy trong CI); bộ kiểm Box (`check-du-lieu-qua-cong.sh`,
 bài khôi phục toàn bộ) chạy trên máy ảo VMware `onebee-kiem-box`. Chưa thử trên Box thật.
-### Thêm
+#### Thêm
 - Role `box-du-lieu`: PostgreSQL 18.7 + pgvector 0.8.7, PostgREST 16.5 sau cầu nối danh tính (`/api/<bảng>`); lược đồ `onebee`
   (đơn hàng có duyệt, yêu cầu/xử lý hỗ trợ, khảo sát ẩn danh, tình trạng máy trạm) áp dụng có ghi sổ (`onebee.lich_su_luoc_do`).
 - `onebee-box chuyen-du-lieu`: nạp sổ CSV/JSON cũ vào CSDL, chạy lại chỉ nạp dòng mới; `bao-cao-tuan` đọc từ CSDL.
 - `chan-doan`: PostgreSQL nhận kết nối, PostgREST trả lời, kết xuất CSDL không cũ quá 48 giờ.
-### Bảo mật
+#### Bảo mật
 - Phân quyền tới cấp dòng (RLS bật và ép trên mọi bảng); không có vai trò ẩn danh; không ai tự duyệt đơn của mình (ràng buộc trong CSDL).
 - PostgreSQL và PostgREST không công bố cổng, bỏ capability; mạng riêng: chỉ cầu nối tới được PostgREST, chỉ PostgREST tới được PostgreSQL.
 - Sao lưu kết xuất CSDL trước khi tạm dừng dịch vụ; `xoay-khoa --box` đổi mật khẩu CSDL bằng `ALTER ROLE` trước khi ghi tệp bí mật.
 
-## Chưa phát hành — Đăng nhập một lần và cổng API (lõi DX-OS, ADR 0006)
+### Đăng nhập một lần và cổng API (lõi DX-OS, ADR 0006)
 Đã kiểm bằng unit test (Caddy thật, cầu nối thật); bộ kiểm Box (`check-sso-cong-api.sh`) chạy trên máy ảo VMware `onebee-kiem-box`. Chưa thử trên Box thật, chưa thử trình duyệt điện thoại.
-### Thêm
+#### Thêm
 - Dịch vụ định danh Authelia 4.39.28 (role `box-dinh-danh`): nhóm `nhan_vien` một lớp, `ky_thuat`/`quan_ly` hai lớp (TOTP);
   lệnh `onebee-box them-nguoi`, `xoa-nguoi`, `danh-sach-nguoi`, `ma-xac-nhan` (mã xác minh ghi danh hai lớp khi chưa có email).
 - Chỉ khi HTTPS bật, trên tên `box.<mã>.onebee.internal`: `/dangnhap/`, `/api/` (qua cầu nối danh tính ký JWT 60 giây, phía sau là dịch vụ
@@ -23,7 +33,7 @@ bài khôi phục toàn bộ) chạy trên máy ảo VMware `onebee-kiem-box`. C
 - Trang giám sát sau đăng nhập một lần (chỉ kỹ thuật, hai lớp), Uptime Kuma không đòi đăng nhập lần hai.
 - `onebee-box tat-sso-tam` / `bat-sso-lai`: lối thoát khi dịch vụ định danh hỏng (dữ liệu khóa 503, giám sát về mật khẩu riêng).
 - Cấu hình máy trạm có dòng `BOX_TEN`; máy trạm ghi dòng `/etc/hosts` cho tên Box.
-### Bảo mật
+#### Bảo mật
 - Caddy xóa `Remote-*`, `Authorization`, `Proxy-Authorization` do máy khách gửi trước mọi bước xác thực; cầu nối bỏ thêm `Cookie`.
 - Authelia và cầu nối không công bố cổng, bỏ mọi capability, chỉ nằm trong mạng Docker nội bộ `sso` cùng Caddy (n8n không gọi thẳng được).
 - Sao lưu Box gồm `/srv/onebee/authelia`; `xoay-khoa --box` đổi khóa phiên và khóa ký JWT, giữ khóa mã hóa ghi danh hai lớp.
