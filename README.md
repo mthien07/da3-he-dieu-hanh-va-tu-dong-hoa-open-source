@@ -72,13 +72,21 @@ Chi tiết, bốn nguyên lý thiết kế và phần chưa làm: [docs/kien-tru
 Bản phát hành (file nén + SHA256SUMS): [Releases](https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source/releases).
 Tự thử trên máy ảo trước khi cài cho đơn vị: [thu-nghiem-tren-may-ao.md](docs/huong-dan/thu-nghiem-tren-may-ao.md).
 
-**Máy trạm** — Linux Mint 22.x 64-bit, có Internet:
+**Máy trạm** — Linux Mint 22.x 64-bit, có Internet. Dán nguyên khối này vào terminal: tải bản phát hành mới nhất, kiểm SHA256 (sai là dừng), giải nén rồi chạy bộ cài:
+```bash
+cd "$(mktemp -d)" && R=mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source \
+ && V=$(curl -fsSL "https://api.github.com/repos/$R/releases/latest" | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p') \
+ && curl -fsSLO "https://github.com/$R/releases/download/v$V/onebee-os-$V.tar.gz" -O "https://github.com/$R/releases/download/v$V/SHA256SUMS" \
+ && sha256sum -c SHA256SUMS && tar xzf "onebee-os-$V.tar.gz" && cd "onebee-os-$V" && sudo ./desktop/onebee-install.sh
+```
+**Box** — Ubuntu Server 24.04 LTS 64-bit trong LAN: như trên, lệnh cuối là `sudo ./box/onebee-box-install.sh`.
+
+Muốn lấy mã nguồn mới nhất (chưa phát hành) để thử hoặc đóng góp, dùng `git clone`:
 ```bash
 sudo apt install -y git
 git clone https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source.git onebee
 cd onebee && sudo ./desktop/onebee-install.sh
 ```
-**Box** — Ubuntu Server 24.04 LTS 64-bit trong LAN: như trên, lệnh cuối là `sudo ./box/onebee-box-install.sh`.
 
 ## 📚 Tài liệu
 | Việc | Tài liệu |
