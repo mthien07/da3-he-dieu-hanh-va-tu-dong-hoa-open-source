@@ -42,6 +42,7 @@ cp ${S}/webui-admin-password /root/admin-cu
 cp ${S}/quy-trinh-soan-luong /root/soan-cu
 cp ${S}/quy-trinh-soan-hash /root/soan-hash-cu
 cp ${S}/quy-trinh-webhook-key /root/webhook-cu
+cp ${S}/authelia-storage-key /root/authelia-storage-key-cu
 for f in authelia-session-secret cau-noi-jwt-secret; do cp "${S}/${f}" "/root/${f}-cu"; done
 onebee-box xoay-khoa --box --dong-y > /root/xoay-box.log 2>&1 || { tail -40 /root/xoay-box.log; exit 1; }
 if cmp -s ${S}/webui-admin-password /root/admin-cu; then echo 'FAIL  Mật khẩu quản trị Trợ lý AI không đổi'; exit 1; fi
