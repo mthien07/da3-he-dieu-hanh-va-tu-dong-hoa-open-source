@@ -81,7 +81,7 @@ Sổ CSV cũ giữ nguyên chỗ cũ; `onebee-box chuyen-du-lieu` vẫn chuyển
   `verify-box-install.sh`, `test_onebee_bao_cao_tuan.py`, `test_onebee_box_shell.py`, `test_onebee_caddy_https.py`, `test_onebee_caddy_sso.py`,
   `test_onebee_compose_https.py`, `test_onebee_dinh_danh.py`, `test_onebee_du_lieu.py`, `test_onebee_may_tram.py`, `test_onebee_mdns_dashboard.py`.
 - **Sửa (tài liệu):** `docs/huong-dan/*.md`, `docs/hoi-thi/*.md`, `docs/kinh-doanh/*.md`, `docs/kiem-thu-tren-may-that.md`, `docs/security-audit.md`,
-  `docs/tong-ket-ra-soat-bao-mat.md`, `docs/project-changelog.md`, `reports/nghiem-thu-v1-docker.md` (tài liệu lịch sử: gọi là "công cụ quy trình cũ").
+  `docs/tong-ket-ra-soat-bao-mat.md`, `CHANGELOG.md`, `reports/nghiem-thu-v1-docker.md` (tài liệu lịch sử: gọi là "công cụ quy trình cũ").
 - **Giữ:** `docs/adr/0002`, `0004`, `0005`, `0006` (quyết định đã ghi, không viết lại lịch sử) và ADR này;
   `box/ansible/roles/box-du-lieu/files/luoc-do/001-khoi-tao.sql` — tệp lược đồ đã áp dụng, bộ cài kiểm SHA-256 và dừng nếu nội dung đổi,
   nên không được sửa kể cả lời chú thích.
