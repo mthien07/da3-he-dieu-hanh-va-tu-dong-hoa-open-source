@@ -2,7 +2,7 @@
 {% if onebee_https_hieu_luc | bool %}
 {% set cong = onebee_box_ports %}
 {% set kuma_san_sang = onebee_kuma_dia_chi | default('0.0.0.0') == '0.0.0.0' %}
-{% set cong_tls = [443, cong.open_webui, cong.n8n, cong.rest_server] + ([cong.uptime_kuma] if kuma_san_sang else []) %}
+{% set cong_tls = [443, cong.n8n, cong.rest_server] + ([cong.uptime_kuma] if kuma_san_sang else []) %}
 {# Mỗi cổng TLS có 2 địa chỉ: IP của Box (LAN) và box.<mã>.onebee.internal (kỹ thuật vào qua Tailscale, thêm dòng /etc/hosts trỏ tới IP Tailscale của Box) #}
 {% macro dia_chi(c) %}https://{{ onebee_box_ip }}:{{ c }}, https://box.{{ onebee_box_ma_don_vi }}.onebee.internal:{{ c }}{% endmacro %}
 {# HTTPS (Pha 4): CA riêng đặt sẵn (gốc + trung gian, ràng buộc tên); Caddy chỉ cấp chứng chỉ lá cho IP của Box và box.<mã>.onebee.internal #}
@@ -114,10 +114,27 @@ https://{{ ten_box }}:443 {
 			reverse_proxy cau-noi:8080
 		}
 	}
-	# AI: chỉ hai đường dẫn hỏi đáp; mọi API khác của Ollama (xóa/tải mô hình, liệt kê…) trả 404, kể cả khi đã đăng nhập
+	# Trợ lý AI: chỉ mở đúng hai đường hỏi đáp và tóm tắt của dịch vụ; mọi đường khác dưới /ai/ trả 404,
+	# kể cả khi đã đăng nhập (dịch vụ cũng tự trả 404).
+	# Máy trạm đi bằng khóa API riêng (X-OneBee-Khoa): không có phiên đăng nhập nên tuyến này KHÔNG qua forward_auth —
+	# dịch vụ tự từ chối khóa sai. Trình duyệt có phiên đi tuyến dưới, dịch vụ nhận Remote-User/Remote-Groups.
+	@ai_khoa {
+		method POST
+		path /ai/hoi /ai/tom-tat
+		header X-OneBee-Khoa *
+	}
+	handle @ai_khoa {
+		route {
+			request_header -Cookie
+			request_body {
+				max_size 1MB
+			}
+			reverse_proxy ai-rag:8092
+		}
+	}
 	@ai_hoi_dap {
 		method POST
-		path /ai/api/chat /ai/api/generate
+		path /ai/hoi /ai/tom-tat
 	}
 	handle @ai_hoi_dap {
 		route {
@@ -126,10 +143,7 @@ https://{{ ten_box }}:443 {
 			request_body {
 				max_size 1MB
 			}
-			uri strip_prefix /ai
-			reverse_proxy ollama:11434 {
-				flush_interval -1
-			}
+			reverse_proxy ai-rag:8092
 		}
 	}
 	handle /ai/* {
@@ -151,13 +165,6 @@ https://{{ ten_box }}:443 {
 	}
 {% endif %}
 {{ trang_chu() }}}
-
-{{ dia_chi(cong.open_webui) }} {
-	import onebee_tls
-	reverse_proxy open-webui:8080 {
-		stream_close_delay 5m
-	}
-}
 
 {# Không thêm tiêu đề CSP ở đây: n8n tự đặt CSP sandbox cho biểu mẫu #}
 {{ dia_chi(cong.n8n) }} {

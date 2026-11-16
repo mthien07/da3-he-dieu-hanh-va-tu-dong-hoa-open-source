@@ -33,7 +33,7 @@ Nhật ký cài đặt nằm ở `/var/log/onebee/`.
 | Cập nhật | Tự động nâng cấp và dọn gói thừa (mintupdate) |
 | Sao lưu | Khi có `/etc/onebee/may-tram.env` (từ OneBee Box): tự sao lưu `/home` lên Box 12:00 hằng ngày — xem hướng dẫn cài Box |
 | Múi giờ | Asia/Ho_Chi_Minh |
-| Trợ lý AI | Lệnh `hoi` (khi có khóa từ Box); mục **Trợ lý AI OneBee** trên thanh tác vụ/menu mở giao diện web của Trợ lý (cần máy đã kết nối Box) |
+| Trợ lý AI | Lệnh `hoi <câu hỏi>` (cần khóa do quản trị Box cấp: `hoi --dan-khoa`) |
 | Quản lý từ Box | Báo tình trạng mỗi giờ; Box cập nhật máy qua SSH — xem [quan-ly-may-tram.md](quan-ly-may-tram.md) |
 | Menu OneBee | "Báo cần hỗ trợ (OneBee)" (mở biểu mẫu trên Box), "Cho phép hỗ trợ từ xa (OneBee)" |
 | Trợ lý file Windows | Tự động bắt file `.exe` / `.msi` khi bấm đúp; gợi ý ứng dụng Linux tương đương (Zalo Web, Chromium, IBus Bamboo, PDF Viewer, VLC, hỗ trợ từ xa) hoặc hỗ trợ chạy WINE / máy ảo kế toán |

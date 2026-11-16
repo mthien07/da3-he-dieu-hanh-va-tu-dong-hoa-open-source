@@ -136,21 +136,16 @@ compose() { docker compose --project-directory "${BOX_DIR}" "$@"; }
 # (HasBeenManuallyStopped) → khởi động lại Box thì kho sao lưu KHÔNG tự chạy lại dù restart: unless-stopped (bắt được khi chạy A4).
 nap_lai_kho_http() { docker exec onebee-rest-server kill -HUP 1 >/dev/null 2>&1 || true; }
 
-# Gọi công cụ quản lý Open WebUI (tạo Trợ lý OneBee, cấp khóa API cho máy trạm)
-webui() {
-  WEBUI_URL="$(dia_chi_noi_bo):{{ onebee_box_ports.open_webui }}" ONEBEE_WEBUI_PUBLIC_URL="$(https_bat && echo "https://${BOX_ADDRESS}:{{ onebee_box_ports.open_webui }}" || true)" \
-  WEBUI_ADMIN_EMAIL={{ onebee_box_admin_email | quote }} \
-  WEBUI_ADMIN_PASSWORD="$(cat "${SECRETS}/webui-admin-password")" ONEBEE_AI_MODEL="{{ onebee_box_ai_model }}" \
-  ONEBEE_LOI_DAN=/usr/local/lib/onebee-box/tro-ly-onebee-loi-dan.md ONEBEE_SECRETS="${SECRETS}" \
-    python3 /usr/local/lib/onebee-box/onebee-webui.py "$@"
-}
+# Cấp / liệt kê / thu hồi khóa API của Trợ lý AI. Kho khóa nằm trong thư mục dữ liệu gắn vào dịch vụ (chỉ lưu bản băm)
+hoi_khoa() { AI_DU_LIEU="${DATA}/ai-rag" python3 -I /usr/local/lib/onebee-box/onebee-ai-rag.py khoa "$@"; }
 
 # ---- Đăng nhập một lần (role box-dinh-danh) ----
 NGUOI_DUNG_TEP="${DATA}/authelia/users_database.yml"   # Box quản lý; bộ cài chỉ tạo khi chưa có
 THONG_BAO_TEP="${DATA}/authelia/thong-bao.txt"         # mã xác minh ghi danh hai lớp (notifier filesystem)
 NHOM_NGUOI_DUNG=({{ onebee_box_nhom_nguoi_dung | join(' ') }})
 nguoi_dung_py() { python3 -I /usr/local/lib/onebee-box/onebee-nguoi-dung.py "$@"; }
-AI_PORT="{{ onebee_box_ports.open_webui }}"
+# Trợ lý AI chỉ phục vụ trên tên Box qua HTTPS (tuyến lõi, ADR 0006 QĐ2)
+AI_URL="https://box.{{ onebee_box_ma_don_vi }}.onebee.internal"
 N8N_PORT="{{ onebee_box_ports.n8n }}"
 
 # ---- Dữ liệu cấu trúc (role box-du-lieu): PostgreSQL trong container onebee-postgres, chỉ nối qua docker exec ----

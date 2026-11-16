@@ -222,10 +222,11 @@ class CauHinhAuthelia(unittest.TestCase):
 
     def test_sao_luu_va_khoi_phuc_co_du_lieu_dinh_danh(self):
         nd = open(os.path.join(TEMPLATES, "onebee-box-sao-luu.sh.j2"), encoding="utf-8").read()
-        self.assertIn("local svcs=(open-webui n8n uptime-kuma authelia)", nd)          # tạm dừng khi chụp CSDL (nhất quán)
-        csdl = next(d for d in nd.splitlines() if '"${DATA}/open-webui" "${DATA}/n8n"' in d and "${SECRETS}" in d)
+        self.assertIn("local svcs=(n8n uptime-kuma authelia)", nd)                     # tạm dừng khi chụp CSDL (nhất quán)
+        csdl = next(d for d in nd.splitlines()
+                    if '"${DATA}/ai-rag"' in d and '"${DATA}/n8n"' in d and "${SECRETS}" in d)
         self.assertIn('"${DATA}/authelia"', csdl)                                         # cùng bản chụp có nhãn csdl
-        xoa = next(d for d in nd.splitlines() if d.strip().startswith('rm -rf "${DATA}/open-webui"'))
+        xoa = next(d for d in nd.splitlines() if d.strip().startswith('rm -rf "${DATA}/ai-rag"'))
         self.assertIn('"${DATA}/authelia"', xoa)                                          # khôi phục: xóa bản của lần cài mới trước
 
 

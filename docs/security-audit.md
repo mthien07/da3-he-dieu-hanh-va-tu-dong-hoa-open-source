@@ -3,7 +3,7 @@
 - **Bản 1 — 10/10/2026:** đọc tĩnh mã nguồn tại commit `3061a08`, lịch sử git (39 commit), tra advisory của các image đã ghim.
 - **Bản 2 — 10/10/2026:**
   - Đưa vào 4 quyết định của chủ dự án (mục 0).
-  - Tra cứu sâu hơn bằng 9 agent chạy song song, chỉ đọc: mở từng advisory, đọc mã nguồn n8n/Open WebUI/Caddy, lập danh sách mọi chỗ trong repo phải sửa.
+  - Tra cứu sâu hơn bằng 9 agent chạy song song, chỉ đọc: mở từng advisory, đọc mã nguồn n8n/giao diện Trợ lý AI (bản cũ)/Caddy, lập danh sách mọi chỗ trong repo phải sửa.
   - 2 vòng phản biện kế hoạch: một soi chỗ làm hỏng hoặc bỏ sót, một soi lỗ hổng trong chính thiết kế.
   - Người viết đã tự kiểm lại 4 khẳng định có ảnh hưởng lớn nhất trên mã nguồn gốc (đánh dấu ✔). Các khẳng định khác ghi "(agent)": agent đã đọc nguồn gốc, người viết chưa tự kiểm lại.
 - **Bản 2.1 — 10/10/2026:** thêm QĐ5–QĐ16 (mã đơn vị, Tailscale qua Box, IP tĩnh, máy in tự ký, tài khoản Trợ lý AI cho từng nhân viên, không đọc/chia sẻ chat, 2 cách đăng nhập `hoi`, phiên 1 tháng, khóa CA trên Box, Samba chỉ Win 10 + Linux, giữ pyodide); sửa Pha 1, 3, 4, 5, thêm Pha 4c, sửa mục 6.
@@ -34,10 +34,10 @@ Quy ước:
 | QĐ10 | Quản trị **không** được đọc chat Trợ lý AI của nhân viên: tắt `ENABLE_ADMIN_CHAT_ACCESS` và `ENABLE_ADMIN_EXPORT` | Pha 1 |
 | QĐ11 | **Tắt** chia sẻ đoạn chat giữa nhân viên | Pha 1 |
 | QĐ12 | `hoi` đăng nhập được bằng **cả hai** cách: email + mật khẩu (`hoi --dang-nhap`) hoặc dán khóa API tự tạo trên web (`hoi --dan-khoa`) | Pha 4c |
-| QĐ13 | Phiên đăng nhập Open WebUI giữ **1 tháng** (`JWT_EXPIRES_IN=30d`) | Pha 1 |
+| QĐ13 | Phiên đăng nhập giao diện Trợ lý AI (bản cũ) giữ **1 tháng** (`JWT_EXPIRES_IN=30d`) | Pha 1 |
 | QĐ14 | Khóa gốc CA để **trên Box** (`secrets/ca`, chỉ root, không gắn vào container nào) | Pha 3 |
 | QĐ15 | Thư mục chung chỉ có máy **Windows 10 và Linux** dùng | Pha 5 (F8) |
-| QĐ16 | Giữ tính năng chạy mã (pyodide, chạy trong trình duyệt) của Open WebUI | — |
+| QĐ16 | Giữ tính năng chạy mã (pyodide, chạy trong trình duyệt) của giao diện Trợ lý AI (bản cũ) | — |
 
 **Trạng thái (14/10/2026):** Pha 1–5 đã triển khai và gộp vào `main` (PR #1); lỗi tìm thấy khi kiểm thử thật và bản sửa ghi ở `docs/kiem-thu-tren-may-that.md`.
 Lệnh **đã có** trong `onebee-box` liệt kê ở đầu `box/ansible/roles/box-stack/templates/onebee-box.sh.j2` (gồm `xoay-khoa`, `gia-han-ca`, `in-ca`, `may-chua-nhan-ca`, `go-khoa-hoi-may`).
@@ -63,11 +63,11 @@ Lệnh **đã có** trong `onebee-box` liệt kê ở đầu `box/ansible/roles/
 | F13 | Thấp | XÁC NHẬN | Bộ cài không ký; GitHub Actions ghim theo tag | `README.md`, `.github/workflows/*.yml` | 5 |
 | F14 | Thấp → **Thấp, chấp nhận** | XÁC NHẬN | VNC không mã hóa; dải 100.64/10 giờ chỉ còn tailnet của khách đó (QĐ2) | `onebee-ho-tro:32,41` | 5 (ACL) |
 | S1 | Trung nếu đúng → **Thấp** | **XÁC NHẬN ✔, bị sandbox chặn** | Trang "Tóm tắt PDF" in HTML thô do AI sinh; CSP `sandbox` không có `allow-same-origin` → không lấy được phiên chủ n8n | `03-tom-tat-van-ban.json.j2:37-38` | 1 |
-| S2 | Thấp–Trung → **ĐÓNG** | Không dính (agent) | Cả 26 advisory Open WebUI tháng 9 đều đã vá ở ≤ 0.11.4 | `group_vars/all.yml:16` | theo dõi |
+| S2 | Thấp–Trung → **ĐÓNG** | Không dính (agent) | Cả 26 advisory giao diện Trợ lý AI (bản cũ) tháng 9 đều đã vá ở ≤ 0.11.4 | `group_vars/all.yml:16` | theo dõi |
 | S3 | Thấp | NGHI NGỜ | Lọc công thức CSV chưa đủ | `_csv-js.j2:2`, `04-nhap-don-hang.json.j2:9` | 5 |
 | S4 | Thấp | NGHI NGỜ | `\r` trong tiêu đề email | `07-yeu-cau-ho-tro.json.j2:12` | 5 |
-| S5 | Thấp | **XÁC NHẬN** (agent) | Phiên Open WebUI sống 4 tuần (`JWT_EXPIRES_IN=4w`); không thu hồi được vì không có Redis | `docker-compose.yml.j2:39-59` | 1 |
-| N1 | Thấp (khuếch đại F3) | XÁC NHẬN (agent) | Open WebUI bật sẵn `ENABLE_PLUGINS` → lấy được phiên quản trị = chạy Python trong container (root) | `docker-compose.yml.j2:39-59` | 1 |
+| S5 | Thấp | **XÁC NHẬN** (agent) | Phiên giao diện Trợ lý AI (bản cũ) sống 4 tuần (`JWT_EXPIRES_IN=4w`); không thu hồi được vì không có Redis | `docker-compose.yml.j2:39-59` | 1 |
+| N1 | Thấp (khuếch đại F3) | XÁC NHẬN (agent) | giao diện Trợ lý AI (bản cũ) bật sẵn `ENABLE_PLUGINS` → lấy được phiên quản trị = chạy Python trong container (root) | `docker-compose.yml.j2:39-59` | 1 |
 | N2 | Thấp | XÁC NHẬN (agent) | n8n từ 2.41.1 bật sẵn mô-đun Agents (Box không dùng) — phát sinh khi nâng cấp | — | 1 |
 | N3 | Thấp | XÁC NHẬN | IP Box tính 2 cách có thể lệch (Ansible `ansible_default_ipv4` vs shell `ip route get`) — quan trọng khi IP nằm trong chứng chỉ | `docker-compose.yml.j2:85`, `onebee-box-common.sh.j2:28-31` | 3 |
 | N4 | Thấp | XÁC NHẬN ✔ | Tài liệu sai: khi "HOST IDENTIFICATION HAS CHANGED" bảo chạy lại `them-may`, nhưng lệnh này không đụng `known_hosts` | `docs/huong-dan/quan-ly-may-tram.md:39-40` | 1 |
@@ -110,9 +110,9 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
 - **Điểm tốt:** IP được kiểm bằng `ipaddress.IPv4Address` → không chèn được tham số Ansible.
 
 ### F3 — HTTP không TLS · Trung · XÁC NHẬN (đang vá theo QĐ3)
-- **Bằng chứng:** Open WebUI `:3000`, n8n `:5678`, Uptime Kuma `:3001`, rest-server `:8000` đều HTTP (`docker-compose.yml.j2:38,68,105,116`); `N8N_SECURE_COOKIE: "false"` (`:74`); mật khẩu kho trong URL `rest:http://…` (`onebee-box.sh.j2:48`).
-- **Khai thác:** giả mạo ARP trong LAN → đọc mật khẩu và phiên của quản trị Open WebUI, chủ n8n, Uptime Kuma, tài khoản biểu mẫu, mật khẩu HTTP kho sao lưu, khóa `hoi`, khóa tình trạng.
-- **Bản 2 (agent, đọc mã Open WebUI v0.11.4):**
+- **Bằng chứng:** giao diện Trợ lý AI (bản cũ) `:3000`, n8n `:5678`, Uptime Kuma `:3001`, rest-server `:8000` đều HTTP (`docker-compose.yml.j2:38,68,105,116`); `N8N_SECURE_COOKIE: "false"` (`:74`); mật khẩu kho trong URL `rest:http://…` (`onebee-box.sh.j2:48`).
+- **Khai thác:** giả mạo ARP trong LAN → đọc mật khẩu và phiên của quản trị giao diện Trợ lý AI (bản cũ), chủ n8n, Uptime Kuma, tài khoản biểu mẫu, mật khẩu HTTP kho sao lưu, khóa `hoi`, khóa tình trạng.
+- **Bản 2 (agent, đọc mã giao diện Trợ lý AI (bản cũ) v0.11.4):**
   - `ENABLE_PLUGINS` mặc định True (N1) → phiên quản trị bị lộ = tạo được Function = Python chạy phía máy chủ trong container (root). Bản 1 ghi [Unverified]; nay xác nhận.
   - JWT sống 4 tuần, không thu hồi được (S5).
 - Restic vẫn mã hóa phía máy trạm → lộ mật khẩu HTTP chỉ cho đọc bản mã hóa hoặc đẩy rác làm đầy ổ.
@@ -149,7 +149,7 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
 - Không có `no-new-privileges`, `cap_drop`, `read_only`, `user:`.
 
 ### F12 — `ENABLE_COMMUNITY_SHARING` · Thấp · XÁC NHẬN
-- Advisory [GHSA-vpq8-f445-hcq7](https://github.com/open-webui/open-webui/security/advisories/GHSA-vpq8-f445-hcq7) (High 8.1) đã vá ở 0.11.4.
+- Advisory GHSA-vpq8-f445-hcq7 (High 8.1) của giao diện cũ đã vá ở 0.11.4.
 - (agent) Cài đặt này lưu trong CSDL: phải đặt qua `ADMIN_CONFIG` trong `onebee-webui.py`, biến môi trường chỉ có tác dụng với bản cài mới.
 
 ### F13 — Chuỗi cung ứng bộ cài · Thấp · XÁC NHẬN
@@ -167,7 +167,7 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
 - Còn lại: PDF có lệnh giấu khiến AI sinh HTML → lừa đảo, giả nội dung trên một URL người dùng tin, gửi nội dung trang ra ngoài. Cần cả PDF độc lẫn model làm theo.
 - Mã này giống hệt từ 2.40.7 tới 2.43.0 → nâng n8n không sửa được S1.
 
-### S5 — Thời hạn phiên Open WebUI · Thấp · XÁC NHẬN (agent)
+### S5 — Thời hạn phiên giao diện Trợ lý AI (bản cũ) · Thấp · XÁC NHẬN (agent)
 - `JWT_EXPIRES_IN` mặc định `4w`; không có Redis → đăng xuất hay đổi mật khẩu không thu hồi được token.
 - Cài đặt lưu trong CSDL (đặt qua `ADMIN_CONFIG`).
 
@@ -191,7 +191,7 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
 | Thành phần | Đang ghim | Mới nhất | Kết luận |
 |---|---|---|---|
 | n8n | 2.40.7 | 2.42.6 (stable), 2.43.x (beta) | Dòng 2.40 ngừng vá → nâng (F1) |
-| Open WebUI | v0.11.4 | v0.11.4 | Không dính advisory nào tháng 8–9 (S2 đóng). Ghi chú phát hành nói một số bản vá có thể công bố muộn → theo dõi |
+| giao diện Trợ lý AI (bản cũ) | v0.11.4 | v0.11.4 | Không dính advisory nào tháng 8–9 (S2 đóng). Ghi chú phát hành nói một số bản vá có thể công bố muộn → theo dõi |
 | Uptime Kuma | 2.5.5 | 2.5.6 (chỉ cập nhật phụ thuộc) | Không dính; GHSA-wf2j ảnh hưởng ≤ 2.5.3 |
 | Caddy | 2.11.4 | 2.11.7 | Không dính khi chỉ phục vụ file tĩnh. 2.11.6+ đổi timeout mặc định → thử trước khi nâng (Pha 4) |
 | rest-server | 0.14.0 | 0.14.0 | Repo không có advisory. Image build 5/2025 (Go/x-crypto cũ) → nên quét image |
@@ -258,10 +258,10 @@ Box cài mới chưa có máy trạm: Pha 3 + 4 có hiệu lực ngay trong mộ
    - Kết quả đi qua sanitize-html và khung `white-space: pre-line`.
    - Sửa luôn lỗi hiển thị dòng bị dồn.
    - Không bao giờ đặt `N8N_INSECURE_DISABLE_FORM_HTML_SANDBOX`.
-5. **Open WebUI:**
+5. **giao diện Trợ lý AI (bản cũ):**
    - Env: `ENABLE_PLUGINS: "false"` (N1, biến này chỉ đọc từ env).
    - `ADMIN_CONFIG` (`onebee-webui.py`) thêm `ENABLE_COMMUNITY_SHARING: False` và `JWT_EXPIRES_IN: "30d"` (F12, S5, QĐ13; đây là đường duy nhất đổi được Box đã cài). Mirror vào env cho bản cài mới.
-   - **Tài khoản nhân viên (QĐ9)** — ✔ mặc định trong mã Open WebUI v0.11.4: `ENABLE_ADMIN_CHAT_ACCESS=True` (`env.py`, quản trị đọc được chat của mọi người), `USER_PERMISSIONS_CHAT_SHARE=True` (nhân viên chia sẻ được chat), `ENABLE_ADMIN_EXPORT=True`:
+   - **Tài khoản nhân viên (QĐ9)** — ✔ mặc định trong mã giao diện Trợ lý AI (bản cũ) v0.11.4: `ENABLE_ADMIN_CHAT_ACCESS=True` (`env.py`, quản trị đọc được chat của mọi người), `USER_PERMISSIONS_CHAT_SHARE=True` (nhân viên chia sẻ được chat), `ENABLE_ADMIN_EXPORT=True`:
      - QĐ10: env `ENABLE_ADMIN_CHAT_ACCESS: "false"` và `ENABLE_ADMIN_EXPORT: "false"` (cả hai chỉ đọc từ env — ✔ `env.py`/`config.py`). Sao lưu dữ liệu đã có restic của Box, không cần nút xuất trên web;
      - QĐ11: tắt `chat.share` trong quyền mặc định của người dùng qua API (`enforce_settings` trong `onebee-webui.py`, như cách đang bật quyền khóa API — vì quyền mặc định lưu trong CSDL) + env `USER_PERMISSIONS_CHAT_SHARE: "false"` cho bản cài mới;
      - test: tài khoản quản trị gọi API xem chat của nhân viên bị từ chối; quyền mặc định `chat.share=false`;
@@ -273,14 +273,14 @@ Box cài mới chưa có máy trạm: Pha 3 + 4 có hiệu lực ngay trong mộ
    - Sửa `cai-hang-loat.md` mục 2–3: nhân viên dùng tài khoản **Standard**, tài khoản quản trị giữ riêng.
 7. **N4:** sửa `quan-ly-may-tram.md:39-40` (dùng `ssh-keygen -R … -f /etc/onebee-box/secrets/ssh/known_hosts`).
 8. **Test:**
-   - `verify-box-install.sh`: kiểm env mới của n8n và Open WebUI; `GET /api/v1/auths/admin/config` trả đúng 2 giá trị.
+   - `verify-box-install.sh`: kiểm env mới của n8n và giao diện Trợ lý AI (bản cũ); `GET /api/v1/auths/admin/config` trả đúng 2 giá trị.
    - `check-n8n-inside.sh`:
      - `n8n export:workflow` → quy trình 03 có `respondWith=text` và biểu thức thoát HTML (không dựa vào AI lặp lại chuỗi độc — dễ chập chờn);
      - `curl -D -` trang completion có `content-security-policy: sandbox`, không có `allow-same-origin`.
    - `run-box-test…:50`: lệnh sed đổi sang `-slim` phải bỏ đuôi digest.
    - Test nâng cấp 2.40.7 → 2.42.6.
 - **Hoàn tác:** dừng n8n → trả `${DATA}/n8n.truoc-<bản-cũ>` về chỗ cũ → ghim lại 2.40.7 → chạy bộ cài.
-- **Rủi ro:** migration hỏng (đã có bản chép); `JWT_EXPIRES_IN=30d`: token bị lộ dùng được tới 30 ngày và không thu hồi được (không có Redis) — chấp nhận theo QĐ13; sau Pha 4 (HTTPS) và Pha 4b (đổi `WEBUI_SECRET_KEY`) đường lộ token qua nghe lén không còn; [Unverified] định dạng `30d` — kiểm khi làm (mặc định của Open WebUI là `4w`); tắt Functions/Tools (Box không dùng).
+- **Rủi ro:** migration hỏng (đã có bản chép); `JWT_EXPIRES_IN=30d`: token bị lộ dùng được tới 30 ngày và không thu hồi được (không có Redis) — chấp nhận theo QĐ13; sau Pha 4 (HTTPS) và Pha 4b (đổi `WEBUI_SECRET_KEY`) đường lộ token qua nghe lén không còn; [Unverified] định dạng `30d` — kiểm khi làm (mặc định của giao diện Trợ lý AI (bản cũ) là `4w`); tắt Functions/Tools (Box không dùng).
 
 #### Trạng thái triển khai Pha 1 (10/10/2026)
 Đã làm (và khác/bổ sung so với kế hoạch ở trên):
@@ -294,7 +294,7 @@ Box cài mới chưa có máy trạm: Pha 3 + 4 có hiệu lực ngay trong mộ
   (chữ thật của n8n@2.42.6: `Skipping credential … blocked by policy`, `Skipped workflow "…": N content-import policy violation(s)` — đối chiếu
   mã nguồn `import/credentials.ts`, `import/workflow.ts`; bản đầu chỉ bắt chữ đầu nên không bao giờ khớp với quy trình). Không bắt `Skipped` trơn
   để khỏi báo nhầm.
-- `ENABLE_ADMIN_CHAT_ACCESS`/`ENABLE_ADMIN_EXPORT`: đã đối chiếu mã nguồn v0.11.4 — chặn xem chat người khác và xuất chat/tải CSDL **qua Open WebUI**
+- `ENABLE_ADMIN_CHAT_ACCESS`/`ENABLE_ADMIN_EXPORT`: đã đối chiếu mã nguồn v0.11.4 — chặn xem chat người khác và xuất chat/tải CSDL **qua giao diện Trợ lý AI (bản cũ)**
   (2 biến chỉ đọc từ môi trường). Không phải mã hóa: **quản trị vẫn đặt lại được mật khẩu nhân viên** (`routers/users.py` `update_user_by_id`, quyền
   admin) rồi đăng nhập đọc chat, và người có root trên Box đọc được file dữ liệu. Đã ghi vào tài liệu cho đơn vị. Rủi ro còn lại này thuộc F4/QĐ10:
   không chặn được bằng cấu hình; phát hiện được vì mật khẩu cũ của nhân viên mất tác dụng.
@@ -303,7 +303,7 @@ Box cài mới chưa có máy trạm: Pha 3 + 4 có hiệu lực ngay trong mộ
 - N4 và `cai-hang-loat.md` đã sửa.
 Chưa làm hoặc chưa kiểm được trong môi trường này (không có Docker lồng/systemd):
 - Chụp snapshot restic có tag `truoc-nang-cap` (+ `--keep-tag`) khi có ổ ngoài — hiện chỉ có bản chép cục bộ `n8n.truoc-*` (đủ để hoàn tác n8n).
-- Test hành vi "tài khoản quản trị gọi API xem chat nhân viên bị từ chối" — mới kiểm biến môi trường + đọc mã nguồn; cần thử trên Open WebUI thật.
+- Test hành vi "tài khoản quản trị gọi API xem chat nhân viên bị từ chối" — mới kiểm biến môi trường + đọc mã nguồn; cần thử trên giao diện Trợ lý AI (bản cũ) thật.
 - Chạy `run-box-test-in-systemd-container.sh` đầy đủ (cài Box thật, nâng cấp từ bản cũ, `changed=0` lần 2) và test nâng cấp 2.40.7 → 2.42.6.
 - Kiểm tay trên Box thật: n8n khởi động được với image mới + migration, 9 quy trình nhập/kích hoạt đúng, trang tóm tắt PDF hiển thị tốt;
   `N8N_MCP_*` và `N8N_DISABLED_MODULES` được n8n 2.42.6 nhận (đọc từ mã nguồn, chưa chạy thật).
@@ -341,7 +341,7 @@ Bản thiết kế đầu bị phản biện chỉ ra 1 điểm chặn: dùng kh
 - Lệnh mới: `onebee-box ghim-lai-may <ten>` (máy cài lại hệ điều hành) và tùy chọn `--ip <địa chỉ>` cho lần liên lạc đầu khi chưa có báo cáo.
 
 **(c) Thu hồi máy — `onebee-box thu-hoi-may <ten>`**
-- Xóa `may-<ten>-http`, dòng htpasswd, tài khoản Open WebUI `may-<ten>` (khóa `hoi`), dòng ghim, file tình trạng. Ghi dấu `may-<ten>-thu-hoi`.
+- Xóa `may-<ten>-http`, dòng htpasswd, tài khoản giao diện Trợ lý AI (bản cũ) `may-<ten>` (khóa `hoi`), dòng ghim, file tình trạng. Ghi dấu `may-<ten>-thu-hoi`.
 - Giữ mật khẩu kho để còn khôi phục và dọn bản cũ.
 - Một hàm liệt kê chung `may_da_cap` (bỏ máy đã thu hồi), dùng ở **mọi** nơi:
   - `gio_sao_luu_may`;
@@ -351,13 +351,13 @@ Bản thiết kế đầu bị phản biện chỉ ra 1 điểm chặn: dùng kh
   - `ten-da-cap.json`;
   - báo cáo.
 - Hàm `secret_co_san`: thiếu file thì **báo lỗi**, không tự sinh mới. Dùng ở mọi nơi trừ `them-may`. Hiện tại `secret()` tự sinh khóa mới khi thiếu → lặng lẽ "hồi sinh" máy đã thu hồi.
-- Sau `khoi-phuc-toan-bo`: xóa lại tài khoản Open WebUI của các máy đã thu hồi.
+- Sau `khoi-phuc-toan-bo`: xóa lại tài khoản giao diện Trợ lý AI (bản cũ) của các máy đã thu hồi.
 
 **(d) Kênh đẩy cấu hình — `onebee-box dong-bo-may <ten>|--tat-ca`** (dùng quyền F4 đã chấp nhận)
 - Tách `in_cau_hinh_may <ten>` **chỉ đọc**:
   - chỉ đọc bí mật có sẵn, kể cả khóa `hoi` (lưu `secrets/may-<ten>-hoi` lúc cấp);
   - **không** gọi `webui cap-khoa`, không ghi htpasswd.
-  - Phản biện chỉ ra: dùng lại nguyên khối `them-may` thì Open WebUI trục trặc một lúc là xóa `hoi` trên mọi máy, và đẩy lại cấu hình sẽ "hồi sinh" máy đã thu hồi.
+  - Phản biện chỉ ra: dùng lại nguyên khối `them-may` thì giao diện Trợ lý AI (bản cũ) trục trặc một lúc là xóa `hoi` trên mọi máy, và đẩy lại cấu hình sẽ "hồi sinh" máy đã thu hồi.
 - Thiếu bất kỳ khóa nào → **bỏ qua máy đó**, không đẩy file thiếu. Bỏ qua máy đã thu hồi.
 - Chỉ đẩy tới máy đã ghim theo (b), không bao giờ tin mù rồi đẩy bí mật.
 - Playbook (mới, hoặc khối `tags: cau-hinh` trong `cap-nhat-may-tram.yml`), thứ tự:
@@ -382,7 +382,7 @@ Bản thiết kế đầu bị phản biện chỉ ra 1 điểm chặn: dùng kh
   - máy giả có `RESTIC_PASSWORD` khác → không ghim, không đẩy;
   - đổi khóa host máy thật → `cap-nhat-may` dừng, `known_hosts` không đổi;
   - `ghim-lai-may` → đạt;
-  - tắt Open WebUI rồi `dong-bo-may` → `/etc/onebee-hoi.conf` không đổi;
+  - tắt giao diện Trợ lý AI (bản cũ) rồi `dong-bo-may` → `/etc/onebee-hoi.conf` không đổi;
   - thu hồi → khôi phục toàn bộ → mật khẩu cũ bị 401, `dong-bo-may --tat-ca` bỏ qua máy đó.
 - Lần chạy thứ 2: `changed=0` (task ghi `ten-da-cap.json` chỉ báo đổi khi nội dung đổi).
 
@@ -405,10 +405,10 @@ Bản thiết kế đầu bị phản biện chỉ ra 1 điểm chặn: dùng kh
   (đã chấp nhận, F4).
 - `dong-bo-may` chỉ cập nhật `/etc/onebee/may-tram.env` + kiểm báo cáo; file sinh từ cấu hình (`/etc/onebee-hoi.conf`, menu) cần chạy lại bộ cài
   desktop (Pha 3 sẽ đưa vào vai trò `ket-noi-box`). Giới hạn này đã ghi trong hướng dẫn.
-Đã kiểm: 12 test shell mới (ssh/ansible/Open WebUI giả, ssh-keygen và htpasswd thật), unit test chữ ký/quy tắc `kho`/khớp chữ ký máy trạm ↔ Box,
+Đã kiểm: 12 test shell mới (ssh/ansible/giao diện Trợ lý AI (bản cũ) giả, ssh-keygen và htpasswd thật), unit test chữ ký/quy tắc `kho`/khớp chữ ký máy trạm ↔ Box,
 chạy thử mã JS của các nút Code bằng Node và nối đầu-cuối với bộ kiểm của Box. **Chưa kiểm** (cần Docker lồng/Box thật): n8n 2.42.6 nhận quy trình 06
 mới (tham số `fileSelector` của nút đọc file chưa chạy thật), `check-quan-ly-tap-trung.sh`/`check-khoi-phuc-toan-bo.sh` bản mới, `dong-bo-may` qua
-Ansible thật, `thu-hoi-may` kèm Open WebUI thật.
+Ansible thật, `thu-hoi-may` kèm giao diện Trợ lý AI (bản cũ) thật.
 
 ### 5.4 Pha 3 — CA riêng mỗi Box (dịch vụ vẫn HTTP)
 **Thiết kế đã sửa theo phản biện:**
@@ -480,7 +480,7 @@ Firefox/Chromium thật có đọc chính sách và áp ràng buộc không; `ce
 ### 5.5 Pha 4 — Bật HTTPS
 **Kiến trúc:**
 - Caddy (container portal) là dịch vụ duy nhất mở cổng: 80 (CA + hướng dẫn), 443 (trang giới thiệu), 3000/5678/3001/8000 (TLS, giữ số cổng → URL chỉ đổi http thành https).
-- Bỏ `ports:` của open-webui, n8n, uptime-kuma, rest-server.
+- Bỏ `ports:` của tro-ly-ai-cu, n8n, uptime-kuma, rest-server.
 - Bật theo thứ tự: backend trước, portal sau (tránh tranh cổng).
 
 **Script và kiểm tra sức khỏe trên chính Box — chọn B:** gọi qua `https://<onebee_box_dia_chi>:<cổng>` với CA trong kho của Box.
@@ -500,7 +500,7 @@ Firefox/Chromium thật có đọc chính sách và áp ràng buộc không; `ce
 
 **Ứng dụng:**
 - n8n: `N8N_PROTOCOL=https`, `N8N_HOST=<IP>`, `N8N_EDITOR_BASE_URL` = `N8N_WEBHOOK_URL` = `https://<IP>:5678/`, `N8N_PROXY_HOPS=1`, bỏ `N8N_SECURE_COOKIE=false`.
-- Open WebUI: `WEBUI_SESSION_COOKIE_SECURE=true`, `WEBUI_AUTH_COOKIE_SECURE=true`, `CORS_ALLOW_ORIGIN=https://<IP>:3000` (lệch là WebSocket chat hỏng mà không báo); `WEBUI_URL` qua `ADMIN_CONFIG` (truyền giá trị qua env của hàm `webui()`); ghim subnet mạng compose + `FORWARDED_ALLOW_IPS`.
+- giao diện Trợ lý AI (bản cũ): `WEBUI_SESSION_COOKIE_SECURE=true`, `WEBUI_AUTH_COOKIE_SECURE=true`, `CORS_ALLOW_ORIGIN=https://<IP>:3000` (lệch là WebSocket chat hỏng mà không báo); `WEBUI_URL` qua `ADMIN_CONFIG` (truyền giá trị qua env của hàm `webui()`); ghim subnet mạng compose + `FORWARDED_ALLOW_IPS`.
 - Uptime Kuma: theo dõi nội bộ giữ `http://<dịch vụ>`; thêm theo dõi HTTPS; `onebee-kuma.js` thêm sửa-theo-tên (`editMonitor`) thay vì xóa rồi thêm (sửa N6, giữ `changed=0`); bật Trust Proxy khi 3001 không còn publish.
 - rest-server: giữ `--private-repos --append-only`; **không** dùng `--proxy-auth-username`.
 - Caddy container: `no-new-privileges`, `cap_drop: [ALL]`, `cap_add: [NET_BIND_SERVICE]` (F11 cho điểm vào).
@@ -546,15 +546,15 @@ Cập nhật các hướng dẫn trong `docs/huong-dan/`, `README.md`, `tests/RE
 dấu `https-da-bat`, Caddyfile HTTPS (CA riêng đặt sẵn, `default_sni`, `http_redirect` 308, h1+h2, `stream_close_delay 5m`, `request_body 256MB` cho rest-server,
 site Kuma chỉ khi đã có quản trị, tên phụ `box.<mã>.onebee.internal`), compose hai chế độ (backend bỏ `ports:`, Caddy `no-new-privileges` + `cap_drop ALL`), chuyển HTTP↔HTTPS (dừng dịch vụ giữ cổng,
 backend trước portal sau, xóa chứng chỉ Caddy khi CA đổi, `caddy reload` khi chỉ Caddyfile đổi), kiểm sức khỏe qua HTTPS có kiểm nội dung (Kuma kiểm trong container khi chưa mở cổng), mọi lời gọi
-nội bộ của Box theo dấu HTTPS, n8n/Open WebUI/Kuma theo thiết kế, tự `dong-bo-may --tat-ca` cuối bộ cài, máy trạm (ghim CA, từ chối http khi có dấu, thông báo lỗi, F7 `onebee-sao-luu`),
+nội bộ của Box theo dấu HTTPS, n8n/giao diện Trợ lý AI (bản cũ)/Kuma theo thiết kế, tự `dong-bo-may --tat-ca` cuối bộ cài, máy trạm (ghim CA, từ chối http khi có dấu, thông báo lỗi, F7 `onebee-sao-luu`),
 Firefox/Chromium trang chủ + dấu trang https, ADR 0005, hướng dẫn.
 Khác thiết kế: (1) Kuma **không** dùng `editMonitor` (các theo dõi nội bộ giữ `http://<dịch vụ>` nên URL không đổi giữa hai chế độ — YAGNI), chỉ thêm 1 theo dõi cổng Caddy khi HTTPS; (2) **không** ghim subnet compose
-+ `FORWARDED_ALLOW_IPS` cho Open WebUI (chưa có bằng chứng cần; `X-Forwarded-*` chỉ tới từ Caddy vì backend không còn cổng); (3) mặc định `onebee_box_https: false` (đổi mặc định ở bản sau);
++ `FORWARDED_ALLOW_IPS` cho giao diện Trợ lý AI (bản cũ) (chưa có bằng chứng cần; `X-Forwarded-*` chỉ tới từ Caddy vì backend không còn cổng); (3) mặc định `onebee_box_https: false` (đổi mặc định ở bản sau);
 (4) `restic` dùng `RESTIC_CACERT` (chỉ tin CA OneBee) thay vì kho hệ thống; (5) chưa có thông báo "khóa CA sắp hết hạn" trong payload email quy trình 01 — cảnh báo nằm trong log sao lưu (được gửi trong email) và `trang-thai`.
 Đã kiểm trong container làm việc: **Caddy 2.11.4 thật** chạy đúng Caddyfile do template sinh — nối bằng IP không SNI và bằng tên, chuỗi tới CA riêng (openssl `Verification: OK`), mỗi cổng tới đúng backend
 (có `X-Forwarded-Proto: https`), `http://` → 308, cổng 80 chỉ CA/hướng dẫn, CA lạ bị từ chối, Kuma chỉ có site khi sẵn sàng; compose hai chế độ; client TLS thật (CA lạ bị chặn, từ chối http khi có dấu, lỗi 502/308);
 toàn bộ `dong-bo-may-tram.yml` + role `ket-noi-box` bằng ansible-core 2.19 (HTTP → HTTPS → chạy lại `changed=0` → hoàn tác). **Chưa kiểm** (cần Docker/Box/máy thật): mọi thứ qua Docker bridge (hairpin `https://<IP>:<cổng>` từ chính Box,
-`default_sni` với IP container, nhận cổng khi chuyển), bộ cài Box đầy đủ ở chế độ HTTPS và `changed=0`, WebSocket chat/trình soạn n8n/Kuma, cookie Secure thật của Open WebUI/n8n, CSP biểu mẫu n8n qua Caddy,
+`default_sni` với IP container, nhận cổng khi chuyển), bộ cài Box đầy đủ ở chế độ HTTPS và `changed=0`, WebSocket chat/trình soạn n8n/Kuma, cookie Secure thật của giao diện Trợ lý AI (bản cũ)/n8n, CSP biểu mẫu n8n qua Caddy,
 `cap_drop ALL` có chạy được với image Caddy, n8n 2.42.6 với các biến proxy, Kuma `setSettings`, restic tải lớn qua Caddy, trình duyệt thật (Firefox/Chromium đọc chính sách, `certutil -D`), ansible-core 2.16.
 
 ### 5.6 Pha 4b — Xoay khóa bắt buộc (chạy khi máy cuối cùng đã đồng bộ HTTPS)
@@ -564,7 +564,7 @@ Lý do: QĐ3 nhằm chống nghe lén. Mọi thứ đã đi qua LAN dạng rõ t
 - Phía Box:
   - mật khẩu biểu mẫu `nhanvien`/`kythuat`;
   - mật khẩu chủ n8n (`N8N_INSTANCE_OWNER_PASSWORD_HASH`);
-  - mật khẩu quản trị Open WebUI và Uptime Kuma;
+  - mật khẩu quản trị giao diện Trợ lý AI (bản cũ) và Uptime Kuma;
   - `WEBUI_SECRET_KEY` để hủy mọi JWT cũ. [Unverified] Khóa này còn mã hóa gì khác → thử trên Box thử trước.
 - Bỏ hẳn `TINH_TRANG_KEY` và credential `onebeeTram000001` (xóa cả trong CSDL n8n, vì nhập lại không tự xóa).
 - Lệnh: `onebee-box xoay-khoa [--may <ten>|--tat-ca] [--box]`; in lại `in-khoa` sau khi xoay.
@@ -584,7 +584,7 @@ Làm sau Pha 4, vì `hoi --dang-nhap` gửi mật khẩu → cần HTTPS. Có th
 - **Chuyển tiếp:**
   - nhân viên chưa đăng nhập thì `hoi` tạm dùng khóa máy và nhắc "chạy `hoi --dang-nhap`";
   - bản phát hành sau: bỏ khóa máy;
-  - `them-may` thôi tạo tài khoản `may-<ten>@onebee.lan` và thôi in `HOI_API_KEY`; dọn các tài khoản `may-*` cũ trên Open WebUI.
+  - `them-may` thôi tạo tài khoản `may-<ten>@onebee.lan` và thôi in `HOI_API_KEY`; dọn các tài khoản `may-*` cũ trên giao diện Trợ lý AI (bản cũ).
 - Máy nhiều người dùng: mỗi tài khoản Linux một file khóa riêng; file nằm trong `/home` nên được sao lưu (đã mã hóa) lên Box.
 - **File chính:** `desktop/ansible/roles/ai-cli/files/hoi`, `ai-cli/tasks/main.yml`, `onebee-box.sh.j2` (`them-may`), `onebee-webui.py` (`cap-khoa`), `dung-tro-ly-ai-va-quy-trinh-tu-dong.md`, `dao-tao-buoi-1-3.md`.
 - **Test:**
@@ -600,8 +600,8 @@ Làm sau Pha 4, vì `hoi --dang-nhap` gửi mật khẩu → cần HTTPS. Có th
 `go-khoa-hoi-may`, `onebee_box_hoi_khoa_may`, `onebee_box_khoa_tinh_trang_chung`. Khác thiết kế: (1) khóa máy `hoi` và khóa tình trạng chung **chưa bị bỏ mặc định** (hai biến chuyển tiếp, mặc định `true`) vì máy chạy bản
 desktop cũ sẽ ngừng báo tình trạng/hỏi AI nếu bỏ ngay; (2) credential `onebeeTram000001` không xóa khỏi CSDL n8n (n8n không có lệnh xóa credential trong CLI mà tôi kiểm được; chỉ ngừng dùng và ngừng nhập khi `false`);
 (3) `--box` không xoay Samba/restic-box/khóa SSH quản trị (`doi-khoa-quan-tri` **chưa có**; xoay CA bằng biến `onebee_box_xoay_ca`, không có lệnh `doi-ca`); (4) cửa sổ không nhất quán ngắn giữa lúc đổi bí mật và lúc bộ cài chạy xong — lệnh tự chạy bộ cài ngay.
-Đã kiểm trong container làm việc: test shell (htpasswd thật, Open WebUI giả) cho `xoay-khoa`/`go-khoa-hoi-may`/tắt khóa chung/tắt khóa hoi; test API mock Open WebUI cho `xoay_khoa`, `doi_mat_khau_quan_tri`; 10 test `hoi` qua TLS thật (đăng nhập, không lưu mật khẩu, 2 tài khoản Linux 2 khóa, thu hồi, chuyển tiếp);
-mẫu n8n hai chế độ; playbook `dong-bo-may-tram.yml` bằng ansible-core 2.19 (có/không `HOI_API_KEY`). **Chưa kiểm** (cần Docker/Box thật): `tests/box/check-xoay-khoa.sh`; Open WebUI v0.11.4 thật nhận `update/password` và `api_key` (đã đối chiếu mã nguồn
+Đã kiểm trong container làm việc: test shell (htpasswd thật, giao diện Trợ lý AI (bản cũ) giả) cho `xoay-khoa`/`go-khoa-hoi-may`/tắt khóa chung/tắt khóa hoi; test API mock giao diện Trợ lý AI (bản cũ) cho `xoay_khoa`, `doi_mat_khau_quan_tri`; 10 test `hoi` qua TLS thật (đăng nhập, không lưu mật khẩu, 2 tài khoản Linux 2 khóa, thu hồi, chuyển tiếp);
+mẫu n8n hai chế độ; playbook `dong-bo-may-tram.yml` bằng ansible-core 2.19 (có/không `HOI_API_KEY`). **Chưa kiểm** (cần Docker/Box thật): `tests/box/check-xoay-khoa.sh`; giao diện Trợ lý AI (bản cũ) v0.11.4 thật nhận `update/password` và `api_key` (đã đối chiếu mã nguồn
 `routers/auths.py`, chưa chạy); Uptime Kuma 2.5.5 `changePassword` (đã đối chiếu `server.js`); n8n 2.42.6 áp mật khẩu chủ mới khi khởi động lại (`N8N_INSTANCE_OWNER_MANAGED_BY_ENV`); hệ quả của đổi `WEBUI_SECRET_KEY`
 (còn mã hóa gì khác — dữ liệu OAuth/khóa API?).
 
@@ -660,7 +660,7 @@ Mọi câu hỏi thiết kế đã được chủ dự án trả lời (QĐ1–Q
 
 ## Nguồn chính
 - n8n: [advisory list](https://github.com/n8n-io/n8n/security/advisories), [GHSA-3qcw-p65v-c7vq](https://github.com/n8n-io/n8n/security/advisories/GHSA-3qcw-p65v-c7vq), [GHSA-29xw-66fq-4xc3](https://github.com/n8n-io/n8n/security/advisories/GHSA-29xw-66fq-4xc3), mã nguồn tag `n8n@2.40.7`: `packages/cli/src/modules/oauth-server/`, `packages/nodes-base/nodes/Form/utils/formCompletionUtils.ts`, `packages/cli/templates/form-trigger-completion.handlebars`.
-- Open WebUI: [advisory list](https://github.com/open-webui/open-webui/security/advisories), [GHSA-vpq8-f445-hcq7](https://github.com/open-webui/open-webui/security/advisories/GHSA-vpq8-f445-hcq7), [GHSA-f9xp-mfmq-x6cg](https://github.com/open-webui/open-webui/security/advisories/GHSA-f9xp-mfmq-x6cg).
+- Giao diện Trợ lý AI cũ (đã gỡ): advisory GHSA-vpq8-f445-hcq7, GHSA-f9xp-mfmq-x6cg.
 - Uptime Kuma: [GHSA-wf2j-5mc7-5c4w](https://github.com/louislam/uptime-kuma/security/advisories/GHSA-wf2j-5mc7-5c4w).
 - Caddy (agent): mã nguồn tag `v2.11.4` — `modules/caddypki/`, `modules/caddyhttp/httpredirectlistener.go`; [releases](https://github.com/caddyserver/caddy/releases).
 - Firefox policy (agent): [mozilla/policy-templates](https://github.com/mozilla/policy-templates); Chromium: `docs/linux/cert_management.md`.
