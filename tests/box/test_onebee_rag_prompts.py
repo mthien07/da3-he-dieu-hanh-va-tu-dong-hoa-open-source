@@ -48,7 +48,9 @@ class NoiLenhQuanTri(unittest.TestCase):
 
     def test_onebee_box_noi_lenh_nap_tri_thuc_va_cap_khoa(self):
         src = doc(BOX_SCRIPT)
-        self.assertIn("nap-tri-thuc) with_lock cmd_nap_tri_thuc ;;", src)
+        # Bộ cài gọi lệnh này khi lệnh gọi đang giữ khóa (tat-sso-tam, xoay-khoa --box) → không được lấy khóa lần nữa
+        self.assertIn("nap-tri-thuc) cmd_nap_tri_thuc ;;", src)
+        self.assertNotIn("nap-tri-thuc) with_lock", src)
         self.assertIn("cap-khoa-hoi) shift; cmd_cap_khoa_hoi \"$@\" ;;", src)
         self.assertIn("go-khoa-hoi) shift; cmd_go_khoa_hoi \"$@\" ;;", src)
         self.assertIn('/app/onebee-ai-rag.py nap-tri-thuc', src)
