@@ -49,10 +49,10 @@ Giao diện Sổ điều hành (`so-dieu-hanh.html.j2`, `so-dieu-hanh.css`), đ�
 | # | Giai đoạn | Người thực thi đề xuất | Cần xong trước | Công | Trạng thái |
 |---|---|---|---|---|---|
 | 1 | [Ngôn ngữ thiết kế và bản mẫu để anh duyệt](./phase-01-ngon-ngu-thiet-ke-va-ban-mau.md) | Opus | — | 0,5 ngày | Xong (bản mẫu thay bằng chính trang dựng thật; anh duyệt ảnh chụp ở PR) |
-| 2 | [Trang chủ Box tối giản](./phase-02-trang-chu-box-toi-gian.md) | Sonnet | 1 (anh duyệt) | 1 ngày | Xong mã + test, chờ CI `box=true` |
-| 3 | [Máy trạm: hình nền OneBee hiện ngay sau khi cài](./phase-03-may-tram-hinh-nen-hien-ngay.md) | Opus | 1 (hình nền mới) | 1 ngày | Xong mã + test; kiểm Mint container đạt |
+| 2 | [Trang chủ Box tối giản](./phase-02-trang-chu-box-toi-gian.md) | Sonnet | 1 (anh duyệt) | 1 ngày | Xong; CI `box=true` xanh (17/11) |
+| 3 | [Máy trạm: hình nền OneBee hiện ngay sau khi cài](./phase-03-may-tram-hinh-nen-hien-ngay.md) | Opus | 1 (hình nền mới) | 1 ngày | Xong; Mint container và CI Desktop xanh |
 | 4 | [Màn hình khởi động Plymouth](./phase-04-man-hinh-khoi-dong.md) | Sonnet | 1 | 0,5 ngày | Xong mã + test; chưa xem được trên màn hình thật |
-| 5 | [Kiểm trên máy ảo và gộp](./phase-05-kiem-may-ao-va-gop.md) | Opus + anh Thiện | 2, 3, 4 | 0,5 ngày | Còn: CI `box=true`, máy ảo Mint có giao diện, anh duyệt |
+| 5 | [Kiểm trên máy ảo và gộp](./phase-05-kiem-may-ao-va-gop.md) | Opus + anh Thiện | 2, 3, 4 | 0,5 ngày | CI xanh. Còn: máy ảo Mint có giao diện, anh duyệt |
 
 Giai đoạn 2, 3, 4 sửa các vùng tệp tách rời (`box/…/box-stack/templates`, `tests/box` ↔ `desktop/…`, `tests/desktop`) nên chạy **song song** được, mỗi giai đoạn một worktree, cùng tách từ `feat/giao-dien-toi-gian`.
 
@@ -74,5 +74,5 @@ Giai đoạn 2, 3, 4 sửa các vùng tệp tách rời (`box/…/box-stack/temp
 ## Còn thiếu khi chuyển giao (16/11)
 - Chưa chứng minh nguyên nhân "cài xong không đổi hình" trên máy Mint có giao diện (bước 3.1 của giai đoạn 3). Bản sửa không phụ thuộc nguyên nhân: bộ cài chủ động đặt hình nền cho phiên đang mở.
 - Màn hình khởi động chưa được nạp trên Plymouth thật: `plymouthd` không chạy được trong container (không có tty/DRM). Script chỉ gồm lệnh thông dụng của module script và thuần ASCII. Xem thử trên máy ảo, không cần khởi động lại: `sudo plymouthd --mode=boot; sudo plymouth show-splash; sleep 8; sudo plymouth quit`.
-- CI `box=true` trên nhánh này chưa chạy; bài kiểm Box chạy cục bộ có 46 mục trượt vì môi trường (cùng 46 mục trên bản gốc `9cf26c4`).
+- CI `box=true` (lượt 43907962721, 17/11): cả 4 job xanh — lint, Desktop cài thử, Desktop mở rộng, Box cài thử (cài lại `changed=0` ở HTTPS, bật và tắt demo). Bài kiểm Box chạy cục bộ trên macOS có 46 mục trượt vì môi trường, cùng 46 mục đó trượt trên bản gốc `9cf26c4`.
 - Bài kiểm Mint container chạy trước lần sửa cuối của script Plymouth (chỉ đổi lời chú thích và một ký tự); đã chạy lại test đơn vị sau đó.
