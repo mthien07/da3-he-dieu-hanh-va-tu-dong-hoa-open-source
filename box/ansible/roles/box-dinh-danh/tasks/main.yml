@@ -48,10 +48,15 @@
 # (tên bắt đầu bằng "_": lệnh them-nguoi/xoa-nguoi không nhận tên này). Có tệp rồi thì không bao giờ ghi đè (Box quản lý nội dung).
 - name: Tạo tệp người dùng của dịch vụ định danh (chỉ khi chưa có)
   ansible.builtin.shell: |
-    set -o pipefail
+    set -euo pipefail
     bam="$(docker run --rm --network none --entrypoint authelia {{ onebee_box_images.authelia }} \
       crypto hash generate argon2 --random --random.length 64 | sed -n 's/^Digest: //p')"
-    [ -n "${bam}" ]
+    # Sinh băm hỏng (mạng chập chờn) thì dừng để Ansible thử lại, KHÔNG ghi tệp có mật khẩu rỗng
+    # (Authelia từ chối tệp đó và khởi động lại liên tục)
+    case "${bam}" in
+      '$argon2'*) ;;
+      *) echo "Không sinh được băm argon2 cho tài khoản hệ thống" >&2; exit 1 ;;
+    esac
     umask 077
     printf 'users:\n  _onebee:\n    disabled: true\n    displayname: "%s"\n    password: "%s"\n    groups: []\n' \
       "OneBee (tài khoản hệ thống, đã khóa)" "${bam}" > {{ onebee_box_data }}/authelia/users_database.yml.moi
