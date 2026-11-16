@@ -19,14 +19,14 @@
 #   onebee-box khoi-phuc-toan-bo [file-khóa]   Hỏng ổ Box: trên Box cài lại, lấy lại toàn bộ dữ liệu từ ổ sao lưu
 #   onebee-box may-chua-nhan-ca    Máy đã cấp mà chưa nhận CA hiện tại (chặn bật HTTPS)
 #   onebee-box go-khoa-hoi-may     Xóa tài khoản/khóa Trợ lý AI theo MÁY (sau khi nhân viên đã dùng khóa riêng; xem onebee_box_hoi_khoa_may)
-#   onebee-box xoay-khoa [--may <tên>|--tat-ca] [--box]   Đổi mật khẩu/khóa (kho HTTP + khóa hoi theo máy; --box: mật khẩu quản trị, biểu mẫu, n8n)
+#   onebee-box xoay-khoa [--may <tên>|--tat-ca] [--box]   Đổi mật khẩu/khóa (kho HTTP + khóa hoi theo máy; --box: mật khẩu quản trị, mật khẩu soạn luồng, khóa webhook)
 #   onebee-box gia-han-ca          Gia hạn CA trung gian ngay (còn < 60 ngày) — tự chạy mỗi đêm sao lưu
 #   onebee-box in-ca               In vân tay + thông tin CA riêng của Box (đối chiếu khi cài CA lên thiết bị khác)
 #   onebee-box in-khoa             In các khóa bí mật để cất ngoài Box (thiếu khóa thì bản sao lưu vô dụng)
-#   onebee-box dat-mat-khau-email  Nhập mật khẩu hộp thư gửi (SMTP) cho n8n
+#   onebee-box dat-mat-khau-email  Nhập mật khẩu hộp thư gửi (SMTP) cho động cơ quy trình
 #   onebee-box dat-telegram        Cấu hình Bot Token và Chat ID nhận tin cảnh báo Telegram
-#   onebee-box canh-bao <MỨC> <TIÊU_ĐỀ> [NỘI_DUNG]  Gửi cảnh báo tức thời qua Telegram & n8n
-#   onebee-box email-thu           Gửi 1 email thử qua n8n (kiểm tra cấu hình email)
+#   onebee-box canh-bao <MỨC> <TIÊU_ĐỀ> [NỘI_DUNG]  Gửi cảnh báo tức thời qua Telegram & động cơ quy trình
+#   onebee-box email-thu           Gửi 1 email thử qua động cơ quy trình (kiểm tra cấu hình email)
 #   onebee-box them-nguoi <tên> <nhóm>   Tạo tài khoản đăng nhập một lần (nhóm: {{ onebee_box_nhom_nguoi_dung | join(', ') }}); in mật khẩu tạm MỘT lần
 #   onebee-box xoa-nguoi <tên>     Xóa tài khoản (kèm ghi danh hai lớp); người đó mất quyền ngay
 #   onebee-box danh-sach-nguoi     Liệt kê tài khoản và nhóm (không in mật khẩu)
@@ -106,7 +106,9 @@ in_cau_hinh_may() {
   # Địa chỉ Trợ lý AI luôn in (hoi --dang-nhap cần); khóa của MÁY chỉ in ở giai đoạn chuyển tiếp
   echo "HOI_URL=${esq}://${ip}:${AI_PORT}"
   [[ -z "${hoi_key}" ]] || echo "HOI_API_KEY=${hoi_key}"
-  echo "TINH_TRANG_URL=${esq}://${ip}:${N8N_PORT}/webhook/onebee-tinh-trang"
+  # Máy trạm gọi Caddy trên LAN: HTTPS qua tên Box (có CA), HTTP qua IP:cổng 80 (HTTPS chưa bật)
+  if https_bat; then tt_url="https://${TEN_BOX}/webhook/onebee-tinh-trang"; else tt_url="http://${ip}:{{ onebee_box_ports.portal }}/webhook/onebee-tinh-trang"; fi
+  echo "TINH_TRANG_URL=${tt_url}"
   [[ -z "${tram_key}" ]] || echo "TINH_TRANG_KEY=${tram_key}"
   echo "QUAN_TRI_SSH_KEY=\"$(cat "${SSH_DIR}/quan-tri.pub")\""
   # CA riêng của Box: chứng chỉ gốc (DER, base64 một dòng) + vân tay tính lại từ chứng chỉ. Máy trạm (role ket-noi-box) kiểm vân tay
@@ -195,7 +197,7 @@ cmd_bao_cao_tuan() {
   local ngay="${1:-$(date +%F)}"
   local -a may=()
   [[ "${ngay}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || die "Ngày theo dạng YYYY-MM-DD, ví dụ $(date +%F)"
-  # n8n vẫn ghi sổ CSV → chuyển dòng mới vào CSDL trước rồi mới đọc. Chuyển lỗi (vd một tệp có dòng hỏng) thì vẫn báo cáo,
+  # Bản cũ vẫn ghi sổ CSV → chuyển dòng mới vào CSDL trước rồi mới đọc. Chuyển lỗi (vd một tệp có dòng hỏng) thì vẫn báo cáo,
   # kèm cảnh báo (dòng lỗi đã in ra ở trên): báo cáo thiếu dòng mới của tệp đó, không im lặng bỏ qua
   chuyen_du_lieu >/dev/null || warn "Chuyển sổ cũ vào CSDL chưa xong (xem lỗi ở trên) — báo cáo có thể thiếu dòng mới. Sửa rồi chạy: sudo onebee-box chuyen-du-lieu"
   mapfile -t may < <(gio_sao_luu_may)
@@ -348,7 +350,7 @@ cmd_dong_bo_may_da_chon() {
 
 # ---- Xoay khóa (Pha 4b) ----
 # Lý do: trước khi có HTTPS, mật khẩu/khóa đã đi qua LAN dạng rõ — còn hiệu lực dù hôm nay đã mã hóa. Cũng dùng khi nghi ngờ lộ khóa.
-# RESTIC_PASSWORD KHÔNG xoay (chưa từng đi qua mạng; đổi là mất bản sao lưu cũ). N8N_ENCRYPTION_KEY KHÔNG xoay (đổi là mất thông tin đăng nhập đã lưu trong n8n).
+# RESTIC_PASSWORD KHÔNG xoay (chưa từng đi qua mạng; đổi là mất bản sao lưu cũ). Mật khẩu soạn luồng CÓ xoay (bộ cài đọc lại khi chạy lại).
 
 # Một máy: mật khẩu kho HTTP mới (htpasswd) + khóa Trợ lý AI theo máy mới (nếu còn dùng). Ghi bí mật mới TRƯỚC khi đẩy xuống máy
 xoay_khoa_may() {
@@ -363,8 +365,8 @@ xoay_khoa_may() {
   echo "Đã tạo mật khẩu mới cho máy ${ten}"
 }
 
-# Phía Box: mật khẩu quản trị Trợ lý AI + giám sát + vai trò CSDL (đổi trong dịch vụ trước), mật khẩu chủ n8n, mật khẩu biểu mẫu, khóa webhook n8n,
-# WEBUI_SECRET_KEY (hủy mọi phiên đăng nhập Open WebUI). Phần Ansible áp dụng (.env, thông tin đăng nhập n8n) cần chạy lại bộ cài ngay sau đó
+# Phía Box: mật khẩu quản trị Trợ lý AI + giám sát + vai trò CSDL (đổi trong dịch vụ trước), mật khẩu soạn luồng, khóa webhook động cơ quy trình,
+# WEBUI_SECRET_KEY (hủy mọi phiên đăng nhập Open WebUI). Phần Ansible áp dụng (.env, cấu hình Node-RED) cần chạy lại bộ cài ngay sau đó
 xoay_khoa_box() {
   local moi lan rc=0
   moi="$(ngau_nhien 24)"
@@ -393,17 +395,17 @@ xoay_khoa_box() {
     (umask 077; printf '%s' "${moi}" >"${SECRETS}/${muc#*:}")
   done
   moi="$(ngau_nhien 24)"
-  (umask 077; printf '%s' "${moi}" >"${SECRETS}/n8n-owner-password"
-   htpasswd -niBC 10 onebee <<<"${moi}" | cut -d: -f2 | tr -d '\n' >"${SECRETS}/n8n-owner-hash")
+  (umask 077; printf '%s' "${moi}" >"${SECRETS}/quy-trinh-soan-luong"
+   htpasswd -niBC 10 kythuat <<<"${moi}" | cut -d: -f2 | tr -d '\n' >"${SECRETS}/quy-trinh-soan-hash")
   # Khóa gửi tình trạng dùng chung (nếu còn dùng): bộ cài sinh lại; cmd_xoay_khoa đẩy xuống mọi máy ngay sau bộ cài
   [[ "${TINH_TRANG_KHOA_CHUNG}" != true ]] || rm -f "${SECRETS}/tinh-trang-key"
-  rm -f "${SECRETS}/webui-secret-key" "${SECRETS}/bieu-mau-nhanvien" "${SECRETS}/bieu-mau-kythuat" "${SECRETS}/n8n-webhook-key"
+  rm -f "${SECRETS}/webui-secret-key" "${SECRETS}/bieu-mau-nhanvien" "${SECRETS}/bieu-mau-kythuat" "${SECRETS}/quy-trinh-webhook-key"
   # Đăng nhập một lần: khóa phiên (mọi cookie phiên cũ hết hiệu lực) và khóa ký JWT của cầu nối — bộ cài sinh lại, tạo lại hai dịch vụ.
   # KHÔNG xóa authelia-storage-key: khóa mã hóa ghi danh hai lớp trong CSDL, mất là mọi người phải ghi danh lại
   rm -f "${SECRETS}/authelia-session-secret" "${SECRETS}/cau-noi-jwt-secret"
-  # Bộ cài (Ansible lookup password) sinh lại các file vừa xóa; n8n-webhook-key cần có NGAY cho bao_cao_n8n ở lần chạy sau
-  secret n8n-webhook-key >/dev/null
-  echo "Đã đổi: mật khẩu quản trị Trợ lý AI, giám sát, CSDL (trong dịch vụ); đã tạo mới: mật khẩu chủ n8n, mật khẩu biểu mẫu (nhanvien, kythuat), khóa webhook n8n, WEBUI_SECRET_KEY, khóa phiên đăng nhập một lần (mọi người đăng nhập lại), khóa ký JWT của cầu nối."
+  # Bộ cài (Ansible lookup password) sinh lại các file vừa xóa; quy-trinh-webhook-key cần có NGAY cho bao_cao_quy_trinh ở lần chạy sau
+  secret quy-trinh-webhook-key >/dev/null
+  echo "Đã đổi: mật khẩu quản trị Trợ lý AI, giám sát, CSDL (trong dịch vụ); đã tạo mới: mật khẩu soạn luồng (kythuat), khóa webhook động cơ quy trình, WEBUI_SECRET_KEY, khóa phiên đăng nhập một lần (mọi người đăng nhập lại), khóa ký JWT của cầu nối."
 }
 
 cmd_xoay_khoa() {
@@ -433,12 +435,12 @@ cmd_xoay_khoa() {
     xoay_khoa_box
     bo_cai="$(cat "${LIB}/duong-dan-bo-cai" 2>/dev/null || true)"
     if [[ -x "${bo_cai}" ]]; then
-      echo "Chạy bộ cài để áp dụng (.env, thông tin đăng nhập n8n)..."
+      echo "Chạy bộ cài để áp dụng (.env, cấu hình động cơ quy trình)..."
       "${bo_cai}" 9>&- || die "Bộ cài chưa xong — chạy lại NGAY: sudo ${bo_cai} (Box đang ở trạng thái nửa chừng)"
       # Khóa gửi tình trạng dùng chung vừa được bộ cài sinh lại → MỌI máy cần khóa mới (thiếu thì báo tình trạng bị 403)
       if [[ "${TINH_TRANG_KHOA_CHUNG}" == true && -n "$(may_da_cap)" ]]; then chon_may --tat-ca; ds=("${CHON_MAY[@]}"); fi
     else
-      warn "KHÔNG tìm thấy bộ cài — chạy NGAY bộ cài OneBee Box (sudo ./box/onebee-box-install.sh) để áp dụng; trước đó n8n/biểu mẫu/báo cáo sao lưu có thể lỗi"
+      warn "KHÔNG tìm thấy bộ cài — chạy NGAY bộ cài OneBee Box (sudo ./box/onebee-box-install.sh) để áp dụng; trước đó động cơ quy trình/báo cáo sao lưu có thể lỗi"
       [[ "${TINH_TRANG_KHOA_CHUNG}" != true ]] || echo "LƯU Ý: sau bộ cài, chạy: sudo onebee-box dong-bo-may --tat-ca (khóa gửi tình trạng đã đổi)"
     fi
   fi
@@ -475,7 +477,7 @@ cmd_dat_mat_khau_email() {
   read -rsp "Mật khẩu hộp thư gửi ("{{ (onebee_box_email.smtp_user or 'chưa khai báo smtp_user') | quote }}"): " pw; echo
   [[ -n "${pw}" ]] || die "Chưa nhập mật khẩu"
   (umask 077; printf '%s' "${pw}" >"${SECRETS}/smtp-password")
-  echo "Đã lưu. Chạy lại bộ cài OneBee Box để n8n dùng mật khẩu mới, rồi: sudo onebee-box email-thu"
+  echo "Đã lưu. Chạy lại bộ cài OneBee Box để động cơ quy trình dùng mật khẩu mới, rồi: sudo onebee-box email-thu"
 }
 
 cmd_dat_telegram() {
@@ -627,7 +629,7 @@ case "${1:-}" in
   ma-xac-nhan) cmd_ma_xac_nhan ;;
   tat-sso-tam) with_lock cmd_tat_sso_tam ;;
   bat-sso-lai) with_lock cmd_bat_sso_lai ;;
-  email-thu) bao_cao_n8n THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
-               && echo "Đã chuyển cho n8n gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
+  email-thu) bao_cao_quy_trinh THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
+               && echo "Đã chuyển cho động cơ quy trình gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
   *) sed -n '/^set -euo/q; 2,$s/^# //p' "$0"; exit 1 ;;
 esac

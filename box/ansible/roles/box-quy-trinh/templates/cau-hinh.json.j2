@@ -1,0 +1,32 @@
+{# SPDX-License-Identifier: MIT #}
+{# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee #}
+{% set email = onebee_box_email %}
+{% set ten_box = 'box.' ~ onebee_box_ma_don_vi ~ '.onebee.internal' %}
+{
+  "khoa_box_sha256": {{ onebee_webhook_key | hash('sha256') | to_json }},
+{% if onebee_box_khoa_tinh_trang_chung | bool %}
+  "khoa_tram_sha256": {{ onebee_tram_key | hash('sha256') | to_json }},
+  "khoa_chung": true,
+{% else %}
+  "khoa_tram_sha256": "",
+  "khoa_chung": false,
+{% endif %}
+  "soan_luong_hash": {{ onebee_quy_trinh_soan_hash | to_json }},
+  "api_goc": {{ ('https://' ~ ten_box) | to_json }},
+  "may_da_cap": "/may-da-cap",
+  "tinh_trang": "/tinh-trang-may",
+  "ca": "/cau-hinh/ca.crt",
+  "mui_gio": {{ onebee_timezone | to_json }},
+  "thu": {
+    "host": {{ email.smtp_host | default('') | to_json }},
+    "port": {{ email.smtp_port | default(587) | int }},
+    "ssl": {{ email.smtp_ssl | default(false) | bool | to_json }},
+    "starttls": {{ email.smtp_starttls | default(true) | bool | to_json }},
+    "user": {{ email.smtp_user | default('') | to_json }},
+    "password": {{ onebee_smtp_password | default('') | to_json }},
+    "gui_tu": {{ email.gui_tu | default('') | to_json }},
+    "nhan": {{ email.nhan | default('') | to_json }}
+  },
+  "nhac_truoc": {{ onebee_box_nhac_truoc_ngay | to_json }},
+  "lich_han": {{ onebee_box_lich_han | to_json }}
+}

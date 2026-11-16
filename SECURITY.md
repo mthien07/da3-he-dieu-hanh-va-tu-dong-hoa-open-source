@@ -22,6 +22,6 @@ tác động bạn đánh giá. **Xóa mật khẩu, khóa (`in-khoa`), địa c
 - Sửa, viết kiểm thử hồi quy, ghi vào [docs/project-changelog.md](docs/project-changelog.md) và ghi công người báo (nếu bạn đồng ý).
 
 ## Tài liệu liên quan
-- Rà soát bảo mật và trạng thái từng mục: [docs/security-audit.md](docs/security-audit.md) · [docs/tong-ket-ra-soat-bao-mat.md](docs/tong-ket-ra-soat-bao-mat.md)
-- Kiểm thử trên máy thật, lỗi đã biết còn mở: [docs/kiem-thu-tren-may-that.md](docs/kiem-thu-tren-may-that.md)
+- Rà soát bảo mật và trạng thái từng mục: [plans/reports/261010-ra-soat-bao-mat.md](plans/reports/261010-ra-soat-bao-mat.md) · [docs/tong-ket-ra-soat-bao-mat.md](docs/tong-ket-ra-soat-bao-mat.md)
+- Kiểm thử trên máy thật, lỗi đã biết còn mở: [plans/reports/261010-kiem-thu-tren-may-that.md](plans/reports/261010-kiem-thu-tren-may-that.md)
 - Thiết kế HTTPS nội bộ: [docs/adr/0005-https-noi-bo-caddy-ca-rang-buoc-ten.md](docs/adr/0005-https-noi-bo-caddy-ca-rang-buoc-ten.md)

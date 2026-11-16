@@ -1,5 +1,5 @@
 ---
-# OneBee Box v0.1 — máy chủ nội bộ: AI chạy tại chỗ, tự động hóa n8n, thư mục chung, sao lưu, giám sát
+# OneBee Box v0.1 — máy chủ nội bộ: AI chạy tại chỗ, động cơ quy trình Node-RED, thư mục chung, sao lưu, giám sát
 - name: OneBee Box
   hosts: box
   become: true
@@ -16,6 +16,6 @@
     - box-dinh-danh   # đăng nhập một lần (Authelia): cấu hình, tệp người dùng, bí mật rồi mới chạy dịch vụ
     - box-du-lieu     # PostgreSQL + API tự sinh (PostgREST) sau cầu nối danh tính: lược đồ có ghi sổ, RLS
     - box-ai
-    - box-n8n
+    - box-quy-trinh   # Node-RED: mười quy trình cũ trên nền định danh/CSDL của Box; sinh tệp TRƯỚC khi chạy container
     - box-backup
     - box-fleet

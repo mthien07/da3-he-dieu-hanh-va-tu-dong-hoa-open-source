@@ -46,6 +46,11 @@ access_control:
       resources: ['^/giam-sat([/?].*)?$']
       subject: ['group:ky_thuat']
       policy: 'two_factor'
+    # Trình soạn luồng (ky_thuat) và điểm duyệt đơn của ứng dụng (quan_ly): hai lớp; Node-RED còn mật khẩu riêng cho trình soạn
+    - domain: '{{ ten_box }}'
+      resources: ['^/quy-trinh([/?].*)?$']
+      subject: ['group:ky_thuat', 'group:quan_ly']
+      policy: 'two_factor'
     - domain: '{{ ten_box }}'
       resources: ['^/(api|files|ai)/']
       subject: ['group:ky_thuat', 'group:quan_ly']

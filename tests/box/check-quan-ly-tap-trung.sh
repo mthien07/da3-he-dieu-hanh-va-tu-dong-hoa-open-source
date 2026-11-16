@@ -20,29 +20,49 @@ tram 'mkdir -p /run/sshd && /usr/sbin/sshd
   echo "PASS  Máy trạm: tài khoản quản trị của Box (ẩn, chỉ nhận khóa từ IP Box), SSH tắt đăng nhập mật khẩu và root, chỉ cho tài khoản quản trị"
   grep -qx "Exec=onebee-bao-ho-tro" /usr/share/applications/onebee-bao-ho-tro.desktop \
     || { echo "FAIL  Thiếu mục menu Báo cần hỗ trợ"; exit 1; }
-  grep -qx "HO_TRO_URL=http://$(grep -oP "^BOX_IP=\K.*" /etc/onebee/may-tram.env):5678/form/onebee-ho-tro" /etc/onebee-ho-tro.conf \
-    || { echo "FAIL  Thiếu mục menu Báo cần hỗ trợ"; exit 1; }
-  echo "PASS  Menu máy trạm có \"Báo cần hỗ trợ (OneBee)\" gọi onebee-bao-ho-tro, mở đúng biểu mẫu trên Box"'
+  # Trang Báo cần hỗ trợ thuộc ứng dụng Sổ điều hành (giai đoạn 4, chưa có) → chỉ kiểm hai địa chỉ đã có thật dưới đây
+  box_ip="$(sed -n "s/^BOX_IP=//p" /etc/onebee/may-tram.env)"
+  https="$(sed -n "s/^BOX_HTTPS=//p" /etc/onebee/may-tram.env)"
+  url="$(sed -n "s/^TINH_TRANG_URL=//p" /etc/onebee/may-tram.env)"
+  if [ "${https}" = 1 ]; then
+    echo "${url}" | grep -Eq "^https://box\\.[a-z0-9-]+\\.onebee\\.internal/webhook/onebee-tinh-trang$" \
+      || { echo "FAIL  TINH_TRANG_URL (HTTPS) chưa trỏ điểm nhận trên tên Box: ${url}"; exit 1; }
+  else
+    [ "${url}" = "http://${box_ip}:80/webhook/onebee-tinh-trang" ] \
+      || { echo "FAIL  TINH_TRANG_URL (HTTP) chưa trỏ Caddy cổng 80 của Box: ${url}"; exit 1; }
+  fi
+  grep -Eq "^HOI_URL=https?://[0-9.]+:3000$" /etc/onebee/may-tram.env \
+    || { echo "FAIL  Thiếu HOI_URL của Trợ lý AI"; exit 1; }
+  echo "PASS  Menu máy trạm có \"Báo cần hỗ trợ (OneBee)\"; may-tram.env trỏ đúng TINH_TRANG_URL (động cơ quy trình, đúng chế độ HTTP/HTTPS) và HOI_URL (Trợ lý AI)"'
 
 tram 'onebee-bao-tinh-trang'
 box "f=${TT}/ketoan-01.json; [ -s \$f ] || { echo 'FAIL  Box chưa nhận tình trạng máy trạm'; exit 1; }
   python3 -c 'import json,sys; e=json.load(open(sys.argv[1])); assert e[\"ten\"]==\"ketoan-01\" and len(e.get(\"ky\",\"\"))==64, e; t=json.loads(e[\"du_lieu\"]); assert t[\"ip\"] and t[\"o_trong_phan_tram\"]>0 and t[\"phien_ban\"] and t[\"gui_luc\"], t' \$f
   echo 'PASS  Máy trạm gửi tình trạng CÓ CHỮ KÝ → Box lưu (tên, IP, phiên bản, ổ trống, gói chờ cập nhật)'"
 
-box "key=\$(cat /etc/onebee-box/secrets/tinh-trang-key)
-  code=\$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:5678/webhook/onebee-tinh-trang -H 'X-OneBee-Key: sai' -d '{\"ten\":\"ke-gia\"}')
+box ". /usr/local/lib/onebee-box/common.sh
+  key=\$(cat /etc/onebee-box/secrets/tinh-trang-key)
+  goc=\$(quy_trinh_goc)
+  # Điểm nhận nằm trong động cơ quy trình; HTTPS thì qua tên Box với CA riêng, HTTP thì qua cổng 80 của Caddy (không còn cổng 5678)
+  qt() {
+    if [ -e \"\${SECRETS}/https-da-bat\" ]; then
+      curl -s -o /dev/null -w '%{http_code}' --cacert \"\${CA_BOX}\" --resolve \"\${TEN_BOX}:443:127.0.0.1\" -H 'Content-Type: application/json' \"\$@\"
+    else
+      curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' \"\$@\"
+    fi
+  }
+  code=\$(qt -X POST \"\${goc}/webhook/onebee-tinh-trang\" -H 'X-OneBee-Key: sai' -d '{\"ten\":\"ke-gia\"}')
   [ \"\${code}\" = 403 ] || { echo \"FAIL  Khóa sai vẫn gửi được (\${code})\"; exit 1; }
-  curl -s -o /dev/null -X POST http://127.0.0.1:5678/webhook/onebee-tinh-trang -H \"X-OneBee-Key: \${key}\" \
-    -H 'Content-Type: application/json' -d '{\"ten\":\"../../etc/x\"}' || true
-  # Tên hợp lệ về dạng nhưng CHƯA CẤP (kẻ có khóa chung cũng không tạo được file): n8n chỉ nhận máy có file đánh dấu trong may-da-cap
-  curl -s -o /dev/null -X POST http://127.0.0.1:5678/webhook/onebee-tinh-trang -H \"X-OneBee-Key: \${key}\" \
-    -H 'Content-Type: application/json' -d \"{\\\"ten\\\":\\\"ke-gia\\\",\\\"du_lieu\\\":\\\"{}\\\",\\\"ky\\\":\\\"\$(printf '0%.0s' \$(seq 64))\\\"}\" || true
+  qt -X POST \"\${goc}/webhook/onebee-tinh-trang\" -H \"X-OneBee-Key: \${key}\" -d '{\"ten\":\"../../etc/x\"}' >/dev/null || true
+  # Tên hợp lệ về dạng nhưng CHƯA CẤP (kẻ có khóa chung cũng không tạo được file): động cơ quy trình chỉ nhận máy có tệp đánh dấu trong may-da-cap
+  qt -X POST \"\${goc}/webhook/onebee-tinh-trang\" -H \"X-OneBee-Key: \${key}\" \
+    -d \"{\\\"ten\\\":\\\"ke-gia\\\",\\\"du_lieu\\\":\\\"{}\\\",\\\"ky\\\":\\\"\$(printf '0%.0s' \$(seq 64))\\\"}\" >/dev/null || true
   [ \"\$(ls ${TT})\" = ketoan-01.json ] && [ ! -e /srv/onebee/etc ] || { echo 'FAIL  Tên máy bậy/khóa sai/máy chưa cấp vẫn ghi được file'; ls -R ${TT}; exit 1; }
   echo 'PASS  Khóa sai bị chặn (403); tên máy bậy (../) và máy CHƯA CẤP (kể cả có khóa chung) không ghi được file'
-  # n8n lưu nguyên báo cáo của máy đã cấp nhưng Box tự kiểm chữ ký: bao bì sai chữ ký bị nêu thẳng trong bảng tình trạng
+  # Động cơ quy trình lưu nguyên báo cáo của máy đã cấp nhưng Box tự kiểm chữ ký: bao bì sai chữ ký bị nêu thẳng trong bảng tình trạng
   cp ${TT}/ketoan-01.json /tmp/ketoan-01.json.tot
-  curl -s -o /dev/null -X POST http://127.0.0.1:5678/webhook/onebee-tinh-trang -H \"X-OneBee-Key: \${key}\" \
-    -H 'Content-Type: application/json' -d \"{\\\"ten\\\":\\\"ketoan-01\\\",\\\"du_lieu\\\":\\\"{}\\\",\\\"ky\\\":\\\"\$(printf 'a%.0s' \$(seq 64))\\\"}\" || true
+  qt -X POST \"\${goc}/webhook/onebee-tinh-trang\" -H \"X-OneBee-Key: \${key}\" \
+    -d \"{\\\"ten\\\":\\\"ketoan-01\\\",\\\"du_lieu\\\":\\\"{}\\\",\\\"ky\\\":\\\"\$(printf 'a%.0s' \$(seq 64))\\\"}\" >/dev/null || true
   onebee-box may-tram | grep -A3 '^ketoan-01 ' | grep -q 'sai chữ ký' || { echo 'FAIL  Báo cáo sai chữ ký không bị nêu'; onebee-box may-tram; exit 1; }
   echo 'PASS  Báo cáo giả (sai chữ ký) của máy đã cấp bị Box phát hiện và nêu trong bảng tình trạng'"
 tram 'onebee-bao-tinh-trang >/dev/null'   # máy báo lại bản thật
@@ -86,10 +106,10 @@ tram 'if ssh -i /tmp/khoa-box -o BatchMode=yes -o StrictHostKeyChecking=no -o Co
   grep -q "Permission denied (publickey)" <<<"${out}" || { echo "FAIL  SSH vẫn hỏi mật khẩu: ${out}"; exit 1; }
   echo "PASS  Lấy được khóa của Box cũng không vào được từ máy khác; SSH không nhận mật khẩu"'
 
-# Thu hồi máy: hết quyền vào kho HTTP, n8n ngừng nhận báo cáo, ghim SSH bị gỡ, máy biến khỏi bảng tình trạng; cấp lại được
+# Thu hồi máy: hết quyền vào kho HTTP, động cơ quy trình ngừng nhận báo cáo, ghim SSH bị gỡ, máy biến khỏi bảng tình trạng; cấp lại được
 box 'onebee-box thu-hoi-may kho-02 --dong-y >/dev/null
   ! grep -q "^kho-02:" /srv/onebee/restic/.htpasswd || { echo "FAIL  Máy thu hồi vẫn còn tài khoản kho HTTP"; exit 1; }
-  [ ! -e /srv/onebee/may-da-cap/kho-02 ] || { echo "FAIL  Máy thu hồi vẫn còn trong danh sách n8n nhận báo cáo"; exit 1; }
+  [ ! -e /srv/onebee/may-da-cap/kho-02 ] || { echo "FAIL  Máy thu hồi vẫn còn trong danh sách động cơ quy trình nhận báo cáo"; exit 1; }
   if onebee-box cap-nhat-may kho-02 >/dev/null 2>&1; then echo "FAIL  Vẫn cập nhật được máy đã thu hồi"; exit 1; fi
   ! onebee-box may-tram | grep -q "^kho-02 " || { echo "FAIL  Máy thu hồi vẫn nằm trong bảng tình trạng"; exit 1; }
   onebee-box them-may kho-02 >/dev/null

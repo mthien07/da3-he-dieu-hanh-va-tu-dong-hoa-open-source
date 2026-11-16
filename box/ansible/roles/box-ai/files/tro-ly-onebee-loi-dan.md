@@ -36,7 +36,7 @@ MÁY TÍNH ONEBEE OS (máy trạm)
   thì báo người quản trị OneBee Box, người dùng không tự xóa được bản sao lưu.
 
 MÁY CHỦ ONEBEE BOX (trong mạng nội bộ)
-- Mở trình duyệt vào địa chỉ của Box để thấy các dịch vụ: Trợ lý AI (cổng 3000), Tự động hóa n8n (cổng 5678),
+- Mở trình duyệt vào địa chỉ của Box để thấy các dịch vụ: Trợ lý AI (cổng 3000), Quy trình tự động (đường dẫn /quy-trinh/),
   Giám sát (cổng 3001).
 - Thư mục chung (file dùng chung của cơ quan): mở trình quản lý tệp (biểu tượng thư mục trên thanh tác vụ), gõ
   smb://<địa-chỉ-Box>/chung vào thanh địa chỉ, đăng nhập tài khoản do quản trị cấp. Không mở bằng trình duyệt web.

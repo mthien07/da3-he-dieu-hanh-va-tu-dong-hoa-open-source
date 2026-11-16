@@ -2,7 +2,7 @@
 # Tự chẩn đoán OneBee Box (quản lý bởi OneBee OS, không sửa tay). Được lệnh onebee-box nạp vào: sudo onebee-box chan-doan [--json]
 # 7 hạng mục: mạng, tài nguyên (ổ đĩa, RAM, CPU), container Docker, Trợ lý AI, thư mục chung (Samba), bản sao lưu, chứng chỉ.
 # Chỉ đọc và thử, không sửa gì (thử ghi thư mục chung bằng 1 file tạm, xóa ngay). Mã thoát: 0 = mọi mục OK, 1 = có cảnh báo, 2 = có lỗi.
-# --json: cùng kết quả dạng JSON (n8n, trang chủ đọc): {ket_luan, dem, hang_muc: [{ma, ten, trang_thai, muc: [{ma, ten, trang_thai, chi_tiet, goi_y}]}]}
+# --json: cùng kết quả dạng JSON (trang chủ đọc): {ket_luan, dem, hang_muc: [{ma, ten, trang_thai, muc: [{ma, ten, trang_thai, chi_tiet, goi_y}]}]}
 
 CHAN_DOAN_MODEL="{{ onebee_box_ai_model }}"
 CHAN_DOAN_SAMBA_USER="{{ onebee_box_samba_user }}"
@@ -19,7 +19,7 @@ NGUONG_KET_XUAT_GIO=48       # kết xuất CSDL chạy cùng sao lưu đêm: qu
 CHAN_DOAN_HM_MA=(mang tai_nguyen docker ai samba sao_luu ssl)
 CHAN_DOAN_HM_TEN=("Mạng" "Tài nguyên (ổ đĩa, RAM, CPU)" "Dịch vụ Docker" "Trợ lý AI" "Thư mục chung (Samba)" "Bản sao lưu" "Chứng chỉ bảo mật (SSL)")
 # Container của Box và tên dễ hiểu (cùng thứ tự)
-CHAN_DOAN_CT=(onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server onebee-authelia onebee-cau-noi
+CHAN_DOAN_CT=(onebee-portal onebee-ollama onebee-open-webui onebee-quy-trinh onebee-uptime-kuma onebee-rest-server onebee-authelia onebee-cau-noi
   onebee-postgres onebee-postgrest)
 CHAN_DOAN_CT_TEN=("Cổng web" "Bộ chạy model AI" "Giao diện Trợ lý AI" "Tự động hóa" "Giám sát" "Nhận sao lưu máy trạm" "Đăng nhập một lần"
   "Cầu nối danh tính" "Cơ sở dữ liệu" "Dịch vụ dữ liệu (API)")
@@ -125,7 +125,7 @@ kiem_docker() {
   local i c ten st he
   local -A trang=()
   if ! timeout 20 docker info >/dev/null 2>&1; then
-    ghi_kq docker docker loi "Dịch vụ Docker" "Docker không chạy — Trợ lý AI, n8n, trang chủ, nhận sao lưu máy trạm đều ngừng" \
+    ghi_kq docker docker loi "Dịch vụ Docker" "Docker không chạy — Trợ lý AI, động cơ quy trình, trang chủ, nhận sao lưu máy trạm đều ngừng" \
       "sudo systemctl restart docker, rồi chạy lại: sudo onebee-box chan-doan"
     return 0
   fi

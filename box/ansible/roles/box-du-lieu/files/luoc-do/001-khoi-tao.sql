@@ -1,6 +1,6 @@
 -- Lược đồ dữ liệu tác nghiệp của OneBee Box (PostgreSQL + pgvector). Bộ cài áp dụng MỘT lần, ghi vào onebee.lich_su_luoc_do;
 -- đã áp dụng thì không sửa tệp này nữa — thay đổi lược đồ luôn là tệp mới có số tiếp theo.
--- Thời gian: timestamp without time zone theo giờ Việt Nam, khớp dạng yyyy-MM-dd HH:mm của sổ cũ (CSV do n8n ghi).
+-- Thời gian: timestamp without time zone theo giờ Việt Nam, khớp dạng yyyy-MM-dd HH:mm của sổ cũ (CSV do bản cũ ghi).
 -- Thứ tự cột dữ liệu = thứ tự cột của sổ cũ = thứ tự khi xuất cho báo cáo tuần; sau đó mới tới các cột thêm.
 -- nguon/dong: tên tệp sổ cũ (tính từ thư mục dữ liệu) và số dòng trong tệp, bắt đầu từ 1 — lệnh chuyển dữ liệu khử trùng theo cặp này;
 -- dòng tạo qua API có nguon, dong là NULL. Danh mục (loại, mức độ, cách xử lý) chỉ chặn dòng mới: sổ cũ mang nhãn lạ vẫn nạp được.
@@ -51,7 +51,7 @@ ALTER TABLE onebee.don_hang ENABLE ROW LEVEL SECURITY;
 ALTER TABLE onebee.don_hang FORCE ROW LEVEL SECURITY;
 
 CREATE TABLE onebee.yeu_cau_ho_tro (
-  -- Mã như biểu mẫu n8n đang cấp: yyMMdd-HHmmss-<2 số ngẫu nhiên>
+  -- Mã như biểu mẫu cũ đang cấp: yyMMdd-HHmmss-<2 số ngẫu nhiên>
   ma text NOT NULL DEFAULT (to_char(now() AT TIME ZONE 'Asia/Ho_Chi_Minh', 'YYMMDD-HH24MISS') || '-' || (10 + floor(random() * 90))::int),
   thoi_gian timestamp without time zone NOT NULL DEFAULT onebee_noi_bo.bay_gio(),
   may text,
@@ -66,7 +66,7 @@ CREATE TABLE onebee.yeu_cau_ho_tro (
   UNIQUE (ma),
   UNIQUE (nguon, dong),
   CHECK ((nguon IS NULL) = (dong IS NULL)),
-  -- Danh mục loại sự cố: box/ansible/roles/box-n8n/vars/main.yml (onebee_ho_tro_loai)
+  -- Danh mục loại sự cố: box/ansible/roles/box-quy-trinh/vars/main.yml (onebee_ho_tro_loai)
   CONSTRAINT loai_trong_danh_muc CHECK (nguon IS NOT NULL OR loai IN ('File không mở được / sai định dạng', 'Phần mềm chỉ chạy trên Windows', 'Máy in / máy quét',
                                                                  'Mạng / Internet', 'Gõ tiếng Việt', 'Máy chậm / treo', 'Sao lưu / mất file', 'Khác')),
   -- Mức độ: đúng giá trị sổ cũ ghi (biểu mẫu 07-yeu-cau-ho-tro: "Gấp (đang dừng việc)" → gap, "Bình thường" → binh-thuong)
@@ -88,7 +88,7 @@ CREATE TABLE onebee.xu_ly_ho_tro (
   UNIQUE (nguon, dong),
   CHECK ((nguon IS NULL) = (dong IS NULL)),
   CHECK (so_phut >= 0),
-  -- Danh mục cách xử lý: box/ansible/roles/box-n8n/vars/main.yml (onebee_ho_tro_cach_xu_ly)
+  -- Danh mục cách xử lý: box/ansible/roles/box-quy-trinh/vars/main.yml (onebee_ho_tro_cach_xu_ly)
   CONSTRAINT cach_xu_ly_trong_danh_muc CHECK (nguon IS NOT NULL OR cach_xu_ly IN ('Hướng dẫn người dùng', 'Sửa cấu hình', 'Cài thêm phần mềm', 'Thay phần cứng',
                                                                        'Quay về Windows (máy/phần mềm)', 'Chưa xử lý được'))
 );

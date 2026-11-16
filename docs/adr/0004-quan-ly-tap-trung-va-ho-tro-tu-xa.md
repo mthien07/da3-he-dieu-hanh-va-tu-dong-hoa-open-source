@@ -1,6 +1,6 @@
 # ADR 0004 — Quản lý tập trung máy trạm và hỗ trợ từ xa
 
-- Ngày: 29/9/2026 · Trạng thái: Chốt cho v0.4 (chưa thử trên máy thật) · Sửa 10/10/2026: mục 1 và 2 theo rà soát bảo mật (`docs/security-audit.md`, F2)
+- Ngày: 29/9/2026 · Trạng thái: Chốt cho v0.4 (chưa thử trên máy thật) · Sửa 10/10/2026: mục 1 và 2 theo rà soát bảo mật (`plans/reports/261010-ra-soat-bao-mat.md`, F2)
 
 ## Bối cảnh
 Gói bảo trì cần: biết máy nào chưa cập nhật / chưa sao lưu / ổ sắp đầy; cập nhật cả đơn vị bằng 1 lệnh;

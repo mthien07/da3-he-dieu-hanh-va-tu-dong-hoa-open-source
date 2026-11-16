@@ -39,7 +39,7 @@
 * **Nội dung chính:**
   1. **Linux Desktop:** Bộ máy trạm văn phòng với trình duyệt, LibreOffice, bộ gõ tiếng Việt, phần mềm in ấn và sao lưu.
   2. **Linux Server:** File server, backup, quyền truy cập, dashboard giám sát và dịch vụ nội bộ.
-  3. **Automation Layer:** n8n/script tự động sao lưu, gửi thông báo, đồng bộ dữ liệu và tạo báo cáo định kỳ.
+  3. **Automation Layer:** Node-RED/script tự động sao lưu, gửi thông báo, đồng bộ dữ liệu và tạo báo cáo định kỳ.
   4. **AI On-premise:** Trợ lý AI nội bộ hỗ trợ soạn thảo, tra cứu quy trình, phân tích log và hướng dẫn người dùng.
 * **Hình ảnh minh họa gợi ý:** Sơ đồ 4 lớp kết nối từ máy trạm đến máy chủ Linux và khung chat AI chạy nội bộ.
 
@@ -74,7 +74,7 @@
 |---|---|---|---|
 | **Chi phí bản quyền** | Cao theo từng máy/người dùng | Thấp nhưng thiếu chuẩn hóa | **Thấp, tập trung vào dịch vụ triển khai** |
 | **Chủ động dữ liệu** | Phụ thuộc cloud/nhà cung cấp | Rời rạc, khó kiểm soát | **Có thể chạy nội bộ và phân quyền rõ** |
-| **Tự động hóa** | Có nhưng thường cần gói cao | Gần như không có | **Tích hợp n8n/script theo quy trình thật** |
+| **Tự động hóa** | Có nhưng thường cần gói cao | Gần như không có | **Tích hợp Node-RED/script theo quy trình thật** |
 | **AI nội bộ** | Thường là dịch vụ cloud | Không có | **Có hướng on-premise/hybrid theo nhu cầu** |
 
 ---

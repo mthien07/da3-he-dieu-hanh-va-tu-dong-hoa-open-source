@@ -1,0 +1,92 @@
+{# SPDX-License-Identifier: MIT #}
+{# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee #}
+{# Luồng nền của Node-RED: mỗi điểm nhận chỉ là một nút function gọi mô-đun onebee-quy-trinh.js (không chứa mã nghiệp vụ,
+   không khóa bí mật, không thư viện ngoài). Trình soạn luồng sửa được các luồng này, mô-đun thì chỉ đổi qua bộ cài. #}
+{% set diem_nhan = [
+  ('suc-khoe', '/suc-khoe', 'get', 'Kiểm tra sức khỏe'),
+  ('bao-cao-sao-luu', '/onebee-bao-cao-sao-luu', 'post', 'Báo cáo sao lưu đêm'),
+  ('nhac-han', '/onebee-nhac-han', 'post', 'Nhắc hạn nộp (Box gọi)'),
+  ('tong-hop-don-hang', '/onebee-tong-hop-don-hang', 'post', 'Tổng hợp đơn hàng trong ngày'),
+  ('tinh-trang', '/onebee-tinh-trang', 'post', 'Nhận tình trạng máy trạm'),
+  ('canh-bao', '/onebee-canh-bao', 'post', 'Cảnh báo sự cố'),
+  ('phe-duyet', '/onebee-phe-duyet', 'post', 'Phê duyệt đơn hàng'),
+] %}
+[
+  {
+    "id": "tab_onebee_quy_trinh",
+    "type": "tab",
+    "label": "OneBee Box — Quy trình tự động",
+    "disabled": false,
+    "info": "Mười quy trình cũ nay chạy trên Node-RED (giấy phép Apache-2.0): điểm nhận và lịch gọi mô-đun onebee-quy-trinh.js. Mã nghiệp vụ nằm trong mô-đun do bộ cài quản lý."
+  },
+{% for ten, duong_dan, phuong_thuc, nhan in diem_nhan %}
+  {
+    "id": "http_{{ ten | replace('-', '_') }}",
+    "type": "http in",
+    "z": "tab_onebee_quy_trinh",
+    "name": "{{ nhan }}",
+    "url": "{{ duong_dan }}",
+    "method": "{{ phuong_thuc }}",
+    "upload": false,
+    "x": 160,
+    "y": {{ loop.index * 90 }},
+    "wires": [["fn_{{ ten | replace('-', '_') }}"]]
+  },
+  {
+    "id": "fn_{{ ten | replace('-', '_') }}",
+    "type": "function",
+    "z": "tab_onebee_quy_trinh",
+    "name": "Xử lý {{ nhan }}",
+    "func": "const m = await global.get('onebee').xuLy('{{ ten }}', msg);\nreturn m;",
+    "outputs": 1,
+    "x": 420,
+    "y": {{ loop.index * 90 }},
+    "wires": [["http_tra_loi"]]
+  },
+{% endfor %}
+  {
+    "id": "lich_nhac_han",
+    "type": "inject",
+    "z": "tab_onebee_quy_trinh",
+    "name": "07:30 mỗi ngày — nhắc hạn nộp",
+    "props": [{ "p": "payload" }],
+    "repeat": "crontab",
+    "crontab": "30 07 * * *",
+    "once": false,
+    "topic": "",
+    "x": 200,
+    "y": 720,
+    "wires": [["fn_nhac_han_theo_lich"]]
+  },
+  {
+    "id": "fn_nhac_han_theo_lich",
+    "type": "function",
+    "z": "tab_onebee_quy_trinh",
+    "name": "Nhắc hạn theo lịch",
+    "func": "const m = await global.get('onebee').xuLy('nhac-han-theo-lich', msg);\nreturn m;",
+    "outputs": 1,
+    "x": 460,
+    "y": 720,
+    "wires": []
+  },
+  {
+    "id": "http_tra_loi",
+    "type": "http response",
+    "z": "tab_onebee_quy_trinh",
+    "name": "Trả lời JSON",
+    "statusCode": "",
+    "headers": {},
+    "x": 700,
+    "y": 360
+  },
+  {
+    "id": "ghi_chu_bao_mat",
+    "type": "comment",
+    "z": "tab_onebee_quy_trinh",
+    "name": "Không thêm gói ngoài: Box có thể không có Internet. Trình soạn luồng có mật khẩu riêng (xem onebee-box in-khoa).",
+    "info": "",
+    "x": 330,
+    "y": 810,
+    "wires": []
+  }
+]
