@@ -51,7 +51,8 @@ box <<'EOF'
 systemctl is-enabled -q onebee-demo-reset.timer || { echo 'FAIL  Bộ hẹn giờ demo chưa được bật'; exit 1; }
 grep -q '^OnCalendar=\*-\*-\* 03:00:00$' /etc/systemd/system/onebee-demo-reset.timer \
   || { systemctl cat onebee-demo-reset.timer; echo 'FAIL  Bộ hẹn giờ không đặt 03:00'; exit 1; }
-systemctl list-timers --all --no-pager | grep -q onebee-demo-reset.timer \
+ds="$(systemctl list-timers --all --no-pager)"   # chụp trước: grep -q đóng sớm làm systemctl bị SIGPIPE, pipefail báo lỗi oan
+grep -q onebee-demo-reset.timer <<<"${ds}" \
   || { echo 'FAIL  Bộ hẹn giờ không có trong danh sách đang chạy'; exit 1; }
 echo 'PASS  Có bộ hẹn giờ đặt lại dữ liệu mẫu lúc 03:00 mỗi ngày'
 EOF
@@ -84,7 +85,8 @@ cai tat-demo
 box <<'EOF'
 [ ! -e /etc/systemd/system/onebee-demo-reset.timer ] || { echo 'FAIL  Tắt demo nhưng còn tệp bộ hẹn giờ'; exit 1; }
 [ ! -e /etc/systemd/system/onebee-demo-reset.service ] || { echo 'FAIL  Tắt demo nhưng còn tệp dịch vụ đặt lại'; exit 1; }
-! systemctl list-timers --all --no-pager | grep -q onebee-demo-reset.timer \
+ds="$(systemctl list-timers --all --no-pager)"
+! grep -q onebee-demo-reset.timer <<<"${ds}" \
   || { echo 'FAIL  Tắt demo nhưng bộ hẹn giờ vẫn chạy'; exit 1; }
 [ ! -e /usr/local/lib/onebee-box/nap-du-lieu-demo.sql ] || { echo 'FAIL  Tắt demo nhưng còn tệp dữ liệu mẫu'; exit 1; }
 echo 'PASS  Tắt chế độ demo: bộ hẹn giờ, dịch vụ đặt lại và tệp dữ liệu mẫu đều bị gỡ'
