@@ -121,7 +121,9 @@ https://{{ ten_box }}:443 {
 	@ai_khoa {
 		method POST
 		path /ai/hoi /ai/tom-tat
-		header X-OneBee-Khoa *
+		# Chỉ khóa đúng dạng mới đi tuyến riêng; sai dạng rơi xuống tuyến có forward_auth (401/302), không vào dịch vụ.
+		# Viết 48 lớp [0-9a-f] thay vì {48}: Caddy coi {…} là placeholder và sẽ thay rỗng trước khi chạy regexp.
+		header_regexp X-OneBee-Khoa ^obk-{{ '[0-9a-f]' * 48 }}$
 	}
 	handle @ai_khoa {
 		route {

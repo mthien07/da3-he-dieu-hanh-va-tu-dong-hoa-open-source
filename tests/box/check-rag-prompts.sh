@@ -51,6 +51,11 @@ grep -q 'ON CONFLICT (nguon, doan) DO UPDATE' "${SCRIPT}" || fail "Câu lệnh n
 grep -q 'lenh == "nap-tri-thuc"' "${SCRIPT}" || fail "Thiếu lệnh nap-tri-thuc"
 pass "Dịch vụ Trợ lý AI: hai đường /ai/, lời nhắc có trích nguồn + dòng nhắc kiểm tra, nạp tri thức không trùng"
 
+grep -q 'header_regexp X-OneBee-Khoa \^obk-' "${COMPOSE%/*}/Caddyfile.j2" || fail "Caddy chưa siết khóa API đúng dạng obk-…"
+grep -q 'path /ai/hoi /ai/tom-tat' "${COMPOSE%/*}/Caddyfile.j2" || fail "Caddy không giới hạn đúng hai đường /ai/"
+! grep -q 'header X-OneBee-Khoa \*' "${COMPOSE%/*}/Caddyfile.j2" || fail "Caddy còn nhận mọi giá trị X-OneBee-Khoa"
+pass "Caddy chỉ cho khóa đúng dạng obk-… vào tuyến /ai/ và giữ đúng hai đường hỏi đáp/tóm tắt"
+
 grep -q "nap-tri-thuc) with_lock cmd_nap_tri_thuc ;;" "${BOX_SCRIPT}" || fail "onebee-box.sh.j2 thiếu lệnh nap-tri-thuc"
 grep -q "cap-khoa-hoi) shift; cmd_cap_khoa_hoi" "${BOX_SCRIPT}" || fail "onebee-box.sh.j2 thiếu lệnh cap-khoa-hoi"
 grep -q "go-khoa-hoi) shift; cmd_go_khoa_hoi" "${BOX_SCRIPT}" || fail "onebee-box.sh.j2 thiếu lệnh go-khoa-hoi"

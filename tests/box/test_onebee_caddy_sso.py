@@ -244,14 +244,21 @@ class CaddySso(unittest.TestCase):
         self.assertEqual((y["path"], h.get("remote-user"), h.get("remote-groups")), ("/ai/hoi", "an", "nhan_vien"))
         self.assertNotIn("cookie", h)
         self.assertNotIn("authorization", h)
-        # Khóa API riêng: đi tuyến không qua đăng nhập một lần, dịch vụ tự xác thực; không có Remote-User
+        # Khóa API đúng dạng: đi tuyến không qua đăng nhập một lần, dịch vụ tự xác thực; không có Remote-User
+        khoa = "obk-" + "a" * 48
         so_authelia = len(AUTHELIA_THAY.ds)
-        ma, _, _, _ = self.ten("/ai/hoi", "-X", "POST", "-d", "{}", "-H", "X-OneBee-Khoa: obk-thu")
+        ma, _, _, _ = self.ten("/ai/hoi", "-X", "POST", "-d", "{}", "-H", f"X-OneBee-Khoa: {khoa}")
         self.assertEqual(ma, "200")
         self.assertEqual(len(AUTHELIA_THAY.ds), so_authelia)
         h = {k.lower(): v for k, v in AI_RAG_THAY.ds[-1]["headers"].items()}
-        self.assertEqual(h.get("x-onebee-khoa"), "obk-thu")
+        self.assertEqual(h.get("x-onebee-khoa"), khoa)
         self.assertNotIn("remote-user", h)
+        # Khóa sai dạng KHÔNG vào dịch vụ: rơi xuống tuyến forward_auth, không phiên nên 401, dịch vụ không nhận thêm yêu cầu
+        so_ai = len(AI_RAG_THAY.ds)
+        ma, _, _, _ = self.ten("/ai/hoi", "-X", "POST", "-d", "{}", "-H", "X-OneBee-Khoa: abc",
+                               "-H", "Accept: application/json")
+        self.assertEqual(ma, "401")
+        self.assertEqual(len(AI_RAG_THAY.ds), so_ai)
         self.assertEqual(self.ten("/ai/tom-tat", "-X", "POST", "-d", "{}", "-b", "authelia_session=phien-an")[0], "200")
 
     def test_f_files_co_phien_nhan_503(self):

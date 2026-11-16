@@ -20,7 +20,7 @@ git clone https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-sourc
 sudo ./box/onebee-box-install.sh          # lần đầu tải vài GB, 15–40 phút tùy mạng
 ```
 - [ ] Cài xong, in dòng `[OneBee Box] Hoàn tất`. Chạy lại lần 2: xong nhanh, không lỗi.
-- [ ] Từ máy thật mở `http://<ip-box>/` thấy trang OneBee Box; `:3000` Trợ lý AI; `:5678` n8n; `:3001` Uptime Kuma.
+- [ ] Từ máy thật mở `http://<ip-box>/` thấy trang OneBee Box; `:5678` n8n; `:3001` Uptime Kuma; gõ `hoi <câu hỏi>` trên máy trạm khi Box đã bật HTTPS.
 - [ ] `sudo onebee-box in-khoa` → đăng nhập được 3 trang trên bằng `quantri@onebee.lan` (Uptime Kuma: tài khoản `quantri`)
       với mật khẩu dòng `webui-admin-password`, `n8n-owner-password`, `uptime-kuma-password`. **Không** trang nào mời "tạo tài khoản quản trị".
 - [ ] Trợ lý AI: chọn "Trợ lý OneBee", hỏi "soạn thông báo họp HTX sáng thứ Hai" → trả lời tiếng Việt. **Ghi thời gian chờ chữ đầu tiên**
