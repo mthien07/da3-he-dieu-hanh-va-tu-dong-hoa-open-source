@@ -17,6 +17,8 @@
     - {path: "{{ onebee_box_dir }}/portal"}
     - {path: "{{ onebee_box_dir }}/portal/caddy"}
     - {path: "{{ onebee_box_dir }}/portal/site"}
+    # Thư mục trang phải có TRƯỚC khi sinh trang: Caddy gắn ./portal/site vào /srv, thiếu thư mục là bộ cài dừng
+    - {path: "{{ onebee_box_dir }}/portal/site/so-dieu-hanh"}
     - {path: "{{ onebee_box_dir }}/portal/site-http"}
     - {path: "{{ onebee_box_data }}/caddy", mode: "0700"}
     - {path: "{{ onebee_box_data }}/caddy/data", mode: "0700"}
@@ -134,6 +136,23 @@
     - {src: docker-compose.yml.j2, dest: docker-compose.yml}
     - {src: index.html.j2, dest: portal/site/index.html}
     - {src: huong-dan-ca.html.j2, dest: portal/site-http/index.html}
+
+- name: Sinh trang Sổ điều hành
+  ansible.builtin.template:
+    src: so-dieu-hanh.html.j2
+    dest: "{{ onebee_box_dir }}/portal/site/so-dieu-hanh/index.html"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Chép mã và kiểu của Sổ điều hành cạnh trang
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ onebee_box_dir }}/portal/site/so-dieu-hanh/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: [so-dieu-hanh.css, so-dieu-hanh.js]
 
 - name: Sinh cấu hình cổng Caddy
   ansible.builtin.template:

@@ -5,7 +5,8 @@
 # → quản lý tập trung (báo tình trạng, cập nhật qua SSH) → email báo cáo → Box dọn bản cũ
 # → tường lửa: máy trong LAN vào được, máy ngoài mạng cho phép bị chặn
 # → diễn tập hỏng ổ Box: cài lại + khôi phục toàn bộ bằng khóa in ra giấy (gồm 1 tệp trong kho tệp, tải lại đúng SHA-256)
-# → bật HTTPS: kho tệp /files/ tải lên, kiểm dịch ClamAV, tệp nhiễm bị chặn (check-kho-tep-inside.sh)
+# → bật HTTPS: Sổ điều hành H-P-D-I (check-https.sh gọi check-so-dieu-hanh.sh), kho tệp /files/ tải lên, kiểm dịch ClamAV,
+# tệp nhiễm bị chặn (check-kho-tep-inside.sh)
 # → bản giả mạo ngày tương lai bị phát hiện → chưa gắn ổ ngoài thì từ chối → khởi động lại Box, dịch vụ tự lên.
 # Biến: ONEBEE_TEST_EXTRA_CA (CA proxy), ONEBEE_TEST_MODEL / ONEBEE_TEST_EMBED_MODEL (model tải trong bài kiểm AI),
 #       ONEBEE_TEST_KEEP=1 (giữ container để xem lại).

@@ -89,6 +89,8 @@
 {# Vào bằng IP: chỉ trang chủ (công khai, không có dữ liệu nội bộ). Tuyến lõi chỉ phục vụ trên tên (QĐ2) → chuyển sang tên #}
 https://{{ onebee_box_ip }}:443 {
 	import onebee_tls
+	@so_dieu_hanh path /so-dieu-hanh /so-dieu-hanh/*
+	redir @so_dieu_hanh https://{{ ten_box }}{uri} 308
 	@tuyen_loi path /dangnhap /dangnhap/* /api/* /files/* /ai/*
 	handle @tuyen_loi {
 		redir https://{{ ten_box }}{uri} 308
@@ -103,6 +105,21 @@ https://{{ ten_box }}:443 {
 		reverse_proxy authelia:9091
 	}
 {% if onebee_sso_hieu_luc | bool %}
+	# Sổ điều hành: trang tĩnh cùng gốc, sau đăng nhập một lần. CSP chặt vì trang không tải gì từ Internet:
+	# mã và kiểu riêng cùng thư mục, không script/style nhúng, không khung, không gửi biểu mẫu ra ngoài.
+	@so_dieu_hanh path /so-dieu-hanh /so-dieu-hanh/*
+	handle @so_dieu_hanh {
+		import onebee_sso
+		root * /srv
+		file_server
+		header {
+			Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'"
+			Cache-Control "no-store"
+			X-Content-Type-Options nosniff
+			X-Frame-Options DENY
+			Referrer-Policy no-referrer
+		}
+	}
 	# route giữ đúng thứ tự: xác thực trên đường dẫn gốc (luật Authelia khớp ^/api/) rồi mới tới dịch vụ.
 	# Không dùng handle_path: nó bỏ tiền tố TRƯỚC forward_auth
 	handle /api/* {
@@ -194,6 +211,11 @@ https://{{ ten_box }}:443 {
 	}
 {% else %}
 	# Đăng nhập một lần đang TẠM TẮT (onebee-box tat-sso-tam): không ai vào được dữ liệu — không mở toang khi định danh hỏng
+	@so_dieu_hanh path /so-dieu-hanh /so-dieu-hanh/*
+	handle @so_dieu_hanh {
+		header Content-Type "text/plain; charset=utf-8"
+		respond "Đăng nhập một lần đang tạm tắt để sửa — ứng dụng tạm khóa, thử lại sau" 503
+	}
 	@tuyen_loi path /api/* /files/* /ai/* /quy-trinh/*
 	handle @tuyen_loi {
 		header Content-Type "text/plain; charset=utf-8"
@@ -252,6 +274,9 @@ https://{{ onebee_box_ip }}:{{ cong.uptime_kuma }} {
 # Điểm nhận webhook vẫn chạy (khóa X-OneBee-Key từng tuyến) để sao lưu/cảnh báo không chờ bật HTTPS;
 # trình soạn luồng (/quy-trinh/) và các tuyến dữ liệu vẫn KHÔNG tồn tại khi HTTPS tắt.
 :80 {
+	# Ứng dụng Sổ điều hành chỉ tồn tại trên tên Box ở chế độ HTTPS (QĐ2, B3)
+	@so_dieu_hanh path /so-dieu-hanh /so-dieu-hanh/*
+	respond @so_dieu_hanh 404
 	handle /webhook/* {
 		reverse_proxy quy-trinh:1880
 	}

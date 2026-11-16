@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""onebee-bao-ho-tro — mở biểu mẫu "Báo cần hỗ trợ" của OneBee Box trong trình duyệt, đã điền sẵn tên máy
-(và loại sự cố, mô tả nếu có). Địa chỉ biểu mẫu chỉ đọc từ /etc/onebee-ho-tro.conf (root ghi, dòng HO_TRO_URL=);
-tham số của người dùng được mã hóa phần trăm, không đi qua shell. Biểu mẫu vẫn hỏi tài khoản như bình thường."""
+"""onebee-bao-ho-tro — mở ứng dụng Sổ điều hành của OneBee Box trong trình duyệt, đã điền sẵn tên máy
+(và loại sự cố, mô tả nếu có). Địa chỉ ứng dụng chỉ đọc từ /etc/onebee-ho-tro.conf (root ghi, dòng HO_TRO_URL=);
+tham số của người dùng được mã hóa phần trăm, không đi qua shell. Ứng dụng vẫn hỏi tài khoản như bình thường."""
 import argparse
 import os
 import shutil
@@ -32,7 +32,7 @@ def doc_dia_chi(tep):
 
 
 def dung_dia_chi(goc, may, loai="", mo_ta=""):
-    """Địa chỉ trang hỗ trợ kèm khóa query giữ tương thích bản cũ (may, loai, mo_ta); tham số rỗng thì bỏ."""
+    """Địa chỉ ứng dụng kèm khóa query của biểu mẫu hỗ trợ (may, loai, mo_ta); tham số rỗng thì bỏ."""
     if len(mo_ta) > MO_TA_TOI_DA:
         mo_ta = mo_ta[:MO_TA_TOI_DA] + "…"
     cap = [(k, v) for k, v in (("may", may), ("loai", loai), ("mo_ta", mo_ta)) if v]
@@ -53,13 +53,13 @@ def bao(loi):
 
 
 def main(argv):
-    ap = argparse.ArgumentParser(prog="onebee-bao-ho-tro", description="Mở biểu mẫu Báo cần hỗ trợ của OneBee Box, đã điền sẵn tên máy.")
-    ap.add_argument("--loai", default="", help="loại sự cố điền sẵn (đúng một lựa chọn của biểu mẫu)")
+    ap = argparse.ArgumentParser(prog="onebee-bao-ho-tro", description="Mở ứng dụng Sổ điều hành của OneBee Box, đã điền sẵn tên máy.")
+    ap.add_argument("--loai", default="", help="loại sự cố điền sẵn (đúng một lựa chọn của biểu mẫu hỗ trợ)")
     ap.add_argument("--mo-ta", default="", help="mô tả điền sẵn (tối đa %d ký tự)" % MO_TA_TOI_DA)
     args = ap.parse_args(argv)
     goc = doc_dia_chi(os.environ.get("ONEBEE_HO_TRO_CONF", CONF_MAC_DINH))
     if goc is None:
-        bao("Máy này chưa nối OneBee Box nên chưa mở được biểu mẫu Báo cần hỗ trợ.\nHãy gọi kỹ thuật viên của đơn vị.")
+        bao("Máy này chưa nối OneBee Box nên chưa mở được Sổ điều hành.\nHãy gọi kỹ thuật viên của đơn vị.")
         return 1
     url = dung_dia_chi(goc, socket.gethostname(), args.loai, args.mo_ta)
     try:

@@ -3,8 +3,9 @@
 # chốt chặn máy chưa nhận CA → bật HTTPS → Caddy là nơi duy nhất công bố cổng, TLS đúng CA riêng, http:// bị chuyển 308, cookie Secure, CORS,
 # trình soạn luồng Node-RED không vào được khi chưa phiên, điểm nhận webhook tự kiểm X-OneBee-Key, bất biến bảo mật (kiem-bat-bien.sh),
 # máy trạm sao lưu/hỏi AI/báo tình trạng qua HTTPS → đăng nhập một lần + cổng API (check-sso-cong-api.sh) → phê duyệt đơn qua động cơ quy trình
-# → phân quyền dòng qua cổng API (check-du-lieu-qua-cong.sh) → kho tệp: tải lên, kiểm dịch ClamAV, tải lại đúng SHA-256, tệp nhiễm bị chặn
-# (check-kho-tep-inside.sh) → chạy lại bộ cài không đổi gì → tắt HTTPS lại về HTTP.
+# → Sổ điều hành H-P-D-I: gửi đơn kèm tệp, kiểm dịch, duyệt, bảng điều hành, tóm tắt (check-so-dieu-hanh.sh) → phân quyền dòng qua cổng API
+# (check-du-lieu-qua-cong.sh) → kho tệp: tải lên, kiểm dịch ClamAV, tải lại đúng SHA-256, tệp nhiễm bị chặn (check-kho-tep-inside.sh)
+# → chạy lại bộ cài không đổi gì → tắt HTTPS lại về HTTP.
 # Cách dùng: check-https.sh <container-Box> <container-máy-trạm>   (chưa chạy trên máy tác giả — cần Docker lồng, xem tests/README.md)
 set -euo pipefail
 BOX="$1"; CLIENT="$2"
@@ -99,7 +100,12 @@ tram "grep -q '^RESTIC_REPOSITORY=rest:https://' /etc/onebee/may-tram.env && gre
   echo 'PASS  Máy trạm sao lưu (restic rest:https), hỏi Trợ lý AI và báo tình trạng qua HTTPS, chỉ tin CA riêng của Box'
   grep -q 'http://' /etc/firefox/policies/policies.json && { echo 'FAIL  Chính sách Firefox còn địa chỉ http'; exit 1; }
   grep -q ManagedBookmarks /etc/firefox/policies/policies.json || { echo 'FAIL  Thiếu dấu trang https của Firefox'; exit 1; }
-  echo 'PASS  Firefox được đặt trang chủ + dấu trang https'"
+  echo 'PASS  Firefox được đặt trang chủ + dấu trang https'
+  grep -q '^HO_TRO_URL=https://box\.[a-z0-9-]*\.onebee\.internal/so-dieu-hanh/$' /etc/onebee-ho-tro.conf \
+    || { echo 'FAIL  Mục menu Báo cần hỗ trợ không trỏ ứng dụng Sổ điều hành trên tên Box'; cat /etc/onebee-ho-tro.conf 2>/dev/null; exit 1; }
+  grep -qx 'Exec=onebee-bao-ho-tro' /usr/share/applications/onebee-bao-ho-tro.desktop \
+    || { echo 'FAIL  Thiếu mục menu Báo cần hỗ trợ'; exit 1; }
+  echo 'PASS  Menu máy trạm \"Báo cần hỗ trợ\" mở Sổ điều hành trên tên Box qua HTTPS'"
 box "onebee-box may-tram | grep -A3 '^ketoan-01 ' | head -4"
 
 echo "===== HTTPS: ĐĂNG NHẬP MỘT LẦN + CỔNG API ====="
@@ -107,6 +113,9 @@ echo "===== HTTPS: ĐĂNG NHẬP MỘT LẦN + CỔNG API ====="
 
 echo "===== HTTPS: PHÊ DUYỆT ĐƠN QUA ĐỘNG CƠ QUY TRÌNH ====="
 box '/root/onebee-test/tests/box/check-quy-trinh-inside.sh phe-duyet'
+
+echo "===== HTTPS: SỔ ĐIỀU HÀNH H-P-D-I ====="
+"$(dirname "$0")/check-so-dieu-hanh.sh" "${BOX}"
 
 echo "===== HTTPS: DỮ LIỆU QUA CỔNG API (PHÂN QUYỀN DÒNG) ====="
 "$(dirname "$0")/check-du-lieu-qua-cong.sh" "${BOX}"
