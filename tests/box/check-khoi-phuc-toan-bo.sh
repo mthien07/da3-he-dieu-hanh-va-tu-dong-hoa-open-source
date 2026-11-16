@@ -41,7 +41,7 @@ box "/root/onebee-test/box/onebee-box-install.sh > /root/cai-lai.log 2>&1 || { t
   /root/onebee-test/box/onebee-box-install.sh > /root/cai-lai-2.log 2>&1 || { tail -30 /root/cai-lai-2.log; exit 1; }
   cmp -s ${S}/webui-admin-password /root/cu-webui && cmp -s ${S}/quy-trinh-soan-luong /root/cu-soan \
     || { echo 'FAIL  Khóa bí mật không trở lại như cũ'; exit 1; }
-  [ -s ${S}/quy-trinh-soan-hash ] && grep -Eq '^\$2[aby]\$' ${S}/quy-trinh-soan-hash \
+  [ -s ${S}/quy-trinh-soan-hash ] && grep -Eq '^[$]2[aby][$]' ${S}/quy-trinh-soan-hash \
     || { echo 'FAIL  Bản băm mật khẩu trình soạn luồng không được khôi phục'; exit 1; }
   cmp -s ${S}/ca/root.sha256 /root/cu-ca-sha || { echo 'FAIL  CA riêng sau khôi phục khác CA cũ — máy trạm sẽ không tin Box'; exit 1; }
   openssl verify -CApath /etc/ssl/certs ${S}/ca/inter.crt >/dev/null || { echo 'FAIL  Box không tin CA đã khôi phục'; exit 1; }
