@@ -441,11 +441,12 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertEqual(sorted(os.listdir(kx)), ["onebee.dump"])                              # không còn tệp tạm
         log = self.docker_log().splitlines()
         dump = [i for i, d in enumerate(log) if "exec onebee-postgres pg_dump -U postgres -d onebee -Fc" in d]
-        pause = [i for i, d in enumerate(log) if d.endswith(" pause open-webui quy-trinh uptime-kuma authelia")]
+        pause = [i for i, d in enumerate(log) if d.endswith(" pause open-webui quy-trinh uptime-kuma authelia seaweedfs kho-tep")]
         self.assertTrue(dump and pause, log)
         self.assertLess(dump[0], pause[0])                                                       # không exec được trong container đang dừng
         ban_csdl = [d for d in open(f"{self.t}/out/restic.log").read().splitlines() if d.startswith("restic backup") and "--tag csdl" in d][0]
         self.assertIn(f" {kx} ", ban_csdl + " ")
+        self.assertIn(f" {self.t}/data/seaweedfs ", ban_csdl + " ")                              # dữ liệu kho tệp trong bản chụp CSDL
         self.assertNotIn(f"{self.t}/data/postgres ", ban_csdl + " ")                             # không chụp thư mục sống
 
     def test_sao_luu_dung_khi_ket_xuat_csdl_loi(self):

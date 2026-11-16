@@ -15,6 +15,7 @@
     - box-stack
     - box-dinh-danh   # đăng nhập một lần (Authelia): cấu hình, tệp người dùng, bí mật rồi mới chạy dịch vụ
     - box-du-lieu     # PostgreSQL + API tự sinh (PostgREST) sau cầu nối danh tính: lược đồ có ghi sổ, RLS
+    - box-kho-tep     # SeaweedFS + dịch vụ cổng /files/ và kiểm dịch ClamAV từng lượt (sau khi CSDL đã có lược đồ)
     - box-ai
     - box-quy-trinh   # Node-RED: mười quy trình cũ trên nền định danh/CSDL của Box; sinh tệp TRƯỚC khi chạy container
     - box-backup

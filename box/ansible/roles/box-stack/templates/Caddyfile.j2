@@ -135,11 +135,16 @@ https://{{ ten_box }}:443 {
 	handle /ai/* {
 		respond 404
 	}
+	# Kho tệp: xác thực trên đường dẫn gốc rồi mới bỏ tiền tố (Authelia khớp ^/files/). Giới hạn thân ở Caddy là chốt chặn
+	# tài nguyên; dịch vụ kho tệp vẫn tự kiểm giới hạn 10 MB và trả 413 (11 MB tới được dịch vụ để có câu trả lời rõ ràng).
 	handle /files/* {
 		route {
 			import onebee_sso
-			header Content-Type "text/plain; charset=utf-8"
-			respond "Chưa cài kho tệp trên OneBee Box" 503
+			request_body {
+				max_size 11MB
+			}
+			uri strip_prefix /files
+			reverse_proxy kho-tep:8080
 		}
 	}
 	# Điểm nhận của động cơ quy trình cho các script chạy trên chính Box (báo cáo sao lưu, cảnh báo, tình trạng máy trạm).

@@ -28,9 +28,17 @@ code_in() { local c; c="$(http_code "$1")"; shift; for want in "$@"; do [[ "${c}
 
 check "Có file phiên bản Box" grep -q '^ONEBEE_EDITION=box$' /etc/onebee-release
 check "Docker đang chạy và bật cùng máy" bash -c "systemctl is-active docker && systemctl is-enabled docker"
-for c in onebee-portal onebee-ollama onebee-open-webui onebee-quy-trinh onebee-uptime-kuma onebee-rest-server onebee-postgres onebee-postgrest; do
+for c in onebee-portal onebee-ollama onebee-open-webui onebee-quy-trinh onebee-uptime-kuma onebee-rest-server onebee-postgres onebee-postgrest \
+         onebee-seaweedfs onebee-kho-tep; do
   check "Container ${c} đang chạy" bash -c "[ \"\$(docker inspect -f '{{.State.Running}}' ${c})\" = true ]"
 done
+check "Kho tệp và kiểm dịch không công bố cổng ra ngoài" bash -c \
+  "[ -z \"\$(docker port onebee-seaweedfs)\" ] && [ -z \"\$(docker port onebee-kho-tep)\" ]"
+check "Image ClamAV dựng cục bộ đã bỏ libclamunrar (không còn tệp UnRAR)" bash -c \
+  "! docker run --rm --network none --entrypoint sh onebee/clamav-khong-unrar:1.5.4 -c 'find / -xdev -name \"libclamunrar*\"' | grep -q ."
+check "Chữ ký ClamAV đã có trên Box (kiểm dịch quét được tệp thật)" bash -c \
+  "ls /srv/onebee/clamav/*.cvd /srv/onebee/clamav/*.cld 2>/dev/null | grep -q ."
+check "Tuyến /files/ không tồn tại ở chế độ HTTP (404)" code_in http://127.0.0.1/files/ 404
 check "Trang giới thiệu :80 hiển thị OneBee Box" bash -c "curl -s -m 10 http://127.0.0.1/ | grep -q 'OneBee Box'"
 check "Open WebUI :3000 khỏe (/health)" bash -c "curl -s -m 10 http://127.0.0.1:3000/health | grep -q true"
 check "Động cơ quy trình (Node-RED) khỏe (/webhook/suc-khoe)" bash -c \
@@ -60,7 +68,7 @@ check "Động cơ quy trình: trình soạn luồng có mật khẩu riêng (ad
    && grep -q \"httpAdminRoot: '/quy-trinh'\" /opt/onebee-box/quy-trinh/settings.js && grep -q 'allowInstall: false' /opt/onebee-box/quy-trinh/settings.js"
 check "Động cơ quy trình không công bố cổng nào (Caddy là cửa duy nhất)" bash -c "[ -z \"\$(docker port onebee-quy-trinh)\" ]"
 check "Các image dịch vụ ghim theo digest (@sha256)" bash -c \
-  "for c in onebee-portal onebee-ollama onebee-quy-trinh onebee-uptime-kuma onebee-rest-server; do \
+  "for c in onebee-portal onebee-ollama onebee-quy-trinh onebee-uptime-kuma onebee-rest-server onebee-seaweedfs; do \
      a=\$(docker inspect -f '{{.Config.Image}}' \$c 2>/dev/null) || { echo \"không đọc được image của \$c\"; exit 1; }; \
      # Open WebUI do bài kiểm thay bằng bản -slim (không digest) cho nhanh; máy thật vẫn kiểm ở compose/unit test
      case \"\$a\" in *@sha256:*) ;; *) echo \"\$c dùng image chưa ghim digest: \$a\"; exit 1 ;; esac; \

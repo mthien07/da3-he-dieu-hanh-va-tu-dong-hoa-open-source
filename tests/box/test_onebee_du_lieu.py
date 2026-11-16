@@ -161,7 +161,8 @@ class LuocDo(unittest.TestCase):
         self.assertEqual(danh_muc("muc_do"), ["gap", "binh-thuong"])              # giá trị sổ cũ ghi; ứng dụng giai đoạn 4 dùng lại
 
     def test_ten_tep_luoc_do_dung_dang_va_khong_tu_mo_giao_dich(self):
-        self.assertEqual([os.path.basename(f) for f in LUOC_DO], ["001-khoi-tao.sql", "002-phan-quyen.sql", "003-khung-nhin-tong-hop.sql"])
+        self.assertEqual([os.path.basename(f) for f in LUOC_DO],
+                         ["001-khoi-tao.sql", "002-phan-quyen.sql", "003-khung-nhin-tong-hop.sql", "004-kho-tep.sql"])
         for f in LUOC_DO:
             noi_dung = bo_chu_thich(open(f, encoding="utf-8").read())
             self.assertNotRegex(noi_dung, r"(?im)^\s*(BEGIN|COMMIT|ROLLBACK)\s*;", f)   # công cụ áp dụng bọc mỗi tệp một giao dịch
@@ -189,7 +190,7 @@ class BoCaiDuLieu(unittest.TestCase):
 
     def test_giay_phep_va_ci(self):
         lic = open(os.path.join(ROOT, "LICENSES.md"), encoding="utf-8").read()
-        for ten in ("PostgreSQL", "pgvector", "PostgREST"):
+        for ten in ("PostgreSQL", "pgvector", "PostgREST", "SeaweedFS", "ClamAV"):
             self.assertIn(ten, lic)
         ci = yaml.safe_load(open(os.path.join(ROOT, ".github/workflows/ci.yml"), encoding="utf-8"))
         buoc = "\n".join(b.get("run", "") for b in ci["jobs"]["lint"]["steps"])
