@@ -21,6 +21,9 @@ INSERT INTO onebee.don_hang (khach_hang, mat_hang, so_luong_kg, don_gia, thanh_t
 SQL
   docker exec onebee-postgres psql -X -At -U postgres -d onebee -c 'SELECT count(*) FROM onebee.don_hang' > /root/cu-so-don-csdl"
 
+# Sổ hỗ trợ cũ (CSV) là dữ liệu mẫu có sẵn trước khi hỏng ổ: không còn biểu mẫu tự ghi, bài kiểm tự đặt bản mẫu
+box "[ -s /srv/onebee/ho-tro/yeu-cau.csv ] || cp /root/onebee-test/tests/box/fixtures/so-cu/ho-tro/yeu-cau.csv /srv/onebee/ho-tro/yeu-cau.csv"
+
 box "onebee-box in-khoa > /root/khoa-in-ra-giay.txt
   cp ${S}/webui-admin-password /root/cu-webui; cp ${S}/quy-trinh-soan-luong /root/cu-soan; cp ${S}/ca/root.sha256 /root/cu-ca-sha
   wc -l < /srv/onebee/ho-tro/yeu-cau.csv > /root/cu-so-yeu-cau
