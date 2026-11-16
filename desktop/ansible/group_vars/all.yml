@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Cấu hình chung OneBee OS Desktop — đổi tại đây, không sửa trong role
-onebee_version: "1.2.0"
+onebee_version: "1.3.0"
 
 # Ngôn ngữ, múi giờ
 onebee_locale: vi_VN.UTF-8

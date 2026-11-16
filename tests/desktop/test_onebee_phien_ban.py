@@ -84,8 +84,9 @@ class GoiThu(unittest.TestCase):
         self.sao_chep(DONG_GOI, "scripts/dong-goi-ban-phat-hanh.sh")
         self.viet("desktop/ansible/group_vars/all.yml", 'onebee_version: "1.2.0"\n')
         self.viet("box/ansible/group_vars/all.yml", 'onebee_box_version: "1.2.0"\n')
-        self.viet("CHANGELOG.md", "# Nhật ký thay đổi\n\n## [Unreleased]\n- Thay đổi chưa phát hành\n\n## [1.2.0] — 14/11/2026\n- Bản cũ\n")
+        self.viet("CHANGELOG.md", "# Nhật ký thay đổi\n\n## [1.3.0] — 17/11/2026\n- Thay đổi chưa phát hành\n\n## [1.2.0] — 14/11/2026\n- Bản cũ\n")
         for tep in ("tests/a.txt", "docs/huong-dan/a.md", "docs/adr/a.md", "docs/kinh-doanh/a.md",
+                    "docs/api/a.md", "docs/kien-truc-dx-os.md", "docs/olp-2026-tu-cham-pof.md", "ROADMAP.md",
                     "LICENSE", "LICENSES.md", "CONTRIBUTING.md", "SECURITY.md", "README.md"):
             self.viet(tep, "x\n")
         for lenh in (["init", "-q"], ["add", "-A"],
@@ -109,7 +110,7 @@ class GoiThu(unittest.TestCase):
         return subprocess.run(["bash", "scripts/dong-goi-ban-phat-hanh.sh", phien_ban], cwd=self.tmp,
                               capture_output=True, text=True, env=env, timeout=120)
 
-    def test_goi_thu_dev_co_license_va_ghi_chu_tu_unreleased(self):
+    def test_goi_thu_dev_co_license_va_ghi_chu_theo_phien_ban(self):
         kq = self.chay("1.3.0-dev")
         self.assertEqual(kq.returncode, 0, kq.stdout + kq.stderr)
         self.assertIn("Đã tạo:", kq.stdout)
