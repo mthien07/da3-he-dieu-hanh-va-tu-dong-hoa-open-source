@@ -2,7 +2,7 @@
 # Kiểm tra OneBee Box sau khi cài (chạy trên Box bằng root). Cần: curl, smbclient.
 set -uo pipefail
 fails=0
-check() { local d="$1"; shift; if "$@" >/dev/null 2>&1; then printf 'PASS  %s\n' "$d"; else printf 'FAIL  %s\n' "$d"; fails=$((fails + 1)); fi; }
+check() { local d="$1" ra; shift; if ra="$("$@" 2>&1)"; then printf 'PASS  %s\n' "$d"; else printf 'FAIL  %s\n' "$d"; [ -z "${ra}" ] || printf '      %s\n' "${ra}"; fails=$((fails + 1)); fi; }
 http_code() { curl -s -o /dev/null -w '%{http_code}' -m 10 "$1"; }
 # IP của Box (cùng cách check-https.sh lấy) — Origin hợp lệ của Open WebUI ở chế độ HTTP là http://<IP>:3000
 BOX_IP="$(ip -4 route get 1.1.1.1 | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}')"
@@ -60,7 +60,10 @@ check "Động cơ quy trình: trình soạn luồng có mật khẩu riêng (ad
    && grep -q \"httpAdminRoot: '/quy-trinh'\" /opt/onebee-box/quy-trinh/settings.js && grep -q 'allowInstall: false' /opt/onebee-box/quy-trinh/settings.js"
 check "Động cơ quy trình không công bố cổng nào (Caddy là cửa duy nhất)" bash -c "[ -z \"\$(docker port onebee-quy-trinh)\" ]"
 check "Các image dịch vụ ghim theo digest (@sha256)" bash -c \
-  "for c in onebee-portal onebee-ollama onebee-open-webui onebee-quy-trinh onebee-uptime-kuma onebee-rest-server; do docker inspect -f '{{.Config.Image}}' \$c | grep -q '@sha256:' || exit 1; done"
+  "for c in onebee-portal onebee-ollama onebee-open-webui onebee-quy-trinh onebee-uptime-kuma onebee-rest-server; do \
+     a=\$(docker inspect -f '{{.Config.Image}}' \$c 2>/dev/null) || { echo \"không đọc được image của \$c\"; exit 1; }; \
+     case \"\$a\" in *@sha256:*) ;; *) echo \"\$c dùng image chưa ghim digest: \$a\"; exit 1 ;; esac; \
+   done"
 check "Open WebUI: tắt Functions/Tools; quản trị không đọc/xuất chat; tắt chia sẻ chat (biến môi trường)" bash -c \
   "for kv in ENABLE_PLUGINS ENABLE_ADMIN_CHAT_ACCESS ENABLE_ADMIN_EXPORT USER_PERMISSIONS_CHAT_SHARE ENABLE_COMMUNITY_SHARING; do \
      [ \"\$(docker exec onebee-open-webui printenv \$kv)\" = false ] || exit 1; done"
