@@ -645,7 +645,9 @@ case "${1:-}" in
   thu-hoi-may) shift; cmd_thu_hoi_may "$@" ;;
   ghim-lai-may) shift; cmd_ghim_lai_may "$@" ;;
   dong-bo-ten-may) dong_bo_ten_may ;;
-  nap-tri-thuc) with_lock cmd_nap_tri_thuc ;;
+  # Không lấy khóa sao lưu/xoay khóa: bộ cài gọi lệnh này khi đang giữ khóa (tat-sso-tam, xoay-khoa --box);
+  # nạp tri thức chỉ đọc tệp bí mật và ghi CSDL trong một giao dịch, không xung đột với sao lưu hay xoay khóa.
+  nap-tri-thuc) cmd_nap_tri_thuc ;;
   cap-khoa-hoi) shift; cmd_cap_khoa_hoi "$@" ;;
   go-khoa-hoi) shift; cmd_go_khoa_hoi "$@" ;;
   khoi-tao) with_lock cmd_khoi_tao ;;
