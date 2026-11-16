@@ -11,6 +11,7 @@ import os
 import stat
 import sys
 import tempfile
+import time
 import threading
 import unittest
 from contextlib import redirect_stdout, redirect_stderr
@@ -399,6 +400,11 @@ class TestMayChu(unittest.TestCase):
     def test_chi_nhat_ky_ten_va_duong_dan_khong_co_noi_dung(self):
         with redirect_stderr(self.nhat_ky):
             goi(self.may, "/ai/hoi", {"cau_hoi": "Bí mật của tôi"}, self.phien("an"))
+            # Máy chủ ghi nhật ký sau khi trả lời; chờ dòng nhật ký thay vì đọc ngay (máy nhanh/chậm khác nhau)
+            for _ in range(200):
+                if "an POST /ai/hoi 200" in self.nhat_ky.getvalue():
+                    break
+                time.sleep(0.01)
         dong = self.nhat_ky.getvalue()
         self.assertIn("an POST /ai/hoi 200", dong)
         self.assertNotIn("Bí mật của tôi", dong)
