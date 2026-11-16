@@ -210,7 +210,7 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
 
 ### 5.0 Quy ước chung
 - Mỗi pha phát hành riêng được. Nâng cấp = chạy lại bộ cài; lần chạy thứ 2 phải ra `changed=0`.
-- Mỗi pha: sửa → `tests/box/run-box-test-in-systemd-container.sh`, `tests/desktop/*`, unit test, lint → `docs/project-changelog.md` (+ ADR khi đổi thiết kế).
+- Mỗi pha: sửa → `tests/box/run-box-test-in-systemd-container.sh`, `tests/desktop/*`, unit test, lint → `CHANGELOG.md` (+ ADR khi đổi thiết kế).
 - **Test mới dùng chung:**
   - Test nâng cấp: cài commit cũ → cấp máy, tạo dữ liệu → cài bản mới → dữ liệu còn, biểu mẫu chạy, `changed=0`.
   - Ma trận lệch phiên bản: desktop cũ × Box mới, desktop mới × Box cũ.
