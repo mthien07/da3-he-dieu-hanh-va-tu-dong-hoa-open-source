@@ -18,11 +18,12 @@ tram 'mkdir -p /run/sshd && /usr/sbin/sshd
   grep -qx "passwordauthentication no" <<<"${t}" && grep -qx "permitrootlogin no" <<<"${t}"
   grep -qx "allowusers onebee-quantri" <<<"${t}" && grep -qx "maxauthtries 3" <<<"${t}"
   echo "PASS  Máy trạm: tài khoản quản trị của Box (ẩn, chỉ nhận khóa từ IP Box), SSH tắt đăng nhập mật khẩu và root, chỉ cho tài khoản quản trị"
-  grep -qx "Exec=onebee-bao-ho-tro" /usr/share/applications/onebee-bao-ho-tro.desktop \
-    || { echo "FAIL  Thiếu mục menu Báo cần hỗ trợ"; exit 1; }
-  grep -qx "HO_TRO_URL=http://$(grep -oP "^BOX_IP=\K.*" /etc/onebee/may-tram.env):5678/form/onebee-ho-tro" /etc/onebee-ho-tro.conf \
-    || { echo "FAIL  Thiếu mục menu Báo cần hỗ trợ"; exit 1; }
-  echo "PASS  Menu máy trạm có \"Báo cần hỗ trợ (OneBee)\" gọi onebee-bao-ho-tro, mở đúng biểu mẫu trên Box"'
+  # Ứng dụng Sổ điều hành chỉ tồn tại trên tên Box ở chế độ HTTPS: máy chưa bật HTTPS thì KHÔNG còn mục menu trỏ biểu mẫu n8n cũ
+  ! grep -q "form/onebee-ho-tro\|:5678" /etc/onebee-ho-tro.conf /usr/share/applications/onebee-bao-ho-tro.desktop 2>/dev/null \
+    || { echo "FAIL  Chế độ HTTP còn mục menu trỏ biểu mẫu n8n cũ"; exit 1; }
+  [ ! -e /etc/onebee-ho-tro.conf ] && [ ! -e /usr/share/applications/onebee-bao-ho-tro.desktop ] \
+    || { echo "FAIL  Chế độ HTTP còn mục menu Báo cần hỗ trợ trỏ tới tuyến không tồn tại"; exit 1; }
+  echo "PASS  Menu máy trạm: chưa bật HTTPS nên không còn mục trỏ biểu mẫu n8n; mục Sổ điều hành xuất hiện khi HTTPS bật"'
 
 tram 'onebee-bao-tinh-trang'
 box "f=${TT}/ketoan-01.json; [ -s \$f ] || { echo 'FAIL  Box chưa nhận tình trạng máy trạm'; exit 1; }

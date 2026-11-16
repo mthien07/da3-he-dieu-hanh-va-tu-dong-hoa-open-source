@@ -83,7 +83,11 @@
     <div class="card"><span class="bieu-tuong" aria-hidden="true">📁</span><b>Thư mục dùng chung</b>
       <small>Windows: bấm <kbd>Windows + R</kbd>, gõ</small><br><code id="smb-win">\\{{ onebee_box_ten_mdns }}.local\{{ onebee_box_samba_share }}</code><br>
       <small>Linux Mint, macOS: thanh địa chỉ trình quản lý tệp, gõ</small><br><code id="smb">smb://{{ onebee_box_ten_mdns }}.local/{{ onebee_box_samba_share }}</code></div>
-    <a class="card" data-port="{{ onebee_box_ports.n8n }}" data-path="form/onebee-ho-tro" href="#"><span class="bieu-tuong" aria-hidden="true">🛠️</span><b>Yêu cầu hỗ trợ kỹ thuật</b><span>Gửi kỹ thuật OneBee: máy lỗi, cần cài đặt, cần hướng dẫn</span></a>
+{% if onebee_https_hieu_luc | bool %}
+    <a class="card" href="/so-dieu-hanh/"><span class="bieu-tuong" aria-hidden="true">📒</span><b>Sổ điều hành</b><span>Gửi đơn hàng kèm tệp, báo cần hỗ trợ, khảo sát, duyệt đơn và bảng điều hành — sau đăng nhập một lần</span></a>
+{% else %}
+    <div class="card"><span class="bieu-tuong" aria-hidden="true">📒</span><b>Sổ điều hành</b><span>Bật HTTPS để dùng ứng dụng Sổ điều hành: đơn hàng, báo hỗ trợ, duyệt đơn, bảng điều hành</span></div>
+{% endif %}
     <a class="card" href="#cam-nang"><span class="bieu-tuong" aria-hidden="true">📖</span><b>Cẩm nang sử dụng</b><span>Phím tắt, in ấn, lưu trữ và sao lưu</span></a>
   </div>
 
@@ -96,7 +100,6 @@
 
   <h2>Biểu mẫu và quản trị (tài khoản do quản trị cấp)</h2>
   <div class="grid phu">
-    <a class="card" data-port="{{ onebee_box_ports.n8n }}" data-path="form/onebee-don-hang" href="#"><b>Nhập đơn hàng</b><span>Ghi vào thư mục chung</span></a>
     <a class="card" data-port="{{ onebee_box_ports.n8n }}" data-path="form/onebee-tom-tat" href="#"><b>Tóm tắt văn bản PDF</b><span>Bằng AI tại đơn vị</span></a>
     <a class="card" data-port="{{ onebee_box_ports.n8n }}" href="#"><b>Tự động hóa (n8n)</b><span>Nhắc việc, báo cáo, chuyển dữ liệu</span></a>
     <a class="card" data-port="{{ onebee_box_ports.uptime_kuma }}" href="#"><b>Giám sát</b><span>Máy chủ và dịch vụ còn chạy hay không</span></a>
