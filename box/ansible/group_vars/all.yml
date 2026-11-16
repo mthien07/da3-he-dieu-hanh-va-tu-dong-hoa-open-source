@@ -146,3 +146,9 @@ onebee_box_khoa_tinh_trang_chung: true
 # onebee_box_ma_don_vi / onebee_box_dia_chi, chạy bộ cài, rồi đặt lại false.
 # CA cũ được cất ở /etc/onebee-box/secrets/ca.cu-<ngày giờ>; CA mới tự đẩy xuống mọi máy trạm (máy tắt: dong-bo-may khi bật lại).
 onebee_box_xoay_ca: false
+
+# Bản chạy thử công khai (demo): bật để bộ cài nạp dữ liệu giả lập, tạo tài khoản mẫu bằng onebee-box them-nguoi
+# và bật lịch đặt lại dữ liệu lúc 03:00 mỗi ngày; thanh thông báo demo hiện trên trang Sổ điều hành.
+# Tắt (mặc định): không nạp dữ liệu mẫu, gỡ dịch vụ và bộ hẹn giờ đặt lại. Chỉ dùng cho Box công khai, không dùng
+# cho Box thật của đơn vị. Mật khẩu tài khoản mẫu do them-nguoi sinh một lần, lưu trên Box, không nằm trong kho mã.
+onebee_box_che_do_demo: false

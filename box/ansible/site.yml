@@ -19,3 +19,5 @@
     - box-n8n
     - box-backup
     - box-fleet
+    # Bản chạy thử công khai: dữ liệu mẫu, tài khoản mẫu và lịch đặt lại 03:00 (chỉ khi onebee_box_che_do_demo)
+    - box-demo
