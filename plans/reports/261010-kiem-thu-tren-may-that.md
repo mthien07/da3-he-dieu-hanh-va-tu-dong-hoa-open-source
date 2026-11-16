@@ -99,7 +99,7 @@ xoay khóa máy trạm (N11, T2 — dòng "Máy trạm nhận mật khẩu + kh�
 ### A4. Box đầy đủ trong container systemd + Docker lồng (quan trọng nhất)
 - [x] **A4.1 Chạy** — (a) Linux có Docker (cgroup v2, chạy được `--privileged`), **≥ 30 GB trống** (image ~6 GB + model + volume), RAM ≥ 8 GB.
   Biến: `ONEBEE_TEST_EXTRA_CA` (proxy tự ký), `ONEBEE_TEST_MODEL` (mặc định `gemma4:e2b-it-qat`; `gemma3:1b` nhanh hơn, chỉ để thử kết nối),
-  `ONEBEE_TEST_FULL_WEBUI=1` (image Open WebUI đầy đủ thay `-slim`), `ONEBEE_TEST_KEEP=1` (giữ container để xem), `ONEBEE_TEST_MINT_IMAGE`.
+  `ONEBEE_TEST_FULL_WEBUI=1` (image giao diện Trợ lý AI (bản cũ) đầy đủ thay `-slim`), `ONEBEE_TEST_KEEP=1` (giữ container để xem), `ONEBEE_TEST_MINT_IMAGE`.
   (b)
   ```bash
   ONEBEE_TEST_KEEP=1 tests/box/run-box-test-in-systemd-container.sh 2>&1 | tee /tmp/box-test.log
@@ -114,7 +114,7 @@ xoay khóa máy trạm (N11, T2 — dòng "Máy trạm nhận mật khẩu + kh�
 
 - [x] **A4.2 Những bước MỚI chưa từng chạy** (bản `1.0.0-rc.1` là lần chạy đạt cuối, trước toàn bộ Pha 1–5) — đánh dấu từng bước khi thấy `PASS`:
   - [x] Cài lần 1/lần 2 `changed=0` với mã đơn vị `kiem-thu`, CA, n8n 2.42.6, digest (lần đầu ansible 2.16 chạy toàn bộ role Box mới).
-  - [x] `verify-box-install.sh`: env n8n (`N8N_DISABLED_MODULES`, `NODES_EXCLUDE` có git, MCP), image có `@sha256`, env Open WebUI = false, cài đặt trong CSDL
+  - [x] `verify-box-install.sh`: env n8n (`N8N_DISABLED_MODULES`, `NODES_EXCLUDE` có git, MCP), image có `@sha256`, env giao diện Trợ lý AI (bản cũ) = false, cài đặt trong CSDL
     (`/api/v1/auths/admin/config`, `/api/v1/users/default/permissions`), `may-da-cap` gắn read-only, 3 mục CA, `in-ca`.
   - [x] `check-n8n-inside.sh`: `n8n export:workflow --id=onebeeTomTat0001` có `respondWith=text` + thoát `< >`; trang kết quả có CSP `sandbox`, không `allow-same-origin`.
   - [x] Runner: `them-may` in đủ 11 tên dòng (+ `BOX_HTTPS`); máy Mint có CA đúng vân tay + chính sách Firefox/Chromium.
@@ -122,8 +122,8 @@ xoay khóa máy trạm (N11, T2 — dòng "Máy trạm nhận mật khẩu + kh�
     lần đầu ghim khóa SSH sau khi chứng minh, lần 2 không ghim lại; `dong-bo-may` không lộ mật khẩu vào log; thu hồi → cấp lại `kho-02`.
   - [x] `check-khoi-phuc-toan-bo.sh`: máy `tam-01` đã thu hồi không sống lại; CA giữ nguyên sau khôi phục; Box tin CA khôi phục.
   - [x] `check-https.sh` (toàn bộ): chốt chặn `kho-03`, bật, chỉ Caddy công bố cổng, TLS không SNI ở 5 cổng, 308, `/onebee-ca.crt`, cookie Secure, CORS, CSP biểu mẫu qua Caddy,
-    `dong-bo-tro-ly` qua HTTPS, máy trạm sao lưu/hoi/báo cáo qua HTTPS, Firefox dấu trang https, chạy lại `changed=0` ở HTTPS, tắt → máy trạm về HTTP.
-  - [x] `check-xoay-khoa.sh` (toàn bộ): mật khẩu kho cũ 401, khóa hoi cũ hết hạn, máy nhận khóa mới; `--box`: quản trị Open WebUI/n8n mới đăng nhập được, cũ bị từ chối, biểu mẫu, `email-thu`.
+    `nap-tri-thuc` (và `/ai/hoi` bằng khóa API) qua HTTPS, máy trạm sao lưu/hoi/báo cáo qua HTTPS, Firefox dấu trang https, chạy lại `changed=0` ở HTTPS, tắt → máy trạm về HTTP.
+  - [x] `check-xoay-khoa.sh` (toàn bộ): mật khẩu kho cũ 401, khóa hoi cũ hết hạn, máy nhận khóa mới; `--box`: quản trị giao diện Trợ lý AI (bản cũ)/n8n mới đăng nhập được, cũ bị từ chối, biểu mẫu, `email-thu`.
 - [ ] **A4.3 Rủi ro trong chính script test** (FAIL ở đây có thể là lỗi của test, không phải sản phẩm):
   - *10–11/10 (Mac):* `check-https.sh:55` (CSP trang GET biểu mẫu) **đạt** — n8n có gửi CSP `sandbox` ở trang GET. Gặp thêm 2 lỗi test ngoài danh sách dưới: **T1, T2** (đã sửa).
     `check-https.sh:53` (CORS) có thể đạt giả nếu curl lỗi — đã sửa 14/10 (N13, `16057f5`): kiểm mã 200 trước rồi mới kiểm header.
@@ -151,7 +151,7 @@ Chụp snapshot VM trước mỗi nhóm.
 - [ ] **B3. Nâng cấp từ bản cũ** (Pha 1, 5.0 "test nâng cấp" — chưa làm):
   - (b) VM sạch: `git checkout 3061a08` (n8n 2.40.7, chưa vá) → cài Box, `them-may ketoan-01`, cài máy trạm, tạo dữ liệu (chat, 1 yêu cầu hỗ trợ, 1 đơn hàng, sao lưu).
     Rồi `git checkout -- box/ansible/group_vars/all.yml && git checkout claude/confident-gauss-ntiwuc`, khai mã đơn vị, chạy bộ cài. Lặp lại từ `9ac8eee` (Box Pha 2, chưa có CA).
-  - (c) có `/srv/onebee/n8n.truoc-*` (bản chép trước khi đổi image), n8n migration xong, 9 quy trình còn và chạy, dữ liệu Open WebUI còn; CA sinh mới và **tự đẩy** xuống
+  - (c) có `/srv/onebee/n8n.truoc-*` (bản chép trước khi đổi image), n8n migration xong, 9 quy trình còn và chạy, dữ liệu giao diện Trợ lý AI (bản cũ) còn; CA sinh mới và **tự đẩy** xuống
     `ketoan-01` (`/var/lib/onebee/ket-noi-box` = vân tay); lần chạy kế `changed=0`; máy trạm bản desktop cũ vẫn sao lưu/báo tình trạng (ma trận lệch phiên bản).
   - (d) `box-stack/tasks/main.yml` khối chép n8n (`regex_findall` — [Inference] chưa thử trên 2.16), `box-fleet/tasks/main.yml:72-77`.
 - [ ] **B4. n8n 2.42.6 thật** — (b) `docker exec onebee-n8n n8n --version`; trên Mint `sudo onebee-bao-tinh-trang`; trên Box `ls -l /srv/onebee/tinh-trang-may/`;
@@ -159,19 +159,19 @@ Chụp snapshot VM trước mỗi nhóm.
   `docker logs onebee-n8n 2>&1 | grep -iE 'blocked by policy|content-import|X-Forwarded'` rỗng. (d) `06-nhan-tinh-trang-may-tram.json.j2:54` (`fileSelector`), `box-n8n/tasks/main.yml:61-73`.
 - [ ] **B5. Mật khẩu chủ n8n qua `N8N_INSTANCE_OWNER_MANAGED_BY_ENV`** — (b) `sudo onebee-box xoay-khoa --box --dong-y`, đăng nhập n8n bằng `n8n-owner-password` mới (in-khoa) và thử mật khẩu cũ.
   (c) mới vào được, cũ bị từ chối. (d) n8n chỉ áp hash lúc chưa có chủ → mật khẩu cũ còn: `docker-compose.yml.j2:149-153`, `onebee-box.sh.j2:355-357`.
-- [ ] **B6. Open WebUI v0.11.4 thật**
-  - (b) `sudo onebee-box xoay-khoa --box --dong-y` (đổi mật khẩu quản trị qua `POST /api/v1/auths/update/password`, đổi `WEBUI_SECRET_KEY`); trước đó đăng nhập web bằng 1 tài khoản nhân viên
-    và để nhân viên có khóa riêng (`hoi --dang-nhap`, C5). Kiểm thêm: Bảng quản trị → Người dùng → mở chat của nhân viên.
-  - (c) mật khẩu quản trị mới dùng được/cũ bị từ chối; **mọi phiên web phải đăng nhập lại**; khóa API riêng của nhân viên **vẫn dùng được** (`hoi xin chào`); quản trị không xem/xuất được chat
-    của nhân viên; `WEBUI_URL` trong Cài đặt quản trị = `https://<IP>:3000` khi HTTPS. Ghi lại nếu đổi `WEBUI_SECRET_KEY` làm hỏng gì khác (câu hỏi mở Pha 4b).
-  - (d) `onebee-webui.py:191-217` (`api_key`, `update/password`), `:76-77` (`WEBUI_URL`), `env.j2:2`.
+- [ ] **B6. Dịch vụ Trợ lý AI trên lõi (thay giao diện web cũ)**
+  - (b) `sudo onebee-box nap-tri-thuc` (nạp NĐ 30 + mẫu soạn văn bản + tài liệu đơn vị); `sudo onebee-box cap-khoa-hoi nv1` rồi trên máy trạm `hoi --dan-khoa`;
+    gọi `https://box.<mã>.onebee.internal/ai/hoi` bằng khóa (không cần phiên đăng nhập) và bằng phiên trình duyệt; thử `/ai/api/chat` và `GET /ai/hoi`.
+  - (c) `nap-tri-thuc` chạy lại không tạo bản trùng; khóa đúng nhận câu trả lời tiếng Việt kèm nguồn + dòng nhắc kiểm tra; thiếu khóa/khóa sai 401; đường khác 404;
+    `go-khoa-hoi nv1` làm khóa cũ hết hiệu lực ngay; tóm tắt không ghi tên người vào lời nhắc.
+  - (d) `box-ai/files/onebee-ai-rag.py` (`dung_tin_nhan`, `sql_nap`, `_dinh_danh`), `box-du-lieu/files/luoc-do/004-tri-thuc-va-lich-su-hoi-ai.sql`.
 - [ ] **B7. Uptime Kuma 2.5.5 sau Caddy** — (b) bật HTTPS (B8), mở `https://<IP>:3001`; Cài đặt → Reverse Proxy; `xoay-khoa --box` rồi đăng nhập bằng `uptime-kuma-password` mới.
   (c) bảng điều khiển nạp được (không báo "Cannot connect to the socket server" — WebSocket qua Caddy, kiểm Origin); Trust Proxy = Có; mật khẩu mới vào được.
   (d) `onebee-kuma.js:34-43` (`setSettings`), `:64-68` (`changePassword`), `Caddyfile.j2:91`, `box-stack/tasks/main.yml:390-399`.
 - [ ] **B8. Caddy trong mạng bridge, bật/tắt HTTPS**
   - (b) chạy `sudo onebee-box dong-bo-may --tat-ca`, đặt `onebee_box_https: true`, chạy bộ cài; rồi trên **chính Box**:
     ```bash
-    IP=<ip-box>; docker port onebee-portal; for c in onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server; do echo "$c: $(docker port $c)"; done
+    IP=<ip-box>; docker port onebee-portal; for c in onebee-tro-ly-ai-cu onebee-n8n onebee-uptime-kuma onebee-rest-server; do echo "$c: $(docker port $c)"; done
     for p in 443 3000 5678 3001 8000; do openssl s_client -connect $IP:$p -noservername -verify_ip $IP -verify_return_error </dev/null 2>&1 | grep -m1 'Verification'; done
     curl -s -o /dev/null -w '%{http_code}\n' http://$IP:3000/ ; curl -sf https://$IP:3000/health; curl -sf https://$IP:5678/healthz
     docker inspect -f '{{.HostConfig.CapDrop}} {{.HostConfig.CapAdd}} {{.HostConfig.SecurityOpt}}' onebee-portal
@@ -187,7 +187,7 @@ Chụp snapshot VM trước mỗi nhóm.
   `ai-cli/files/hoi:233`); trang tóm tắt hiện được. (d) `Caddyfile.j2:68,76,83` (`stream_close_delay`, `max_size 256MB`); không nâng Caddy ≥ 2.11.6 (timeout idle 1 phút).
 - [ ] **B11. CSP biểu mẫu, cookie Secure, CORS bằng trình duyệt** — (b) mở `https://<IP>:5678/form/onebee-ho-tro`, gửi; DevTools → Storage → Cookies của `:3000` và `:5678`;
   `curl -si -X POST https://<IP>:5678/rest/login -H 'Content-Type: application/json' -d '{"emailOrLdapLoginId":"quantri@onebee.lan","password":"<n8n-owner-password>"}' | grep -i set-cookie`.
-  (c) header `content-security-policy: sandbox …` (không `allow-same-origin`); cookie `token` (Open WebUI) và `n8n-auth` có Secure. (d) `docker-compose.yml.j2:95-97,140-144`; không thêm CSP ở Caddy cho n8n.
+  (c) header `content-security-policy: sandbox …` (không `allow-same-origin`); cookie `token` (giao diện Trợ lý AI (bản cũ)) và `n8n-auth` có Secure. (d) `docker-compose.yml.j2:95-97,140-144`; không thêm CSP ở Caddy cho n8n.
 - [ ] **B12. Hardening container (F11)** — (b)
   ```bash
   docker inspect -f '{{.Name}} restart={{.RestartCount}} ro={{.HostConfig.ReadonlyRootfs}} drop={{.HostConfig.CapDrop}} {{.HostConfig.SecurityOpt}}' $(docker ps -q)
@@ -262,18 +262,19 @@ Chụp snapshot VM trước mỗi nhóm.
   - (d) `onebee-ca.sh:36-52` (ràng buộc ở cả gốc và trung gian); Chrome `chrome://policy` → `CACertificatesWithConstraints` trạng thái OK
     (định dạng `permitted_cidrs`/`permitted_dns_names`: `onebee-chinh-sach-trinh-duyet.py:96-99`); `chrome://certificate-manager` (Chrome ≥ 131) thấy CA do quản trị cài.
 - [ ] **C4. Kho hệ thống / p11-kit** — (b) `trust list --filter=ca-anchors | grep -B1 -A3 -i onebee; python3 -c "import ssl,urllib.request;print(urllib.request.urlopen('https://<IP>:3000/health',context=ssl.create_default_context()).read())"`
-  (c) có anchor OneBee; Python in `{"status":true}`. (d) `ket-noi-box/tasks/main.yml:96-108` (`update-ca-certificates --fresh`).
-- [ ] **C5. `hoi` theo từng nhân viên, 2 tài khoản Linux, gõ thật (getpass)** — (b) quản trị tạo 2 tài khoản Trợ lý AI (Bảng quản trị → Người dùng). Trên Mint:
+  (c) có anchor OneBee; Python mở được `https://box.<mã>.onebee.internal/` và thấy "OneBee Box". (d) `ket-noi-box/tasks/main.yml:96-108` (`update-ca-certificates --fresh`).
+- [ ] **C5. `hoi` theo từng nhân viên, 2 tài khoản Linux, gõ thật (getpass)** — (b) quản trị chạy trên Box `sudo onebee-box them-nguoi nv1 nhan_vien`
+  và `sudo onebee-box them-nguoi nv2 nhan_vien` (mỗi lệnh in khóa `obk-…` MỘT lần). Trên Mint:
   ```bash
-  sudo useradd -m nv1; sudo useradd -m nv2; sudo -iu nv1 hoi --dang-nhap     # gõ email/mật khẩu nv1 (không hiện)
+  sudo useradd -m nv1; sudo useradd -m nv2; sudo -iu nv1 hoi --dan-khoa     # dán khóa SAI trước → không lưu; rồi khóa đúng của nv1
   sudo -iu nv1 stat -c '%a %n' .config/onebee .config/onebee/hoi-khoa; sudo -iu nv1 hoi xin chào
-  sudo -iu nv2 hoi --dan-khoa        # dán khóa SAI trước → không lưu; rồi khóa đúng tạo trên web (Cài đặt → Tài khoản → Khóa API)
+  sudo -iu nv2 hoi --dan-khoa        # dán khóa đúng của nv2
   sudo -iu nv2 cat /home/nv1/.config/onebee/hoi-khoa                          # phải Permission denied
   ```
-  Xóa tài khoản nv2 trên web → `sudo -iu nv2 hoi xin chào`. Ở chế độ HTTP: `sudo -iu nv1 hoi --dang-nhap`.
+  Thu hồi nv2: `sudo onebee-box go-khoa-hoi nv2` → `sudo -iu nv2 hoi xin chào`.
   (c) `700`/`600`; nv1 hỏi được và **không** có dòng "(Đang dùng khóa chung của máy…)"; khóa sai: "Khóa không dùng được … chưa lưu gì"; nv2 không đọc được khóa nv1;
-  tài khoản bị xóa → "Khóa Trợ lý AI không hợp lệ hoặc đã bị thu hồi"; HTTP → "Từ chối đăng nhập: địa chỉ Trợ lý AI còn là http://". Phiên web của nv2 cũng hết hiệu lực (ghi lại).
-  (d) `ai-cli/files/hoi:131-169` (GET/POST `/api/v1/auths/api_key` trên v0.11.4), `onebee-webui.py:27-29` (`API_KEYS_ALLOWED_ENDPOINTS`).
+  khóa bị thu hồi → "Khóa Trợ lý AI không hợp lệ hoặc đã bị thu hồi"; địa chỉ `http://` → "phải là https://". Box chưa bật HTTPS → `hoi` báo lỗi rõ, không treo.
+  (d) `ai-cli/files/hoi`, `onebee-ai-rag.py` (`cap_khoa`, `tra_khoa`), `onebee-box.sh.j2` (`cap-khoa-hoi`, `go-khoa-hoi`).
 - [ ] **C6. SSH kiểu socket + `dong-bo-may` bằng ansible 2.16** — (b) Mint: `systemctl is-enabled ssh.socket; systemctl is-active ssh.socket; sudo sshd -T | grep -E '^(passwordauthentication|permitrootlogin|allowusers|maxauthtries)'`;
   Box: `sudo onebee-box cap-nhat-may ketoan-01` (2 lần), `sudo onebee-box dong-bo-may ketoan-01` (2 lần). (c) `enabled/active`, `no/no/onebee-quantri/3`; lần đầu "Đã ghim khóa SSH", lần 2 không;
   dong-bo lần 2 in "Cấu hình đã đúng, không đổi". (d) `quan-ly-tap-trung/tasks/main.yml:145`, `box-fleet/files/dong-bo-may-tram.yml`.
@@ -420,9 +421,9 @@ Ký hiệu: **XÁC NHẬN** = thấy rõ trong code (đã chạy thử nếu ghi
   - `cai-dat-onebee-box.md:61` + ADR 0005 dòng 16: "gia hạn tự động mỗi đêm" (xem N4). `security-audit.md` 5.8 nêu `doi-khoa-quan-tri`, `doi-ca` — chưa có lệnh này; dòng 42 còn ghi "Pha 2–5 vẫn là kế hoạch".
   - `group_vars/all.yml:119` "hoặc nghi lộ khóa CA" (xem N1).
 
-- **N13 — XÁC NHẬN (Mac, chế độ HTTP): Open WebUI phản chiếu mọi `Origin` kèm `access-control-allow-credentials: true`.**
+- **N13 — XÁC NHẬN (Mac, chế độ HTTP): giao diện Trợ lý AI (bản cũ) phản chiếu mọi `Origin` kèm `access-control-allow-credentials: true`.**
   `curl -si http://127.0.0.1:3000/api/config -H 'Origin: https://ke-la.example'` → `access-control-allow-origin: https://ke-la.example` + `allow-credentials: true`.
-  `CORS_ALLOW_ORIGIN` chỉ đặt khi bật HTTPS (`docker-compose.yml.j2:94-97`); ở HTTP Open WebUI dùng mặc định. [Inference] tác động bị giới hạn bởi SameSite của cookie
+  `CORS_ALLOW_ORIGIN` chỉ đặt khi bật HTTPS (`docker-compose.yml.j2:94-97`); ở HTTP giao diện Trợ lý AI (bản cũ) dùng mặc định. [Inference] tác động bị giới hạn bởi SameSite của cookie
   (chưa kiểm), nhưng một trang web lạ mở trên máy trạm có thể đọc API bằng phiên đăng nhập nếu cookie được gửi. Đề xuất: đặt `CORS_ALLOW_ORIGIN=http://<IP>:3000` cả ở chế độ HTTP.
   Kèm: `check-https.sh:53` (`! curl … | grep -qi`) đạt giả nếu curl lỗi — nên kiểm mã HTTP trước.
 

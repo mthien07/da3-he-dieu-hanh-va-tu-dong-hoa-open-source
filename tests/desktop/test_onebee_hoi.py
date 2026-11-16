@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Kiểm thử lệnh `hoi` theo từng nhân viên (rà soát bảo mật F10, Pha 4c): đăng nhập → chỉ lưu khóa (0600), dán khóa, đăng xuất, hai tài khoản
-Linux dùng hai khóa khác nhau, khóa máy chỉ là chuyển tiếp, từ chối đăng nhập qua http://. Open WebUI giả chạy sau TLS thật (CA do onebee-ca.sh sinh).
-Chạy: python3 -m unittest"""
+"""Kiểm thử lệnh `hoi` gọi dịch vụ Trợ lý AI qua /ai/ (F10): dán khóa chỉ lưu khóa (0600), kiểm khóa trước khi lưu,
+đăng xuất, hai tài khoản Linux dùng hai khóa khác nhau, khóa máy chỉ là chuyển tiếp, từ chối http:// và CA lạ.
+Máy chủ giả chạy sau TLS thật (CA do onebee-ca.sh sinh). Chạy: python3 -m unittest"""
 import importlib.machinery
 import importlib.util
 import io
@@ -30,78 +30,41 @@ def nap_hoi():
     return m
 
 
-class OpenWebuiGia(BaseHTTPRequestHandler):
-    """Phần API Open WebUI mà hoi gọi: signin, api_key (GET/POST), models, chat/completions."""
-    mat_khau = {"an@onebee.lan": "mk-an", "binh@onebee.lan": "mk-binh"}
-    khoa_cua = {}            # email -> khóa API đã có
-    khoa_hop_le = {}         # khóa -> email
-    cho_phep_tao_khoa = True
+class TroLyGia(BaseHTTPRequestHandler):
+    """Phần dịch vụ Trợ lý AI mà hoi gọi: POST /ai/hoi và POST /ai/tom-tat."""
+    khoa_hop_le = {}         # khóa -> tên người dùng
     nhat_ky = []
 
     def log_message(self, *a):
         pass
 
     def _gui(self, ma, nd=None):
-        raw = json.dumps(nd).encode() if nd is not None else b""
+        raw = json.dumps(nd, ensure_ascii=False).encode() if nd is not None else b""
         self.send_response(ma)
         self.send_header("Content-Length", str(len(raw)))
         self.end_headers()
         self.wfile.write(raw)
 
-    def _email_phien(self):
-        t = self.headers.get("Authorization", "").replace("Bearer ", "")
-        return t[len("tok-"):] if t.startswith("tok-") else None
-
-    def do_GET(self):
-        OpenWebuiGia.nhat_ky.append(f"GET {self.path}")
-        if self.path == "/api/v1/auths/api_key":
-            e = self._email_phien()
-            k = OpenWebuiGia.khoa_cua.get(e)
-            return self._gui(200, {"api_key": k}) if k else self._gui(404, {"detail": "none"})
-        if self.path == "/api/models":
-            k = self.headers.get("Authorization", "").replace("Bearer ", "")
-            return self._gui(200, {"data": []}) if k in OpenWebuiGia.khoa_hop_le else self._gui(401)
-        self._gui(404)
-
     def do_POST(self):
-        OpenWebuiGia.nhat_ky.append(f"POST {self.path}")
+        TroLyGia.nhat_ky.append(self.path)
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
-        if self.path == "/api/v1/auths/signin":
-            if OpenWebuiGia.mat_khau.get(body.get("email")) == body.get("password"):
-                return self._gui(200, {"token": "tok-" + body["email"]})
-            return self._gui(400, {"detail": "sai"})
-        if self.path == "/api/v1/auths/api_key":
-            e = self._email_phien()
-            if not e or not OpenWebuiGia.cho_phep_tao_khoa:
-                return self._gui(403)
-            k = "sk-" + e.split("@")[0] + "-moi"
-            OpenWebuiGia.khoa_cua[e] = k
-            OpenWebuiGia.khoa_hop_le[k] = e
-            return self._gui(200, {"api_key": k})
-        if self.path == "/api/chat/completions":
-            k = self.headers.get("Authorization", "").replace("Bearer ", "")
-            if k not in OpenWebuiGia.khoa_hop_le:
-                return self._gui(401)
-            return self._gui(200, {"choices": [{"message": {"content": f"trả lời cho {OpenWebuiGia.khoa_hop_le[k]}"}}]})
-        self._gui(404)
-
-
-class ChuyenHuongSangHttps(BaseHTTPRequestHandler):
-    """Máy chủ http:// trả 308 sang https:// cùng máy chủ (như Caddy khi Box đã bật HTTPS)."""
-    dich = ""
-
-    def log_message(self, *a):
-        pass
-
-    def do_GET(self):
-        self.send_response(308)
-        self.send_header("Location", ChuyenHuongSangHttps.dich + self.path)
-        self.send_header("Content-Length", "0")
-        self.end_headers()
+        khoa = self.headers.get("X-OneBee-Khoa", "")
+        if khoa not in TroLyGia.khoa_hop_le:
+            return self._gui(401, {"loi": "Chưa đăng nhập hoặc khóa API không hợp lệ"})
+        if self.path == "/ai/hoi":
+            if not (body.get("cau_hoi") or "").strip():
+                return self._gui(400, {"loi": "Thiếu câu hỏi"})
+            return self._gui(200, {"tra_loi": f"trả lời cho {TroLyGia.khoa_hop_le[khoa]}",
+                                   "nguon": [{"nguon": "tri-thuc/nd30.md", "tieu_de": "Thể thức văn bản"}]})
+        if self.path == "/ai/tom-tat":
+            if not (body.get("noi_dung") or "").strip():
+                return self._gui(400, {"loi": "Thiếu nội dung cần tóm tắt"})
+            return self._gui(200, {"tom_tat": f"tóm tắt cho {TroLyGia.khoa_hop_le[khoa]}"})
+        self._gui(404, {"loi": "Không có đường dẫn này"})
 
 
 @unittest.skipUnless(shutil.which("openssl"), "cần openssl")
-class HoiTungNhanVien(unittest.TestCase):
+class HoiQuaDuongAi(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
@@ -114,57 +77,46 @@ class HoiTungNhanVien(unittest.TestCase):
                         "-CAcreateserial", "-days", "30", "-extfile", f"{t}/l.ext", "-out", f"{t}/l.crt"], check=True, capture_output=True)
         with open(f"{t}/chuoi.pem", "w") as f:
             f.write(open(f"{t}/l.crt").read() + open(f"{t}/ca/inter.crt").read())
-        sv = HTTPServer(("127.0.0.1", 0), OpenWebuiGia)
+        sv = HTTPServer(("127.0.0.1", 0), TroLyGia)
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         ctx.load_cert_chain(f"{t}/chuoi.pem", f"{t}/l.key")
         sv.socket = ctx.wrap_socket(sv.socket, server_side=True)
         threading.Thread(target=sv.serve_forever, daemon=True).start()
         cls.sv = sv
         cls.https = f"https://127.0.0.1:{sv.server_port}"
-        sv2 = HTTPServer(("127.0.0.1", 0), OpenWebuiGia)   # cùng API nhưng KHÔNG có TLS
+        sv2 = HTTPServer(("127.0.0.1", 0), TroLyGia)   # cùng API nhưng KHÔNG có TLS
         threading.Thread(target=sv2.serve_forever, daemon=True).start()
         cls.sv2 = sv2
         cls.http = f"http://127.0.0.1:{sv2.server_port}"
-        ChuyenHuongSangHttps.dich = cls.https
-        sv3 = HTTPServer(("127.0.0.1", 0), ChuyenHuongSangHttps)
-        threading.Thread(target=sv3.serve_forever, daemon=True).start()
-        cls.sv3 = sv3
-        cls.http_308 = f"http://127.0.0.1:{sv3.server_port}"
         subprocess.run([TAO_CA, f"{t}/ca-khac", "khac", "127.0.0.1"], check=True, capture_output=True)   # CA không phải của Box này
 
     @classmethod
     def tearDownClass(cls):
-        for sv in (cls.sv, cls.sv2, cls.sv3):
+        for sv in (cls.sv, cls.sv2):
             sv.shutdown()
             sv.server_close()
         cls.tmp.cleanup()
 
     def setUp(self):
-        OpenWebuiGia.khoa_cua, OpenWebuiGia.khoa_hop_le, OpenWebuiGia.cho_phep_tao_khoa, OpenWebuiGia.nhat_ky = {}, {}, True, []
+        TroLyGia.khoa_hop_le, TroLyGia.nhat_ky = {}, []
         self.home = tempfile.mkdtemp(dir=self.t)
         self.conf = f"{self.t}/hoi.conf"
         self.dat_conf(self.https)
 
     def dat_conf(self, url, khoa_may=None):
         with open(self.conf, "w") as f:
-            f.write(f"HOI_URL={url}\n" + (f"HOI_API_KEY={khoa_may}\n" if khoa_may else "") + "HOI_MODEL=onebee-tro-ly\n")
+            f.write(f"HOI_URL={url}\n" + (f"HOI_API_KEY={khoa_may}\n" if khoa_may else ""))
 
-    def hoi(self, *args, dau_vao=(), home=None, https_bat=False, ca=None):
-        """Chạy main() của hoi với CA/dấu/home giả; dau_vao: các chuỗi trả về cho input()/getpass()."""
+    def hoi(self, *args, dau_vao=(), home=None, ca=None, piped=""):
+        """Chạy main() của hoi với CA/home giả; dau_vao: các chuỗi trả về cho getpass()."""
         m = nap_hoi()
         m.CONF, m.CA_ONEBEE = self.conf, ca or f"{self.t}/ca/root.crt"
-        dau = f"{self.t}/https-bat"
-        if https_bat:
-            open(dau, "w").write("1\n")
-        elif os.path.exists(dau):
-            os.unlink(dau)
-        m.HTTPS_BAT = dau
         m.KHOA_NV = os.path.join(home or self.home, ".config/onebee/hoi-khoa")
         nhap = iter(dau_vao)
         out, err = io.StringIO(), io.StringIO()
         ma = 0
         with mock.patch("builtins.input", lambda *_: next(nhap)), mock.patch("getpass.getpass", lambda *_: next(nhap)), \
-                mock.patch.object(m.sys, "argv", ["hoi", *args]), mock.patch.object(m, "read_piped_input", lambda: ""), \
+                mock.patch.object(m.sys, "argv", ["hoi", *args]), mock.patch.object(m, "read_piped_input", lambda: piped), \
                 redirect_stdout(out), redirect_stderr(err):
             try:
                 ma = m.main()
@@ -173,133 +125,97 @@ class HoiTungNhanVien(unittest.TestCase):
                 err.write(str(e.code))
         return ma, out.getvalue(), err.getvalue(), m.KHOA_NV
 
-    def test_dang_nhap_chi_luu_khoa_quyen_0600_khong_luu_mat_khau(self):
-        ma, out, err, f = self.hoi("--dang-nhap", dau_vao=("an@onebee.lan", "mk-an"))
+    def test_dan_khoa_chi_luu_khoa_quyen_0600_va_hoi_duoc(self):
+        TroLyGia.khoa_hop_le["obk-" + "a" * 48] = "an"
+        ma, out, err, f = self.hoi("--dan-khoa", dau_vao=("obk-" + "a" * 48,))
         self.assertEqual(ma, 0, err)
-        self.assertEqual(open(f).read().strip(), "sk-an-moi")
+        self.assertEqual(open(f).read().strip(), "obk-" + "a" * 48)
         self.assertEqual(stat.S_IMODE(os.stat(f).st_mode), 0o600)
         self.assertEqual(stat.S_IMODE(os.stat(os.path.dirname(f)).st_mode), 0o700)
-        for dirpath, _, files in os.walk(self.home):
-            for fn in files:
-                self.assertNotIn("mk-an", open(os.path.join(dirpath, fn)).read())
         ma, out, err, _ = self.hoi("xin chào")
-        self.assertEqual((ma, out.strip()), (0, "trả lời cho an@onebee.lan"), err)
+        self.assertEqual((ma, out.strip()), (0, "trả lời cho an"), err)
+        self.assertIn("Thể thức văn bản", err)   # nguồn tham khảo in ở stderr
+        self.assertEqual(TroLyGia.nhat_ky, ["/ai/hoi", "/ai/hoi"])
 
-    def test_dang_nhap_lai_khong_tao_khoa_moi_lam_hong_khoa_cu(self):
-        self.hoi("--dang-nhap", dau_vao=("an@onebee.lan", "mk-an"))
-        OpenWebuiGia.nhat_ky.clear()
-        ma, *_ = self.hoi("--dang-nhap", dau_vao=("an@onebee.lan", "mk-an"))
-        self.assertEqual(ma, 0)
-        self.assertNotIn("POST /api/v1/auths/api_key", OpenWebuiGia.nhat_ky)   # đã có khóa thì dùng lại
-
-    def test_sai_mat_khau_hoac_khong_duoc_tao_khoa_thi_khong_luu(self):
-        ma, _, err, f = self.hoi("--dang-nhap", dau_vao=("an@onebee.lan", "sai"))
-        self.assertNotEqual(ma, 0)
-        self.assertIn("Sai email hoặc mật khẩu", err)
-        self.assertFalse(os.path.exists(f))
-        OpenWebuiGia.cho_phep_tao_khoa = False
-        ma, _, err, f = self.hoi("--dang-nhap", dau_vao=("an@onebee.lan", "mk-an"))
-        self.assertNotEqual(ma, 0)
-        self.assertIn("Báo người quản trị", err)
-        self.assertFalse(os.path.exists(f))
-
-    def test_tu_choi_dang_nhap_khi_url_con_http(self):
-        self.dat_conf(self.http)
-        ma, _, err, f = self.hoi("--dang-nhap", dau_vao=("an@onebee.lan", "mk-an"))
-        self.assertNotEqual(ma, 0)
-        self.assertIn("http://", err)
-        self.assertEqual(OpenWebuiGia.nhat_ky, [])      # không gửi gì tới Box (mật khẩu không đi qua mạng dạng rõ)
-        self.assertFalse(os.path.exists(f))
-
-    def test_dan_khoa_kiem_truoc_khi_luu(self):
-        ma, _, err, f = self.hoi("--dan-khoa", dau_vao=("sk-khong-co",))
+    def test_dan_khoa_sai_khong_luu(self):
+        ma, _, err, f = self.hoi("--dan-khoa", dau_vao=("obk-" + "b" * 48,))
         self.assertNotEqual(ma, 0)
         self.assertIn("chưa lưu gì", err)
         self.assertFalse(os.path.exists(f))
-        OpenWebuiGia.khoa_hop_le["sk-tu-tao"] = "binh@onebee.lan"
-        ma, *_ = self.hoi("--dan-khoa", dau_vao=("  sk-tu-tao  ",))
-        self.assertEqual(ma, 0)
-        self.assertEqual(open(f).read().strip(), "sk-tu-tao")
-        self.assertEqual(stat.S_IMODE(os.stat(f).st_mode), 0o600)
 
-    def test_dan_khoa_qua_308_khong_bo_qua_ghim_ca(self):
-        """GET /api/models: urllib tự theo 308 sang https:// bằng kho CA của hệ điều hành (không phải CA OneBee) và gửi kèm khóa.
-        Giả lập: kho hệ điều hành tin chứng chỉ của máy chủ (SSL_CERT_FILE), còn CA OneBee ghim trên máy là CA khác → phải từ chối."""
-        OpenWebuiGia.khoa_hop_le["sk-tu-tao"] = "binh@onebee.lan"
-        self.dat_conf(self.http_308)
+    def test_tu_choi_khi_url_con_http(self):
+        self.dat_conf(self.http)
+        ma, _, err, f = self.hoi("--dan-khoa", dau_vao=("obk-" + "a" * 48,))
+        self.assertNotEqual(ma, 0)
+        self.assertIn("https://", err)
+        self.assertEqual(TroLyGia.nhat_ky, [])      # không gửi khóa qua mạng dạng rõ
+        self.assertFalse(os.path.exists(f))
+
+    def test_ca_la_khong_duoc_chap_nhan(self):
+        TroLyGia.khoa_hop_le["obk-" + "a" * 48] = "an"
         with mock.patch.dict(os.environ, {"SSL_CERT_FILE": f"{self.t}/ca/root.crt"}):
-            ma, _, err, f = self.hoi("--dan-khoa", dau_vao=("sk-tu-tao",), ca=f"{self.t}/ca-khac/root.crt")
+            ma, _, err, f = self.hoi("--dan-khoa", dau_vao=("obk-" + "a" * 48,), ca=f"{self.t}/ca-khac/root.crt")
         self.assertNotEqual(ma, 0)
         self.assertIn("KHÔNG HỢP LỆ", err)
-        self.assertNotIn("GET /api/models", OpenWebuiGia.nhat_ky)                               # khóa không tới được máy chủ
+        self.assertEqual(TroLyGia.nhat_ky, [])
         self.assertFalse(os.path.exists(f))
-
-    def test_dan_khoa_qua_308_scheme_viet_hoa_khong_bo_qua_ghim_ca(self):
-        """Location 'HTTPS://…': urlsplit hạ chữ thường scheme nên vẫn theo — lần mở sau phải ghim CA OneBee như https:// thường."""
-        OpenWebuiGia.khoa_hop_le["sk-tu-tao"] = "binh@onebee.lan"
-        self.dat_conf(self.http_308)
-        self.addCleanup(setattr, ChuyenHuongSangHttps, "dich", self.https)
-        ChuyenHuongSangHttps.dich = self.https.replace("https://", "HTTPS://")
-        with mock.patch.dict(os.environ, {"SSL_CERT_FILE": f"{self.t}/ca/root.crt"}):
-            ma, _, err, f = self.hoi("--dan-khoa", dau_vao=("sk-tu-tao",), ca=f"{self.t}/ca-khac/root.crt")
-        self.assertNotEqual(ma, 0)
-        self.assertNotIn("GET /api/models", OpenWebuiGia.nhat_ky)
-        self.assertFalse(os.path.exists(f))
-
-    def test_url_cau_hinh_viet_hoa_van_ghim_ca(self):
-        OpenWebuiGia.khoa_hop_le["sk-tu-tao"] = "binh@onebee.lan"
-        self.dat_conf(self.https.replace("https://", "HTTPS://"))
-        with mock.patch.dict(os.environ, {"SSL_CERT_FILE": f"{self.t}/ca/root.crt"}):
-            ma, _, err, f = self.hoi("--dan-khoa", dau_vao=("sk-tu-tao",), ca=f"{self.t}/ca-khac/root.crt")
-        self.assertNotEqual(ma, 0)
-        self.assertNotIn("GET /api/models", OpenWebuiGia.nhat_ky)
-        self.assertFalse(os.path.exists(f))
-
-    def test_dan_khoa_qua_308_toi_box_that_van_theo_mot_lan(self):
-        OpenWebuiGia.khoa_hop_le["sk-tu-tao"] = "binh@onebee.lan"
-        self.dat_conf(self.http_308)
-        ma, _, err, f = self.hoi("--dan-khoa", dau_vao=("sk-tu-tao",))
-        self.assertEqual(ma, 0, err)
-        self.assertEqual(open(f).read().strip(), "sk-tu-tao")
 
     def test_hai_tai_khoan_linux_hai_khoa_khac_nhau(self):
+        TroLyGia.khoa_hop_le["obk-" + "a" * 48] = "an"
+        TroLyGia.khoa_hop_le["obk-" + "b" * 48] = "binh"
         home_b = tempfile.mkdtemp(dir=self.t)
-        self.hoi("--dang-nhap", dau_vao=("an@onebee.lan", "mk-an"))
-        self.hoi("--dang-nhap", dau_vao=("binh@onebee.lan", "mk-binh"), home=home_b)
-        self.assertEqual(self.hoi("câu hỏi")[1].strip(), "trả lời cho an@onebee.lan")
-        self.assertEqual(self.hoi("câu hỏi", home=home_b)[1].strip(), "trả lời cho binh@onebee.lan")
+        self.hoi("--dan-khoa", dau_vao=("obk-" + "a" * 48,))
+        self.hoi("--dan-khoa", dau_vao=("obk-" + "b" * 48,), home=home_b)
+        self.assertEqual(self.hoi("câu hỏi")[1].strip(), "trả lời cho an")
+        self.assertEqual(self.hoi("câu hỏi", home=home_b)[1].strip(), "trả lời cho binh")
 
     def test_dang_xuat_xoa_khoa(self):
-        self.hoi("--dang-nhap", dau_vao=("an@onebee.lan", "mk-an"))
+        TroLyGia.khoa_hop_le["obk-" + "a" * 48] = "an"
+        self.hoi("--dan-khoa", dau_vao=("obk-" + "a" * 48,))
         ma, out, _, f = self.hoi("--dang-xuat")
         self.assertEqual(ma, 0)
         self.assertFalse(os.path.exists(f))
-        self.assertIn("chưa lưu khóa", self.hoi("--dang-xuat")[1])     # chạy lại không lỗi
+        self.assertIn("chưa lưu khóa", self.hoi("--dang-xuat")[1])
 
-    def test_chua_dang_nhap_va_khong_co_khoa_may_thi_huong_dan_ca_hai_cach(self):
+    def test_chua_co_khoa_thi_huong_dan_cap_khoa(self):
         ma, _, err, _ = self.hoi("xin chào")
         self.assertNotEqual(ma, 0)
-        self.assertIn("hoi --dang-nhap", err)
-        self.assertIn("hoi --dan-khoa", err)
+        self.assertIn("cap-khoa-hoi", err)
 
-    def test_chuyen_tiep_khoa_may_van_dung_duoc_kem_nhac_va_khoa_nhan_vien_duoc_uu_tien(self):
-        OpenWebuiGia.khoa_hop_le["sk-may"] = "may-ketoan@onebee.lan"
-        self.dat_conf(self.https, khoa_may="sk-may")
+    def test_khoa_may_chi_la_chuyen_tiep_va_khoa_nhan_vien_duoc_uu_tien(self):
+        TroLyGia.khoa_hop_le["obk-" + "b" * 48] = "may"
+        self.dat_conf(self.https, khoa_may="obk-" + "b" * 48)
         ma, out, err, _ = self.hoi("xin chào")
-        self.assertEqual((ma, out.strip()), (0, "trả lời cho may-ketoan@onebee.lan"), err)
-        self.assertIn("hoi --dang-nhap", err)
-        self.hoi("--dang-nhap", dau_vao=("an@onebee.lan", "mk-an"))
+        self.assertEqual((ma, out.strip()), (0, "trả lời cho may"), err)
+        self.assertIn("khóa chung của máy", err)
+        TroLyGia.khoa_hop_le["obk-" + "a" * 48] = "an"
+        self.hoi("--dan-khoa", dau_vao=("obk-" + "a" * 48,))
         ma, out, err, _ = self.hoi("xin chào")
-        self.assertEqual(out.strip(), "trả lời cho an@onebee.lan")      # khóa nhân viên thắng khóa máy
+        self.assertEqual(out.strip(), "trả lời cho an")      # khóa nhân viên thắng khóa máy
         self.assertNotIn("khóa chung của máy", err)
 
     def test_khoa_bi_thu_hoi_bao_ro(self):
-        self.hoi("--dang-nhap", dau_vao=("an@onebee.lan", "mk-an"))
-        OpenWebuiGia.khoa_hop_le.clear()                                   # quản trị xóa tài khoản → khóa mất hiệu lực
+        TroLyGia.khoa_hop_le["obk-" + "a" * 48] = "an"
+        self.hoi("--dan-khoa", dau_vao=("obk-" + "a" * 48,))
+        TroLyGia.khoa_hop_le.clear()                                   # quản trị thu hồi khóa
         ma, _, err, _ = self.hoi("xin chào")
         self.assertNotEqual(ma, 0)
         self.assertIn("thu hồi", err)
-        self.assertIn("hoi --dang-nhap", err)
+        self.assertIn("--dan-khoa", err)
+
+    def test_tom_tat_gui_dung_duong_tom_tat(self):
+        TroLyGia.khoa_hop_le["obk-" + "a" * 48] = "an"
+        self.hoi("--dan-khoa", dau_vao=("obk-" + "a" * 48,))
+        ma, out, err, _ = self.hoi("--tom-tat", piped="Tuần này: 12 đơn, doanh thu 34 triệu.")
+        self.assertEqual((ma, out.strip()), (0, "tóm tắt cho an"), err)
+        self.assertEqual(TroLyGia.nhat_ky[-1], "/ai/tom-tat")
+
+    def test_noi_dung_dan_qua_dau_vao_duoc_gui_kem_cau_hoi(self):
+        TroLyGia.khoa_hop_le["obk-" + "a" * 48] = "an"
+        self.hoi("--dan-khoa", dau_vao=("obk-" + "a" * 48,))
+        ma, out, _, _ = self.hoi("tóm tắt đoạn này", piped="Nội dung cần tóm tắt.")
+        self.assertEqual(ma, 0)
+        self.assertEqual(TroLyGia.nhat_ky[-1], "/ai/hoi")
 
 
 if __name__ == "__main__":

@@ -21,9 +21,9 @@ CHAN_DOAN_HM_MA=(mang tai_nguyen docker ai samba kho_tep sao_luu ssl)
 CHAN_DOAN_HM_TEN=("Mạng" "Tài nguyên (ổ đĩa, RAM, CPU)" "Dịch vụ Docker" "Trợ lý AI" "Thư mục chung (Samba)" "Kho tệp và kiểm dịch"
   "Bản sao lưu" "Chứng chỉ bảo mật (SSL)")
 # Container của Box và tên dễ hiểu (cùng thứ tự)
-CHAN_DOAN_CT=(onebee-portal onebee-ollama onebee-open-webui onebee-quy-trinh onebee-uptime-kuma onebee-rest-server onebee-authelia onebee-cau-noi
+CHAN_DOAN_CT=(onebee-portal onebee-ollama onebee-ai-rag onebee-quy-trinh onebee-uptime-kuma onebee-rest-server onebee-authelia onebee-cau-noi
   onebee-postgres onebee-postgrest onebee-seaweedfs onebee-kho-tep)
-CHAN_DOAN_CT_TEN=("Cổng web" "Bộ chạy model AI" "Giao diện Trợ lý AI" "Tự động hóa" "Giám sát" "Nhận sao lưu máy trạm" "Đăng nhập một lần"
+CHAN_DOAN_CT_TEN=("Cổng web" "Bộ chạy model AI" "Dịch vụ Trợ lý AI" "Động cơ quy trình" "Giám sát" "Nhận sao lưu máy trạm" "Đăng nhập một lần"
   "Cầu nối danh tính" "Cơ sở dữ liệu" "Dịch vụ dữ liệu (API)" "Kho tệp đối tượng (SeaweedFS)" "Cổng kho tệp và kiểm dịch")
 CHAN_DOAN_KQ=()   # mỗi phần tử: hạng mục, mã, trạng thái, tên, chi tiết, gợi ý — ngăn cách bằng \x1f (không bị gộp ô trống như tab)
 
@@ -178,23 +178,20 @@ for d in ds:
   fi
 }
 
-# Gửi 1 câu hỏi ngắn tới Ollama (cổng 11434 trong mạng Docker — Ollama không mở cổng ra LAN) qua container Open WebUI, đo thời gian
+# Gửi 1 câu hỏi ngắn tới Ollama (cổng 11434 trong mạng Docker — Ollama không mở cổng ra LAN) qua dịch vụ Trợ lý AI, đo thời gian
 kiem_ai() {
-  local yc kq dong ma giay
-  yc="$(printf '{"model": "%s", "prompt": "test", "stream": false, "options": {"num_predict": 8}}' "${CHAN_DOAN_MODEL}")"
-  kq="$(timeout 150 docker exec onebee-open-webui curl -s -m 120 -H 'Content-Type: application/json' -d "${yc}" \
-        -w '\n%{http_code} %{time_total}' http://ollama:11434/api/generate 2>/dev/null)" || true
-  dong="${kq##*$'\n'}"
-  read -r ma giay <<<"${dong}"
-  if [[ -z "${kq}" ]]; then
+  local kq ma giay
+  kq="$(timeout 150 docker exec onebee-ai-rag python3 -I /app/onebee-ai-rag.py kiem-ollama 2>/dev/null)" || true
+  read -r ma giay <<<"${kq}"
+  if [[ -z "${kq}" || "${ma}" == 000 ]]; then
     ghi_kq ai ollama loi "Model ${CHAN_DOAN_MODEL}" "Không gọi được Ollama (container Trợ lý AI không chạy?)" \
-      "Xem mục Dịch vụ Docker ở trên; khởi động lại: sudo docker restart onebee-ollama onebee-open-webui"
+      "Xem mục Dịch vụ Docker ở trên; khởi động lại: sudo docker restart onebee-ollama onebee-ai-rag"
   elif [[ "${ma}" == 404 ]]; then
     ghi_kq ai ollama loi "Model ${CHAN_DOAN_MODEL}" "Ollama chưa có model này" \
       "Tải model (vài GB): sudo docker exec onebee-ollama ollama pull ${CHAN_DOAN_MODEL}"
   elif [[ "${ma}" != 200 ]]; then
     ghi_kq ai ollama loi "Model ${CHAN_DOAN_MODEL}" "Ollama không trả lời trong 120 giây (mã ${ma:-?})" \
-      "Khởi động lại: sudo docker restart onebee-ollama onebee-open-webui; vẫn lỗi thì xem: sudo docker logs --tail 50 onebee-ollama"
+      "Khởi động lại: sudo docker restart onebee-ollama onebee-ai-rag; vẫn lỗi thì xem: sudo docker logs --tail 50 onebee-ollama"
   elif lon_hon "${giay}" "${NGUONG_AI_GIAY}"; then
     ghi_kq ai ollama canh_bao "Model ${CHAN_DOAN_MODEL}" "Trả lời thử sau ${giay} giây (chậm, quá ${NGUONG_AI_GIAY} giây)" \
       "Lần đầu sau khi bật Box phải nạp model vào RAM — chạy lại sau 1 phút; vẫn chậm thì Box thiếu RAM/CPU (xem mục Tài nguyên)"

@@ -29,7 +29,7 @@ bật HTTPS (chốt chặn máy chưa nhận CA, máy trạm qua HTTPS, chạy l
 chưa gắn ổ sao lưu → khởi động lại Box.
 
 Các bản sửa ngày 14/10 có mục kiểm riêng trong lần chạy này:
-- CORS/WebSocket Open WebUI (`b13d00d`): Origin lạ bị chặn cả API lẫn bắt tay WebSocket; Origin hợp lệ được CORS và WebSocket `101`, ở cả HTTP và HTTPS.
+- CORS/WebSocket giao diện Trợ lý AI (bản cũ) (`b13d00d`): Origin lạ bị chặn cả API lẫn bắt tay WebSocket; Origin hợp lệ được CORS và WebSocket `101`, ở cả HTTP và HTTPS.
 - Xoay khóa (`3a3ecda`): mật khẩu kho cũ bị từ chối (401), khóa `hoi` cũ hết hiệu lực, máy trạm nhận khóa mới qua `dong-bo-may`; `--box` đổi mật khẩu quản trị/n8n/biểu mẫu và đồng bộ webhook.
 - Tường lửa (`96663cd`): chỉ LAN vào được dịch vụ, cổng chỉ mở IPv4. Trường hợp bảng `mangle` lỗi chỉ kiểm bằng unit test (`tests/box/test_onebee_tuong_lua.py`), không giả lập được trong runner.
 - Vòng đời tường lửa tách khỏi Docker (`8874345`): dừng `docker.socket` + `docker.service` thì unit tường lửa vẫn chạy, INPUT còn 2 bước nhảy `ONEBEE-LAN-BOX`, `mangle` còn lọc Tailscale, `DOCKER-USER` còn quy tắc; Docker lên lại dùng tiếp đúng 1 bước nhảy và máy trạm vào lại được mọi cổng.
@@ -63,31 +63,31 @@ PASS  Có file phiên bản Box
 PASS  Docker đang chạy và bật cùng máy
 PASS  Container onebee-portal đang chạy
 PASS  Container onebee-ollama đang chạy
-PASS  Container onebee-open-webui đang chạy
+PASS  Container onebee-tro-ly-ai-cu đang chạy
 PASS  Container onebee-n8n đang chạy
 PASS  Container onebee-uptime-kuma đang chạy
 PASS  Container onebee-rest-server đang chạy
 PASS  Trang giới thiệu :80 hiển thị OneBee Box
-PASS  Open WebUI :3000 khỏe (/health)
+PASS  giao diện Trợ lý AI (bản cũ) :3000 khỏe (/health)
 PASS  n8n :5678 khỏe (/healthz)
 PASS  Uptime Kuma :3001 trả lời
 PASS  Uptime Kuma: tài khoản quản trị tạo sẵn + 5 mục theo dõi (không còn "ai mở trước thành quản trị")
 PASS  Giám sát mở ra LAN chỉ sau khi đã có tài khoản quản trị
-PASS  Open WebUI :3000 không cho Origin lạ đọc API kèm cookie (CORS giới hạn cả ở chế độ HTTP)
-PASS  Open WebUI :3000 cho Origin hợp lệ (http://<IP Box>:3000) đọc API: access-control-allow-origin trả đúng Origin đó
-PASS  Open WebUI :3000 nhận bắt tay WebSocket (chat thời gian thực) từ Origin hợp lệ (101)
-PASS  Open WebUI :3000 từ chối bắt tay WebSocket từ Origin lạ (có phản hồi, không phải 101)
+PASS  giao diện Trợ lý AI (bản cũ) :3000 không cho Origin lạ đọc API kèm cookie (CORS giới hạn cả ở chế độ HTTP)
+PASS  giao diện Trợ lý AI (bản cũ) :3000 cho Origin hợp lệ (http://<IP Box>:3000) đọc API: access-control-allow-origin trả đúng Origin đó
+PASS  giao diện Trợ lý AI (bản cũ) :3000 nhận bắt tay WebSocket (chat thời gian thực) từ Origin hợp lệ (101)
+PASS  giao diện Trợ lý AI (bản cũ) :3000 từ chối bắt tay WebSocket từ Origin lạ (có phản hồi, không phải 101)
 PASS  Kho sao lưu :8000 đòi mật khẩu (401)
 PASS  Trang giới thiệu gửi kèm tiêu đề bảo mật (chống nhúng khung, không lộ tên máy chủ web)
 PASS  n8n khóa chặt: không có nút chạy lệnh hệ thống, nút Code không đọc biến môi trường
 PASS  n8n: tắt mô-đun Agents và MCP, chặn nút Git (rà soát bảo mật 10/10)
 PASS  Các image dịch vụ ghim theo digest (@sha256), n8n không còn dòng 2.40.x đã ngừng vá
-PASS  Open WebUI: tắt Functions/Tools; quản trị không đọc/xuất chat; tắt chia sẻ chat (biến môi trường)
-PASS  Open WebUI (CSDL): không đăng ký tự do, không chia sẻ cộng đồng, phiên 30 ngày, nhân viên tạo được khóa API nhưng không chia sẻ chat
+PASS  giao diện Trợ lý AI (bản cũ): tắt Functions/Tools; quản trị không đọc/xuất chat; tắt chia sẻ chat (biến môi trường)
+PASS  giao diện Trợ lý AI (bản cũ) (CSDL): không đăng ký tự do, không chia sẻ cộng đồng, phiên 30 ngày, nhân viên tạo được khóa API nhưng không chia sẻ chat
 PASS  n8n chỉ ĐỌC được danh sách máy đã cấp (may-da-cap): gắn read-only, không tự thêm máy để nhận báo cáo giả
 PASS  Ollama KHÔNG mở cổng ra ngoài (11434)
-PASS  Ollama chạy được bên trong (Open WebUI gọi tới)
-PASS  Open WebUI không gọi AI đám mây (ENABLE_OPENAI_API=false)
+PASS  Ollama chạy được bên trong (giao diện Trợ lý AI (bản cũ) gọi tới)
+PASS  giao diện Trợ lý AI (bản cũ) không gọi AI đám mây (ENABLE_OPENAI_API=false)
 PASS  CA riêng: thư mục 700, khóa 600, gốc + trung gian có ràng buộc tên critical (chỉ IP Box /32 + <mã>.onebee.internal)
 PASS  CA riêng: Box tin CA của chính nó; chứng chỉ gốc công khai tại /onebee-ca.crt; khóa CA không gắn vào container nào
 PASS  onebee-box in-ca in vân tay đúng chứng chỉ gốc
@@ -170,7 +170,7 @@ PASS  Còn máy chưa nhận CA (kho-03) → bộ cài giữ HTTP, nêu tên má
 PASS  Chỉ Caddy công bố cổng (80, 443, 3000, 3001, 5678, 8000); 4 dịch vụ backend không còn cổng nào
 PASS  TLS đúng ở mọi cổng khi nối bằng IP (không SNI), chuỗi tới CA riêng của Box
 PASS  http://IP:3000 → 308 sang https; cổng 80 phục vụ chứng chỉ gốc
-PASS  Cookie đăng nhập Open WebUI có Secure; Origin lạ không được CORS, Origin hợp lệ được CORS + WebSocket (101), Origin lạ bị từ chối WebSocket; biểu mẫu n8n vẫn có CSP sandbox
+PASS  Cookie đăng nhập giao diện Trợ lý AI (bản cũ) có Secure; Origin lạ không được CORS, Origin hợp lệ được CORS + WebSocket (101), Origin lạ bị từ chối WebSocket; biểu mẫu n8n vẫn có CSP sandbox
 PASS  onebee-box dong-bo-tro-ly chạy được qua HTTPS (Box tin CA của chính nó)
 PASS  Sau khi Box bật HTTPS, máy trạm nhận URL https + cờ BOX_HTTPS=1 + dấu bền (tự đồng bộ cuối bộ cài)
 PASS  Máy trạm sao lưu (restic rest:https), hỏi Trợ lý AI và báo tình trạng qua HTTPS, chỉ tin CA riêng của Box

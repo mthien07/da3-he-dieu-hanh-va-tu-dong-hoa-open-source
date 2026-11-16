@@ -1,6 +1,6 @@
 ---
 # /etc/onebee-hoi.conf sinh từ cấu hình máy trạm (onebee_may_tram). Dùng chung với playbook dong-bo-may-tram.yml của Box.
-# Khóa Trợ lý AI của TỪNG NHÂN VIÊN nằm ở ~/.config/onebee/hoi-khoa (lệnh 'hoi --dang-nhap'), không ở đây.
+# Khóa Trợ lý AI của TỪNG NHÂN VIÊN nằm ở ~/.config/onebee/hoi-khoa (lệnh 'hoi --dan-khoa'), không ở đây.
 # Dòng HOI_API_KEY (khóa của MÁY, mọi tài khoản trên máy đọc được — rà soát bảo mật F10) chỉ còn ở giai đoạn chuyển tiếp:
 # Box bỏ dòng này khi đặt onebee_box_hoi_khoa_may: false; file được ghi lại không có dòng đó.
 
@@ -19,7 +19,6 @@
       {% if onebee_hoi_key | length > 0 %}
       HOI_API_KEY={{ onebee_hoi_key }}
       {% endif %}
-      HOI_MODEL=onebee-tro-ly
     owner: root
     group: root
     mode: "0644"

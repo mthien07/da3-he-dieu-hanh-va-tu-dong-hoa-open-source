@@ -5,21 +5,6 @@
 - name: Mã đơn vị, địa chỉ IP và CA riêng của Box
   ansible.builtin.include_tasks: ca.yml
 
-# Mỗi Origin thêm phải dạng http(s)://tên[:cổng], không đường dẫn/khoảng trắng/";" ("*" bị loại) — ";" là dấu ngăn của CORS_ALLOW_ORIGIN
-- name: Kiểm tra onebee_box_cors_them (danh sách Origin Trợ lý AI khai thêm)
-  ansible.builtin.assert:
-    that:
-      - onebee_box_cors_them is sequence
-      - onebee_box_cors_them is not string
-      - >-
-        onebee_box_cors_them | map('string')
-        | select('match', '^https?://[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:[0-9]{1,5})?$') | list | length
-        == onebee_box_cors_them | length
-    fail_msg: >-
-      onebee_box_cors_them trong box/ansible/group_vars/all.yml phải là danh sách Origin dạng http://tên:cổng hoặc https://tên:cổng
-      (không đường dẫn, không dấu "/" ở cuối, không "*"), vd ["http://onebee-box.lan:3000"].
-    quiet: true
-
 - name: Tạo thư mục cài đặt và dữ liệu
   ansible.builtin.file:
     path: "{{ item.path }}"
@@ -38,7 +23,6 @@
     - {path: "{{ onebee_box_data }}/caddy/config", mode: "0700"}
     - {path: "{{ onebee_box_data }}"}
     - {path: "{{ onebee_box_data }}/ollama", mode: "0700"}
-    - {path: "{{ onebee_box_data }}/open-webui", mode: "0700"}
     - {path: "{{ onebee_box_data }}/node-red", owner: "1000", mode: "0700"}  # Node-RED chạy bằng uid 1000
     - {path: "{{ onebee_box_data }}/tinh-trang-may", owner: "1000", mode: "0700"}  # máy trạm báo tình trạng qua động cơ quy trình
     - {path: "{{ onebee_box_data }}/ho-tro", owner: "1000", mode: "0700"}  # sổ yêu cầu hỗ trợ + khảo sát
@@ -126,14 +110,12 @@
       {{ '0.0.0.0' if (onebee_kuma_xong.stat.exists and ((onebee_sso_hieu_luc | bool) or not onebee_kuma_dau_tat_rieng.stat.exists))
          else '127.0.0.1' }}
 
-# Trang chủ dựng cẩm nang và lối vào mẫu soạn văn bản từ 2 file dữ liệu dùng chung với máy trạm và Trợ lý AI
-- name: Đọc nguồn chung cẩm nang và gợi ý của Trợ lý cho trang chủ
+# Trang chủ dựng cẩm nang từ file dữ liệu dùng chung với máy trạm
+- name: Đọc nguồn chung cẩm nang cho trang chủ
   ansible.builtin.set_fact:
     onebee_cam_nang: >-
       {{ lookup('ansible.builtin.file', playbook_dir ~ '/../../desktop/ansible/roles/theme/files/onebee-cam-nang.json')
          | from_json }}
-    onebee_goi_y: >-
-      {{ lookup('ansible.builtin.file', playbook_dir ~ '/roles/box-ai/files/goi-y.json') | from_json }}
     # Thứ tự và tên 4 nhóm phím tắt trên trang chủ (mã nhóm khớp trường "nhom" của cẩm nang)
     onebee_cam_nang_nhom:
       - {ma: go-tieng-viet, ten: "Gõ tiếng Việt"}
@@ -215,11 +197,11 @@
   register: onebee_ten_may
   changed_when: onebee_ten_may.stdout is search('đã đổi')
 
-# Chuyển HTTP ↔ HTTPS đổi chủ các cổng 3000/3001/8000 (backend ↔ Caddy): dừng các dịch vụ giữ cổng trước,
+# Chuyển HTTP ↔ HTTPS đổi chủ các cổng 3001/8000 (backend ↔ Caddy): dừng các dịch vụ giữ cổng trước,
 # kẻo "port is already allocated".
 # Chỉ làm khi trạng thái HTTPS thật sự đổi (dừng vài chục giây). Image không đổi nên không tải lại gì.
 - name: Chuyển HTTP ↔ HTTPS — dừng các dịch vụ đang giữ cổng
-  ansible.builtin.command: docker compose stop portal open-webui quy-trinh uptime-kuma rest-server
+  ansible.builtin.command: docker compose stop portal quy-trinh uptime-kuma rest-server
   args:
     chdir: "{{ onebee_box_dir }}"
   when: onebee_https_doi | bool and onebee_compose_cu.stat.exists
@@ -227,7 +209,7 @@
 
 # Dịch vụ backend trước, cổng Caddy (portal) sau: không tranh cổng khi chuyển, và Caddy khởi động khi backend đã có
 - name: Khởi chạy / cập nhật dịch vụ backend
-  ansible.builtin.command: docker compose up -d --remove-orphans --no-deps ollama open-webui uptime-kuma rest-server
+  ansible.builtin.command: docker compose up -d --remove-orphans --no-deps ollama uptime-kuma rest-server
   args:
     chdir: "{{ onebee_box_dir }}"
   register: onebee_compose_up_be
@@ -279,7 +261,6 @@
   delay: 5
   loop:
     - "{{ onebee_box_ports.portal }}"
-    - "{{ onebee_box_ports.open_webui }}"
     - "{{ onebee_box_ports.uptime_kuma }}"
   when: not (onebee_https_hieu_luc | bool)
 
@@ -294,7 +275,6 @@
   delay: 5
   loop:
     - {cong: "", noi_dung: "OneBee Box"}
-    - {cong: ":{{ onebee_box_ports.open_webui }}", noi_dung: "Open WebUI"}
   loop_control:
     label: "{{ item.cong }}"
   when: onebee_https_hieu_luc | bool
@@ -323,7 +303,7 @@
   delay: 5
   when: (onebee_https_hieu_luc | bool) and onebee_kuma_dia_chi == '0.0.0.0' and not (onebee_sso_hieu_luc | bool)
 
-# Dịch vụ đã chuyển xong → ghi/xóa dấu HTTPS (các lệnh onebee-box, kể cả "dong-bo-tro-ly" ở role sau, từ đây gọi theo chế độ mới)
+# Dịch vụ đã chuyển xong → ghi/xóa dấu HTTPS (các lệnh onebee-box ở role sau, kể cả nạp tri thức, từ đây gọi theo chế độ mới)
 - name: Ghi nhận trạng thái HTTPS
   ansible.builtin.include_tasks: https-dau.yml
 
@@ -368,7 +348,6 @@
       - {name: "Cổng HTTPS (Caddy)", url: "https://portal:443/", ignoreTls: true}
     onebee_kuma_monitors_goc:
       - {name: "Trang giới thiệu", url: "http://portal/"}
-      - {name: "Trợ lý AI (Open WebUI)", url: "http://open-webui:8080/health"}
       - {name: "AI chạy tại chỗ (Ollama)", url: "http://ollama:11434/"}
       - {name: "Động cơ quy trình (Node-RED)", url: "http://quy-trinh:1880/webhook/suc-khoe"}
       - {name: "Kho sao lưu máy trạm", url: "http://rest-server:8000/", accepted_statuscodes: ["401"]}

@@ -21,7 +21,6 @@ services:
       - "0.0.0.0:{{ onebee_box_ports.portal }}:80"
 {% if https %}
       - "0.0.0.0:443:443"
-      - "0.0.0.0:{{ onebee_box_ports.open_webui }}:{{ onebee_box_ports.open_webui }}"
       - "0.0.0.0:{{ onebee_box_ports.rest_server }}:{{ onebee_box_ports.rest_server }}"
 {# Giám sát chỉ được công bố sau khi có tài khoản quản trị (trước đó trang "tạo tài khoản đầu tiên" ai mở trước được) #}
 {% if onebee_kuma_dia_chi | default('0.0.0.0') == '0.0.0.0' %}
@@ -56,63 +55,52 @@ services:
     restart: unless-stopped
     logging: *logging
     security_opt: ["no-new-privileges:true"]   # F11: tiến trình trong container không tự nâng quyền
-    # Không mở cổng ra LAN: chỉ Open WebUI gọi được (API Ollama không có mật khẩu)
+    # Không mở cổng ra LAN: chỉ dịch vụ Trợ lý AI gọi được (API Ollama không có mật khẩu). Mạng "ai" là đường riêng
+    # giữa dịch vụ Trợ lý AI và Ollama, không chứa dịch vụ nào khác.
+    networks: [default, ai]
     volumes:
       - {{ onebee_box_data }}/ollama:/root/.ollama
 
-  open-webui:
-    image: {{ onebee_box_images.open_webui }}
-    container_name: onebee-open-webui
+  # Trợ lý AI (mã trong repo: box-ai/files/onebee-ai-rag.py, chỉ thư viện chuẩn Python): trả lời câu hỏi, tóm tắt văn bản,
+  # tra kho tri thức trong PostgreSQL. Chỉ Caddy gọi tới (mạng sso) và chỉ nó gọi được Ollama (mạng ai); không công bố cổng.
+  # Mã, lời dặn, kho mẫu và kho tri thức do role box-ai chép vào ./ai-rag rồi mới chạy dịch vụ này.
+  ai-rag:
+    image: {{ onebee_box_images.python }}
+    container_name: onebee-ai-rag
     restart: unless-stopped
     logging: *logging
-    security_opt: ["no-new-privileges:true"]   # F11: tiến trình trong container không tự nâng quyền
-    depends_on: [ollama]
-{% if not https %}
-    ports: ["0.0.0.0:{{ onebee_box_ports.open_webui }}:8080"]
-{% endif %}
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
+    networks: [sso, ai]
+    # root của container (không có quyền đặc biệt nào) để đọc/ghi thư mục dữ liệu và tệp khóa chỉ root đọc được
+    user: "0:0"
+    command: ["python3", "-I", "/app/onebee-ai-rag.py", "chay-dich-vu"]
     environment:
-      OLLAMA_BASE_URL: http://ollama:11434
       TZ: {{ onebee_timezone }}   # "hôm nay" trong lời dặn Trợ lý theo giờ Việt Nam
-      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
-      # Tạo sẵn tài khoản quản trị lúc khởi động lần đầu → tự tắt đăng ký tự do (không còn "ai mở trước thành quản trị")
-      WEBUI_ADMIN_EMAIL: {{ onebee_box_admin_email }}
-      WEBUI_ADMIN_PASSWORD: ${WEBUI_ADMIN_PASSWORD}
-      WEBUI_ADMIN_NAME: Quản trị OneBee
-      ENABLE_SIGNUP: "false"
-      DEFAULT_MODELS: onebee-tro-ly
-      # Khóa API cho lệnh "hoi" trên máy trạm — chỉ gọi được hỏi đáp và danh sách model
-      ENABLE_API_KEYS: "true"
-      USER_PERMISSIONS_FEATURES_API_KEYS: "true"
-      ENABLE_API_KEYS_ENDPOINT_RESTRICTIONS: "true"
-      API_KEYS_ALLOWED_ENDPOINTS: /api/chat/completions,/api/models
-      DEFAULT_LOCALE: vi-VN
-      ENABLE_OPENAI_API: "false"   # không gọi AI đám mây — dữ liệu ở lại trong LAN
-      # Rà soát bảo mật 10/10: Box không dùng Functions/Tools (mã Python do quản trị thêm chạy trong container) → tắt hẳn,
-      # để lộ phiên quản trị cũng không thành chạy mã trên máy chủ. Trợ lý đã đặt builtin_tools=False (onebee-webui.py)
-      ENABLE_PLUGINS: "false"
-      # Quản trị không đọc/xuất được chat của nhân viên (2 biến đầu chỉ đọc từ môi trường); nhân viên không chia sẻ chat cho nhau;
-      # không chia sẻ lên cộng đồng; phiên 30 ngày. 3 cài đặt sau lưu trong CSDL → Box đã cài được chỉnh qua API (onebee-webui.py)
-      ENABLE_ADMIN_CHAT_ACCESS: "false"
-      ENABLE_ADMIN_EXPORT: "false"
-      USER_PERMISSIONS_CHAT_SHARE: "false"
-      ENABLE_COMMUNITY_SHARING: "false"
-      JWT_EXPIRES_IN: "30d"   # phiên đăng nhập 1 tháng (mặc định của Open WebUI: 4 tuần)
-{% if https %}
-      # HTTPS qua Caddy: cookie chỉ gửi qua HTTPS; CORS đúng địa chỉ thật (lệch thì WebSocket chat hỏng mà không báo lỗi); mở bằng tên/IP khác → khai onebee_box_cors_them
-      WEBUI_SESSION_COOKIE_SECURE: "true"
-      WEBUI_AUTH_COOKIE_SECURE: "true"
-      CORS_ALLOW_ORIGIN: "https://{{ onebee_box_ip }}:{{ onebee_box_ports.open_webui }};https://box.{{ onebee_box_ma_don_vi }}.onebee.internal:{{ onebee_box_ports.open_webui }}{% for nguon in onebee_box_cors_them %};{{ nguon }}{% endfor %}"
-{% else %}
-      # HTTP nội bộ: chỉ cho phép WebUI tự gọi chính nó (IP LAN + tên <mdns>.local trong LAN + tên kỹ thuật qua Tailscale), chặn trang web lạ gửi request
-      # kèm cookie/credentials (không đặt thì Open WebUI phản chiếu mọi Origin kèm allow-credentials); thêm Origin khác: onebee_box_cors_them
-      CORS_ALLOW_ORIGIN: "http://{{ onebee_box_ip }}:{{ onebee_box_ports.open_webui }};http://{{ onebee_box_ten_mdns }}.local:{{ onebee_box_ports.open_webui }};http://box.{{ onebee_box_ma_don_vi }}.onebee.internal:{{ onebee_box_ports.open_webui }}{% for nguon in onebee_box_cors_them %};{{ nguon }}{% endfor %}"
-{% endif %}
-      OFFLINE_MODE: "true"
-      SCARF_NO_ANALYTICS: "true"
-      DO_NOT_TRACK: "true"
-      ANONYMIZED_TELEMETRY: "false"
+      PYTHONDONTWRITEBYTECODE: "1"
+      AI_OLLAMA_URL: http://ollama:11434
+      AI_CAU_NOI_URL: http://cau-noi:8080
+      AI_MO_HINH: {{ onebee_box_ai_model }}
+      AI_MO_HINH_NHUNG: {{ onebee_box_ai_model_nhung }}
+      AI_SO_NGUON: "3"
+      AI_DU_LIEU: /data
+      AI_LOI_DAN: /app/tro-ly-onebee-loi-dan.md
+      AI_TRI_THUC: /app/knowledge
+      AI_MAU: /app/prompts
+      AI_TRI_THUC_DON_VI: /du-lieu-tri-thuc
+    healthcheck:
+      test: ["CMD", "python3", "-I", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8092/suc-khoe', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     volumes:
-      - {{ onebee_box_data }}/open-webui:/app/backend/data
+      - ./ai-rag:/app:ro
+      - {{ onebee_box_data }}/ai-rag:/data
+      # Tài liệu đơn vị tự bổ sung: onebee-box nap-tri-thuc đọc và nhúng vào kho tri thức chung
+      - {{ onebee_box_data }}/knowledge:/du-lieu-tri-thuc:ro
 
   quy-trinh:
     image: {{ onebee_box_images.node_red }}
@@ -177,7 +165,7 @@ services:
     logging: *logging
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]   # chạy bằng root của container nhưng không có quyền đặc biệt nào: chỉ đọc/ghi tệp root sở hữu
-    networks: [sso]   # Open WebUI… (mạng default) không gọi thẳng được; động cơ quy trình chỉ vào /api/ qua Caddy
+    networks: [sso]   # dịch vụ mạng default (động cơ quy trình, kho tệp…) không gọi thẳng được; chỉ vào qua Caddy
     # Gọi thẳng authelia (không qua entrypoint.sh: bước chown/su-exec của nó cần quyền đã bỏ ở trên)
     command: ["authelia", "--config", "/config/configuration.yml"]
     environment:
@@ -328,3 +316,5 @@ networks:
     internal: true   # PostgREST ↔ PostgreSQL
   kho_tep:
     internal: true   # dịch vụ cổng tệp ↔ SeaweedFS
+  ai:
+    internal: true   # dịch vụ Trợ lý AI ↔ Ollama (không có dịch vụ nào khác)

@@ -31,8 +31,8 @@ flowchart LR
         end
         subgraph BOX["🗄️ OneBee Box — 1 máy, bật suốt ngày đêm, IP cố định"]
             direction TB
-            AI["🤖 Trợ lý AI tiếng Việt<br/>chạy tại chỗ :3000"]
-            QT["⚙️ Quy trình tự động, email /quy-trinh/"]
+            AI["🤖 Trợ lý AI tiếng Việt<br/>chạy tại chỗ /ai/ (lệnh hoi)"]
+            QT["⚙️ Quy trình tự động (Node-RED), email /quy-trinh/"]
             KUMA["📈 Giám sát :3001"]
             SMB["📁 Thư mục chung"]
             KHO["🔒 Kho sao lưu máy trạm :8000"]
@@ -188,7 +188,7 @@ Từ một máy khác cùng mạng, mở trình duyệt vào `http://<ip-box>/`.
 
 | Dịch vụ | Địa chỉ | Dùng để |
 |---|---|---|
-| Trợ lý AI | `http://<ip-box>:3000` | Hỏi đáp, soạn văn bản bằng tiếng Việt |
+| Trợ lý AI | `https://box.<mã>.onebee.internal/ai/` qua lệnh `hoi` | Hỏi đáp, tóm tắt, soạn văn bản bằng tiếng Việt (cần HTTPS) |
 | Quy trình tự động (Node-RED) | `https://box.<mã>.onebee.internal/quy-trinh/` | Email báo cáo, nhắc hạn thuế/BHXH, đơn hàng, phê duyệt |
 | Giám sát | `http://<ip-box>:3001` | Xem dịch vụ nào đang ngừng |
 | Thư mục chung | `smb://<ip-box>/chung` | Chia sẻ file trong đơn vị (tài khoản `onebee`, mật khẩu: `sudo cat /etc/onebee-box/secrets/samba-onebee`) |
@@ -408,7 +408,7 @@ Chưa có khóa nào thì Box giữ nguyên mật khẩu và in cảnh báo, đ�
    Lệnh này **không được in tên máy nào**. Có máy đang tắt thì bật lên rồi chạy `sudo onebee-box dong-bo-may --tat-ca`.
 2. Trong `box/ansible/group_vars/all.yml`, đổi `onebee_box_https: false` thành `onebee_box_https: true`, lưu lại, rồi chạy `sudo ./box/onebee-box-install.sh`.
    Nếu còn máy chưa nhận chứng chỉ, bộ cài **giữ HTTP** và nêu tên máy đó (không làm hỏng gì).
-3. Từ đây dùng `https://<ip-box>:3000`… Máy trạm tự chuyển sang HTTPS. **Điện thoại, laptop cá nhân** muốn dùng thì cài chứng chỉ theo
+3. Từ đây dùng `https://<ip-box>/` (hoặc `https://box.<mã>.onebee.internal/`)… Máy trạm tự chuyển sang HTTPS. **Điện thoại, laptop cá nhân** muốn dùng thì cài chứng chỉ theo
    [cai-dat-onebee-box.md](cai-dat-onebee-box.md) mục "Bật HTTPS" bước 5.
    **Đã cài chứng chỉ rồi mà vẫn thấy cảnh báo bảo mật khi vào Box thì không bấm "tiếp tục".** Báo ngay cho kỹ thuật.
 4. Muốn quay lại HTTP: đặt lại `false` rồi chạy bộ cài.

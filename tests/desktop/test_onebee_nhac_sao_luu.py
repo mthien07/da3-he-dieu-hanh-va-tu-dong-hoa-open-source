@@ -33,7 +33,7 @@ class NhacSaoLuu(unittest.TestCase):
     def noi_box(self, cach_day_gio=1000):
         """Tạo file dấu hiệu máy đã nối Box, thời điểm sửa cách đây `cach_day_gio` giờ."""
         with open(self.hoi_conf, "w", encoding="utf-8") as f:
-            f.write("HOI_URL=http://192.168.1.10:3000\n")
+            f.write("HOI_URL=https://box.anphu.onebee.internal\n")
         t = time.time() - cach_day_gio * GIO
         os.utime(self.hoi_conf, (t, t))
 
