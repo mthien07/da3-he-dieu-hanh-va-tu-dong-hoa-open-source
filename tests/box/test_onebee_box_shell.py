@@ -288,7 +288,7 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertEqual(kv["BOX_HTTPS"], "1")
         self.assertTrue(kv["RESTIC_REPOSITORY"].startswith("rest:https://ketoan-01:"))
         self.assertEqual(kv["HOI_URL"], "https://192.168.1.10:3000")
-        self.assertEqual(kv["TINH_TRANG_URL"], "https://box.anphu.onebee.internal/webhook/onebee-tinh-trang")
+        self.assertEqual(kv["TINH_TRANG_URL"], "https://box.kiem-thu.onebee.internal/webhook/onebee-tinh-trang")
 
     def thay_khoa_may(self, gia_tri):
         """Dựng lại lệnh với onebee_box_hoi_khoa_may khác (giá trị lưu trong common.sh)."""
