@@ -11,7 +11,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 GOC = os.path.abspath(os.path.join(HERE, "../.."))
 DESKTOP_VARS = os.path.join(GOC, "desktop/ansible/group_vars/all.yml")
 BOX_VARS = os.path.join(GOC, "box/ansible/group_vars/all.yml")
-CHANGELOG = os.path.join(GOC, "docs/project-changelog.md")
+CHANGELOG = os.path.join(GOC, "CHANGELOG.md")
 
 
 def doc(duong_dan):
