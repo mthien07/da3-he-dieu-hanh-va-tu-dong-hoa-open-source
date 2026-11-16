@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2016  # thân các lệnh giả viết trong nháy đơn: biến phải mở rộng lúc lệnh giả chạy, không phải lúc tạo
-# Kiểm thử lệnh "onebee-box chan-doan" (7 hạng mục: mạng, tài nguyên, Docker, Trợ lý AI, Samba, sao lưu, chứng chỉ) mà KHÔNG cần Box thật:
+# Kiểm thử lệnh "onebee-box chan-doan" (8 hạng mục: mạng, tài nguyên, Docker, Trợ lý AI, Samba, kho tệp, sao lưu, chứng chỉ) mà KHÔNG cần Box thật:
 # dựng các mẫu .j2 thành lệnh trong thư mục tạm, thay ping/ip/docker/systemctl/restic/mountpoint/runuser/df/tailscale bằng bản GIẢ
 # (trạng thái đặt bằng file trong $SIM), openssl và CA riêng của Box là THẬT (onebee-ca.sh).
 # Mỗi kịch bản: mọi dịch vụ sống → toàn [OK], mã thoát 0; tắt/làm hỏng ĐÚNG 1 thứ → đúng mục đó báo cảnh báo/lỗi, các mục khác vẫn OK.
@@ -95,6 +95,8 @@ moi_thu_khoe() {
   echo "0.50 0.40 0.30 1/200 12345" >"${T}/proc/loadavg"
   ban_sao_luu 2
   mkdir -p "${T}/data/postgres-ket-xuat"; echo "kết xuất" >"${T}/data/postgres-ket-xuat/onebee.dump"   # kết xuất CSDL vừa làm
+  mkdir -p "${T}/data/seaweedfs" "${T}/data/kho-tep" "${T}/data/clamav"
+  touch -d '1 hour ago' "${T}/data/clamav/daily.cvd"   # chữ ký ClamAV vừa cập nhật
   rm -rf "${T}/secrets/ca"; "${T}/lib/onebee-ca.sh" "${T}/secrets/ca" kiem-thu 127.0.0.1 >/dev/null 2>&1
   rm -f "${T}/secrets/https-da-bat" "${T}/secrets/sso-tam-tat"
 }
@@ -141,20 +143,22 @@ moi_thu_khoe
 chay --json
 if python3 -c 'import json, sys
 d = json.loads(sys.argv[1])
-assert [h["ma"] for h in d["hang_muc"]] == ["mang", "tai_nguyen", "docker", "ai", "samba", "sao_luu", "ssl"], d["hang_muc"]
-assert d["ket_luan"] == "ok" and d["dem"]["loi"] == 0 and d["dem"]["canh_bao"] == 0 and d["dem"]["ok"] >= 15, d["dem"]
+assert [h["ma"] for h in d["hang_muc"]] == ["mang", "tai_nguyen", "docker", "ai", "samba", "kho_tep", "sao_luu", "ssl"], d["hang_muc"]   # 8 hạng mục
+assert d["ket_luan"] == "ok" and d["dem"]["loi"] == 0 and d["dem"]["canh_bao"] == 0 and d["dem"]["ok"] >= 17, d["dem"]
 for h in d["hang_muc"]:
     assert h["ten"] and h["trang_thai"] == "ok" and h["muc"], h
     for m in h["muc"]:
         assert set(m) == {"ma", "ten", "trang_thai", "chi_tiet", "goi_y"} and m["ten"] and m["chi_tiet"], m
-assert d["thoi_diem"][:2] == "20"' "${OUT}" 2>"${T}/py-loi"; then pass "Mọi dịch vụ sống: JSON đủ 7 hạng mục, toàn OK"
+assert d["thoi_diem"][:2] == "20"' "${OUT}" 2>"${T}/py-loi"; then pass "Mọi dịch vụ sống: JSON đủ 8 hạng mục, toàn OK"
 else fail "Mọi dịch vụ sống: JSON sai — $(tail -1 "${T}/py-loi")"; echo "${OUT}" | head -c 600; echo; fi
 if [[ "${RC}" == 0 ]]; then pass "Mọi dịch vụ sống: mã thoát 0"; else fail "Mọi dịch vụ sống: mã thoát ${RC} (mong 0)"; fi
 [[ "$(khong_ok)" == "" ]] || fail "Mọi dịch vụ sống: có mục không OK: $(khong_ok)"
 for c in onebee-portal onebee-ollama onebee-open-webui onebee-n8n onebee-uptime-kuma onebee-rest-server onebee-authelia onebee-cau-noi \
-         onebee-postgres onebee-postgrest postgres_ket_noi postgrest_tra_loi; do
+         onebee-postgres onebee-postgrest onebee-seaweedfs onebee-kho-tep postgres_ket_noi postgrest_tra_loi; do
   [[ "$(trang_thai docker "${c}")" == ok ]] || fail "Thiếu mục ${c} trong hạng mục Docker"
 done
+[[ "$(trang_thai kho_tep chu_ky_clamav)" == ok ]] || fail "Thiếu mục chữ ký ClamAV trong hạng mục Kho tệp"
+[[ "$(trang_thai kho_tep thu_muc)" == ok ]] || fail "Thiếu mục thư mục kho tệp trong hạng mục Kho tệp"
 [[ "$(trang_thai sao_luu ket_xuat_csdl)" == ok ]] || fail "Thiếu mục kết xuất CSDL trong hạng mục Sao lưu"
 if grep -q 'onebee-postgres pg_isready -q -h 127.0.0.1 -U postgres -d onebee' "${SIM}/docker-exec.log" \
    && grep -q 'onebee-cau-noi python3 -I -c .*http://postgrest:3001/ready' "${SIM}/docker-exec.log"; then
@@ -164,7 +168,7 @@ if grep -q 'gemma4:e2b-it-qat' "${SIM}/docker-exec.log" && grep -q 'http://ollam
 
 chay
 if [[ "${RC}" == 0 ]] && grep -q '\[OK\]' <<<"${OUT}" && ! grep -q 'LỖI\|CẢNH BÁO' <<<"${OUT}" \
-   && grep -q '^KẾT LUẬN' <<<"${OUT}" && [[ "$(grep -c '^[1-7]\. ' <<<"${OUT}")" == 7 ]]; then pass "Bảng chữ: 7 hạng mục, [OK], có kết luận"
+   && grep -q '^KẾT LUẬN' <<<"${OUT}" && [[ "$(grep -c '^[1-8]\. ' <<<"${OUT}")" == 8 ]]; then pass "Bảng chữ: 8 hạng mục, [OK], có kết luận"
 else fail "Bảng chữ sai (mã ${RC}):"; echo "${OUT}"; fi
 if grep -q $'\e\[' <<<"${OUT}"; then fail "Có mã màu khi không phải terminal / NO_COLOR"; else pass "Không in mã màu khi ra file / NO_COLOR"; fi
 
@@ -202,6 +206,15 @@ kich_ban "Kết xuất CSDL cách 47 giờ → vẫn OK" 0 ""
 moi_thu_khoe; rm -f "${T}/data/postgres-ket-xuat/onebee.dump"
 kich_ban "Chưa có tệp kết xuất CSDL → CẢNH BÁO" 1 "sao_luu/ket_xuat_csdl=canh_bao"
 chay; if grep -q 'onebee-box sao-luu' <<<"${OUT}"; then pass "Gợi ý sao lưu ngay khi thiếu kết xuất"; else fail "Thiếu gợi ý sao-luu khi thiếu kết xuất"; fi
+
+# ===== Kho tệp =====
+moi_thu_khoe; rm -f "${T}/data/clamav"/*.cvd
+kich_ban "Chưa có chữ ký ClamAV → LỖI" 2 "kho_tep/chu_ky_clamav=loi"
+chay; if grep -q 'cap-nhat-chu-ky-clamav' <<<"${OUT}"; then pass "Gợi ý nộp chữ ký ClamAV ngoại tuyến"; else fail "Thiếu gợi ý cap-nhat-chu-ky-clamav"; fi
+moi_thu_khoe; touch -d '10 days ago' "${T}/data/clamav/daily.cvd"
+kich_ban "Chữ ký ClamAV cũ 10 ngày → CẢNH BÁO" 1 "kho_tep/chu_ky_clamav=canh_bao"
+moi_thu_khoe; rm -rf "${T}/data/kho-tep"
+kich_ban "Thiếu thư mục kho tệp → LỖI" 2 "kho_tep/thu_muc=loi"
 
 # ===== Mạng =====
 moi_thu_khoe; rm -f "${SIM}/ping-192.168.1.1"

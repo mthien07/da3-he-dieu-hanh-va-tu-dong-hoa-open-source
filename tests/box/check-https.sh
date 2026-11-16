@@ -2,7 +2,8 @@
 # Kiểm tra bật/tắt HTTPS (rà soát bảo mật F3, Pha 4) trên máy test, SAU khi Box và máy trạm ketoan-01 đã chạy ở chế độ HTTP:
 # chốt chặn máy chưa nhận CA → bật HTTPS → Caddy là nơi duy nhất công bố cổng, TLS đúng CA riêng, http:// bị chuyển 308, cookie Secure, CORS,
 # CSP sandbox của biểu mẫu n8n còn nguyên, máy trạm sao lưu/hỏi AI/báo tình trạng qua HTTPS → đăng nhập một lần + cổng API
-# (check-sso-cong-api.sh) → phân quyền dòng qua cổng API (check-du-lieu-qua-cong.sh) → chạy lại bộ cài không đổi gì → tắt HTTPS lại về HTTP.
+# (check-sso-cong-api.sh) → phân quyền dòng qua cổng API (check-du-lieu-qua-cong.sh) → kho tệp: tải lên, kiểm dịch ClamAV,
+# tải lại đúng SHA-256, tệp nhiễm bị chặn (check-kho-tep-inside.sh) → chạy lại bộ cài không đổi gì → tắt HTTPS lại về HTTP.
 # Cách dùng: check-https.sh <container-Box> <container-máy-trạm>   (chưa chạy trên máy tác giả — cần Docker lồng, xem tests/README.md)
 set -euo pipefail
 BOX="$1"; CLIENT="$2"
@@ -92,6 +93,9 @@ echo "===== HTTPS: ĐĂNG NHẬP MỘT LẦN + CỔNG API ====="
 
 echo "===== HTTPS: DỮ LIỆU QUA CỔNG API (PHÂN QUYỀN DÒNG) ====="
 "$(dirname "$0")/check-du-lieu-qua-cong.sh" "${BOX}"
+
+echo "===== HTTPS: KHO TỆP + KIỂM DỊCH CLAMAV ====="
+box "/root/onebee-test/tests/box/check-kho-tep-inside.sh"
 
 echo "===== HTTPS: CHẠY LẠI BỘ CÀI KHÔNG ĐỔI GÌ ====="
 cai lan-2-https
