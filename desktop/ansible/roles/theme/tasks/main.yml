@@ -218,3 +218,6 @@
 
 - name: Mặc định của phiên làm việc (màn hình chào, cập nhật, đồng hồ, nút Bắt đầu, màn hình đăng nhập)
   ansible.builtin.include_tasks: phien-lam-viec.yml
+
+- name: Màn hình khởi động OneBee (Plymouth)
+  ansible.builtin.include_tasks: man-hinh-khoi-dong.yml

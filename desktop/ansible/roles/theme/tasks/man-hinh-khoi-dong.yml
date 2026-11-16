@@ -1,0 +1,74 @@
+---
+# Màn hình khởi động OneBee (Plymouth). Chỉ làm khi máy có Plymouth và initramfs-tools (Mint đầy đủ); container rút gọn bỏ qua.
+# Chủ đề đặt làm mặc định qua update-alternatives (ưu tiên 200, cao hơn các chủ đề của Mint).
+# Chạy lại bộ cài chỉ đặt lại khi chủ đề mặc định đang khác OneBee, và chỉ dựng lại initramfs khi vừa có thay đổi.
+# Hoàn tác: update-alternatives --set default.plymouth <đường dẫn chủ đề Mint> rồi update-initramfs -u
+
+- name: Kiểm tra máy có Plymouth không
+  ansible.builtin.stat:
+    path: /usr/share/plymouth/themes
+  register: onebee_plymouth_thu_muc
+
+- name: Kiểm tra máy có initramfs-tools không
+  ansible.builtin.stat:
+    path: /usr/sbin/update-initramfs
+  register: onebee_initramfs
+
+- name: Đặt cờ làm màn hình khởi động
+  ansible.builtin.set_fact:
+    onebee_lam_khoi_dong: "{{ (onebee_plymouth_thu_muc.stat.isdir | default(false)) and (onebee_initramfs.stat.exists | default(false)) }}"
+
+- name: Tạo thư mục chủ đề Plymouth OneBee
+  ansible.builtin.file:
+    path: /usr/share/plymouth/themes/onebee
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: onebee_lam_khoi_dong
+
+- name: Chép chủ đề Plymouth OneBee
+  ansible.builtin.copy:
+    src: "plymouth/{{ item }}"
+    dest: "/usr/share/plymouth/themes/onebee/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: [onebee.plymouth, onebee.script, logo.png, thanh-nen.png, thanh-tien-trinh.png]
+  register: onebee_plymouth_tep
+  when: onebee_lam_khoi_dong
+
+- name: Đọc chủ đề Plymouth mặc định hiện tại
+  ansible.builtin.shell: |
+    set -o pipefail
+    update-alternatives --query default.plymouth 2>/dev/null | sed -n 's/^Value: //p'
+  args:
+    executable: /bin/bash
+  register: onebee_plymouth_hien_tai
+  changed_when: false
+  failed_when: false
+  when: onebee_lam_khoi_dong
+
+- name: Đăng ký chủ đề OneBee với update-alternatives
+  ansible.builtin.command: >-
+    update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth
+    /usr/share/plymouth/themes/onebee/onebee.plymouth 200
+  register: onebee_plymouth_dang_ky
+  changed_when: onebee_plymouth_hien_tai.stdout | default('') != '/usr/share/plymouth/themes/onebee/onebee.plymouth'
+  when: onebee_lam_khoi_dong
+
+- name: Đặt OneBee làm chủ đề khởi động mặc định
+  ansible.builtin.command: update-alternatives --set default.plymouth /usr/share/plymouth/themes/onebee/onebee.plymouth
+  register: onebee_plymouth_dat
+  changed_when: true
+  when:
+    - onebee_lam_khoi_dong
+    - onebee_plymouth_hien_tai.stdout | default('') != '/usr/share/plymouth/themes/onebee/onebee.plymouth'
+
+- name: Dựng lại initramfs để màn hình khởi động mới có hiệu lực
+  # noqa: no-handler — chỉ chạy khi vừa đổi tệp chủ đề hoặc chủ đề mặc định
+  ansible.builtin.command: update-initramfs -u
+  changed_when: true
+  when:
+    - onebee_lam_khoi_dong
+    - (onebee_plymouth_tep is changed) or (onebee_plymouth_dat is changed)

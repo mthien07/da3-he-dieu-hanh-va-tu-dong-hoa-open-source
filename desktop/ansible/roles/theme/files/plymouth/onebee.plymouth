@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=OneBee
+Description=Màn hình khởi động OneBee: logo và thanh tiến trình mảnh
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/onebee
+ScriptFile=/usr/share/plymouth/themes/onebee/onebee.script
