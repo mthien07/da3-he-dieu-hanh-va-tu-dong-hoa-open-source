@@ -102,14 +102,27 @@ EOF
 
 box <<'EOF'
 . /root/sso/chung.sh
-[ "$(ma -X POST -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{}' "https://${TEN}/ai/api/chat")" = 401 ] \
-  || { echo 'FAIL  /ai/api/chat không phiên không nhận 401'; exit 1; }
-for x in "GET /ai/api/tags" "DELETE /ai/api/delete" "POST /ai/api/pull"; do
+# Chỉ hai đường /ai/hoi và /ai/tom-tat; không phiên, không khóa → 401 (đăng nhập một lần); có phiên → dịch vụ nhận
+# Remote-User rồi mới kiểm câu hỏi (rỗng → 400). Tự gửi Remote-User không phiên vẫn 401.
+[ "$(ma -X POST -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{}' "https://${TEN}/ai/hoi")" = 401 ] \
+  || { echo 'FAIL  /ai/hoi không phiên không nhận 401'; exit 1; }
+[ "$(ma -X POST -H 'Accept: application/json' -H 'Content-Type: application/json' -H 'Remote-User: binh' -H 'Remote-Groups: quan_ly' \
+    -d '{}' "https://${TEN}/ai/hoi")" = 401 ] || { echo 'FAIL  Tự gửi Remote-User tới /ai/hoi mà không phiên vẫn qua'; exit 1; }
+[ "$(ma -X POST -b "${D}/jar-an" -H 'Content-Type: application/json' -d '{}' "https://${TEN}/ai/hoi")" = 400 ] \
+  || { echo 'FAIL  /ai/hoi có phiên không tới được dịch vụ (câu hỏi rỗng phải trả 400)'; exit 1; }
+# Khóa API đi tuyến riêng, không cần phiên; khóa sai bị từ chối 401
+khoa="$(onebee-box cap-khoa-hoi sso-thu 2>/dev/null)"
+[ "$(ma -X POST -H 'Content-Type: application/json' -H "X-OneBee-Khoa: ${khoa}" -d '{}' "https://${TEN}/ai/hoi")" = 400 ] \
+  || { echo 'FAIL  /ai/hoi với khóa API đúng không tới được dịch vụ'; exit 1; }
+[ "$(ma -X POST -H 'Content-Type: application/json' -H "X-OneBee-Khoa: obk-000000000000000000000000000000000000000000000000" -d '{}' "https://${TEN}/ai/hoi")" = 401 ] \
+  || { echo 'FAIL  /ai/hoi với khóa API sai không nhận 401'; exit 1; }
+onebee-box go-khoa-hoi sso-thu >/dev/null 2>&1 || true
+for x in "POST /ai/api/chat" "GET /ai/api/tags" "DELETE /ai/api/delete" "POST /ai/api/pull"; do
   set -- ${x}
   [ "$(ma -X "$1" -b "${D}/jar-an" -d '{}' "https://${TEN}$2")" = 404 ] || { echo "FAIL  $1 $2 không trả 404 (có phiên)"; exit 1; }
 done
 [ "$(ma -b "${D}/jar-an" "https://${TEN}/files/x")" = 404 ] || { echo 'FAIL  /files/ có phiên không trả 404 (tệp không tồn tại)'; exit 1; }
-echo 'PASS  /ai/api/chat không phiên 401; API quản trị Ollama (tags, delete, pull) 404 kể cả có phiên; /files/ có phiên tới được dịch vụ kho tệp (404)'
+echo 'PASS  /ai/hoi: không phiên/khóa sai 401, có phiên hoặc khóa đúng tới được dịch vụ (câu hỏi rỗng 400); đường khác dưới /ai/ 404; API quản trị Ollama (tags, delete, pull) 404 kể cả có phiên; /files/ có phiên tới được dịch vụ kho tệp (404)'
 EOF
 
 echo "===== ĐĂNG NHẬP MỘT LẦN: TRANG GIÁM SÁT ====="

@@ -102,7 +102,7 @@ if [[ -f /usr/share/glib-2.0/schemas/org.cinnamon.desktop.background.gschema.xml
     done
   fi
 fi
-check "Có lệnh mở Trợ lý AI + mục menu Trợ lý AI OneBee" bash -c \
+check "Có lệnh hướng dẫn Trợ lý AI + mục menu Trợ lý AI OneBee" bash -c \
   "test -x /usr/local/bin/onebee-mo-tro-ly-ai && grep -q '^Exec=onebee-mo-tro-ly-ai$' /usr/share/applications/onebee-tro-ly-ai.desktop"
 check "Logo OneBee là biểu tượng hệ thống onebee-logo (SVG + PNG 48px, đã làm mới bộ đệm)" bash -c \
   "test -s /usr/share/icons/hicolor/scalable/apps/onebee-logo.svg && test -s /usr/share/icons/hicolor/48x48/apps/onebee-logo.png \

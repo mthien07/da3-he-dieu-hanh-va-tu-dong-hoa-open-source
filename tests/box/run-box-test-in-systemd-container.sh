@@ -7,7 +7,7 @@
 # → diễn tập hỏng ổ Box: cài lại + khôi phục toàn bộ bằng khóa in ra giấy (gồm 1 tệp trong kho tệp, tải lại đúng SHA-256)
 # → bật HTTPS: kho tệp /files/ tải lên, kiểm dịch ClamAV, tệp nhiễm bị chặn (check-kho-tep-inside.sh)
 # → bản giả mạo ngày tương lai bị phát hiện → chưa gắn ổ ngoài thì từ chối → khởi động lại Box, dịch vụ tự lên.
-# Biến: ONEBEE_TEST_EXTRA_CA (CA proxy), ONEBEE_TEST_FULL_WEBUI=1 (dùng image Open WebUI đầy đủ thay bản slim),
+# Biến: ONEBEE_TEST_EXTRA_CA (CA proxy), ONEBEE_TEST_MODEL / ONEBEE_TEST_EMBED_MODEL (model tải trong bài kiểm AI),
 #       ONEBEE_TEST_KEEP=1 (giữ container để xem lại).
 set -euo pipefail
 
@@ -46,12 +46,7 @@ docker run -d --name "${BOX}" --hostname onebee-box --network "${NET}" --privile
   -v "${REPO_ROOT}:/onebee:ro" ${ca_opts[@]+"${ca_opts[@]}"} "${IMAGE}" >/dev/null
 wait_systemd
 box 'update-ca-certificates >/dev/null 2>&1; rm -rf /root/onebee-test; cp -r /onebee /root/onebee-test'
-if [[ "${ONEBEE_TEST_FULL_WEBUI:-0}" != 1 ]]; then
-  # Bản slim (không kèm model nhúng) để test nhanh, đỡ tốn ổ; chức năng hỏi đáp như bản đầy đủ
-  # Image ghim kèm digest (@sha256:…) là của bản đầy đủ → bản slim dùng tag, bỏ digest
-  box "sed -i -E 's#(open_webui: .*open-webui:v[0-9.]+)(@sha256:[0-9a-f]+)?\$#\\1-slim#' /root/onebee-test/box/ansible/group_vars/all.yml"
-fi
-# Model AI: mặc định đúng model sản phẩm (ADR 0003); ONEBEE_TEST_MODEL=gemma3:1b để test nhanh phần kết nối.
+# Model AI: mặc định đúng model sản phẩm (ADR 0003); ONEBEE_TEST_MODEL / ONEBEE_TEST_EMBED_MODEL để test nhanh phần kết nối.
 # Tải sau khi cài (container Ollama cần tin CA proxy của môi trường test)
 TEST_MODEL="${ONEBEE_TEST_MODEL:-gemma4:e2b-it-qat}"
 box "sed -i -E 's#^onebee_box_ai_model: .*#onebee_box_ai_model: ${TEST_MODEL}#; s#^onebee_box_ai_models: .*#onebee_box_ai_models: []#' \
@@ -71,6 +66,9 @@ echo "===== LẦN 2: kiểm tra idempotent ====="
 box '/root/onebee-test/box/onebee-box-install.sh > /tmp/run2.log 2>&1
      grep -Eq "changed=0 .*failed=0" /tmp/run2.log || { grep -B2 "changed:" /tmp/run2.log | head -30; echo "FAIL  Lần 2 còn thay đổi"; exit 1; }
      echo "PASS  Chạy lần 2 không thay đổi gì"'
+
+echo "===== AI HỎI ĐÁP THẬT (nạp tri thức + đường /ai/hoi) ====="
+box "ONEBEE_TEST_MODEL=${TEST_MODEL} /root/onebee-test/tests/box/check-ai-chat-inside.sh"
 
 echo "===== KIỂM TRA DỊCH VỤ ====="
 box 'apt-get install -y -q smbclient python3 >/dev/null 2>&1; /root/onebee-test/tests/box/verify-box-install.sh'
@@ -142,15 +140,10 @@ docker exec "${CLIENT}" bash -euo pipefail -c '
   echo "PASS  Máy trạm sao lưu /home lên Box"
   [ "$(stat -c %a /etc/onebee-hoi.conf)" = 644 ] || { echo "FAIL  Chưa tạo /etc/onebee-hoi.conf"; exit 1; }
   [ "$(stat -c %a /etc/onebee)" = 700 ] || { echo "FAIL  /etc/onebee (mật khẩu sao lưu) không còn chỉ root vào"; exit 1; }
+  grep -q '^HOI_URL=https://box\.' /etc/onebee-hoi.conf || { echo "FAIL  Địa chỉ Trợ lý AI không phải tên Box qua HTTPS"; exit 1; }
+  grep -q '^HOI_API_KEY=obk-' /etc/onebee-hoi.conf || { echo "FAIL  Máy trạm chưa nhận khóa Trợ lý AI"; exit 1; }
   useradd -m nhanvien
-  ans=$(su - nhanvien -c "hoi Làm sao để lưu văn bản thành file PDF?" 2>/tmp/hoi.err) \
-    || { echo "FAIL  Lệnh hoi lỗi: $(cat /tmp/hoi.err)"; exit 1; }
-  [ -n "${ans}" ] || { echo "FAIL  Lệnh hoi không có câu trả lời"; exit 1; }
-  echo "PASS  Nhân viên trên máy trạm hỏi Trợ lý bằng lệnh hoi: ${ans:0:80}..."
-  . <(grep ^HOI_ /etc/onebee-hoi.conf)
-  code=$(curl -s -o /dev/null -w "%{http_code}" "${HOI_URL}/api/v1/auths/" -H "Authorization: Bearer ${HOI_API_KEY}")
-  [ "${code}" = 403 ] || { echo "FAIL  Khóa máy trạm gọi được API ngoài hỏi đáp (mã ${code})"; exit 1; }
-  echo "PASS  Khóa của máy trạm chỉ gọi được hỏi đáp (API khác bị chặn 403)"
+  echo "PASS  Máy trạm nhận địa chỉ Trợ lý AI qua HTTPS trên tên Box + khóa API riêng (khóa của máy, giai đoạn chuyển tiếp)"
   rm /home/nv/bao-cao.txt
   set -a; . <(grep ^RESTIC_ /etc/onebee/may-tram.env); set +a
   restic restore latest --target /tmp/kp --include /home/nv/bao-cao.txt >/dev/null
@@ -185,11 +178,11 @@ echo "===== TƯỜNG LỬA: CHỈ MẠNG LAN CHO PHÉP VÀO BOX ====="
 # → bị chặn cả dịch vụ Docker (AI, trang giới thiệu, kho sao lưu) lẫn dịch vụ trên Box (thư mục chung).
 box_ip="$(docker exec "${BOX}" hostname -I | awk '{print $1}')"
 thu_cong() {  # in các cổng của Box mà máy trạm kết nối được
-  docker exec "${CLIENT}" bash -c "for p in 80 3000 3001 8000 445; do timeout 3 bash -c \"exec 3<>/dev/tcp/${box_ip}/\$p\" 2>/dev/null && printf '%s ' \$p; done; true"
+  docker exec "${CLIENT}" bash -c "for p in 80 3001 8000 445; do timeout 3 bash -c \"exec 3<>/dev/tcp/${box_ip}/\$p\" 2>/dev/null && printf '%s ' \$p; done; true"
 }
 mo="$(thu_cong)"
-[[ "${mo}" == "80 3000 3001 8000 445 " ]] || { echo "FAIL  Máy trạm trong LAN không vào được đủ cổng (mở: ${mo})"; exit 1; }
-echo "PASS  Máy trạm trong mạng LAN vào được: trang giới thiệu, Trợ lý AI, giám sát, kho sao lưu, thư mục chung"
+[[ "${mo}" == "80 3001 8000 445 " ]] || { echo "FAIL  Máy trạm trong LAN không vào được đủ cổng (mở: ${mo})"; exit 1; }
+echo "PASS  Máy trạm trong mạng LAN vào được: trang giới thiệu, giám sát, kho sao lưu, thư mục chung"
 box 'cp /etc/onebee-box/tuong-lua.conf /root/tuong-lua.conf.bak
      echo "LAN_CHO_PHEP=\"10.255.255.0/24\"" > /etc/onebee-box/tuong-lua.conf
      systemctl restart onebee-tuong-lua'
@@ -197,8 +190,8 @@ mo="$(thu_cong)"
 box 'cp /root/tuong-lua.conf.bak /etc/onebee-box/tuong-lua.conf; systemctl restart onebee-tuong-lua'
 [[ -z "${mo}" ]] || { echo "FAIL  Máy ngoài mạng cho phép vẫn vào được cổng: ${mo}"; exit 1; }
 echo "PASS  Máy ngoài mạng cho phép (vd Wi-Fi khách) bị chặn hết: AI, trang giới thiệu, kho sao lưu, thư mục chung"
-box 'curl -s -m 10 http://127.0.0.1:3000/health | grep -q true || { echo "FAIL  Box tự gọi dịch vụ của mình bị chặn"; exit 1; }'
-[[ "$(thu_cong)" == "80 3000 3001 8000 445 " ]] || { echo "FAIL  Mở lại tường lửa nhưng máy trạm chưa vào lại được"; exit 1; }
+box 'curl -s -m 10 http://127.0.0.1/ | grep -q "OneBee Box" || { echo "FAIL  Box tự gọi dịch vụ của mình bị chặn"; exit 1; }'
+[[ "$(thu_cong)" == "80 3001 8000 445 " ]] || { echo "FAIL  Mở lại tường lửa nhưng máy trạm chưa vào lại được"; exit 1; }
 echo "PASS  Box tự gọi dịch vụ của mình không bị chặn; trả lại danh sách cũ → máy trạm vào lại được"
 # Dừng/nâng cấp Docker không được gỡ tường lửa (trước đây PartOf=docker.service + ExecStop=tat mở SSH/Samba/Tailscale tới khi Docker lên lại)
 box 'systemctl stop docker.socket docker.service
@@ -206,17 +199,18 @@ box 'systemctl stop docker.socket docker.service
        && iptables -t mangle -S PREROUTING | grep -q ONEBEE-TAILSCALE && iptables -S DOCKER-USER | grep -q ONEBEE-LAN-DOCKER \
        || { echo "FAIL  Dừng Docker gỡ luôn tường lửa (SSH/Samba/Tailscale/cổng Docker)"; exit 1; }
      systemctl start docker
-     for _ in $(seq 60); do curl -s -m 5 http://127.0.0.1:3000/health | grep -q true && break; sleep 5; done
+     for _ in $(seq 60); do curl -s -m 5 http://127.0.0.1/ | grep -q "OneBee Box" && break; sleep 5; done
      [ "$(iptables -S DOCKER-USER | grep -c ONEBEE-LAN-DOCKER)" = 1 ] || { echo "FAIL  Docker lên lại: quy tắc DOCKER-USER mất hoặc nhân đôi"; iptables -S DOCKER-USER; exit 1; }'
-[[ "$(thu_cong)" == "80 3000 3001 8000 445 " ]] || { echo "FAIL  Docker lên lại nhưng máy trạm chưa vào lại được"; exit 1; }
+[[ "$(thu_cong)" == "80 3001 8000 445 " ]] || { echo "FAIL  Docker lên lại nhưng máy trạm chưa vào lại được"; exit 1; }
 echo "PASS  Dừng Docker vẫn giữ tường lửa SSH/Samba/Tailscale; Docker lên lại dùng tiếp quy tắc DOCKER-USER, máy trạm vào lại được"
 
 echo "===== TẮT TRỢ LÝ AI → LỆNH hoi BÁO LỖI DỄ HIỂU ====="
-box 'compose_dir=/opt/onebee-box; docker compose --project-directory $compose_dir stop open-webui >/dev/null 2>&1'
+# Ở chế độ HTTP, Trợ lý AI không có tuyến /ai/ (chỉ mở qua HTTPS trên tên Box) — hoi phải báo lỗi rõ, không treo
+box 'compose_dir=/opt/onebee-box; docker compose --project-directory $compose_dir stop ai-rag >/dev/null 2>&1'
 docker exec "${CLIENT}" bash -c 'out=$(su - nhanvien -c "hoi xin chào" 2>&1); rc=$?
-  [ ${rc} -ne 0 ] && grep -q "Không kết nối được OneBee Box" <<<"${out}" || { echo "FAIL  hoi khi Box tắt: ${out}"; exit 1; }
-  echo "PASS  Box tắt Trợ lý → hoi báo \"Không kết nối được OneBee Box\" (không treo, không lỗi khó hiểu)"'
-box 'docker compose --project-directory /opt/onebee-box start open-webui >/dev/null 2>&1'
+  [ ${rc} -ne 0 ] && grep -Eq "Không kết nối được OneBee Box|phải là https://" <<<"${out}" || { echo "FAIL  hoi khi Box tắt: ${out}"; exit 1; }
+  echo "PASS  Box tắt Trợ lý → hoi báo lỗi rõ ràng (không treo, không lỗi khó hiểu)"'
+box 'docker compose --project-directory /opt/onebee-box start ai-rag >/dev/null 2>&1'
 
 echo "===== MÁY TRẠM SAU KHI BOX DỌN + CHỐNG BẢN GIẢ MẠO NGÀY TƯƠNG LAI ====="
 docker exec "${CLIENT}" bash -euo pipefail -c '
@@ -251,8 +245,11 @@ box 'umount /mnt/onebee-sao-luu
 echo "===== KHỞI ĐỘNG LẠI BOX ====="
 docker restart "${BOX}" >/dev/null
 wait_systemd
-box 'for _ in $(seq 60); do curl -s -m 5 http://127.0.0.1:3000/health | grep -q true \
-       && docker exec onebee-quy-trinh node -e "fetch(\"http://127.0.0.1:1880/webhook/suc-khoe\").then(r => process.exit(r.status === 200 ? 0 : 1), () => process.exit(1))" && break; sleep 5; done
+box 'for _ in $(seq 60); do
+       docker exec onebee-ai-rag python3 -I -c "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8092/suc-khoe\", timeout=5)" >/dev/null 2>&1 \
+         && docker exec onebee-quy-trinh node -e "fetch(\"http://127.0.0.1:1880/webhook/suc-khoe\").then(r => process.exit(r.status === 200 ? 0 : 1), () => process.exit(1))" && break
+       sleep 5
+     done
      /root/onebee-test/tests/box/verify-box-install.sh | tail -1'
 echo "PASS  Sau khởi động lại, dịch vụ tự chạy lại"
 

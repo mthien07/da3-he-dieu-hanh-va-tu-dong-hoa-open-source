@@ -121,7 +121,7 @@ class CauHinhKhoTep(unittest.TestCase):
         sao = open(os.path.join(TEMPLATES, "onebee-box-sao-luu.sh.j2"), encoding="utf-8").read()
         self.assertIn("seaweedfs kho-tep", sao)                 # tạm dừng khi chụp để volume nhất quán
         self.assertIn('"${DATA}/seaweedfs"', sao)               # dữ liệu kho tệp nằm trong bản sao lưu
-        self.assertIn('rm -rf "${DATA}/open-webui"', sao)
+        self.assertIn('rm -rf "${DATA}/ai-rag"', sao)
         self.assertIn('"${DATA}/seaweedfs" "${KET_XUAT_DIR}"', sao)   # xóa trước khi khôi phục
         chan = open(os.path.join(TEMPLATES, "onebee-box-chan-doan.sh.j2"), encoding="utf-8").read()
         self.assertIn("kiem_kho_tep", chan)

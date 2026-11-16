@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2016  # thân các lệnh giả viết trong nháy đơn: biến phải mở rộng lúc lệnh giả chạy, không phải lúc tạo
-# Kiểm thử lệnh máy trạm "onebee-chan-doan" mà không cần Box thật: Box giả ở 127.0.0.1 (cổng TCP thật mở bằng python3: Trợ lý AI,
+# Kiểm thử lệnh máy trạm "onebee-chan-doan" mà không cần Box thật: Box giả ở 127.0.0.1 (cổng TCP thật mở bằng python3:
 # Samba 445, nhận sao lưu), ping/ip/systemctl/df GIẢ (trạng thái đặt bằng file trong $SIM). Mỗi kịch bản làm hỏng ĐÚNG 1 thứ → đúng dòng đó
 # báo [CẢNH BÁO]/[LỖI], mã thoát đúng. Cần root (mở cổng 445), bash 4+, python3. Cách dùng: sudo tests/desktop/check-chan-doan-may-tram.sh
 set -uo pipefail
@@ -47,7 +47,7 @@ moi_thu_khoe() {
   rm -rf "${SIM}"; mkdir -p "${SIM}"
   echo 192.168.1.1 >"${SIM}/gateway"; echo 0.5 >"${SIM}/ping-192.168.1.1"; echo 0.8 >"${SIM}/ping-127.0.0.1"
   printf 'MAY_TRAM=ketoan-01\r\nBOX_IP=127.0.0.1\r\nRESTIC_REPOSITORY=rest:http://ketoan-01:mk@127.0.0.1:18000/ketoan-01/\r\nRESTIC_PASSWORD=x\r\n' >"${ONEBEE_CONF}"
-  printf '# Quản lý bởi OneBee OS\nHOI_URL=http://127.0.0.1:13000\nHOI_MODEL=onebee-tro-ly\n' >"${ONEBEE_HOI_CONF}"
+  printf '# Quản lý bởi OneBee OS\nHOI_URL=https://127.0.0.1\n\n' >"${ONEBEE_HOI_CONF}"
   echo $(( $(date +%s) - 3 * 3600 )) >"${T}/var/sao-luu-cuoi"
   PATH="${PATH_CO_RESTIC}"
 }
@@ -63,12 +63,12 @@ kich_ban() {
   else fail "${mo_ta} — mã thoát ${RC} (mong ${rc_mong}); không OK: '${thuc}' (mong '${mong}')"; while IFS= read -r d; do printf '      %s\n' "${d}"; done <<<"${OUT}"; fi
 }
 
-mo_cong 13000 445 18000
+mo_cong 445 18000
 moi_thu_khoe
 kich_ban "Mọi thứ khỏe → toàn [OK], mã thoát 0" 0 ""
-if [[ "$(grep -c '^  \[OK\]' <<<"${OUT}")" == 9 && "$(grep -c '^[1-4]\. ' <<<"${OUT}")" == 4 ]] && grep -q '^KẾT LUẬN: máy và kết nối tới Box bình thường' <<<"${OUT}" \
-   && grep -q 'Nhận sao lưu: Box mở cổng 18000' <<<"${OUT}" && grep -q 'Trợ lý AI: Box mở cổng 13000' <<<"${OUT}"; then
-  pass "Đủ 4 hạng mục, 9 mục OK; cổng AI/sao lưu lấy từ cấu hình (file có \\r kiểu Windows)"
+if [[ "$(grep -c '^  \[OK\]' <<<"${OUT}")" == 8 && "$(grep -c '^[1-4]\. ' <<<"${OUT}")" == 4 ]] && grep -q '^KẾT LUẬN: máy và kết nối tới Box bình thường' <<<"${OUT}" \
+   && grep -q 'Nhận sao lưu: Box mở cổng 18000' <<<"${OUT}"; then
+  pass "Đủ 4 hạng mục, 8 mục OK; cổng sao lưu lấy từ cấu hình (file có \\r kiểu Windows)"
 else fail "Bảng chữ khi mọi thứ khỏe sai"; echo "${OUT}"; fi
 
 moi_thu_khoe; rm -f "${SIM}/ping-192.168.1.1"
@@ -77,11 +77,9 @@ moi_thu_khoe; : >"${SIM}/gateway"
 kich_ban "Máy chưa có mạng (không có gateway) → LỖI" 2 "LỖI:Cổng mạng (router)"
 moi_thu_khoe; rm -f "${SIM}/ping-127.0.0.1"
 kich_ban "Box không trả lời → LỖI Box, không kiểm dịch vụ trên Box" 2 "LỖI:OneBee Box; LỖI:Dịch vụ trên Box"
-moi_thu_khoe; printf 'HOI_URL=http://127.0.0.1:13001\n' >"${ONEBEE_HOI_CONF}"
-kich_ban "Box không mở cổng Trợ lý AI → chỉ LỖI Trợ lý AI" 2 "LỖI:Trợ lý AI"
-mo_cong 13000 18000; moi_thu_khoe
+mo_cong 18000; moi_thu_khoe
 kich_ban "Box không mở cổng 445 → chỉ LỖI thư mục chung" 2 "LỖI:Thư mục chung (Samba)"
-mo_cong 13000 445 18000
+mo_cong 445 18000
 
 moi_thu_khoe; rm -f "${ONEBEE_CONF}"
 kich_ban "Nhân viên chạy không sudo (không đọc được may-tram.env): lấy Box từ hoi.conf, cổng sao lưu mặc định 8000" 2 "LỖI:Nhận sao lưu"
@@ -112,10 +110,10 @@ if [[ "${RC}" == 0 ]] && ! grep -q $'\x1b' <<<"${OUT}" && python3 -c 'import jso
 d = json.load(sys.stdin)
 assert d["phien_ban"] == 1, d["phien_ban"]
 assert d["ket_luan"] == "ok", d["ket_luan"]
-assert len(d["muc"]) == 9, len(d["muc"])
+assert len(d["muc"]) == 8, len(d["muc"])
 khoa = {"nhom", "ten", "trang_thai", "chi_tiet", "goi_y"}
 assert all(khoa <= set(m) for m in d["muc"]), d["muc"]' <<<"${OUT}" 2>"${T}/json.err"; then
-  pass "--json khi mọi thứ khỏe: ket_luan ok, 9 mục đủ khóa, mã thoát 0, không có mã màu"
+  pass "--json khi mọi thứ khỏe: ket_luan ok, 8 mục đủ khóa, mã thoát 0, không có mã màu"
 else fail "--json khi mọi thứ khỏe sai — mã thoát ${RC}: $(cat "${T}/json.err")"; echo "${OUT}"; fi
 moi_thu_khoe; : >"${SIM}/dung-onebee-sao-luu.timer"; chay_json
 if [[ "${RC}" == 2 ]] && python3 -c 'import json, sys

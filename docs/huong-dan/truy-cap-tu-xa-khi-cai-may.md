@@ -39,7 +39,7 @@ Chia sẻ màn hình chỉ bật được trên phiên **GNOME** (Ubuntu). Mint 
 ## Lưu ý khi máy này thành OneBee Box
 Tailscale SSH **không** bị tường lửa Box chặn (tailscaled nhận cổng 22 của IP Tailscale trước iptables), nên chạy
 `box/onebee-box-install.sh` qua `tailscale ssh` không mất kết nối giữa chừng. Nhưng chia sẻ màn hình (3389) và các trang web của Box
-(3000, 3001…) qua Tailscale bị chặn nếu chưa khai máy kỹ thuật: thêm IP Tailscale của máy kỹ thuật vào `onebee_box_tailscale_cho_phep`
+(3001, 8000…) qua Tailscale bị chặn nếu chưa khai máy kỹ thuật: thêm IP Tailscale của máy kỹ thuật vào `onebee_box_tailscale_cho_phep`
 (`box/ansible/group_vars/all.yml`), ví dụ `["100.64.1.2"]` ([cai-dat-onebee-box.md](cai-dat-onebee-box.md)).
 
 ## Cài xong: tắt cầu nối

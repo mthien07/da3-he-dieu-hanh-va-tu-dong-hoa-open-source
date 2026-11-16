@@ -1,60 +1,49 @@
 # Hướng dẫn dùng Trợ lý AI và quy trình tự động (OneBee Box v0.2)
 
-## 1. Trợ lý AI (Open WebUI)
-- Mở `http://<ip-box>:3000`. Tài khoản quản trị tạo sẵn: `quantri@onebee.lan`, mật khẩu xem bằng `sudo onebee-box in-khoa`
-  (dòng `webui-admin-password`). **Đăng ký tự do đã tắt** — quản trị tạo tài khoản cho nhân viên trong
-  Bảng quản trị → Người dùng.
-- **Mỗi nhân viên một tài khoản** (không dùng chung): quản trị tạo trong Bảng quản trị → Người dùng, nhân viên nghỉ việc thì xóa.
-  Bộ cài đặt sẵn (và áp lại mỗi lần chạy, kể cả trên Box đã cài): tài khoản quản trị Open WebUI **không xem được chat của nhân viên và
-  không xuất được** (tắt `ENABLE_ADMIN_CHAT_ACCESS`, `ENABLE_ADMIN_EXPORT` — đã đối chiếu mã nguồn v0.11.4: chặn xem chat người khác
-  qua giao diện/API, xuất toàn bộ chat, tải file CSDL), nhân viên **không chia sẻ chat** cho nhau, không chia sẻ lên cộng đồng, tắt Functions/Tools (mã Python tự thêm), phiên đăng nhập
-  giữ **30 ngày** rồi phải đăng nhập lại. Nên báo trước cho nhân viên đúng phạm vi: đây là chặn trên Open WebUI, **không phải mã hóa** — quản trị vẫn **đặt lại được mật khẩu**
-  của nhân viên rồi đăng nhập bằng tài khoản đó (đã đối chiếu mã nguồn: `update_user_by_id`; nhân viên sẽ biết vì mật khẩu cũ không còn dùng
-  được), và người có quyền root trên Box vẫn đọc được file dữ liệu (`/srv/onebee/open-webui`) và bản sao lưu của nó; thư mục `/home` trên máy trạm cũng nằm trong bản
-  sao lưu mà quản trị Box đọc được (xem "Quyền riêng tư" trong hướng dẫn cài Box).
-  Lệnh `hoi` dùng khóa của **từng nhân viên** (mục 2); khóa theo từng **máy** chỉ còn là giai đoạn chuyển tiếp.
-- **Mở cùng một địa chỉ:** biểu tượng Trợ lý AI trên máy trạm, lệnh `hoi` và các thẻ dịch vụ ở trang chủ Box đều mở `http(s)://<ip-box>:3000`
-  (kể cả khi vào trang chủ bằng `http://onebee.local`), nên đăng nhập một lần là dùng được từ mọi lối. Gõ tay tên khác (vd `onebee.local:3000`)
-  là một trang khác với trình duyệt → phải đăng nhập lại; bật HTTPS thì tên `.local` không có chứng chỉ.
-- **Giao diện tiếng Việt:** Trợ lý AI chọn ngôn ngữ theo trình duyệt **ở lần mở đầu tiên rồi ghi nhớ**. Bộ cài máy trạm nâng Firefox cùng gói
-  tiếng Việt cho khớp phiên bản (Firefox cũ không nạp được gói tiếng Việt mới nên chạy tiếng Anh). Trình duyệt đã lỡ mở Trợ lý AI khi còn
-  tiếng Anh thì đổi một lần: ảnh đại diện góc trái dưới → **Settings** → **General** → **Language** chọn **Vietnamese (Tiếng Việt)** →
-  **Save**, rồi bấm F5 tải lại trang (vài tiêu đề nhóm chỉ đổi sau khi tải lại).
-- Chọn **"Trợ lý OneBee"**: model Gemma chạy trên Box + lời dặn tiếng Việt (không bịa số liệu, hướng dẫn máy OneBee,
-  biết ngày hôm nay, được nhờ soạn văn bản thì soạn ngay, chỗ thiếu để [trong ngoặc vuông]).
-- **Gợi ý và mẫu soạn văn bản:** trên màn hình trò chuyện mới, bấm một trong 4 gợi ý tiếng Việt (Soạn tờ trình, Lập biên bản họp,
-  Soạn thông báo, Tóm tắt văn bản) để chèn câu mở đầu vào ô nhập rồi viết tiếp, hoặc gõ `/` trong ô nhập để chọn 4 mẫu
-  (`to-trinh`, `bien-ban`, `hop-dong`, `bao-cao`). Bộ tri thức pháp lý chưa được nạp: Trợ lý chưa trả lời theo văn bản luật.
-
-![Trợ lý OneBee soạn thông báo](anh/02-tro-ly-ai-tieng-viet.png)
+## 1. Trợ lý AI (dịch vụ Trợ lý AI trên Box)
+- Trợ lý trả lời bằng tiếng Việt, chạy hoàn toàn trên Box (Gemma 4 qua Ollama), tra kho tri thức pháp lý và mẫu soạn văn bản
+  trong PostgreSQL. Không có giao diện web riêng: người dùng hỏi bằng lệnh `hoi` trên máy trạm (mục 2), luôn qua HTTPS trên tên
+  `box.<mã>.onebee.internal`; bật HTTPS xong mới dùng được Trợ lý.
+- **Mỗi nhân viên một khóa riêng** (không dùng chung): quản trị chạy trên Box
+  `sudo onebee-box them-nguoi <tên> <nhóm>` — lệnh in **mật khẩu tạm và khóa Trợ lý AI đúng MỘT lần** để đưa trực tiếp cho người đó.
+  Cấp lại khóa: `sudo onebee-box cap-khoa-hoi <tên>` (khóa cũ mất hiệu lực ngay). Thu hồi: `sudo onebee-box go-khoa-hoi <tên>`
+  hoặc `sudo onebee-box xoa-nguoi <tên>`. Khóa chỉ mở đúng hai đường hỏi đáp và tóm tắt, không mở API quản trị nào khác.
+- **Lịch sử hỏi đáp** lưu trong bảng `onebee.lich_su_hoi_ai`: mỗi người chỉ đọc được dòng của chính mình; người có quyền root
+  trên Box vẫn đọc được CSDL và bản sao lưu (xem "Quyền riêng tư" trong hướng dẫn cài Box). Đây là kiểm soát quyền, **không phải mã hóa**.
+- **Kho tri thức:** `sudo onebee-box nap-tri-thuc` nạp Nghị định 30/2020/NĐ-CP, Luật Hợp tác xã 2023, 4 mẫu soạn văn bản
+  và tài liệu đơn vị tự thêm trong `/srv/onebee/knowledge`; chạy lại cập nhật đúng đoạn cũ, không tạo bản trùng.
+- **Lời dặn tiếng Việt** cố định (không bịa số liệu, hướng dẫn máy OneBee, biết ngày hôm nay, được nhờ soạn văn bản thì soạn ngay,
+  chỗ thiếu để [trong ngoặc vuông]). Câu trả lời luôn kèm dòng nhắc kiểm tra lại và danh sách nguồn tham khảo khi tra được tri thức.
 - Model đang dùng: `gemma4:e2b-it-qat` (Gemma 4 của Google, giấy phép Apache-2.0, tải 4,3 GB) — bản Gemma nhẹ nhất vượt
-  ngưỡng chất lượng khi chấm 40 câu × 3 lần (xem ADR 0003, `reports/ai/`). Đổi model: sửa `onebee_box_ai_model` trong
+  ngưỡng chất lượng khi chấm 40 câu × 3 lần (xem ADR 0003, `reports/ai/`). Model nhúng kho tri thức:
+  `nomic-embed-text:v1.5`. Đổi model: sửa `onebee_box_ai_model` (hoặc `onebee_box_ai_model_nhung`) trong
   `box/ansible/group_vars/all.yml` rồi chạy lại bộ cài. **Tốc độ trên máy Box thật chưa đo.**
 
 ## 2. Lệnh `hoi` trên máy trạm
 ```bash
 hoi cách xuất file PDF
 hoi "tóm tắt đoạn này thành 3 ý" < bien-ban.txt
+hoi --tom-tat < bien-ban.txt        # gọi đường tóm tắt của Trợ lý
 ```
 Bật cho 1 máy: trên Box chạy `sudo onebee-box them-may <tên-máy>` → dán kết quả vào máy trạm tại
 `/etc/onebee/may-tram.env` → chạy lại bộ cài OneBee OS trên máy trạm (vừa bật sao lưu vừa bật `hoi`).
+`hoi` chỉ gửi qua `https://box.<mã>.onebee.internal/ai/…`, ghim CA riêng của Box; gặp địa chỉ `http://` thì từ chối, không gửi khóa.
 
-**Mỗi nhân viên dùng khóa riêng của mình** (hỏi bằng tài khoản của mình, thu hồi được từng người). Làm một lần trên máy, chọn một cách:
+**Mỗi nhân viên dùng khóa riêng do quản trị cấp** (thu hồi được từng người). Làm một lần trên máy:
 ```bash
-hoi --dang-nhap   # nhập email + mật khẩu Trợ lý AI của bạn; hoi lấy khóa rồi CHỈ lưu khóa (không lưu mật khẩu); cần Box đã bật HTTPS
-hoi --dan-khoa    # tự tạo khóa trên web (Cài đặt → Tài khoản → Khóa API) rồi dán vào; hoi thử khóa trước khi lưu
+hoi --dan-khoa    # dán khóa obk-… quản trị vừa cấp; hoi thử khóa trước khi lưu
 hoi --dang-xuat   # xóa khóa của bạn khỏi máy này
 ```
-Khóa lưu ở `~/.config/onebee/hoi-khoa` (chỉ chính tài khoản Linux đó đọc; máy nhiều người thì mỗi người một khóa). Khóa chỉ gọi được hỏi đáp + danh sách model.
-**Thu hồi**: quản trị xóa tài khoản nhân viên trên Open WebUI → khóa mất hiệu lực (`hoi` báo "đã bị thu hồi").
-**Chuyển tiếp**: nhân viên chưa thiết lập khóa riêng thì `hoi` tạm dùng khóa chung của máy (`/etc/onebee-hoi.conf`, **mọi tài khoản trên máy đọc được**) kèm nhắc.
+Khóa lưu ở `~/.config/onebee/hoi-khoa` (chỉ chính tài khoản Linux đó đọc; máy nhiều người thì mỗi người một khóa).
+**Thu hồi**: quản trị chạy `sudo onebee-box go-khoa-hoi <tên>` → khóa mất hiệu lực (`hoi` báo "đã bị thu hồi").
+**Chuyển tiếp**: nhân viên chưa có khóa riêng thì `hoi` tạm dùng khóa chung của máy (`/etc/onebee-hoi.conf`, **mọi tài khoản trên máy đọc được**) kèm nhắc.
 Khi mọi nhân viên đã dùng khóa riêng: đặt `onebee_box_hoi_khoa_may: false` trong `box/ansible/group_vars/all.yml`, chạy lại bộ cài, `sudo onebee-box dong-bo-may --tat-ca`,
-rồi `sudo onebee-box go-khoa-hoi-may` (xóa các tài khoản `may-<tên>@onebee.lan`). Từ đó `them-may` thôi cấp khóa theo máy. Cấu hình địa chỉ ở `/etc/onebee-hoi.conf`;
+rồi `sudo onebee-box go-khoa-hoi-may`. Từ đó `them-may` thôi cấp khóa theo máy. Cấu hình địa chỉ ở `/etc/onebee-hoi.conf`;
 mật khẩu sao lưu ở `/etc/onebee/` chỉ root đọc được.
 
-**Đổi mật khẩu quản trị (Trợ lý AI) trên giao diện web**: ghi mật khẩu mới vào file tương ứng trong
-`/etc/onebee-box/secrets/` (`webui-admin-password`) — nếu không, bộ cài vẫn chạy nhưng báo cảnh báo và không cập nhật được
-"Trợ lý OneBee". Mật khẩu trình soạn luồng do bộ cài quản lý — **không đổi trên giao diện Node-RED**; xoay bằng `sudo onebee-box xoay-khoa --box` rồi chạy lại bộ cài.
+**Xoay khóa:** `sudo onebee-box xoay-khoa --box` đổi mật khẩu giám sát, CSDL, mật khẩu soạn luồng và khóa webhook động cơ quy trình,
+khóa phiên đăng nhập một lần rồi chạy lại bộ cài; khóa Trợ lý AI của từng người cấp lại bằng `sudo onebee-box cap-khoa-hoi <tên>`.
+Mật khẩu trình soạn luồng do bộ cài quản lý — **không đổi trên giao diện Node-RED**.
 
 ## 3. Quy trình tự động (Node-RED, `https://box.<mã>.onebee.internal/quy-trinh/` sau đăng nhập một lần)
 Tài khoản trình soạn: `kythuat`, mật khẩu dòng `quy-trinh-soan-luong` trong `sudo onebee-box in-khoa` (nhóm `ky_thuat` đăng nhập một lần hai lớp trước).

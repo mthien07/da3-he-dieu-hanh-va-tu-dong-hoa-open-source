@@ -44,7 +44,8 @@ echo 'PASS  Tải 1 tệp vào kho tệp trước khi hỏng ổ (metadata ghi q
 EOF
 
 box "onebee-box in-khoa > /root/khoa-in-ra-giay.txt
-  cp ${S}/webui-admin-password /root/cu-webui; cp ${S}/quy-trinh-soan-luong /root/cu-soan; cp ${S}/ca/root.sha256 /root/cu-ca-sha
+  cp ${S}/quy-trinh-soan-luong /root/cu-soan; cp ${S}/ca/root.sha256 /root/cu-ca-sha
+  cp /srv/onebee/ai-rag/khoa-hoi.json /root/cu-khoa-hoi.json; cp ${S}/may-ketoan-01-khoa /root/cu-khoa-may
   wc -l < /srv/onebee/ho-tro/yeu-cau.csv > /root/cu-so-yeu-cau
   onebee-box sao-luu > /root/sl-truoc-hong.log 2>&1 || { tail -20 /root/sl-truoc-hong.log; exit 1; }
   docker rm -f mailpit >/dev/null 2>&1 || true
@@ -54,19 +55,25 @@ box "onebee-box in-khoa > /root/khoa-in-ra-giay.txt
   echo 'PASS  (giả lập) Hỏng ổ Box: mất hết dữ liệu, khóa bí mật, cấu hình — còn bản in khóa và ổ sao lưu'"
 
 box "/root/onebee-test/box/onebee-box-install.sh > /root/cai-lai.log 2>&1 || { tail -30 /root/cai-lai.log; exit 1; }
-  ! cmp -s ${S}/webui-admin-password /root/cu-webui || { echo 'FAIL  Cài lại mà khóa không đổi — giả lập sai'; exit 1; }
+  ! cmp -s /srv/onebee/ai-rag/khoa-hoi.json /root/cu-khoa-hoi.json || { echo 'FAIL  Cài lại mà kho khóa Trợ lý AI không đổi — giả lập sai'; exit 1; }
   echo 'PASS  Cài lại Box trên ổ mới (khóa bí mật mới, dữ liệu trống)'
   onebee-box khoi-phuc-toan-bo /root/khoa-in-ra-giay.txt > /root/khoi-phuc.log 2>&1 || { tail -20 /root/khoi-phuc.log; exit 1; }
   /root/onebee-test/box/onebee-box-install.sh > /root/cai-lai-2.log 2>&1 || { tail -30 /root/cai-lai-2.log; exit 1; }
-  cmp -s ${S}/webui-admin-password /root/cu-webui && cmp -s ${S}/quy-trinh-soan-luong /root/cu-soan \
+  cmp -s ${S}/quy-trinh-soan-luong /root/cu-soan \
     || { echo 'FAIL  Khóa bí mật không trở lại như cũ'; exit 1; }
   [ -s ${S}/quy-trinh-soan-hash ] && grep -Eq '^[$]2[aby][$]' ${S}/quy-trinh-soan-hash \
     || { echo 'FAIL  Bản băm mật khẩu trình soạn luồng không được khôi phục'; exit 1; }
   cmp -s ${S}/ca/root.sha256 /root/cu-ca-sha || { echo 'FAIL  CA riêng sau khôi phục khác CA cũ — máy trạm sẽ không tin Box'; exit 1; }
   openssl verify -CApath /etc/ssl/certs ${S}/ca/inter.crt >/dev/null || { echo 'FAIL  Box không tin CA đã khôi phục'; exit 1; }
-  code=\$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:3000/api/v1/auths/signin -H 'Content-Type: application/json' \
-    -d \"{\\\"email\\\":\\\"quantri@onebee.lan\\\",\\\"password\\\":\\\"\$(cat /root/cu-webui)\\\"}\")
-  [ \"\${code}\" = 200 ] || { echo \"FAIL  Mật khẩu quản trị Trợ lý AI cũ không dùng được (\${code})\"; exit 1; }
+  # Khóa Trợ lý AI của máy đã cấp trước khi hỏng ổ vẫn dùng được (kho khóa khôi phục): câu hỏi rỗng → 400 = đã xác thực
+  IP_AI=\$(docker inspect -f '{{range \$k, \$v := .NetworkSettings.Networks}}{{\$k}} {{\$v.IPAddress}} {{end}}' onebee-ai-rag \
+    | awk '{for (i = 1; i <= NF; i += 2) if (\$i ~ /_ai\$/) {print \$(i + 1); exit}}')
+  code=\$(curl -s -o /dev/null -w '%{http_code}' -H \"X-OneBee-Khoa: \$(cat ${S}/may-ketoan-01-khoa)\" -H 'Content-Type: application/json' \
+    -d '{\"cau_hoi\":\"\"}' \"http://\${IP_AI}:8092/ai/hoi\")
+  [ \"\${code}\" = 400 ] || { echo \"FAIL  Khóa Trợ lý AI của máy sau khôi phục không dùng được (\${code})\"; exit 1; }
+  [ \"\$(docker exec onebee-postgres psql -X -q -U postgres -d onebee -Atc 'SELECT count(*) FROM onebee.tai_lieu_tri_thuc')\" -gt 0 ] \
+    || { echo 'FAIL  Kho tri thức rỗng sau khôi phục toàn bộ'; exit 1; }
+  echo 'PASS  Kho khóa Trợ lý AI khôi phục đúng: khóa của máy trạm cũ vẫn dùng được, kho tri thức còn nguyên'
   for _ in \$(seq 30); do docker exec onebee-quy-trinh node -e \"fetch('http://127.0.0.1:1880/webhook/suc-khoe').then(r => process.exit(r.status === 200 ? 0 : 1), () => process.exit(1))\" && break; sleep 3; done
   docker exec onebee-quy-trinh node -e \"fetch('http://127.0.0.1:1880/webhook/suc-khoe').then(r => process.exit(r.status === 200 ? 0 : 1), () => process.exit(1))\" \
     || { echo 'FAIL  Động cơ quy trình không khỏe sau khôi phục toàn bộ'; exit 1; }
@@ -99,10 +106,10 @@ base64 -d /root/tep-khoi-phuc-tai.b64 > /root/tep-khoi-phuc-tai.txt
 echo 'PASS  Sau khôi phục toàn bộ: tệp trong kho tệp trở lại đúng SHA-256'
 EOF
 
-# Máy trạm không cấu hình gì thêm: vẫn sao lưu (kho mới), hỏi AI (khóa cũ), báo tình trạng, nhận cập nhật (khóa SSH cũ)
+# Máy trạm không cấu hình gì thêm: vẫn sao lưu (kho mới), báo tình trạng, nhận cập nhật (khóa SSH cũ).
+# Đường hỏi Trợ lý AI chỉ mở qua HTTPS nên kiểm ở check-https.sh (sau khôi phục, khóa máy vẫn dùng được).
 tram 'onebee-sao-luu >/dev/null
-  su - nhanvien -c "hoi chào bạn, trả lời 1 câu" >/dev/null 2>&1 || { echo "FAIL  hoi sau khôi phục"; exit 1; }
   onebee-bao-tinh-trang >/dev/null
-  echo "PASS  Máy trạm sau khôi phục Box: sao lưu, hỏi Trợ lý AI, báo tình trạng vẫn chạy — không phải cấu hình lại"'
+  echo "PASS  Máy trạm sau khôi phục Box: sao lưu và báo tình trạng vẫn chạy — không phải cấu hình lại"'
 box 'onebee-box cap-nhat-may ketoan-01 > /root/cap-nhat-sau.log 2>&1 || { tail -20 /root/cap-nhat-sau.log; exit 1; }
   echo "PASS  Box khôi phục vẫn cập nhật được máy trạm (khóa SSH + khóa máy trạm đã ghi nhận được lấy lại)"'

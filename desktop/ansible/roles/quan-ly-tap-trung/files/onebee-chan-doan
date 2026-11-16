@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# onebee-chan-doan — máy trạm tự kiểm tra: mạng (router, OneBee Box), dịch vụ trên Box (Trợ lý AI, thư mục chung, nhận sao lưu),
+# onebee-chan-doan — máy trạm tự kiểm tra: mạng (router, OneBee Box), dịch vụ trên Box (thư mục chung, nhận sao lưu),
 # sao lưu của máy này (restic, lịch, lần cuối), ổ đĩa. In [OK] / [CẢNH BÁO] / [LỖI] kèm gợi ý — biết lỗi ở dây mạng/router, ở Box hay ở máy.
 # Chỉ đọc, không sửa gì. Nhân viên chạy được không cần sudo (địa chỉ Box lấy từ /etc/onebee-hoi.conf);
 # chạy bằng sudo thì đọc thêm /etc/onebee/may-tram.env (cổng nhận sao lưu của Box). Mã thoát: 0 = mọi mục OK, 1 = có cảnh báo, 2 = có lỗi.
@@ -65,8 +65,7 @@ dia_chi_cong() {
 hoi_url="$(doc_khoa "${HOI_CONF}" HOI_URL)"
 kho="$(doc_khoa "${CONF}" RESTIC_REPOSITORY)"
 box="$(doc_khoa "${CONF}" BOX_IP)"
-read -r ai_host ai_cong <<<"$(dia_chi_cong "${hoi_url}" 3000)"
-ai_cong="${ai_cong:-3000}"
+read -r ai_host _ <<<"$(dia_chi_cong "${hoi_url}" 443)"   # chỉ lấy tên Box khi thiếu may-tram.env; Trợ lý AI không còn cổng riêng
 [[ -n "${box}" ]] || box="${ai_host}"
 sl_cong=8000   # cổng nhận sao lưu mặc định (HTTP và HTTPS cùng cổng)
 [[ -z "${kho}" ]] || read -r _ sl_cong <<<"$(dia_chi_cong "${kho}" 8000)"
@@ -98,7 +97,8 @@ nhom 2 "Dịch vụ trên Box"
 if [[ ${box_song} -eq 0 ]]; then
   ket_qua loi "Dịch vụ trên Box" "Không kiểm được (không tới được Box)" "Sửa phần Mạng ở trên trước"
 else
-  for muc in "Trợ lý AI|${ai_cong}" "Thư mục chung (Samba)|445" "Nhận sao lưu|${sl_cong}"; do
+  # Trợ lý AI không còn cổng riêng (chỉ qua /ai/ sau HTTPS); lỗi Trợ lý thì lệnh hoi báo trực tiếp.
+  for muc in "Thư mục chung (Samba)|445" "Nhận sao lưu|${sl_cong}"; do
     if cong_mo "${box}" "${muc#*|}"; then ket_qua ok "${muc%|*}" "Box mở cổng ${muc#*|}"
     else ket_qua loi "${muc%|*}" "Box không mở cổng ${muc#*|}" "Box có thể đang khởi động lại; báo quản trị chạy trên Box: sudo onebee-box chan-doan"; fi
   done

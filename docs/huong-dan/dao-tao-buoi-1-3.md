@@ -26,10 +26,10 @@ Kiểm tra cuối buổi: mỗi người làm 1 văn bản thật của mình, x
 
 ## Buổi 3 — Box, Trợ lý AI, tự động (tuần 2)
 Mục tiêu: dùng được các tiện ích trên OneBee Box, biết dữ liệu được sao lưu thế nào.
-1. (15') Trợ lý AI: bấm biểu tượng **"Trợ lý AI OneBee"** trên thanh tác vụ: soạn công văn nháp, tóm tắt văn bản.
-   **AI có thể sai** — luôn đọc lại số liệu, tên, ngày tháng. Không dán mật khẩu, số tài khoản vào ô hỏi.
-   Lệnh `hoi` trên máy (cho người quen dòng lệnh): mỗi người chạy một lần `hoi --dang-nhap` (hoặc `hoi --dan-khoa`) để dùng khóa riêng của mình.
-   **Nhân viên đã từng gõ mật khẩu Trợ lý AI/biểu mẫu khi Box còn chạy HTTP: đổi mật khẩu ngay** (Open WebUI → Cài đặt → Tài khoản → đổi mật khẩu).
+1. (15') Trợ lý AI: mở cửa sổ dòng lệnh trên máy, gõ `hoi <câu hỏi>` để hỏi; `hoi --tom-tat < văn-bản.txt` để tóm tắt.
+   **AI có thể sai** — luôn đọc lại số liệu, tên, ngày tháng và kiểm tra nguồn tham khảo. Không dán mật khẩu, số tài khoản vào câu hỏi.
+   Mỗi người dùng khóa riêng do quản trị cấp: làm một lần `hoi --dan-khoa` rồi dán khóa `obk-…` (không dùng chung khóa với người khác).
+   **Ai từng gõ mật khẩu cũ khi Box còn chạy HTTP: nhờ quản trị cấp lại khóa Trợ lý AI (`onebee-box cap-khoa-hoi <tên>`).**
    Khi Box đã bật HTTPS: mở Box bằng dấu trang/trang chủ của trình duyệt; **mọi cảnh báo chứng chỉ ở địa chỉ Box là dấu hiệu bị tấn công — không bấm "tiếp tục", báo kỹ thuật.**
 2. (15') Biểu mẫu: tóm tắt PDF (`/form/onebee-tom-tat`), nhập đơn hàng (`/form/onebee-don-hang`) — tài khoản `nhanvien`.
 3. (10') Sao lưu: máy tự sao lưu 12:00 hằng ngày lên Box; lỡ xóa file thì báo hỗ trợ để lấy lại (loại "Sao lưu / mất file").

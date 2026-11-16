@@ -3,7 +3,7 @@
 Kiểm: box-base cài + bật avahi-daemon, cấu hình chỉ quảng bá IPv4 trên cổng mạng chính, không lộ thông tin máy, tệp dịch vụ http cổng 80;
 trang chủ có tên đơn vị (thoát HTML), lối tắt, cẩm nang, ô tình trạng, không tải gì từ Internet;
 onebee-trang-thai-web.py tính CPU/RAM/ổ, trạng thái dịch vụ, ghi JSON nguyên tử;
-Caddy THẬT (nếu có ONEBEE_TEST_CADDY) trả trang chủ cho Host onebee.local và số liệu không bị lưu đệm; Open WebUI nhận Origin onebee.local.
+Caddy THẬT (nếu có ONEBEE_TEST_CADDY) trả trang chủ cho Host onebee.local và số liệu không bị lưu đệm.
 Chạy: python3 -m unittest"""
 import configparser
 import importlib.util
@@ -44,11 +44,9 @@ def bien(**them):
     v = yaml.safe_load(open(os.path.join(ROOT, "box/ansible/group_vars/all.yml"), encoding="utf-8"))
     v.update(onebee_box_ip="192.168.1.10", onebee_box_ma_don_vi="anphu", onebee_https_hieu_luc=False,
              onebee_kuma_dia_chi="0.0.0.0", onebee_mdns_cong_mang="eth0")
-    # Hai nguồn dữ liệu dùng chung: cẩm nang phím tắt (máy trạm) và 4 gợi ý soạn văn bản (Trợ lý AI). Bộ cài nạp bằng lookup
-    for khoa, duong_dan in (("onebee_cam_nang", "desktop/ansible/roles/theme/files/onebee-cam-nang.json"),
-                            ("onebee_goi_y", "box/ansible/roles/box-ai/files/goi-y.json")):
-        with open(os.path.join(ROOT, duong_dan), encoding="utf-8") as f:
-            v[khoa] = json.load(f)
+    # Cẩm nang phím tắt dùng chung với máy trạm; bộ cài nạp bằng lookup
+    with open(os.path.join(ROOT, "desktop/ansible/roles/theme/files/onebee-cam-nang.json"), encoding="utf-8") as f:
+        v["onebee_cam_nang"] = json.load(f)
     v["onebee_cam_nang_nhom"] = nhom_cam_nang()   # bảng tên nhóm do bộ cài đặt (tasks), test không chép lần hai
     v.update(them)
     return v
@@ -139,7 +137,9 @@ class TrangChu(unittest.TestCase):
 
     def test_loi_tat_tro_ly_ai_thu_muc_chung_ho_tro_cam_nang(self):
         h = self.html
-        self.assertIn('data-port="3000"', h)                                          # Trợ lý AI
+        self.assertIn("Trợ lý AI nội bộ", h)                                          # Trợ lý AI dùng lệnh hoi trên máy trạm
+        self.assertIn("hoi &lt;câu hỏi&gt;", h)
+        self.assertNotIn('data-port="3000"', h)                                       # không còn cổng 3000 ra LAN
         self.assertIn('data-port="443" data-path="quy-trinh/"', h)                   # Quy trình tự động (Node-RED) sau đăng nhập một lần
         self.assertIn('id="smb-win"', h)                                              # \\onebee.local\chung (Windows)
         self.assertIn('id="smb"', h)                                                  # smb://onebee.local/chung
@@ -161,17 +161,6 @@ class TrangChu(unittest.TestCase):
         ma_nhom = {n["ma"] for n in nhom}
         for muc in bien()["onebee_cam_nang"]["phim_tat"]:
             self.assertIn(muc["nhom"], ma_nhom, muc["ma"])   # thêm nhóm mới vào cẩm nang mà quên bảng tên thì báo ngay
-
-    def test_loi_vao_mau_soan_van_ban(self):
-        h = self.html
-        goi_y = bien()["onebee_goi_y"]
-        self.assertTrue(goi_y)
-        for g in goi_y:
-            the = re.search(r'<a [^>]*data-q="' + re.escape(str(escape(g["content"][:20]))), h)
-            self.assertIsNotNone(the, g["title"])
-            self.assertIn('data-port="3000"', h[h.rfind("<a ", 0, the.end()):the.end()])
-        self.assertIn("submit=false", h)          # mở trang chỉ điền sẵn câu mở đầu, không tự chạy model
-        self.assertIn("models=onebee-tro-ly", h)
 
     def test_cach_xuat_pdf_dung_chu_tren_man_hinh(self):
         # LibreOffice 24.2 trên Mint 22.3 mở giao diện thẻ (không còn thanh công cụ cũ có nút PDF, thanh menu ẩn):
@@ -269,7 +258,7 @@ class TrangThaiWeb(unittest.TestCase):
 
     def test_dich_vu_ngung_hoac_khong_co_docker(self):
         d = json.load(open(self.chay('echo true; echo false', 3)))
-        self.assertEqual(d["dich_vu"]["tro_ly_ai"], "dung")       # Ollama hoặc Open WebUI ngừng là Trợ lý không dùng được
+        self.assertEqual(d["dich_vu"]["tro_ly_ai"], "dung")       # Ollama hoặc dịch vụ Trợ lý AI ngừng là Trợ lý không dùng được
         self.assertEqual(d["dich_vu"]["thu_muc_chung"], "dung")
         d = json.load(open(self.chay('echo "Error: No such object" >&2; exit 1', 0)))
         self.assertEqual(d["dich_vu"]["tro_ly_ai"], "dung")
@@ -300,14 +289,6 @@ class TrienKhai(unittest.TestCase):
         self.assertIn("may_tram_py dem", sh)
         self.assertIn("/var/lib/onebee-box/may-tram-tong-hop", sh)
 
-    def test_open_webui_nhan_origin_onebee_local_o_che_do_http(self):
-        s = yaml.safe_load(ve("box-stack/templates/docker-compose.yml.j2"))["services"]
-        nguon = s["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"].split(";")
-        self.assertIn("http://onebee.local:3000", nguon)   # mở Trợ lý từ trang chủ onebee.local: lệch thì WebSocket chat hỏng
-        self.assertIn("http://192.168.1.10:3000", nguon)
-        s = yaml.safe_load(ve("box-stack/templates/docker-compose.yml.j2", onebee_https_hieu_luc=True))["services"]
-        self.assertNotIn("onebee.local", s["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"])   # chứng chỉ không cấp cho .local
-
     def test_dich_vu_tren_trang_chu_mo_bang_ip_box_trung_loi_tat_may_tram(self):
         # Trang chủ mở bằng onebee.local mà Trợ lý AI cũng theo tên đó thì là origin khác với biểu tượng máy trạm (HOI_URL theo IP)
         # → người dùng phải đăng nhập lại. Mọi thẻ dịch vụ phải theo IP Box, chỉ giữ tên Tailscale của kỹ thuật.
@@ -316,18 +297,10 @@ class TrienKhai(unittest.TestCase):
         self.assertNotRegex(js, r'"//"\s*\+\s*host\s*\+')                # không còn dựng dịch vụ theo tên đang gõ
         self.assertIn('"//" + hostDichVu + ":" + a.getAttribute("data-port")', js)
         self.assertIn('getElementById("smb").textContent = "smb://" + host', js)   # thư mục chung vẫn theo tên .local
-        # HOI_URL (biểu tượng Trợ lý AI, lệnh hoi trên máy trạm) cũng dựng từ IP Box
+        # Lệnh hoi trên máy trạm gọi /ai/ trên tên Box qua HTTPS (tuyến lõi), không theo IP/cổng 3000
         with open(os.path.join(ROLES, "box-stack/templates/onebee-box.sh.j2"), encoding="utf-8") as f:
             sh = f.read()
-        self.assertIn('echo "HOI_URL=${esq}://${ip}:${AI_PORT}"', sh)
-
-    def test_dia_chi_thong_nhat_nam_trong_origin_cho_phep_ca_http_lan_https(self):
-        # Open WebUI chặn WebSocket (chat thời gian thực) của origin không khai báo mà không báo lỗi
-        for https, giao_thuc in ((False, "http"), (True, "https")):
-            s = yaml.safe_load(ve("box-stack/templates/docker-compose.yml.j2", onebee_https_hieu_luc=https))["services"]
-            nguon = s["open-webui"]["environment"]["CORS_ALLOW_ORIGIN"].split(";")
-            self.assertIn(f"{giao_thuc}://192.168.1.10:3000", nguon)
-            self.assertIn(f"{giao_thuc}://box.anphu.onebee.internal:3000", nguon)
+        self.assertIn('echo "HOI_URL=${AI_URL}"', sh)
 
     def test_caddy_https_cung_khong_luu_dem_so_lieu(self):
         nd = ve("box-stack/templates/Caddyfile.j2", onebee_https_hieu_luc=True)

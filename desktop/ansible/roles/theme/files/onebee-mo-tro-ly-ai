@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Mở Trợ lý AI OneBee (giao diện web chạy trên OneBee Box). Địa chỉ lấy từ /etc/onebee-hoi.conf do bộ cài tạo
-# khi máy đã kết nối Box — cùng cấu hình với lệnh `hoi` trong cửa sổ dòng lệnh.
+# Hướng dẫn dùng Trợ lý AI OneBee: Trợ lý hỏi bằng lệnh `hoi` trong cửa sổ dòng lệnh (không còn giao diện web riêng).
+# Mục menu này chỉ hiện hướng dẫn; cấu hình khóa nằm trong /etc/onebee-hoi.conf do bộ cài tạo.
 set -uo pipefail
 
-thong_bao() {
-  if command -v zenity >/dev/null 2>&1 && [[ -n ${DISPLAY:-}${WAYLAND_DISPLAY:-} ]]; then
-    zenity --warning --title="Trợ lý AI OneBee" --text="$1" --width=380 2>/dev/null || true
-  else
-    echo "$1" >&2
-  fi
-}
+HUONG_DAN="Trợ lý AI OneBee dùng lệnh hoi trong cửa sổ dòng lệnh:
 
-url="$(sed -n 's/^HOI_URL=//p' /etc/onebee-hoi.conf 2>/dev/null | head -n 1)"
-# Chỉ mở địa chỉ http(s) hợp lệ, không để nội dung lạ trong file cấu hình thành lệnh hay tham số
-if [[ ! ${url} =~ ^https?://[^[:space:]]+$ ]]; then
-  thong_bao "Máy này chưa kết nối OneBee Box nên chưa có Trợ lý AI. Báo người quản trị OneBee để được kết nối."
-  exit 1
+  hoi <câu hỏi>
+  hoi --tom-tat < van-ban.txt
+
+Lần đầu, dán khóa do quản trị OneBee cấp:
+  hoi --dan-khoa
+
+Khóa lưu riêng cho tài khoản của bạn; không dùng chung với người khác.
+Trợ lý chỉ chạy khi máy đã kết nối OneBee Box và Box đã bật HTTPS."
+
+if command -v zenity >/dev/null 2>&1 && [[ -n ${DISPLAY:-}${WAYLAND_DISPLAY:-} ]]; then
+  zenity --info --title="Trợ lý AI OneBee" --text="${HUONG_DAN}" --width=480 2>/dev/null && exit 0
 fi
-exec xdg-open "${url}"
+printf '%s\n' "${HUONG_DAN}"

@@ -162,7 +162,8 @@ class LuocDo(unittest.TestCase):
 
     def test_ten_tep_luoc_do_dung_dang_va_khong_tu_mo_giao_dich(self):
         self.assertEqual([os.path.basename(f) for f in LUOC_DO],
-                         ["001-khoi-tao.sql", "002-phan-quyen.sql", "003-khung-nhin-tong-hop.sql", "004-kho-tep.sql"])
+                         ["001-khoi-tao.sql", "002-phan-quyen.sql", "003-khung-nhin-tong-hop.sql",
+                          "004-kho-tep.sql", "005-tri-thuc-va-lich-su-hoi-ai.sql"])
         for f in LUOC_DO:
             noi_dung = bo_chu_thich(open(f, encoding="utf-8").read())
             self.assertNotRegex(noi_dung, r"(?im)^\s*(BEGIN|COMMIT|ROLLBACK)\s*;", f)   # công cụ áp dụng bọc mỗi tệp một giao dịch

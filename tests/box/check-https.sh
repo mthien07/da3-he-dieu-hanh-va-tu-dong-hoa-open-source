@@ -15,6 +15,7 @@ cai() { box "/root/onebee-test/box/onebee-box-install.sh > /root/cai-$1.log 2>&1
 IP="$(box "ip -4 route get 1.1.1.1 | awk '{for (i = 1; i < NF; i++) if (\$i == \"src\") {print \$(i + 1); exit}}'")"
 MA_DON_VI="$(box "sed -n 's/^onebee_box_ma_don_vi: *//p' ${GV} | tr -d '\"'")"
 TEN_BOX="box.${MA_DON_VI}.onebee.internal"
+TEN="${TEN_BOX}"
 CA=/etc/onebee-box/secrets/ca/root.crt
 
 echo "===== HTTPS: CHỐT CHẶN — MÁY CHƯA NHẬN CA THÌ GIỮ HTTP ====="
@@ -23,7 +24,8 @@ box "onebee-box them-may kho-03 >/dev/null     # máy cấp rồi nhưng chưa �
 cai chot-chan
 box "grep -q 'CHƯA BẬT HTTPS' /root/cai-chot-chan.log && grep -q 'kho-03' /root/cai-chot-chan.log || { echo 'FAIL  Không báo máy chưa nhận CA'; exit 1; }
   [ ! -e /etc/onebee-box/secrets/https-da-bat ] || { echo 'FAIL  Vẫn bật HTTPS khi còn máy chưa nhận CA'; exit 1; }
-  curl -sf -m 10 http://127.0.0.1:3000/health | grep -q true || { echo 'FAIL  Dịch vụ HTTP bị ảnh hưởng'; exit 1; }
+  docker exec onebee-quy-trinh node -e \"fetch('http://127.0.0.1:1880/webhook/suc-khoe').then(r => process.exit(r.status === 200 ? 0 : 1), () => process.exit(1))\" \
+    || { echo 'FAIL  Dịch vụ HTTP bị ảnh hưởng'; exit 1; }
   echo 'PASS  Còn máy chưa nhận CA (kho-03) → bộ cài giữ HTTP, nêu tên máy, dịch vụ vẫn chạy'"
 
 echo "===== HTTPS: BẬT ====="
@@ -34,22 +36,20 @@ box "for m in kho-02 kho-03; do onebee-box thu-hoi-may \$m --dong-y >/dev/null 2
   [ \"\$(cat /etc/onebee-box/secrets/ca-da-dong-bo/ketoan-01)\" = \"\$(cat /etc/onebee-box/secrets/ca/root.sha256)\" ]"
 cai bat-https
 box "[ -e /etc/onebee-box/secrets/https-da-bat ] || { echo 'FAIL  Chưa có dấu HTTPS'; exit 1; }
-  for c in onebee-open-webui onebee-quy-trinh onebee-uptime-kuma onebee-rest-server onebee-ollama; do
+  for c in onebee-ai-rag onebee-quy-trinh onebee-uptime-kuma onebee-rest-server onebee-ollama onebee-seaweedfs onebee-kho-tep; do
     [ -z \"\$(docker port \$c)\" ] || { echo \"FAIL  \$c còn công bố cổng: \$(docker port \$c)\"; exit 1; }
   done
-  p=\$(docker port onebee-portal | awk '{print \$1}' | sort | tr '\n' ' ')
-  for x in 80/tcp 443/tcp 3000/tcp 3001/tcp 8000/tcp; do grep -q \"\$x\" <<<\"\$p\" || { echo \"FAIL  Caddy thiếu cổng \$x (\$p)\"; exit 1; }; done
-  echo 'PASS  Chỉ Caddy công bố cổng (80, 443, 3000, 3001, 8000); các dịch vụ backend không còn cổng nào'
-  for port in 443 3000 3001 8000; do
+  p=\$(docker port onebee-portal | awk '{print \$1}' | sort | tr '
+' ' ')
+  for x in 80/tcp 443/tcp 3001/tcp 8000/tcp; do grep -q \"\$x\" <<<\"\$p\" || { echo \"FAIL  Caddy thiếu cổng \$x (\$p)\"; exit 1; }; done
+  echo 'PASS  Chỉ Caddy công bố cổng (80, 443, 3001, 8000); các dịch vụ backend không còn cổng nào'
+  for port in 443 3001 8000; do
     openssl s_client -connect ${IP}:\${port} -noservername -verify_ip ${IP} -verify_return_error -CAfile ${CA} </dev/null 2>&1 \
       | grep -q 'Verification: OK' || { echo \"FAIL  TLS cổng \$port không đạt (nối bằng IP, không SNI)\"; exit 1; }
   done
   echo 'PASS  TLS đúng ở mọi cổng khi nối bằng IP (không SNI), chuỗi tới CA riêng của Box'
-  [ \"\$(curl -s -o /dev/null -w '%{http_code}' http://${IP}:3000/)\" = 308 ] || { echo 'FAIL  http:// tới cổng TLS không bị chuyển 308'; exit 1; }
   curl -sf http://${IP}/onebee-ca.crt | cmp - ${CA}
-  echo 'PASS  http://IP:3000 → 308 sang https; cổng 80 phục vụ chứng chỉ gốc'
-  curl -sf -m 10 https://${IP}:3000/health | grep -q true \
-    || { echo 'FAIL  Trợ lý AI không trả lời qua HTTPS'; exit 1; }
+  echo 'PASS  Cổng 80 phục vụ chứng chỉ gốc'
   key=\$(cat /etc/onebee-box/secrets/quy-trinh-webhook-key)
   code=\$(curl -s -o /dev/null -m 10 -w '%{http_code}' --cacert ${CA} --resolve ${TEN_BOX}:443:127.0.0.1 \
     -H \"X-OneBee-Key: \${key}\" https://${TEN_BOX}/webhook/suc-khoe)
@@ -61,32 +61,29 @@ box "[ -e /etc/onebee-box/secrets/https-da-bat ] || { echo 'FAIL  Chưa có dấ
     302|303|401) ;;
     *) echo \"FAIL  Trình soạn luồng /quy-trinh/ không phiên trả \${ed} (mong 302/401)\"; exit 1 ;;
   esac
-  echo 'PASS  Trình soạn luồng /quy-trinh/ không phiên không vào được (302/401, không phải 200)'
-  [ \"\$(curl -s -o /dev/null -m 3 -w '%{http_code}' http://127.0.0.1:3000/)\" = 308 ] || { echo 'FAIL  127.0.0.1:3000 không phải cổng Caddy (308)'; exit 1; }"
+  echo 'PASS  Trình soạn luồng /quy-trinh/ không phiên không vào được (302/401, không phải 200)'"
 
-box "pw=\$(cat /etc/onebee-box/secrets/webui-admin-password)
-  hdr=\$(curl -si -m 20 -X POST https://${IP}:3000/api/v1/auths/signin -H 'Content-Type: application/json' \
-    -d \"{\\\"email\\\":\\\"quantri@onebee.lan\\\",\\\"password\\\":\\\"\${pw}\\\"}\")
-  grep -i '^set-cookie:' <<<\"\${hdr}\" | grep -qi 'secure' || { echo 'FAIL  Cookie đăng nhập Open WebUI thiếu cờ Secure'; echo \"\${hdr}\" | head -20; exit 1; }
-  # Gọi được API trước rồi mới kiểm header (dạng cũ \"! curl | grep\" đạt giả khi curl lỗi/timeout/TLS hỏng)
-  res=\$(curl -si -m 10 https://${IP}:3000/api/config -H 'Origin: https://ke-la.example') || { echo 'FAIL  Không gọi được /api/config qua HTTPS'; exit 1; }
-  grep -q '^HTTP/[0-9.]* 200' <<<\"\${res}\" || { echo 'FAIL  /api/config qua HTTPS không trả 200'; head -5 <<<\"\${res}\"; exit 1; }
-  grep -qi '^access-control-allow-origin: https://ke-la.example' <<<\"\${res}\" && { echo 'FAIL  Origin lạ được CORS cho phép'; exit 1; }
-  # Chiều ngược lại: Origin hợp lệ phải được CORS cho phép và bắt tay WebSocket (chat) phải qua; Origin lạ không được 101
-  ok=\$(curl -si -m 10 https://${IP}:3000/api/config -H 'Origin: https://${IP}:3000' | tr -d '\r') || { echo 'FAIL  Không gọi được /api/config với Origin hợp lệ'; exit 1; }
-  grep -q '^HTTP/[0-9.]* 200' <<<\"\${ok}\" || { echo 'FAIL  /api/config với Origin hợp lệ không trả 200'; head -5 <<<\"\${ok}\"; exit 1; }
-  grep -qixF 'access-control-allow-origin: https://${IP}:3000' <<<\"\${ok}\" || { echo 'FAIL  Origin hợp lệ https://IP:3000 không được CORS cho phép'; echo \"\${ok}\" | head -20; exit 1; }
-  # curl không tự ngắt khi được 101 → -m 3 rồi bỏ mã thoát (|| true); chỉ đọc dòng trạng thái đầu
-  ws_hop_le=\$(curl -si -m 3 --http1.1 -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
-    -H 'Origin: https://${IP}:3000' 'https://${IP}:3000/ws/socket.io/?EIO=4&transport=websocket' 2>/dev/null || true)
-  ws_la=\$(curl -si -m 3 --http1.1 -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
-    -H 'Origin: https://ke-la.example' 'https://${IP}:3000/ws/socket.io/?EIO=4&transport=websocket' 2>/dev/null || true)
-  ma_hop_le=\$(awk 'NR == 1 {print \$2}' <<<\"\${ws_hop_le}\"); ma_la=\$(awk 'NR == 1 {print \$2}' <<<\"\${ws_la}\")
-  [ \"\${ma_hop_le}\" = 101 ] || { echo \"FAIL  WebSocket với Origin hợp lệ không được nhận (mã: \${ma_hop_le:-không phản hồi})\"; exit 1; }
-  grep -Eq '^[0-9]{3}\$' <<<\"\${ma_la}\" && [ \"\${ma_la}\" != 101 ] || { echo \"FAIL  WebSocket với Origin lạ không bị từ chối (mã: \${ma_la:-không phản hồi})\"; exit 1; }
-  echo 'PASS  Cookie đăng nhập Open WebUI có Secure; Origin lạ không được CORS, Origin hợp lệ được CORS + WebSocket (101), Origin lạ bị từ chối WebSocket'
-  onebee-box dong-bo-tro-ly >/dev/null
-  echo 'PASS  onebee-box dong-bo-tro-ly chạy được qua HTTPS (Box tin CA của chính nó)'"
+box "khoa=\$(onebee-box cap-khoa-hoi kiem-https 2>/dev/null)
+  [ \"\${#khoa}\" = 52 ] || { echo 'FAIL  Không cấp được khóa Trợ lý AI'; exit 1; }
+  # Khóa API đi tuyến riêng (không cần phiên đăng nhập một lần): xác thực xong mới kiểm thân → câu hỏi rỗng trả 400
+  ma=\$(curl -s -o /tmp/ai-rong.json -w '%{http_code}' --cacert ${CA} \
+    --resolve ${TEN}:443:${IP} -H 'Content-Type: application/json' -H \"X-OneBee-Khoa: \${khoa}\" \
+    -d '{\"cau_hoi\":\"\"}' https://${TEN}/ai/hoi)
+  [ \"\${ma}\" = 400 ] || { echo \"FAIL  /ai/hoi với khóa đúng không trả 400 khi câu hỏi rỗng (mã \${ma})\"; cat /tmp/ai-rong.json; exit 1; }
+  ma=\$(curl -s -o /dev/null -w '%{http_code}' --cacert ${CA} \
+    --resolve ${TEN}:443:${IP} -H 'Accept: application/json' -H 'Content-Type: application/json' \
+    -d '{\"cau_hoi\":\"\"}' https://${TEN}/ai/hoi)
+  [ \"\${ma}\" = 401 ] || { echo \"FAIL  /ai/hoi không khóa/phiên không trả 401 (mã \${ma})\"; exit 1; }
+  ma=\$(curl -s -o /dev/null -w '%{http_code}' --cacert ${CA} \
+    --resolve ${TEN}:443:${IP} -H 'Content-Type: application/json' -H \"X-OneBee-Khoa: \${khoa}\" \
+    -d '{}' https://${TEN}/ai/api/chat)
+  [ \"\${ma}\" = 404 ] || { echo \"FAIL  Đường khác dưới /ai/ không trả 404 (mã \${ma})\"; exit 1; }
+  onebee-box go-khoa-hoi kiem-https >/dev/null
+  echo 'PASS  /ai/ chỉ mở đường hỏi đáp: khóa đúng xác thực được, thiếu khóa 401, đường khác 404'
+  onebee-box nap-tri-thuc >/dev/null
+  so=\$(docker exec onebee-postgres psql -X -q -U postgres -d onebee -Atc 'SELECT count(*) FROM onebee.tai_lieu_tri_thuc')
+  [ \"\${so}\" -gt 0 ] || { echo 'FAIL  onebee-box nap-tri-thuc không nạp được tri thức qua HTTPS'; exit 1; }
+  echo 'PASS  onebee-box nap-tri-thuc vẫn chạy sau khi bật HTTPS (dịch vụ Trợ lý AI + CSDL sẵn sàng)'"
 
 echo "===== HTTPS: BẤT BIẾN BẢO MẬT (CỔNG + TUYẾN LÕI) ====="
 box "ONEBEE_HTTPS=1 ONEBEE_IP=${IP} ONEBEE_TEN_BOX=${TEN_BOX} ONEBEE_CA=${CA} /root/onebee-test/tests/box/kiem-bat-bien.sh"
@@ -126,8 +123,8 @@ echo "===== HTTPS: TẮT (HOÀN TÁC) ====="
 box "sed -i -E 's#^onebee_box_https: .*#onebee_box_https: false#' ${GV}"
 cai tat-https
 box "[ ! -e /etc/onebee-box/secrets/https-da-bat ] || { echo 'FAIL  Còn dấu HTTPS'; exit 1; }
-  curl -sf -m 10 http://127.0.0.1:3000/health | grep -q true \
-    && docker exec onebee-quy-trinh node -e \"fetch('http://127.0.0.1:1880/webhook/suc-khoe').then(r => process.exit(r.status === 200 ? 0 : 1), () => process.exit(1))\" \
+  docker exec onebee-quy-trinh node -e \"fetch('http://127.0.0.1:1880/webhook/suc-khoe').then(r => process.exit(r.status === 200 ? 0 : 1), () => process.exit(1))\" \
+    && curl -sf -m 10 http://127.0.0.1/ | grep -q 'OneBee Box' \
     || { echo 'FAIL  Dịch vụ không chạy lại ở HTTP'; exit 1; }
   echo 'PASS  Tắt HTTPS: dịch vụ chạy lại ở HTTP, dấu HTTPS bị xóa'"
 tram "grep -q '^BOX_HTTPS=0' /etc/onebee/may-tram.env && [ ! -e /var/lib/onebee/https-bat ] && grep -q '^RESTIC_REPOSITORY=rest:http://' /etc/onebee/may-tram.env \

@@ -20,7 +20,9 @@ Các bài unit mới: `test_onebee_ca.py` (CA, ràng buộc tên bằng openssl/
 `tests/desktop/test_onebee_ket_noi_box.py`, `test_onebee_clients_https.py`, `test_onebee_hoi.py` (máy chủ TLS thật). Tích hợp (Docker lồng, chưa chạy ở nơi viết): `check-https.sh`, `check-xoay-khoa.sh`, các sửa trong `verify-box-install.sh`/`check-khoi-phuc-toan-bo.sh`/`run-box-test-in-systemd-container.sh`.
 `tests/box/check-mdns-dashboard.sh` (chạy trên Box, trong `run-box-test-in-systemd-container.sh`): avahi chạy, `onebee.local` phân giải ra IP cổng mạng chính (không IPv6), quảng bá `_http._tcp` cổng 80, `http://onebee.local` có trang chủ, số liệu tình trạng mới.
 `tests/desktop/test_mo_truy_cap_tu_xa.py` kiểm `scripts/mo-truy-cap-tu-xa.sh` (bật/tắt Tailscale SSH và chia sẻ màn hình GNOME) bằng lệnh giả (`tailscale`, `grdctl`, `gsettings`…); **chưa chạy trên máy thật** — phiếu `docs/kiem-thu-tren-may-that.md` mục E2.
-`tests/box/check-https.sh` (Docker lồng, chạy trong `run-box-test-in-systemd-container.sh`): chốt chặn, bật/tắt HTTPS, cổng, TLS, 308, cookie Secure, CORS, trình soạn luồng Node-RED không phiên không vào được, bất biến bảo mật (`kiem-bat-bien.sh`), máy trạm qua HTTPS.
+`tests/box/check-https.sh` (Docker lồng, chạy trong `run-box-test-in-systemd-container.sh`): chốt chặn, bật/tắt HTTPS, cổng, TLS,
+`/ai/hoi` bằng khóa API (không cần phiên) và 404 đường khác, trình soạn luồng Node-RED không phiên không vào được, bất biến bảo mật
+(`kiem-bat-bien.sh`), máy trạm qua HTTPS (sao lưu + `hoi`).
 `tests/box/check-quy-trinh-inside.sh` (chạy trên Box): động cơ quy trình Node-RED gửi thư báo cáo sao lưu/nhắc hạn qua Mailpit, máy trạm chưa cấp bị từ chối, báo cáo sai chữ ký bị gắn nhãn; chế độ `phe-duyet` kiểm quản lý duyệt đơn người khác, tự duyệt bị chặn, từ chối thiếu lý do, không phiên.
 `tests/box/kiem-bat-bien.sh` (chạy trên Box, cả HTTP lẫn HTTPS): chỉ Caddy công bố cổng, tuyến lõi trả 401 khi không phiên dù tự gửi `Remote-User`, trình soạn luồng không vào được khi chưa phiên, webhook tự kiểm khóa, cổng 5678 không còn mở.
 Đăng nhập một lần + cổng API: `test_onebee_dinh_danh.py` (cấu hình Authelia, luật nhóm, lệnh them-nguoi/xoa-nguoi/ma-xac-nhan với docker giả),
@@ -31,14 +33,17 @@ Các bài unit mới: `test_onebee_ca.py` (CA, ràng buộc tên bằng openssl/
 `tests/desktop/check-exe-handler.sh`: kiểm tra bộ trợ lý bắt file Windows `.exe` / `.msi` (onebee-windows-app-helper), đăng ký MIME handler hệ thống và nhận diện gợi ý ứng dụng thay thế (Zalo, Chrome, Unikey, Foxit, VLC, Ultraviewer, WINE/máy ảo).
 `tests/desktop/test_onebee_locale_ansible.py`: mọi lệnh gọi `ansible-playbook` trong bộ cài Desktop, bộ cài Box và `onebee-box` chạy bằng `C.UTF-8` dù người chạy đặt
 `LANG=vi_VN` (Python hiểu là bảng mã TCVN) hay locale chưa tạo trên máy (`ansible-playbook` giả ghi lại locale hiệu lực).
-`tests/box/test_onebee_webui.py` còn kiểm bản dịch giao diện tiếng Việt bổ sung (`giao-dien-tieng-viet.json`) gửi qua trường `I18N`: máy chủ giả làm đúng phép kiểm
-của Open WebUI v0.11.4, giữ bản dịch quản trị tự thêm, chạy lại không đổi; `tests/box/check-ai-chat-inside.sh` kiểm `/api/config` trả bản dịch cả khi chưa đăng nhập.
+`tests/box/test_onebee_ai_rag.py` kiểm dịch vụ Trợ lý AI thật (máy chủ HTTP trên cổng tạm, Ollama và cầu nối danh tính giả): phân đoạn tri thức,
+lời nhắc có trích nguồn + dòng nhắc kiểm tra, nạp tri thức không trùng, kho khóa API chỉ lưu bản băm, từ chối khi thiếu `Remote-User`/khóa sai,
+chỉ mở `/ai/hoi` và `/ai/tom-tat`. `tests/box/check-ai-chat-inside.sh` kiểm trên Box thật: tải model trả lời + model nhúng, nạp tri thức,
+hỏi qua `/ai/hoi` và nhận câu trả lời tiếng Việt có nguồn tham khảo.
 `tests/desktop/test_onebee_phien_ban.py`: phiên bản trong bộ cài Desktop, bộ cài Box và mục đầu nhật ký thay đổi phải trùng nhau và không thấp hơn tag mới nhất.
 `tests/desktop/test_onebee_cam_nang.py`: phím tắt và tên gọi trong `onebee-cam-nang.json` khớp cấu hình máy (gschema, dconf, mục menu) và 5 tài liệu phát cho người dùng.
 `tests/desktop/test_onebee_trung_tam.py`: phần logic của Trung tâm OneBee (`onebee-trung-tam`) không cần GTK: đọc cẩm nang phím tắt, thông tin đơn vị, dấu đã xem lần đầu, 6 ô trang Bắt đầu tham số dòng lệnh, đọc kết quả `onebee-chan-doan --json` và tóm tắt lỗi gửi kèm yêu cầu hỗ trợ.
 `tests/desktop/test_onebee_bao_ho_tro.py`: lệnh `onebee-bao-ho-tro`: đọc địa chỉ biểu mẫu từ file cấu hình (từ chối địa chỉ lạ), điền sẵn tên máy/loại/mô tả có mã hóa phần trăm, cắt mô tả dài, báo rõ khi máy chưa nối Box, mở `xdg-open` giả.
 `tests/desktop/test_onebee_nhac_sao_luu.py`: lệnh `onebee-nhac-sao-luu`: nhắc đúng khi quá 72 giờ chưa sao lưu và chỉ một lần mỗi ngày, im lặng khi chưa nối Box, sao lưu mới, file lỗi hoặc không có `notify-send` (đường dẫn thay bằng biến môi trường, `notify-send` giả).
-`tests/box/check-rag-prompts.sh` và `tests/box/test_onebee_rag_prompts.py`: kiểm mẫu soạn văn bản gửi đúng trường của Open WebUI v0.11.4, mọi nhân viên đọc được, chạy lại không đổi; bộ tri thức không tạo trùng.
+`tests/box/check-rag-prompts.sh` và `tests/box/test_onebee_rag_prompts.py`: kiểm kho mẫu soạn văn bản và kho tri thức gốc, dịch vụ chỉ mở hai đường `/ai/hoi` và `/ai/tom-tat`,
+lệnh `onebee-box nap-tri-thuc` nạp không trùng, role chép đúng thư mục mà container đọc và gắn thêm thư mục tri thức của đơn vị.
 `tests/box/check-alerts.sh`: kiểm tra tính năng cảnh báo chủ động qua Telegram Bot và webhook động cơ quy trình (Node-RED).
 `tests/box/check-offline-bundle.sh`: kiểm tra kịch bản đóng gói và cài đặt OneBee Box offline từ USB.
 `tests/desktop/test_onebee_giao_dien_windows.py` (lớp `PhienLamViecMint`): kiểm tra các mặc định phiên làm việc trên Linux Mint 22.x (nguồn bộ gõ Cinnamon 6.6 và IBus, đồng hồ ngày/tháng/năm Việt Nam, nút Bắt đầu logo OneBee, chuyển hướng file gói Mint bằng `dpkg-divert` có điều kiện, tắt cửa sổ tự bật của trình cập nhật, chỉ bật timer dọn gói thừa khi có, hình nền màn hình đăng nhập LightDM).

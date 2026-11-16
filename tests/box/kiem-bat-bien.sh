@@ -37,7 +37,7 @@ else
     if [[ "${HTTPS}" = 0 ]]; then
       # HTTP nội bộ (chưa bật HTTPS): Caddy chưa đứng trước nên các dịch vụ người dùng vẫn tự công bố cổng của mình
       case "${ct}" in
-        onebee-portal|onebee-rest-server|onebee-open-webui|onebee-uptime-kuma) continue ;;
+        onebee-portal|onebee-rest-server|onebee-uptime-kuma) continue ;;
       esac
     else
       # HTTPS: Caddy là cửa duy nhất; chỉ portal (và rest-server theo thiết kế) được công bố cổng
