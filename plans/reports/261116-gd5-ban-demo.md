@@ -19,7 +19,7 @@ Mới:
 - `box/ansible/roles/box-stack/templates/so-dieu-hanh-demo.html.j2` (khối chèn, không tự chạy)
 - `box/ansible/inventory.demo.ini.example`
 - `scripts/nap-du-lieu-demo.sql`
-- `tests/box/check-ban-demo.sh` (7 dòng PASS)
+- `tests/box/check-ban-demo.sh` (6 dòng PASS trước khi gộp trang Sổ điều hành, 7 dòng PASS sau khi gộp)
 - `tests/box/test_onebee_ban_demo.py` (13 bài)
 
 Sửa:
