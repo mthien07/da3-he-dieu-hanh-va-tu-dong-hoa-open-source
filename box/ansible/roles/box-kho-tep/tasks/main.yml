@@ -11,14 +11,12 @@
     group: root
     mode: "{{ item.mode }}"
   loop:
-    - {path: "{{ onebee_box_data }}/seaweedfs", mode: "0700"}
     - {path: "{{ onebee_box_data }}/clamav", mode: "0755"}   # clamscan đọc chữ ký qua mount chỉ đọc trong container
     - {path: "{{ onebee_box_data }}/kho-tep", mode: "0700"}
     - {path: "{{ onebee_box_data }}/kho-tep/cho-quet", mode: "0700"}
     - {path: "{{ onebee_box_data }}/kho-tep/cach-ly", mode: "0700"}
     - {path: "{{ onebee_box_dir }}/kho-tep", mode: "0755"}
     - {path: "{{ onebee_box_dir }}/clamav", mode: "0755"}
-    - {path: /usr/local/lib/onebee-box, mode: "0755"}   # lệnh nộp chữ ký ngoại tuyến (các role khác cũng dùng thư mục này)
 
 # SeaweedFS chạy bằng uid 1000 trong container, không capability (compose user: "1000:1000"): thư mục dữ liệu phải thuộc uid đó
 - name: Giao thư mục dữ liệu SeaweedFS cho người dùng trong container
@@ -85,7 +83,7 @@
 - name: Chép bộ chữ ký ClamAV có sẵn trong image cục bộ (nếu có)
   ansible.builtin.command: >-
     docker run --rm -v {{ onebee_box_data }}/clamav:/seed
-    --entrypoint sh onebee/clamav-khong-unrar:1.5.4 -c 'cp -an /var/lib/clamav/. /seed/ 2>/dev/null || true'
+    --entrypoint sh onebee/clamav-khong-unrar:1.5.4 -c 'cp -an /var/lib/clamav/. /seed/ 2>/dev/null || true; chmod 755 /seed'
   when: onebee_clamav_chu_ky.matched == 0
   changed_when: false
 

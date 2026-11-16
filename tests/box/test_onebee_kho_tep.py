@@ -87,6 +87,13 @@ class CauHinhKhoTep(unittest.TestCase):
         self.assertIn("onebee_clamav_dockerfile is changed",
                       dung["when"] if isinstance(dung["when"], str) else " ".join(dung["when"]))
         self.assertIn("docker image inspect", yaml.safe_dump(next(t for t in ds if "Kiểm image" in t.get("name", ""))))
+        # Không tạo lại thư mục do role khác sở hữu (chủ/mode khác) — tránh mỗi lần cài lại đổi qua đổi lại
+        tao_thu_muc = next(t for t in ds if "Tạo thư mục dữ liệu" in t.get("name", ""))
+        duong = " ".join(str(x) for x in tao_thu_muc["loop"])
+        self.assertNotIn("seaweedfs", duong)
+        self.assertNotIn("/usr/local/lib/onebee-box", duong)
+        chep = next(t for t in ds if "Chép bộ chữ ký" in t.get("name", ""))
+        self.assertIn("chmod 755 /seed", chep["ansible.builtin.command"])
         lenh = [str(t.get("ansible.builtin.command", "")) for t in ds]
         self.assertTrue(any("up -d --no-deps seaweedfs" in x for x in lenh))
         self.assertTrue(any("up -d --no-deps" in x and "kho-tep" in x for x in lenh))
