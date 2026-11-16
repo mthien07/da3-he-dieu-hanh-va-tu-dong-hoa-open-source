@@ -10,6 +10,9 @@
 <link rel="stylesheet" href="/so-dieu-hanh/so-dieu-hanh.css">
 </head>
 <body data-mo-hinh-ai="{{ onebee_box_ai_model | e }}" data-cong-giam-sat="{{ onebee_box_ports.uptime_kuma }}">
+{% if onebee_box_che_do_demo | default(false) | bool %}
+<div class="thong-bao thanh-demo" role="status"><strong>Bản chạy thử công khai</strong> — Dữ liệu giả lập, tự đặt lại lúc 03:00 mỗi ngày. Vui lòng không nhập thông tin thật.</div>
+{% endif %}
 <main>
   <header>
     <div>
