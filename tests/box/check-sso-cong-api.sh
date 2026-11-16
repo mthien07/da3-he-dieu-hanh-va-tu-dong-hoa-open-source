@@ -108,8 +108,8 @@ for x in "GET /ai/api/tags" "DELETE /ai/api/delete" "POST /ai/api/pull"; do
   set -- ${x}
   [ "$(ma -X "$1" -b "${D}/jar-an" -d '{}' "https://${TEN}$2")" = 404 ] || { echo "FAIL  $1 $2 không trả 404 (có phiên)"; exit 1; }
 done
-[ "$(ma -b "${D}/jar-an" "https://${TEN}/files/x")" = 503 ] || { echo 'FAIL  /files/ có phiên không trả 503'; exit 1; }
-echo 'PASS  /ai/api/chat không phiên 401; API quản trị Ollama (tags, delete, pull) 404 kể cả có phiên; /files/ có phiên 503'
+[ "$(ma -b "${D}/jar-an" "https://${TEN}/files/x")" = 404 ] || { echo 'FAIL  /files/ có phiên không trả 404 (tệp không tồn tại)'; exit 1; }
+echo 'PASS  /ai/api/chat không phiên 401; API quản trị Ollama (tags, delete, pull) 404 kể cả có phiên; /files/ có phiên tới được dịch vụ kho tệp (404)'
 EOF
 
 echo "===== ĐĂNG NHẬP MỘT LẦN: TRANG GIÁM SÁT ====="

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # onebee-box — lệnh quản trị OneBee Box (quản lý bởi OneBee OS, không sửa tay)
 #   onebee-box trang-thai          Xem dịch vụ đang chạy, dung lượng ổ
-#   onebee-box chan-doan [--json]  Tự chẩn đoán 7 hạng mục (mạng, tài nguyên, Docker, AI, Samba, sao lưu, chứng chỉ) + gợi ý cách sửa
+#   onebee-box chan-doan [--json]  Tự chẩn đoán 8 hạng mục (mạng, tài nguyên, Docker, AI, Samba, kho tệp, sao lưu, chứng chỉ) + gợi ý cách sửa
 #   onebee-box them-may <ten-may>  Cấp tài khoản sao lưu, khóa Trợ lý AI, quản lý cho 1 máy trạm; in cấu hình dán vào máy trạm
 #   onebee-box may-tram            Tình trạng các máy trạm: sao lưu, cập nhật, ổ đĩa, lần liên lạc cuối
 #   onebee-box cap-nhat-may <ten-may>|--tat-ca   Cập nhật phần mềm máy trạm từ Box (qua SSH; máy phải chứng minh được là máy đã cấp)
@@ -33,6 +33,7 @@
 #   onebee-box ma-xac-nhan         In mã xác minh mới nhất (người dùng ghi danh hai lớp trên trang đăng nhập khi Box chưa có email)
 #   onebee-box tat-sso-tam         Dịch vụ định danh hỏng: TẠM tắt đăng nhập một lần (dữ liệu khóa 503, giám sát dùng mật khẩu riêng)
 #   onebee-box bat-sso-lai         Bật lại đăng nhập một lần sau khi đã sửa
+#   onebee-box cap-nhat-chu-ky-clamav <thư-mục>  Nạp chữ ký ClamAV ngoại tuyến (.cvd/.cld) từ USB vào kho kiểm dịch
 set -euo pipefail
 LIB=/usr/local/lib/onebee-box
 # shellcheck source=/dev/null
@@ -629,6 +630,9 @@ case "${1:-}" in
   ma-xac-nhan) cmd_ma_xac_nhan ;;
   tat-sso-tam) with_lock cmd_tat_sso_tam ;;
   bat-sso-lai) with_lock cmd_bat_sso_lai ;;
+  cap-nhat-chu-ky-clamav)
+    [[ -n "${2:-}" ]] || die "Cách dùng: sudo onebee-box cap-nhat-chu-ky-clamav <thư mục chứa main.cvd, daily.cvd, bytecode.cvd>"
+    python3 /usr/local/lib/onebee-box/onebee-kho-tep.py cap-nhat-chu-ky "${2}" "${DATA}/clamav" ;;
   email-thu) bao_cao_quy_trinh THU "Email thử từ OneBee Box lúc $(date '+%H:%M %d/%m/%Y') — cấu hình email đã dùng được." \
                && echo "Đã chuyển cho động cơ quy trình gửi — kiểm tra hộp thư "{{ onebee_box_email.nhan | quote }}" (cả mục Spam)." ;;
   *) sed -n '/^set -euo/q; 2,$s/^# //p' "$0"; exit 1 ;;

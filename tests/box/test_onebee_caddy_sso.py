@@ -3,7 +3,8 @@
 không có thì bỏ qua). Phía sau là máy chủ HTTP giả: Authelia giả (forward-auth theo cookie + luật nhóm như cấu hình thật),
 Ollama, Uptime Kuma, PostgREST giả; cầu nối danh tính là mã THẬT (box-dinh-danh/files/onebee-cau-noi-danh-tinh.py).
 Kiểm: chưa phiên → 401; có phiên → 200; tiêu đề Remote-*/Authorization do máy khách gửi không có tác dụng; /ai/ chỉ mở 2 đường dẫn POST;
-/files/ → 503; trang chủ công khai; vào bằng IP chỉ có trang chủ; giám sát chỉ cho kỹ thuật hai lớp; SSO tạm tắt thì tuyến lõi 503.
+/files/ chuyển tới dịch vụ kho tệp sau forward_auth (bỏ tiền tố, chép Remote-User); trang chủ công khai; vào bằng IP chỉ có trang chủ;
+giám sát chỉ cho kỹ thuật hai lớp; SSO tạm tắt thì tuyến lõi 503.
 Chạy: python3 -m unittest"""
 import json
 import os
@@ -70,7 +71,7 @@ class Ghi:
         self.ds = []
 
 
-AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY = Ghi(), Ghi(), Ghi(), Ghi()
+AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY, KHO_TEP_THAY = Ghi(), Ghi(), Ghi(), Ghi(), Ghi()
 
 
 def authelia(h):
@@ -130,7 +131,7 @@ class CaddySso(unittest.TestCase):
         cls.cong = {k: cong_trong() for k in ("portal", "open_webui", "rest_server", "uptime_kuma", "http")}
         cls.sv = {"authelia": may_chu(authelia), "postgrest": may_chu(ghi_va_tra(PHIA_SAU_THAY, "postgrest")),
                   "ollama": may_chu(ghi_va_tra(OLLAMA_THAY, "ollama")), "uptime-kuma": may_chu(ghi_va_tra(KUMA_THAY, "kuma")),
-                  "khac": may_chu(ghi_va_tra(Ghi(), "khac"))}
+                  "kho-tep": may_chu(ghi_va_tra(KHO_TEP_THAY, "kho-tep")), "khac": may_chu(ghi_va_tra(Ghi(), "khac"))}
         with open(f"{t}/khoa", "w") as f:
             f.write("ab" * 32 + "\n")
         cls.cong_cau_noi = cong_trong()
@@ -166,8 +167,8 @@ class CaddySso(unittest.TestCase):
         nd = nd.replace("/srv-http", f"{t}/srv-http").replace("root * /srv\n", f"root * {t}/srv\n").replace("/pki/", f"{t}/pki/")
         p = {k: s.server_port for k, s in cls.sv.items()}
         for goc, moi in (("authelia:9091", cong_trong() if authelia_chet else p["authelia"]), ("cau-noi:8080", cls.cong_cau_noi), ("ollama:11434", p["ollama"]),
-                         ("uptime-kuma:3001", p["uptime-kuma"]), ("open-webui:8080", p["khac"]), ("quy-trinh:1880", p["khac"]),
-                         ("rest-server:8000", p["khac"])):
+                         ("uptime-kuma:3001", p["uptime-kuma"]), ("kho-tep:8080", p["kho-tep"]), ("open-webui:8080", p["khac"]),
+                         ("quy-trinh:1880", p["khac"]), ("rest-server:8000", p["khac"])):
             nd = nd.replace(goc, f"127.0.0.1:{moi}")
         open(f"{t}/Caddyfile", "w").write(nd)
         if cls.caddy:
@@ -194,7 +195,7 @@ class CaddySso(unittest.TestCase):
         if not self.caddy or getattr(self, "_sso", True) is not True:
             type(self).dung_caddy(sso=True)
             type(self)._sso = True
-        for g in (AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY):
+        for g in (AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY, KHO_TEP_THAY):
             g.ds.clear()
 
     def test_a_chua_co_phien_goi_api_toi_nhan_401(self):
@@ -242,9 +243,17 @@ class CaddySso(unittest.TestCase):
         self.assertEqual([y["path"] for y in OLLAMA_THAY.ds], ["/api/chat", "/api/generate"])
         self.assertNotIn("Cookie", OLLAMA_THAY.ds[0]["headers"])                                 # cookie phiên không tới Ollama
 
-    def test_f_files_co_phien_nhan_503(self):
-        self.assertEqual(self.ten("/files/x", "-b", "authelia_session=phien-an")[0], "503")
+    def test_f_files_chuyen_toi_kho_tep_sau_forward_auth(self):
+        # Chưa phiên: forward_auth trả 401, không tới kho tệp
         self.assertEqual(self.ten("/files/x", "-H", "Accept: application/json")[0], "401")
+        self.assertEqual(KHO_TEP_THAY.ds, [])
+        # Có phiên: bỏ tiền tố /files, chép danh tính do Authelia xác nhận; Remote-* do máy khách gửi bị xóa
+        ma, than, _, _ = self.ten("/files/x", "-b", "authelia_session=phien-an",
+                                  "-H", "Remote-User: binh", "-H", "Remote-Groups: quan_ly")
+        self.assertEqual(ma, "200", than)
+        yc = KHO_TEP_THAY.ds[0]
+        self.assertEqual((yc["method"], yc["path"]), ("GET", "/x"))
+        self.assertEqual((yc["headers"].get("Remote-User"), yc["headers"].get("Remote-Groups")), ("an", "nhan_vien"))
 
     def test_g_trang_chu_khong_can_phien(self):
         ma, than, _, _ = self.ten("/")
@@ -307,14 +316,14 @@ class CaddySsoTamTat(CaddySso):
         if not self.caddy or getattr(self, "_sso", True) is not False:
             type(self).dung_caddy(sso=False)
             type(self)._sso = False
-        for g in (AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY):
+        for g in (AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY, KHO_TEP_THAY):
             g.ds.clear()
 
     def test_tuyen_loi_tra_503_ca_khi_co_phien(self):
         for duong, them in (("/api/toi", ()), ("/files/x", ()), ("/ai/api/chat", ("-X", "POST", "-d", "{}"))):
             for phien in ((), ("-b", "authelia_session=phien-an"), ("-H", "Remote-User: an", "-H", "Remote-Groups: quan_ly")):
                 self.assertEqual(self.ten(duong, *them, *phien)[0], "503", (duong, phien))
-        self.assertEqual((PHIA_SAU_THAY.ds, OLLAMA_THAY.ds, AUTHELIA_THAY.ds), ([], [], []))
+        self.assertEqual((PHIA_SAU_THAY.ds, OLLAMA_THAY.ds, AUTHELIA_THAY.ds, KHO_TEP_THAY.ds), ([], [], [], []))
         self.assertEqual(self.ten("/")[:2], ("200", "OneBee Box trang chu"))
         self.assertNotIn("forward_auth", self.nd_goc)
 
@@ -327,7 +336,7 @@ class CaddySsoTamTat(CaddySso):
     # Các bài của lớp cha chỉ đúng khi đăng nhập một lần bật
     test_a_chua_co_phien_goi_api_toi_nhan_401 = test_b_phien_hop_le_nhan_200_tu_cau_noi = None
     test_c_may_khach_tu_gui_remote_user_khong_co_tac_dung = test_d_authorization_cua_may_khach_khong_toi_phia_sau = None
-    test_e_ai_chi_mo_hai_duong_dan_post = test_f_files_co_phien_nhan_503 = test_j_than_qua_1mb_bi_chan = None
+    test_e_ai_chi_mo_hai_duong_dan_post = test_f_files_chuyen_toi_kho_tep_sau_forward_auth = test_j_than_qua_1mb_bi_chan = None
     test_k_giam_sat_chi_ky_thuat_hai_lop = None
 
 

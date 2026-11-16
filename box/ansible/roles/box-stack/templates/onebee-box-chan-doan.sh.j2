@@ -1,6 +1,7 @@
 # shellcheck shell=bash
 # Tự chẩn đoán OneBee Box (quản lý bởi OneBee OS, không sửa tay). Được lệnh onebee-box nạp vào: sudo onebee-box chan-doan [--json]
-# 7 hạng mục: mạng, tài nguyên (ổ đĩa, RAM, CPU), container Docker, Trợ lý AI, thư mục chung (Samba), bản sao lưu, chứng chỉ.
+# 8 hạng mục: mạng, tài nguyên (ổ đĩa, RAM, CPU), container Docker, Trợ lý AI, thư mục chung (Samba), kho tệp (chữ ký ClamAV),
+# bản sao lưu, chứng chỉ.
 # Chỉ đọc và thử, không sửa gì (thử ghi thư mục chung bằng 1 file tạm, xóa ngay). Mã thoát: 0 = mọi mục OK, 1 = có cảnh báo, 2 = có lỗi.
 # --json: cùng kết quả dạng JSON (trang chủ đọc): {ket_luan, dem, hang_muc: [{ma, ten, trang_thai, muc: [{ma, ten, trang_thai, chi_tiet, goi_y}]}]}
 
@@ -16,13 +17,14 @@ NGUONG_SAO_LUU_GIO=26        # sao lưu chạy 23:00 hằng đêm (+ 2 giờ d�
 NGUONG_CHUNG_CHI_NGAY=15
 NGUONG_KET_XUAT_GIO=48       # kết xuất CSDL chạy cùng sao lưu đêm: quá 2 ngày là sao lưu đêm đã hỏng ít nhất 1 lần
 
-CHAN_DOAN_HM_MA=(mang tai_nguyen docker ai samba sao_luu ssl)
-CHAN_DOAN_HM_TEN=("Mạng" "Tài nguyên (ổ đĩa, RAM, CPU)" "Dịch vụ Docker" "Trợ lý AI" "Thư mục chung (Samba)" "Bản sao lưu" "Chứng chỉ bảo mật (SSL)")
+CHAN_DOAN_HM_MA=(mang tai_nguyen docker ai samba kho_tep sao_luu ssl)
+CHAN_DOAN_HM_TEN=("Mạng" "Tài nguyên (ổ đĩa, RAM, CPU)" "Dịch vụ Docker" "Trợ lý AI" "Thư mục chung (Samba)" "Kho tệp và kiểm dịch"
+  "Bản sao lưu" "Chứng chỉ bảo mật (SSL)")
 # Container của Box và tên dễ hiểu (cùng thứ tự)
 CHAN_DOAN_CT=(onebee-portal onebee-ollama onebee-open-webui onebee-quy-trinh onebee-uptime-kuma onebee-rest-server onebee-authelia onebee-cau-noi
-  onebee-postgres onebee-postgrest)
+  onebee-postgres onebee-postgrest onebee-seaweedfs onebee-kho-tep)
 CHAN_DOAN_CT_TEN=("Cổng web" "Bộ chạy model AI" "Giao diện Trợ lý AI" "Tự động hóa" "Giám sát" "Nhận sao lưu máy trạm" "Đăng nhập một lần"
-  "Cầu nối danh tính" "Cơ sở dữ liệu" "Dịch vụ dữ liệu (API)")
+  "Cầu nối danh tính" "Cơ sở dữ liệu" "Dịch vụ dữ liệu (API)" "Kho tệp đối tượng (SeaweedFS)" "Cổng kho tệp và kiểm dịch")
 CHAN_DOAN_KQ=()   # mỗi phần tử: hạng mục, mã, trạng thái, tên, chi tiết, gợi ý — ngăn cách bằng \x1f (không bị gộp ô trống như tab)
 
 # ghi_kq <hạng mục> <mã> <ok|canh_bao|loi> <tên> <chi tiết> [gợi ý]
@@ -220,6 +222,37 @@ kiem_samba() {
   fi
 }
 
+# Kho tệp: chữ ký ClamAV quá cũ thì tệp mới không được bảo vệ; thiếu chữ ký thì dịch vụ từ chối quét (không coi là sạch)
+kiem_kho_tep() {
+  local f moi=0 ten_moi="" ngay
+  if [[ -d "${DATA}/seaweedfs" && -d "${DATA}/kho-tep" ]]; then
+    ghi_kq kho_tep thu_muc ok "Thư mục kho tệp" "Có ${DATA}/seaweedfs và ${DATA}/kho-tep"
+  else
+    ghi_kq kho_tep thu_muc loi "Thư mục kho tệp" "Thiếu ${DATA}/seaweedfs hoặc ${DATA}/kho-tep — kho tệp không lưu được" \
+      "Chạy lại bộ cài OneBee Box để tạo thư mục và dịch vụ kho tệp"
+    return 0
+  fi
+  for f in "${DATA}/clamav"/*.cvd "${DATA}/clamav"/*.cld; do
+    [[ -f "${f}" ]] || continue
+    if (( $(stat -c %Y "${f}") > moi )); then
+      moi="$(stat -c %Y "${f}")"
+      ten_moi="${f}"
+    fi
+  done
+  if (( moi == 0 )); then
+    ghi_kq kho_tep chu_ky_clamav loi "Chữ ký ClamAV" "Chưa có tệp chữ ký (.cvd/.cld) — dịch vụ kho tệp từ chối quét" \
+      "Nộp chữ ký ngoại tuyến: sudo onebee-box cap-nhat-chu-ky-clamav <thư mục chứa main.cvd, daily.cvd, bytecode.cvd>"
+  else
+    ngay=$(( ($(date +%s) - moi) / 86400 ))
+    if (( ngay > 7 )); then
+      ghi_kq kho_tep chu_ky_clamav canh_bao "Chữ ký ClamAV" "Cũ ${ngay} ngày ($(date -r "${ten_moi}" '+%d/%m/%Y'))" \
+        "Nộp chữ ký mới: sudo onebee-box cap-nhat-chu-ky-clamav <thư mục chữ ký tải từ máy có Internet>"
+    else
+      ghi_kq kho_tep chu_ky_clamav ok "Chữ ký ClamAV" "Cập nhật $(date -r "${ten_moi}" '+%d/%m/%Y')"
+    fi
+  fi
+}
+
 kiem_sao_luu() {
   local gio kx="${KET_XUAT_DIR}/onebee.dump"
   # Kết xuất CSDL nằm trên ổ dữ liệu (sao lưu đêm làm trước khi chụp) — kiểm cả khi chưa gắn ổ sao lưu
@@ -370,6 +403,7 @@ cmd_chan_doan() {
   kiem_docker
   kiem_ai
   kiem_samba
+  kiem_kho_tep
   kiem_sao_luu
   kiem_chung_chi
   if [[ ${json} -eq 1 ]]; then in_json_chan_doan; else in_bang_chan_doan; fi

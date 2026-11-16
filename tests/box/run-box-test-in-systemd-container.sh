@@ -4,7 +4,8 @@
 # → máy trạm Mint 22.3 cài OneBee OS Desktop, sao lưu lên Box + khôi phục + thử xóa bản cũ (phải bị chặn)
 # → quản lý tập trung (báo tình trạng, cập nhật qua SSH) → email báo cáo → Box dọn bản cũ
 # → tường lửa: máy trong LAN vào được, máy ngoài mạng cho phép bị chặn
-# → diễn tập hỏng ổ Box: cài lại + khôi phục toàn bộ bằng khóa in ra giấy
+# → diễn tập hỏng ổ Box: cài lại + khôi phục toàn bộ bằng khóa in ra giấy (gồm 1 tệp trong kho tệp, tải lại đúng SHA-256)
+# → bật HTTPS: kho tệp /files/ tải lên, kiểm dịch ClamAV, tệp nhiễm bị chặn (check-kho-tep-inside.sh)
 # → bản giả mạo ngày tương lai bị phát hiện → chưa gắn ổ ngoài thì từ chối → khởi động lại Box, dịch vụ tự lên.
 # Biến: ONEBEE_TEST_EXTRA_CA (CA proxy), ONEBEE_TEST_FULL_WEBUI=1 (dùng image Open WebUI đầy đủ thay bản slim),
 #       ONEBEE_TEST_KEEP=1 (giữ container để xem lại).
