@@ -26,6 +26,10 @@ onebee_box_images:
   # (digest bản đa kiến trúc lấy ngày 14/11/2026)
   postgres: docker.io/pgvector/pgvector:0.8.7-pg18-trixie@sha256:ab49524d18df7200b74ac9a475e1db6297fc1eb57da4c214c63d10ecc4b754fa
   postgrest: docker.io/postgrest/postgrest:v16.5@sha256:1347d7552b88f17832912c06afbf7c43209af6eeeb60834b04aae12c9bd9d5cc
+  # Kho tệp (ADR 0006, QĐ5): SeaweedFS lưu đối tượng; ClamAV chạy từng lượt. Image ClamAV chính chủ có libclamunrar
+  # (giấy phép UnRAR, ngoài OSI) nên role box-kho-tep dựng image cục bộ đã bỏ thư viện đó từ đúng digest dưới đây.
+  seaweedfs: docker.io/chrislusf/seaweedfs:4.53@sha256:ccad23e18639c8b98cee17e7100b95830a06077b56d8e5b006d6dcf8ec5e94a0
+  clamav: docker.io/clamav/clamav:1.5.4-debian13-slim@sha256:76a9c3b63764b78178dc68fa7efcceca0cde2c8c9d4f925a8e697cb4511f8fdc
 
 # Mã đơn vị — BẮT BUỘC, viết tắt tên khách hàng (vd "hoptacxa-an-phu" → "anphu"): chữ thường không dấu, số, gạch giữa, tối đa 32 ký tự.
 # Nằm trong chứng chỉ CA riêng của Box (chỉ được cấp tên <mã>.onebee.internal) nên mỗi khách một mã khác nhau; đổi mã = xoay CA.

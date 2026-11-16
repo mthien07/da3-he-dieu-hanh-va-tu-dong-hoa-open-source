@@ -41,6 +41,8 @@ Clonezilla (sao lưu/nhân bản ổ đĩa, chỉ dùng như công cụ khi cài
 | PostgreSQL 18.7 (image `pgvector/pgvector:0.8.7-pg18-trixie`, CSDL dữ liệu cấu trúc) | PostgreSQL License (kiểu BSD/MIT) | https://raw.githubusercontent.com/postgres/postgres/REL_18_7/COPYRIGHT (ADR 0006); gói Debian trong image giữ giấy phép riêng |
 | pgvector 0.8.7 (mở rộng vector trong cùng image) | PostgreSQL License | https://raw.githubusercontent.com/pgvector/pgvector/v0.8.7/LICENSE (ADR 0006) |
 | PostgREST 16.5 (API tự sinh trên CSDL) | MIT | https://raw.githubusercontent.com/PostgREST/postgrest/v16.5/LICENSE (ADR 0006) |
+| SeaweedFS 4.53 (kho tệp đối tượng) | Apache-2.0 | https://raw.githubusercontent.com/seaweedfs/seaweedfs/4.53/LICENSE (ADR 0006) |
+| ClamAV 1.5.4 (kiểm dịch tệp, chạy từng lượt; image `onebee/clamav-khong-unrar:1.5.4` dựng cục bộ từ image chính chủ đã ghim digest, đã bỏ `libclamunrar`) | GPL-2.0-only (lõi; thư viện đi kèm giữ giấy phép riêng: LGPL-2.1, Apache-2.0, BSD-3-Clause, MIT, Zlib…) | `libclamunrar` (giấy phép UnRAR, ngoài OSI) đã bỏ khỏi image; https://raw.githubusercontent.com/Cisco-Talos/clamav/clamav-1.5.4/COPYING.txt (ADR 0006) |
 
 Giấy phép phần Box ghi theo trang của từng dự án — cần kiểm lại khi nâng phiên bản và trước khi phát hành v1.0.
 

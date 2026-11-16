@@ -6,6 +6,7 @@
 set -euo pipefail
 BOX="$1"; CLIENT="$2"
 box() { docker exec "${BOX}" bash -euo pipefail -c "$1"; }
+box_stdin() { docker exec -i "${BOX}" bash -euo pipefail -s; }
 tram() { docker exec "${CLIENT}" bash -euo pipefail -c "$1"; }
 S=/etc/onebee-box/secrets
 
@@ -20,6 +21,25 @@ INSERT INTO onebee.don_hang (khach_hang, mat_hang, so_luong_kg, don_gia, thanh_t
   VALUES ('Khách diễn tập', 'Hàng diễn tập', 1, 1, 1, 'quantri', :'dau');
 SQL
   docker exec onebee-postgres psql -X -At -U postgres -d onebee -c 'SELECT count(*) FROM onebee.don_hang' > /root/cu-so-don-csdl"
+
+# Tệp đánh dấu trong kho tệp (đối tượng trong SeaweedFS + metadata trong CSDL) — phải tải lại đúng SHA-256 sau khôi phục.
+# Box đang ở chế độ HTTP nên gọi thẳng dịch vụ trong mạng Docker (tuyến /files/ chỉ tồn tại khi bật HTTPS).
+box_stdin <<'EOF'
+printf 'Tệp diễn tập khôi phục kho tệp\n' >/root/tep-khoi-phuc.txt
+sha="$(sha256sum < /root/tep-khoi-phuc.txt | cut -d' ' -f1)"
+du_lieu="$(base64 -w0 /root/tep-khoi-phuc.txt)"
+docker exec -e DU_LIEU="${du_lieu}" onebee-cau-noi python3 -I -c '
+import base64, os, urllib.request
+du_lieu = base64.b64decode(os.environ["DU_LIEU"])
+yeu_cau = urllib.request.Request("http://kho-tep:8080/tep-khoi-phuc.txt", data=du_lieu, method="PUT",
+    headers={"Remote-User": "quantri", "Remote-Groups": "quan_ly",
+             "Content-Type": "application/octet-stream", "Content-Length": str(len(du_lieu))})
+print(urllib.request.urlopen(yeu_cau, timeout=60).read().decode())
+' > /root/tep-khoi-phuc.json
+id="$(python3 -c 'import json; print(json.load(open("/root/tep-khoi-phuc.json"))["tep"]["id"])')"
+printf '%s %s\n' "${id}" "${sha}" > /root/tep-khoi-phuc.env
+echo 'PASS  Tải 1 tệp vào kho tệp trước khi hỏng ổ (metadata ghi qua cầu nối bằng JWT, RLS)'
+EOF
 
 box "onebee-box in-khoa > /root/khoa-in-ra-giay.txt
   cp ${S}/webui-admin-password /root/cu-webui; cp ${S}/n8n-owner-password /root/cu-n8n; cp ${S}/ca/root.sha256 /root/cu-ca-sha
@@ -60,6 +80,21 @@ box "/root/onebee-test/box/onebee-box-install.sh > /root/cai-lai.log 2>&1 || { t
   [ ! -e /srv/onebee/may-da-cap/tam-01 ] && [ -e ${S}/thu-hoi/tam-01 ] || { echo 'FAIL  Máy đã thu hồi lại được nhận báo cáo sau khôi phục'; exit 1; }
   [ -e /srv/onebee/may-da-cap/ketoan-01 ] || { echo 'FAIL  Sau khôi phục, máy ketoan-01 mất chỗ nhận báo cáo tình trạng'; exit 1; }
   echo 'PASS  khoi-phuc-toan-bo bằng khóa in ra giấy: mật khẩu, tài khoản Trợ lý AI + n8n, sổ hỗ trợ trở lại như cũ'"
+
+# Kho tệp sau khôi phục: metadata trong bản kết xuất CSDL + đối tượng trong thư mục SeaweedFS phải khớp lại đúng tệp đã tải lên
+box_stdin <<'EOF'
+id="$(cut -d' ' -f1 /root/tep-khoi-phuc.env)"; sha="$(cut -d' ' -f2 /root/tep-khoi-phuc.env)"
+docker exec -e MA_TEP="${id}" onebee-cau-noi python3 -I -c '
+import base64, os, urllib.request
+yeu_cau = urllib.request.Request("http://kho-tep:8080/" + os.environ["MA_TEP"],
+    headers={"Remote-User": "quantri", "Remote-Groups": "quan_ly"})
+print(base64.b64encode(urllib.request.urlopen(yeu_cau, timeout=60).read()).decode())
+' > /root/tep-khoi-phuc-tai.b64
+base64 -d /root/tep-khoi-phuc-tai.b64 > /root/tep-khoi-phuc-tai.txt
+[ "$(sha256sum < /root/tep-khoi-phuc-tai.txt | cut -d' ' -f1)" = "${sha}" ] \
+  || { echo 'FAIL  Tệp trong kho tệp sau khôi phục khác SHA-256 bản gốc'; exit 1; }
+echo 'PASS  Sau khôi phục toàn bộ: tệp trong kho tệp trở lại đúng SHA-256'
+EOF
 
 # Máy trạm không cấu hình gì thêm: vẫn sao lưu (kho mới), hỏi AI (khóa cũ), báo tình trạng, nhận cập nhật (khóa SSH cũ)
 tram 'onebee-sao-luu >/dev/null

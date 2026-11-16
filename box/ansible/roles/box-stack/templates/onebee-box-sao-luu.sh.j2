@@ -60,12 +60,13 @@ cmd_sao_luu() {
   # Bước 0: kết xuất CSDL dữ liệu cấu trúc TRƯỚC khi tạm dừng (không chạy được lệnh trong container đang tạm dừng);
   # lỗi thì dừng cả lần sao lưu. Thư mục dữ liệu sống của PostgreSQL không được chụp (chụp lúc đang ghi = bản hỏng)
   ket_xuat_csdl || die "Không kết xuất được CSDL (PostgreSQL) — lần sao lưu này DỪNG, chưa chụp gì. Kiểm tra: sudo onebee-box chan-doan"
-  # Bước 1: tạm dừng dịch vụ có cơ sở dữ liệu, chụp nhanh phần dữ liệu của chúng (nhất quán), chạy lại ngay
-  local svcs=(open-webui n8n uptime-kuma authelia)
+  # Bước 1: tạm dừng dịch vụ có cơ sở dữ liệu (và kho tệp, để SeaweedFS không ghi dở volume), chụp nhanh phần dữ liệu
+  # của chúng (nhất quán), chạy lại ngay. Metadata tệp nằm trong bản kết xuất CSDL; đối tượng nằm trong thư mục SeaweedFS.
+  local svcs=(open-webui n8n uptime-kuma authelia seaweedfs kho-tep)
   trap 'compose unpause "${svcs[@]}" >/dev/null 2>&1 || true' EXIT
   compose pause "${svcs[@]}" >/dev/null 2>&1 || die "Không tạm dừng được dịch vụ ${svcs[*]}"
   restic backup --retry-lock 5m --tag onebee-box --tag csdl \
-    "${DATA}/open-webui" "${DATA}/n8n" "${DATA}/uptime-kuma" "${DATA}/ho-tro" "${DATA}/authelia" "${KET_XUAT_DIR}" "${BOX_DIR}" "${SECRETS}"
+    "${DATA}/open-webui" "${DATA}/n8n" "${DATA}/uptime-kuma" "${DATA}/ho-tro" "${DATA}/authelia" "${DATA}/seaweedfs" "${KET_XUAT_DIR}" "${BOX_DIR}" "${SECRETS}"
   compose unpause "${svcs[@]}" >/dev/null 2>&1 || die "Không chạy lại được dịch vụ ${svcs[*]} — kiểm tra: sudo onebee-box trang-thai"
   trap - EXIT
   # Bước 2: thư mục chung (có thể lâu) — dịch vụ vẫn chạy. Không sao lưu model AI (tải lại được)
@@ -197,7 +198,7 @@ cmd_khoi_phuc_toan_bo() {
   compose stop >/dev/null 2>&1 || true
   # Xóa dữ liệu của bản cài mới trước khi chép bản cũ vào (restic không xóa file thừa; file tạm của CSDL mới
   # lẫn với CSDL cũ có thể làm hỏng dữ liệu)
-  rm -rf "${DATA}/open-webui" "${DATA}/n8n" "${DATA}/uptime-kuma" "${DATA}/ho-tro" "${DATA}/authelia" "${KET_XUAT_DIR}"
+  rm -rf "${DATA}/open-webui" "${DATA}/n8n" "${DATA}/uptime-kuma" "${DATA}/ho-tro" "${DATA}/authelia" "${DATA}/seaweedfs" "${KET_XUAT_DIR}"
   # CA riêng do lần cài lại vừa sinh phải nhường chỗ cho CA cũ (máy trạm đã tin CA cũ): xóa CA mới rồi khôi phục CA cũ từ bản sao lưu
   rm -rf "${CA_DIR}" "${HTTPS_DAU}" "${DATA}/caddy/data/caddy/certificates"   # chứng chỉ lá Caddy đã cấp bằng CA của bản cài lại cũng bỏ   # dấu HTTPS do bản cài lại ghi cũng nhường chỗ cho dấu trong bản sao lưu (nếu có)
   restic restore latest --tag onebee-box,csdl --target / || die "Khôi phục dữ liệu Box lỗi — chưa chạy lại dịch vụ"

@@ -227,7 +227,8 @@ services:
       - {{ onebee_box_secrets }}/authelia-jwt-secret:/run/secrets/authelia-jwt-secret:ro
 
   # Cầu nối danh tính (mã trong repo: box-dinh-danh/files/onebee-cau-noi-danh-tinh.py, chỉ thư viện chuẩn Python): tin Remote-User/Remote-Groups
-  # do Caddy chép từ Authelia, ký JWT 60 giây cho dịch vụ dữ liệu. Chỉ Caddy nối tới được (mạng sso), không công bố cổng.
+  # do Caddy chép từ Authelia, ký JWT 60 giây cho dịch vụ dữ liệu. Chỉ Caddy, dịch vụ định danh và dịch vụ tệp nối tới được
+  # (mạng sso; không container nào chạy mã người dùng nằm ở mạng này), không công bố cổng.
   cau-noi:
     image: {{ onebee_box_images.python }}
     container_name: onebee-cau-noi
@@ -301,6 +302,55 @@ services:
     volumes:
       - {{ onebee_box_secrets }}/cau-noi-jwt-secret:/run/secrets/cau-noi-jwt-secret:ro
 
+  # ===== Kho tệp: SeaweedFS + cổng /files/ và kiểm dịch ClamAV từng lượt =====
+  # SeaweedFS giữ đối tượng đã kiểm dịch; chỉ dịch vụ cổng tệp nối tới được (mạng riêng kho_tep); không công bố cổng.
+  seaweedfs:
+    image: {{ onebee_box_images.seaweedfs }}
+    container_name: onebee-seaweedfs
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    command: ["server", "-dir=/data", "-filer=true", "-volume.max=10"]
+    networks: [kho_tep]
+    volumes:
+      - {{ onebee_box_data }}/seaweedfs:/data
+
+  # Cổng /files/: Caddy chuyển tới sau forward_auth (chỉ HTTPS, trên tên box.<mã>.onebee.internal), dịch vụ tin Remote-User.
+  # Quét ClamAV từng lượt ngay trong image cục bộ (đã bỏ libclamunrar); ghi metadata qua cầu nối danh tính (JWT của người tải).
+  kho-tep:
+    image: onebee/clamav-khong-unrar:1.5.4   # dựng cục bộ từ image ClamAV đã ghim digest trong group_vars (role box-kho-tep)
+    container_name: onebee-kho-tep
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
+    networks: [sso, kho_tep]   # sso: Caddy + cầu nối danh tính (ghi metadata bằng JWT); kho_tep: chỉ SeaweedFS
+    depends_on: [seaweedfs]
+    entrypoint: ["python3", "-I", "/app/onebee-kho-tep.py"]
+    command: ["serve"]   # thay CMD "/init" của image ClamAV (không chạy clamd)
+    # Image ClamAV có healthcheck của clamd (không chạy ở đây) → kiểm đúng tiến trình cổng tệp và SeaweedFS
+    healthcheck:
+      test: ["CMD", "python3", "-I", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/suc-khoe', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    environment:
+      TZ: {{ onebee_timezone }}
+      PYTHONDONTWRITEBYTECODE: "1"
+      PORT: "8080"
+      KHO_TEP_DIR: /data/kho-tep
+      SEAWEED_FILER_URL: http://seaweedfs:8888
+      CAU_NOI_URL: http://cau-noi:8080
+      CLAMAV_DATABASE_DIR: /var/lib/clamav
+    volumes:
+      - ./kho-tep:/app:ro
+      - {{ onebee_box_data }}/kho-tep:/data/kho-tep
+      - {{ onebee_box_data }}/clamav:/var/lib/clamav:ro   # chữ ký ClamAV: bộ cài tải lần đầu, nộp ngoại tuyến bằng onebee-box
+
 networks:
   sso:
     internal: true   # không có đường ra ngoài; chỉ các container được khai vào mạng này nói chuyện với nhau
@@ -308,3 +358,5 @@ networks:
     internal: true   # cầu nối danh tính ↔ PostgREST
   csdl:
     internal: true   # PostgREST ↔ PostgreSQL
+  kho_tep:
+    internal: true   # dịch vụ cổng tệp ↔ SeaweedFS

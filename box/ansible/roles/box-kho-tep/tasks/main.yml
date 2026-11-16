@@ -1,0 +1,141 @@
+---
+# Kho tệp của OneBee Box (ADR 0006, QĐ5): SeaweedFS lưu đối tượng đã kiểm dịch; ClamAV quét từng lượt, không có clamd thường trú.
+# Dịch vụ khai trong docker-compose.yml của box-stack; role này dựng image ClamAV cục bộ (bỏ libclamunrar), tạo thư mục,
+# cài mã dịch vụ rồi mới chạy SeaweedFS và cổng tệp (box-stack không tự chạy: thiếu tệp/chữ ký thì dịch vụ lỗi ngay).
+
+- name: Tạo thư mục dữ liệu kho tệp, chữ ký ClamAV và cấu hình dịch vụ cổng tệp
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - {path: "{{ onebee_box_data }}/seaweedfs", mode: "0700"}
+    - {path: "{{ onebee_box_data }}/clamav", mode: "0755"}   # clamscan đọc chữ ký qua mount chỉ đọc trong container
+    - {path: "{{ onebee_box_data }}/kho-tep", mode: "0700"}
+    - {path: "{{ onebee_box_data }}/kho-tep/cho-quet", mode: "0700"}
+    - {path: "{{ onebee_box_data }}/kho-tep/cach-ly", mode: "0700"}
+    - {path: "{{ onebee_box_dir }}/kho-tep", mode: "0755"}
+    - {path: "{{ onebee_box_dir }}/clamav", mode: "0755"}
+    - {path: /usr/local/lib/onebee-box, mode: "0755"}   # lệnh nộp chữ ký ngoại tuyến (các role khác cũng dùng thư mục này)
+
+- name: Cài mã dịch vụ kho tệp (mount vào container và lệnh nộp chữ ký ngoại tuyến)
+  ansible.builtin.copy:
+    src: onebee-kho-tep.py
+    dest: "{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - "{{ onebee_box_dir }}/kho-tep/onebee-kho-tep.py"
+    - /usr/local/lib/onebee-box/onebee-kho-tep.py
+  register: onebee_kho_tep_ma
+
+- name: Cài Dockerfile image kiểm dịch ClamAV
+  ansible.builtin.copy:
+    src: clamav-khong-unrar.Dockerfile
+    dest: "{{ onebee_box_dir }}/clamav/Dockerfile"
+    owner: root
+    group: root
+    mode: "0644"
+  register: onebee_clamav_dockerfile
+
+- name: Kiểm image kiểm dịch ClamAV cục bộ đã có chưa
+  ansible.builtin.command: docker image inspect onebee/clamav-khong-unrar:1.5.4
+  register: onebee_clamav_image
+  changed_when: false
+  failed_when: false
+
+# Dựng lại chỉ khi Dockerfile đổi hoặc image chưa có — chạy lại bộ cài không tải/dựng lại image
+- name: Dựng image kiểm dịch ClamAV cục bộ (bỏ libclamunrar)
+  ansible.builtin.command: docker build --tag onebee/clamav-khong-unrar:1.5.4 {{ onebee_box_dir }}/clamav
+  when: onebee_clamav_dockerfile is changed or onebee_clamav_image.rc != 0
+  register: onebee_clamav_dung
+  changed_when: true
+  retries: 5   # lần đầu phải tải image chính chủ + gói python3 (mạng chập chờn)
+  delay: 30
+  until: onebee_clamav_dung.rc == 0
+
+# ADR 0006 QĐ5: image chính chủ (còn libclamunrar, giấy phép UnRAR) chỉ cần lúc dựng — xóa sau khi dựng để Box
+# không giữ lại image có thư viện ngoài OSI. Image chạy là image cục bộ đã dồn lớp, không phụ thuộc image gốc.
+- name: Xóa image ClamAV chính chủ sau khi dựng image cục bộ
+  ansible.builtin.command: docker image rm {{ onebee_box_images.clamav }}
+  changed_when: false   # image đã xóa từ lần trước thì lệnh báo không có ảnh — không phải thay đổi cấu hình
+  failed_when: false
+
+- name: Kiểm chữ ký ClamAV đã có trên Box chưa
+  ansible.builtin.find:
+    paths: "{{ onebee_box_data }}/clamav"
+    patterns: ["*.cvd", "*.cld"]
+    file_type: file
+  register: onebee_clamav_chu_ky
+
+# Thư mục chữ ký trên Box che thư mục cùng tên trong image: image ClamAV chính chủ có sẵn bộ chữ ký thì chép ra trước
+# (Box không cần Internet lúc cài). Không có thì bước sau tải từ Internet hoặc nộp ngoại tuyến.
+- name: Chép bộ chữ ký ClamAV có sẵn trong image cục bộ (nếu có)
+  ansible.builtin.command: >-
+    docker run --rm -v {{ onebee_box_data }}/clamav:/seed
+    --entrypoint sh onebee/clamav-khong-unrar:1.5.4 -c 'cp -an /var/lib/clamav/. /seed/ 2>/dev/null || true'
+  when: onebee_clamav_chu_ky.matched == 0
+  changed_when: false
+
+- name: Kiểm lại chữ ký ClamAV sau khi chép từ image
+  ansible.builtin.find:
+    paths: "{{ onebee_box_data }}/clamav"
+    patterns: ["*.cvd", "*.cld"]
+    file_type: file
+  register: onebee_clamav_chu_ky_sau
+
+# Box có Internet: tải lần đầu. Không có mạng: không làm hỏng bộ cài; nộp ngoại tuyến bằng lệnh bên dưới.
+# Thiếu chữ ký thì dịch vụ từ chối quét (503) — không bao giờ coi tệp chưa quét được là sạch.
+- name: Tải chữ ký ClamAV lần đầu (khi Box có Internet)
+  ansible.builtin.command: >-
+    docker run --rm -v {{ onebee_box_data }}/clamav:/var/lib/clamav
+    --entrypoint freshclam onebee/clamav-khong-unrar:1.5.4 --datadir=/var/lib/clamav
+  when: onebee_clamav_chu_ky_sau.matched == 0
+  register: onebee_clamav_tai
+  changed_when: onebee_clamav_tai.rc == 0
+  failed_when: false
+
+- name: Cảnh báo chưa có chữ ký ClamAV (Box không có Internet)
+  ansible.builtin.debug:
+    msg: >-
+      Chưa tải được chữ ký ClamAV — kho tệp từ chối quét cho tới khi có chữ ký. Nộp ngoại tuyến:
+      sudo onebee-box cap-nhat-chu-ky-clamav <thư mục chứa main.cvd, daily.cvd, bytecode.cvd>
+  when:
+    - onebee_clamav_chu_ky_sau.matched == 0
+    - onebee_clamav_tai.rc | default(0) != 0
+
+- name: Khởi chạy / cập nhật SeaweedFS
+  ansible.builtin.command: docker compose up -d --no-deps seaweedfs
+  args:
+    chdir: "{{ onebee_box_dir }}"
+  register: onebee_seaweedfs_up
+  changed_when: onebee_seaweedfs_up.stderr is search('Creat|Recreat|Start|Pull')
+  retries: 5
+  delay: 30
+  until: onebee_seaweedfs_up.rc == 0
+
+- name: Khởi chạy / cập nhật dịch vụ cổng tệp
+  ansible.builtin.command: >-
+    docker compose up -d --no-deps
+    {{ '--force-recreate' if (onebee_kho_tep_ma is changed or onebee_clamav_dung is changed) else '' }}
+    kho-tep
+  args:
+    chdir: "{{ onebee_box_dir }}"
+  register: onebee_kho_tep_up
+  changed_when: onebee_kho_tep_up.stderr is search('Creat|Recreat|Start|Pull')
+  retries: 5
+  delay: 30
+  until: onebee_kho_tep_up.rc == 0
+
+- name: Chờ dịch vụ cổng tệp và SeaweedFS sẵn sàng
+  ansible.builtin.command: >-
+    docker exec onebee-kho-tep python3 -I -c
+    "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/suc-khoe', timeout=5)"
+  register: onebee_kho_tep_san_sang
+  until: onebee_kho_tep_san_sang.rc == 0
+  retries: 30
+  delay: 2
+  changed_when: false
