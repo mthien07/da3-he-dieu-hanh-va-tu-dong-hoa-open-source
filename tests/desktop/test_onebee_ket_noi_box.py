@@ -159,7 +159,7 @@ class ChinhSachTrinhDuyet(unittest.TestCase):
         nd = json.load(open(self.ff))["policies"]
         self.assertEqual(nd["Homepage"]["URL"], "https://192.168.1.10/")
         urls = [b["url"] for b in nd["ManagedBookmarks"] if "url" in b]
-        self.assertIn("https://192.168.1.10:3000/", urls)
+        self.assertNotIn("https://192.168.1.10:3000/", urls)      # không còn giao diện Trợ lý AI ở cổng 3000
         self.assertTrue(all(u.startswith("https://") for u in urls))
         self.assertNotIn("DisableSecurityBypass", nd)          # QĐ8: máy in/thiết bị LAN tự ký vẫn phải mở được
         self.assertNotIn("HttpsOnlyMode", nd)
