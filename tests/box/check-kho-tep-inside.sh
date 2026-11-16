@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra kho tệp của OneBee Box (chạy TRONG Box, khi HTTPS + đăng nhập một lần đang bật; check-https.sh gọi sau
 # check-du-lieu-qua-cong.sh): không phiên → 401; PDF sạch → 201, metadata tep_dinh_kem CLEAN do chính người tải ghi
 # (JWT + RLS), tải lại đúng SHA-256; EICAR → 422, metadata INFECTED, không tải xuống được; đuôi ngoài danh mục → 415;

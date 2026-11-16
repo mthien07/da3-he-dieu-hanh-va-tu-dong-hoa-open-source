@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử chủ đề Plymouth của OneBee: tệp chủ đề khớp nhau, tác vụ Ansible đặt chủ đề mặc định đúng cách và chỉ dựng lại
 initramfs khi có thay đổi (lần cài thứ hai không đổi gì). Không cần Plymouth thật. Chạy: python3 -m unittest"""
 import configparser

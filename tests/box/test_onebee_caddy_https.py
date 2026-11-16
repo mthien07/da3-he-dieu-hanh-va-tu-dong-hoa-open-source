@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử Caddyfile HTTPS của Box (box-stack/templates/Caddyfile.j2) bằng Caddy THẬT chạy trên máy (không cần Docker).
 Cần tệp chạy caddy: đặt biến ONEBEE_TEST_CADDY=/đường/dẫn/caddy (hoặc caddy có trong PATH), nếu không bài này bị bỏ qua.
 Backend là máy chủ HTTP giả; CA là CA riêng do onebee-ca.sh sinh (gốc không kèm khóa gốc ở thư mục của Caddy).

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử dịch vụ định danh (Authelia) của Box mà không cần Docker:
 - cấu hình Authelia sinh từ mẫu không chứa bí mật dạng rõ (mọi bí mật đọc từ tệp trong thư mục bí mật qua biến *_FILE),
   luật truy cập theo nhóm (đánh giá như Authelia: luật đầu tiên khớp thắng), cookie đặt cho tên box.<mã>.onebee.internal;

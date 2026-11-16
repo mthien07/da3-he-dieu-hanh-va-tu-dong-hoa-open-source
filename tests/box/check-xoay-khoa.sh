@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra xoay khóa (rà soát bảo mật Pha 4b) trên máy test, sau khi Box + máy trạm ketoan-01 chạy ở chế độ HTTP:
 # xoay khóa máy (mật khẩu kho HTTP cũ hết hiệu lực, khóa Trợ lý AI của máy cũ hết hiệu lực, máy nhận mật khẩu mới qua dong-bo-may,
 # sao lưu vẫn chạy) → xoay khóa Box (mật khẩu trình soạn luồng mới dùng được, cũ bị từ chối; khóa webhook của động cơ quy trình

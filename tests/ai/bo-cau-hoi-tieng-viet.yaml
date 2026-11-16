@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Bộ câu hỏi chấm Trợ lý OneBee (model + lời dặn hệ thống). Anh/chị duyệt nội dung trước khi chấm thật.
 # Cấu trúc mỗi câu:
 #   bat_buoc: danh sách "ý"; mỗi ý là danh sách cách viết tương đương (khớp 1 cách là đạt ý đó)

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra quản lý tập trung (chạy trên máy test, sau khi máy trạm ketoan-01 đã cài OneBee OS với cấu hình từ Box):
 # máy trạm báo tình trạng → Box in bảng + cảnh báo; khóa sai/tên bậy bị chặn; Box cập nhật máy trạm qua SSH;
 # SSH máy trạm chỉ nhận khóa của Box từ IP của Box, không nhận mật khẩu.
@@ -18,9 +20,9 @@ tram 'mkdir -p /run/sshd && /usr/sbin/sshd
   grep -qx "passwordauthentication no" <<<"${t}" && grep -qx "permitrootlogin no" <<<"${t}"
   grep -qx "allowusers onebee-quantri" <<<"${t}" && grep -qx "maxauthtries 3" <<<"${t}"
   echo "PASS  Máy trạm: tài khoản quản trị của Box (ẩn, chỉ nhận khóa từ IP Box), SSH tắt đăng nhập mật khẩu và root, chỉ cho tài khoản quản trị"
-  # Ứng dụng Sổ điều hành chỉ tồn tại trên tên Box ở chế độ HTTPS: máy chưa bật HTTPS thì KHÔNG còn mục menu trỏ biểu mẫu n8n cũ
+  # Ứng dụng Sổ điều hành chỉ tồn tại trên tên Box ở chế độ HTTPS: máy chưa bật HTTPS thì KHÔNG còn mục menu trỏ biểu mẫu cũ
   ! grep -q "form/onebee-ho-tro\|:5678" /etc/onebee-ho-tro.conf /usr/share/applications/onebee-bao-ho-tro.desktop 2>/dev/null \
-    || { echo "FAIL  Chế độ HTTP còn mục menu trỏ biểu mẫu n8n cũ"; exit 1; }
+    || { echo "FAIL  Chế độ HTTP còn mục menu trỏ biểu mẫu cũ"; exit 1; }
   [ ! -e /etc/onebee-ho-tro.conf ] && [ ! -e /usr/share/applications/onebee-bao-ho-tro.desktop ] \
     || { echo "FAIL  Chế độ HTTP còn mục menu Báo cần hỗ trợ trỏ tới tuyến không tồn tại"; exit 1; }
   box_ip="$(sed -n "s/^BOX_IP=//p" /etc/onebee/may-tram.env)"

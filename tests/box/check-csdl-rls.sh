@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # shellcheck disable=SC2015,SC2016,SC2317,SC2329  # pass luôn thành công (A && pass || fail đúng nghĩa); lệnh docker giả viết trong nháy đơn; don chạy qua trap
 # Kiểm lược đồ và phân quyền tới cấp dòng (RLS) của OneBee Box trên PostgreSQL THẬT: dựng một container từ đúng image đã ghim
 # trong group_vars/all.yml (không mạng, không công bố cổng), áp dụng lược đồ bằng chính công cụ của bộ cài (onebee-luoc-do.sh),

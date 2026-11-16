@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử: bộ gõ tiếng Việt (Telex) không được thêm dấu vào ô mật khẩu của Firefox.
 ibus-bamboo không phân biệt ô mật khẩu, nên role vietnamese đặt chính sách Firefox intl.ime.use_simple_context_on_password_field
 (ô mật khẩu dùng ngữ cảnh nhập đơn giản, phím không qua IBus) vào file chính sách dùng chung của máy, và chính sách đó phải

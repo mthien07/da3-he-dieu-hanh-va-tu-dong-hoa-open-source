@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm tra kho mẫu soạn văn bản và kho tri thức được dịch vụ Trợ lý AI nạp vào CSDL (không cần Docker).
 
 Tệp mẫu và tài liệu phải nằm đúng thư mục role box-ai chép vào container; lệnh quản trị phải nối đúng vào

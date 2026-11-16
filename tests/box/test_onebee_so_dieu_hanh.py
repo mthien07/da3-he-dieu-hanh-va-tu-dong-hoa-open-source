@@ -261,7 +261,7 @@ class BoCaiVaNoiTrang(unittest.TestCase):
         for tep in ("so-dieu-hanh.css", "so-dieu-hanh.js", "portal/site/so-dieu-hanh/index.html"):
             self.assertIn(tep, noi_dung)
 
-    def test_trang_chu_tro_toi_ung_dung_thay_bieu_mau_n8n(self):
+    def test_trang_chu_tro_toi_ung_dung_thay_bieu_mau_cu(self):
         h = render(os.path.join(STACK, "templates/index.html.j2"), onebee_box_ten_mdns="onebee", onebee_https_hieu_luc=True)
         self.assertIn('href="/so-dieu-hanh/"', h)
         self.assertIn("Sổ điều hành", h)
@@ -290,7 +290,7 @@ class TuyenCaddy(unittest.TestCase):
     """Không cần Caddy thật (bài có Caddy thật ở test_onebee_caddy_sso.py): kiểm văn bản Caddyfile sinh ra."""
 
     def caddyfile(self, **them):
-        return render(os.path.join(STACK, "templates/Caddyfile.j2"), onebee_box_ports={"portal": 80, "open_webui": 3000, "n8n": 5678,
+        return render(os.path.join(STACK, "templates/Caddyfile.j2"), onebee_box_ports={"portal": 80,
                                                                                          "rest_server": 8000, "uptime_kuma": 3001}, **them)
 
     def khoi(self, nd, mo_dau):

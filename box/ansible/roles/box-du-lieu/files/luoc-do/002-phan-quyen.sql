@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: MIT
+-- Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 -- Vai trò và phân quyền tới cấp dòng (RLS). Mọi quyền được kiểm ở CSDL, không dựa vào kiểm tra phía ứng dụng.
 -- xac_thuc: dịch vụ dữ liệu (PostgREST) đăng nhập bằng vai trò này, không có quyền trên bảng nào; với mỗi yêu cầu nó chuyển sang
 -- vai trò ghi trong JWT (claim role) do cầu nối danh tính ký. Không có vai trò ẩn danh: yêu cầu không có JWT bị từ chối (401).

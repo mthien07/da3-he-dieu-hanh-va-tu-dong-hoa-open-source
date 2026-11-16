@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Bản chạy thử công khai: nạp dữ liệu giả lập, tự đặt lại lúc 03:00 mỗi ngày, tạo tài khoản mẫu.
 # Bật bằng onebee_box_che_do_demo trong group_vars; tắt thì gỡ bộ hẹn giờ và không nạp lại dữ liệu.
 # Chạy sau box-du-lieu (lược đồ đã áp dụng) và box-dinh-danh (dịch vụ định danh đã chạy) — them-nguoi cần Authelia.

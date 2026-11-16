@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # check-rag-prompts.sh — Kiểm tra kho mẫu soạn văn bản, kho tri thức và hai đường /ai/ của dịch vụ Trợ lý AI.
 # Chạy độc lập, không cần Docker: chỉ đọc tệp trong repo.
 set -euo pipefail

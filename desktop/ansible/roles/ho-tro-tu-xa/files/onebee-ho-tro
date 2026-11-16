@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # onebee-ho-tro — cho kỹ thuật xem và điều khiển màn hình để hỗ trợ. CHỈ chạy khi người dùng tự bấm
 # (menu → "Cho phép hỗ trợ từ xa"). Mã 8 số dùng 1 lần, chỉ 1 kết nối, kỹ thuật vào thì người dùng bấm "Cho phép"
 # lần nữa; không ai vào sau 10 phút thì tự đóng; bấm "Dừng hỗ trợ" để ngắt ngay. Chỉ nhận kết nối từ LAN và Tailscale.

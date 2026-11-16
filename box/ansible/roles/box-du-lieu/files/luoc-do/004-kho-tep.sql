@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: MIT
+-- Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 -- Kho tệp: thêm khóa đối tượng trong SeaweedFS, trạng thái kiểm dịch và kết quả quét vào bảng metadata có sẵn.
 -- Dịch vụ kho tệp ghi/đọc bảng này qua cổng API bằng JWT của người dùng (RLS), không dùng quyền chủ CSDL.
 ALTER TABLE onebee.tep_dinh_kem

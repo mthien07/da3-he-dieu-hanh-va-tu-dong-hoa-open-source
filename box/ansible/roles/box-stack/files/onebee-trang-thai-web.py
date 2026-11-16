@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Số liệu tình trạng Box cho trang chủ (ô "Tình trạng hệ thống"): CPU, RAM, ổ dữ liệu còn trống, Trợ lý AI / thư mục chung / sao lưu.
 Ghi 1 tệp JSON tĩnh trong thư mục trang chủ để Caddy phục vụ (không mở thêm cổng hay API nào). Chỉ số phần trăm và trạng thái —
 không có tên máy, IP, tên người dùng. Lịch onebee-trang-thai-web.timer chạy mỗi phút.

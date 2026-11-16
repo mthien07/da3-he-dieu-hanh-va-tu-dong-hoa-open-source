@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra đăng nhập một lần (Authelia) + cổng API trên Box đã BẬT HTTPS (check-https.sh gọi bài này sau khi bật, trước khi tắt):
 # tạo tài khoản (mật khẩu tạm không vào nhật ký) → đăng nhập sai/đúng → /api/toi có/không phiên → JWT giả bị bỏ → /ai/ đòi phiên
 # → trang giám sát: chưa phiên thì sang trang đăng nhập, nhân viên 403, kỹ thuật qua hai lớp (ghi danh TOTP bằng mã xác minh) vào được

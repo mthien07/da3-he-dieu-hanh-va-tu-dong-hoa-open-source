@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Trợ lý AI của OneBee Box: cài mã dịch vụ, lời dặn, kho mẫu soạn văn bản và kho tri thức, chạy dịch vụ sau khi đã chép đủ tệp,
 # rồi nạp tri thức vào PostgreSQL. Dịch vụ khai trong docker-compose.yml của box-stack nhưng role này mới chạy nó
 # (giống box-dinh-danh: thiếu tệp gắn vào container thì Docker tạo thư mục rỗng đúng chỗ đó).

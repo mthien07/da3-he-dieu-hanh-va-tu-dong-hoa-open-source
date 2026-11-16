@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 // Quản lý bởi OneBee OS (box/ansible/roles/box-quy-trinh) — không sửa tay trên Box.
 // Mã các luồng của động cơ quy trình (Node-RED): mỗi nút function trong flows.json chỉ gọi xuLy('<điểm nhận>', msg).
 // Chỉ dùng thư viện chuẩn Node.js (không gói npm nào): gửi thư SMTP, kiểm khóa, ghi tình trạng máy trạm, gọi API dữ liệu qua Caddy.

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra Trợ lý AI thật trên Box: tải model trả lời + model nhúng → nạp kho tri thức vào PostgreSQL
 # → cấp khóa tạm → hỏi qua đường /ai/hoi (Caddy khi đã bật HTTPS, dịch vụ khi còn HTTP) → có câu trả lời tiếng Việt
 # kèm nguồn tham khảo và dòng nhắc kiểm tra → khóa sai/thiếu bị từ chối, đường khác 404 → thu hồi khóa tạm.

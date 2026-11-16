@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử: Firefox chạy tiếng Việt ngay sau khi cài.
 Gói firefox-locale-vi chỉ nạp được vào đúng phiên bản Firefox của nó và kho chỉ giữ bản mới nhất; máy cài từ ISO còn Firefox cũ thì
 Firefox chạy tiếng Anh, Trợ lý AI chọn tiếng Anh theo trình duyệt ở lần mở đầu rồi ghi nhớ. Role vietnamese phải nâng Firefox cùng

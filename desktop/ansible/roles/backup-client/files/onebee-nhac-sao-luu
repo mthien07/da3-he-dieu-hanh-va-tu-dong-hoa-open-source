@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """onebee-nhac-sao-luu — nhắc người đang đăng nhập khi máy đã nối OneBee Box mà quá 72 giờ chưa sao lưu (tối đa một lần mỗi ngày).
 Chạy bằng quyền người dùng (timer mức người dùng của systemd), chỉ đọc file công khai; mọi sự cố đều im lặng thoát mã 0.
 Mốc "lần cuối": /var/lib/onebee/sao-luu-cuoi (giây epoch do onebee-sao-luu ghi); chưa có hoặc hỏng thì tính từ lúc máy nối Box

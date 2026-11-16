@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Sinh / gia hạn CA riêng của Box (rà soát bảo mật F3, Pha 3): gốc (10 năm) + trung gian (1 năm), cả hai ràng buộc tên (critical):
 # chỉ được cấp chứng chỉ cho IP của Box (/32) và tên <mã đơn vị>.onebee.internal — lộ khóa CA cũng không giả được google.com hay router.
 # Khóa GỐC chỉ nằm trong thư mục này (0700), KHÔNG gắn vào container nào; Caddy chỉ nhận chứng chỉ gốc + khóa trung gian.

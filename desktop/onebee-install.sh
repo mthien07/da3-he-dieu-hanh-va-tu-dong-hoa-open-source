@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # OneBee OS Desktop — bộ cài chạy trên Linux Mint 22.x (nền Ubuntu 24.04 "noble").
 # Cách dùng:  sudo ./onebee-install.sh
 # Chạy lại nhiều lần an toàn: lần sau chỉ sửa những gì bị lệch so với chuẩn OneBee.

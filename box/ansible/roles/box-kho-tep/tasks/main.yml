@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kho tệp của OneBee Box (ADR 0006, QĐ5): SeaweedFS lưu đối tượng đã kiểm dịch; ClamAV quét từng lượt, không có clamd thường trú.
 # Dịch vụ khai trong docker-compose.yml của box-stack; role này dựng image ClamAV cục bộ (bỏ libclamunrar), tạo thư mục,
 # cài mã dịch vụ rồi mới chạy SeaweedFS và cổng tệp (box-stack không tự chạy: thiếu tệp/chữ ký thì dịch vụ lỗi ngay).
