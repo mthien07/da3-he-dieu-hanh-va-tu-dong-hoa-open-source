@@ -1,0 +1,133 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Động cơ quy trình OneBee Box (Node-RED 5.0.9, Apache-2.0): thay công cụ fair-code cũ.
+# Dịch vụ khai trong docker-compose.yml của box-stack; role này sinh đủ tệp TRƯỚC khi chạy container
+# (bài học: Docker tạo thư mục rỗng khi tệp gắn vào chưa có) rồi mới khởi chạy dịch vụ của mình.
+# Không công bố cổng: Caddy là cửa duy nhất; trình soạn luồng sau đăng nhập một lần + mật khẩu riêng của Node-RED.
+
+- name: Kiểm tra đã có mật khẩu hộp thư gửi (SMTP) chưa
+  ansible.builtin.stat:
+    path: "{{ onebee_box_secrets }}/smtp-password"
+  register: onebee_qt_smtp_pw_file
+
+- name: Kiểm tra mật khẩu trình soạn luồng đã có chưa
+  ansible.builtin.stat:
+    path: "{{ onebee_box_secrets }}/quy-trinh-soan-luong"
+  register: onebee_qt_soan_pw_file
+
+# Sinh một lần rồi giữ nguyên (lookup password chỉ ghi tệp khi chưa có). Xoay bằng onebee-box xoay-khoa --box.
+- name: Sinh mật khẩu trình soạn luồng và bản băm bcrypt
+  ansible.builtin.shell: |
+    set -o pipefail
+    mat_khau="$(set +o pipefail; LC_ALL=C head -c 512 /dev/urandom | tr -dc 'A-Za-z0-9' | head -c 24)"
+    umask 077
+    printf '%s' "${mat_khau}" >"{{ onebee_box_secrets }}/quy-trinh-soan-luong"
+    htpasswd -niBC 10 {{ onebee_quy_trinh_soan_user }} <<<"${mat_khau}" | cut -d: -f2 | tr -d '\n' \
+      >"{{ onebee_box_secrets }}/quy-trinh-soan-hash"
+    test -s "{{ onebee_box_secrets }}/quy-trinh-soan-hash"
+  args:
+    creates: "{{ onebee_box_secrets }}/quy-trinh-soan-hash"
+    executable: /bin/bash
+  no_log: true
+
+- name: Đọc khóa webhook, khóa tình trạng máy trạm và bản băm mật khẩu trình soạn
+  ansible.builtin.set_fact:
+    onebee_smtp_password: >-
+      {{ lookup('ansible.builtin.file', onebee_box_secrets ~ '/smtp-password')
+         if onebee_qt_smtp_pw_file.stat.exists else '' }}
+    onebee_webhook_key: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/quy-trinh-webhook-key',
+                            chars=['ascii_letters', 'digits'], length=32) }}"
+    onebee_tram_key: "{{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/tinh-trang-key',
+                         chars=['ascii_letters', 'digits'], length=32) if (onebee_box_khoa_tinh_trang_chung | bool) else '' }}"
+    onebee_quy_trinh_soan_hash: "{{ lookup('ansible.builtin.file', onebee_box_secrets ~ '/quy-trinh-soan-hash') }}"
+  no_log: true
+
+- name: Tạo thư mục cấu hình, dữ liệu và thư mục máy đã cấp
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - {path: "{{ onebee_box_dir }}/quy-trinh", owner: root, group: "1000", mode: "0750"}
+    - {path: "{{ onebee_box_data }}/node-red", owner: "1000", group: "1000", mode: "0700"}
+    - {path: "{{ onebee_box_data }}/may-da-cap", owner: root, group: "1000", mode: "0750"}
+    - {path: "{{ onebee_box_data }}/tinh-trang-may", owner: "1000", group: "1000", mode: "0700"}
+
+- name: Sinh cấu hình động cơ quy trình (cấu hình, settings.js, flows.json)
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ onebee_box_dir }}/quy-trinh/{{ item.dest }}"
+    owner: root
+    group: "1000"
+    mode: "0640"
+  loop:
+    - {src: cau-hinh.json.j2, dest: cau-hinh.json}
+    - {src: settings.js.j2, dest: settings.js}
+    - {src: flows.json.j2, dest: flows.json}
+  register: onebee_qt_cau_hinh
+
+- name: Cài mô-đun xử lý của động cơ quy trình
+  ansible.builtin.copy:
+    src: onebee-quy-trinh.js
+    dest: "{{ onebee_box_dir }}/quy-trinh/onebee-quy-trinh.js"
+    owner: root
+    group: "1000"
+    mode: "0640"
+  register: onebee_qt_mo_dun
+
+- name: Đặt chứng chỉ gốc CA cho mô-đun gọi lại API qua Caddy
+  ansible.builtin.copy:
+    src: "{{ onebee_box_secrets }}/ca/root.crt"
+    dest: "{{ onebee_box_dir }}/quy-trinh/ca.crt"
+    owner: root
+    group: "1000"
+    mode: "0644"
+  register: onebee_qt_ca
+
+# Luồng do bộ cài sinh là bản khởi tạo. Người dùng sửa luồng trong trình soạn thì giữ nguyên bản của họ:
+# chỉ chép khi chưa có, không ghi đè (bộ cài chạy lại không xóa việc đang làm).
+- name: Khởi tạo flows.json cho Node-RED (chỉ khi chưa có)
+  ansible.builtin.copy:
+    src: "{{ onebee_box_dir }}/quy-trinh/flows.json"
+    dest: "{{ onebee_box_data }}/node-red/flows.json"
+    remote_src: true
+    owner: "1000"
+    group: "1000"
+    mode: "0600"
+    force: false
+
+- name: Kiểm tra container động cơ quy trình đã có chưa
+  ansible.builtin.command: docker compose ps -q quy-trinh
+  args:
+    chdir: "{{ onebee_box_dir }}"
+  register: onebee_qt_container
+  changed_when: false
+
+- name: Khởi chạy / cập nhật động cơ quy trình
+  ansible.builtin.command: >-
+    docker compose up -d --no-deps
+    {{ '--force-recreate' if (onebee_qt_cau_hinh is changed or onebee_qt_mo_dun is changed or onebee_qt_ca is changed
+       or not onebee_qt_container.stdout) else '' }}
+    quy-trinh
+  args:
+    chdir: "{{ onebee_box_dir }}"
+  register: onebee_qt_up
+  changed_when: onebee_qt_up.stderr is search('Creat|Recreat|Start|Pull')
+  retries: 5
+  delay: 20
+  until: onebee_qt_up.rc == 0
+
+- name: Chờ động cơ quy trình sẵn sàng (kiểm bên trong container)
+  ansible.builtin.command: >-
+    docker compose exec -T quy-trinh node -e
+    "require('http').get('http://127.0.0.1:{{ onebee_quy_trinh_cong }}/webhook/suc-khoe',
+    r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+  args:
+    chdir: "{{ onebee_box_dir }}"
+  register: onebee_qt_health
+  until: onebee_qt_health.rc == 0
+  retries: 30
+  delay: 2
+  changed_when: false

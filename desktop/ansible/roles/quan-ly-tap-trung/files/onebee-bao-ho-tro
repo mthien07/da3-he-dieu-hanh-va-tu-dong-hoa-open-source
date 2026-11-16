@@ -32,7 +32,7 @@ def doc_dia_chi(tep):
 
 
 def dung_dia_chi(goc, may, loai="", mo_ta=""):
-    """Địa chỉ biểu mẫu kèm khóa query là tên trường của biểu mẫu n8n (may, loai, mo_ta); tham số rỗng thì bỏ."""
+    """Địa chỉ trang hỗ trợ kèm khóa query giữ tương thích bản cũ (may, loai, mo_ta); tham số rỗng thì bỏ."""
     if len(mo_ta) > MO_TA_TOI_DA:
         mo_ta = mo_ta[:MO_TA_TOI_DA] + "…"
     cap = [(k, v) for k, v in (("may", may), ("loai", loai), ("mo_ta", mo_ta)) if v]

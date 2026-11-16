@@ -149,7 +149,7 @@ class LuocDo(unittest.TestCase):
         self.assertNotRegex(bo_chu_thich(sql), r"timestamptz|with time zone")
 
     def test_danh_muc_khop_bieu_mau(self):
-        v = yaml.safe_load(open(os.path.join(ANSIBLE, "roles/box-n8n/vars/main.yml"), encoding="utf-8"))
+        v = yaml.safe_load(open(os.path.join(ANSIBLE, "roles/box-quy-trinh/vars/main.yml"), encoding="utf-8"))
         sql = sql_tat_ca()
 
         def danh_muc(cot):
@@ -158,9 +158,7 @@ class LuocDo(unittest.TestCase):
             return re.findall(r"'([^']*)'", m.group(1))
         self.assertEqual(danh_muc("loai"), v["onebee_ho_tro_loai"])
         self.assertEqual(danh_muc("cach_xu_ly"), v["onebee_ho_tro_cach_xu_ly"])
-        self.assertEqual(danh_muc("muc_do"), ["gap", "binh-thuong"])
-        bieu_mau = open(os.path.join(ANSIBLE, "roles/box-n8n/templates/workflows/07-yeu-cau-ho-tro.json.j2"), encoding="utf-8").read()
-        self.assertIn("gap ? 'gap' : 'binh-thuong'", bieu_mau)                    # giá trị n8n ghi vào sổ cũ
+        self.assertEqual(danh_muc("muc_do"), ["gap", "binh-thuong"])              # giá trị sổ cũ ghi; ứng dụng giai đoạn 4 dùng lại
 
     def test_ten_tep_luoc_do_dung_dang_va_khong_tu_mo_giao_dich(self):
         self.assertEqual([os.path.basename(f) for f in LUOC_DO], ["001-khoi-tao.sql", "002-phan-quyen.sql", "003-khung-nhin-tong-hop.sql"])

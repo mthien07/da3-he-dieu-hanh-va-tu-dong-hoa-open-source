@@ -62,7 +62,7 @@ Nội dung bám theo định hướng giải pháp Open Source, Linux, Harness E
 ### **3\. Tính khả thi**
 
 * **Khả thi về chi phí & giá cạnh tranh:** Phần mềm mã nguồn mở giúp giảm hoặc loại bỏ phần chi phí bản quyền phần mềm. [Unverified] Ví dụ nội bộ cần kiểm chứng bằng báo giá: doanh nghiệp 20 máy tính có thể tiết kiệm đáng kể chi phí bản quyền khi thay Windows/Office bằng Linux/LibreOffice, nhưng vẫn cần tính phí triển khai, đào tạo, bảo trì và chuyển đổi dữ liệu.
-* **Khả thi về công nghệ:** Linux, LibreOffice, n8n, Ollama/vLLM và các mô hình LLM/SLM mã nguồn mở là các thành phần có thể triển khai thử nghiệm theo mô hình tự host. Điểm khả thi của OneBee nằm ở năng lực cấu hình, đóng gói, hỗ trợ người dùng cuối và vận hành ổn định sau chuyển đổi.
+* **Khả thi về công nghệ:** Linux, LibreOffice, Node-RED, Ollama/vLLM và các mô hình LLM/SLM mã nguồn mở là các thành phần có thể triển khai thử nghiệm theo mô hình tự host. Điểm khả thi của OneBee nằm ở năng lực cấu hình, đóng gói, hỗ trợ người dùng cuối và vận hành ổn định sau chuyển đổi.
 * **Khả thi về tổ chức sản xuất:** Đội ngũ OneBee có thể chủ động ở các lớp cấu hình, đóng gói, tự động hóa và hỗ trợ vận hành. Việc dùng mã nguồn mở giúp giảm phụ thuộc nhà cung cấp, nhưng vẫn cần quản trị rủi ro về phần cứng, driver, cộng đồng dự án và chu kỳ cập nhật bảo mật.
 
 ### **4\. Thương mại hóa, thị trường**
@@ -75,7 +75,7 @@ Nội dung bám theo định hướng giải pháp Open Source, Linux, Harness E
 | Gói dịch vụ | Đối tượng | Nội dung | Giá |
 |---|---|---|---|
 | **Gói Starter** | HTX, Hộ KD nhỏ (≤5 máy) | Cài Ubuntu Desktop + LibreOffice + Ollama (AI cơ bản) | 5-10 triệu |
-| **Gói Business** | SME (5-20 máy) | Linux Server + Client + n8n + AI CLI + đào tạo | 20-40 triệu |
+| **Gói Business** | SME (5-20 máy) | Linux Server + Client + Node-RED + AI CLI + đào tạo | 20-40 triệu |
 | **Gói Enterprise** | Doanh nghiệp (20-100 máy) | Full stack: Server cluster + AI on-premise + Custom Distro | 50-150 triệu |
 | **Phí bảo trì** | Tất cả | Hỗ trợ kỹ thuật, cập nhật bảo mật, nâng cấp AI | 2-5 triệu/tháng |
 

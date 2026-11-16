@@ -2,7 +2,7 @@
 {% if onebee_https_hieu_luc | bool %}
 {% set cong = onebee_box_ports %}
 {% set kuma_san_sang = onebee_kuma_dia_chi | default('0.0.0.0') == '0.0.0.0' %}
-{% set cong_tls = [443, cong.open_webui, cong.n8n, cong.rest_server] + ([cong.uptime_kuma] if kuma_san_sang else []) %}
+{% set cong_tls = [443, cong.open_webui, cong.rest_server] + ([cong.uptime_kuma] if kuma_san_sang else []) %}
 {# Mỗi cổng TLS có 2 địa chỉ: IP của Box (LAN) và box.<mã>.onebee.internal (kỹ thuật vào qua Tailscale, thêm dòng /etc/hosts trỏ tới IP Tailscale của Box) #}
 {% macro dia_chi(c) %}https://{{ onebee_box_ip }}:{{ c }}, https://box.{{ onebee_box_ma_don_vi }}.onebee.internal:{{ c }}{% endmacro %}
 {# HTTPS (Pha 4): CA riêng đặt sẵn (gốc + trung gian, ràng buộc tên); Caddy chỉ cấp chứng chỉ lá cho IP của Box và box.<mã>.onebee.internal #}
@@ -142,12 +142,45 @@ https://{{ ten_box }}:443 {
 			respond "Chưa cài kho tệp trên OneBee Box" 503
 		}
 	}
+	# Điểm nhận của động cơ quy trình cho các script chạy trên chính Box (báo cáo sao lưu, cảnh báo, tình trạng máy trạm).
+	# Không có phiên đăng nhập: mỗi tuyến tự kiểm X-OneBee-Key (mô-đun onebee-quy-trinh.js), khóa chỉ root trên Box đọc được.
+	handle /webhook/* {
+		reverse_proxy quy-trinh:1880
+	}
+	redir /quy-trinh /quy-trinh/ 308
+	# Điểm duyệt đơn của ứng dụng: đường dẫn công khai /quy-trinh/webhook/..., bỏ tiền tố để Node-RED nhận đúng httpNodeRoot /webhook.
+	# Dưới /quy-trinh nên vẫn qua đăng nhập một lần (nhóm ky_thuat/quan_ly, hai lớp); Node-RED đọc Remote-User + cookie phiên.
+	handle /quy-trinh/webhook/* {
+		route {
+			import onebee_sso
+			request_body {
+				max_size 1MB
+			}
+			uri strip_prefix /quy-trinh
+			reverse_proxy quy-trinh:1880
+		}
+	}
+	# Trình soạn luồng: giữ nguyên đường dẫn vì Node-RED phục vụ trình soạn dưới httpAdminRoot /quy-trinh;
+	# Node-RED tự kiểm mật khẩu riêng của trình soạn (lớp hai độc lập với đăng nhập một lần).
+	handle /quy-trinh/* {
+		route {
+			import onebee_sso
+			request_body {
+				max_size 1MB
+			}
+			reverse_proxy quy-trinh:1880
+		}
+	}
 {% else %}
 	# Đăng nhập một lần đang TẠM TẮT (onebee-box tat-sso-tam): không ai vào được dữ liệu — không mở toang khi định danh hỏng
-	@tuyen_loi path /api/* /files/* /ai/*
+	@tuyen_loi path /api/* /files/* /ai/* /quy-trinh/*
 	handle @tuyen_loi {
 		header Content-Type "text/plain; charset=utf-8"
 		respond "Đăng nhập một lần đang tạm tắt để sửa — dữ liệu tạm khóa, thử lại sau" 503
+	}
+	# Điểm nhận webhook vẫn chạy để lệnh trên Box không hỏng khi kỹ thuật đang sửa đăng nhập
+	handle /webhook/* {
+		reverse_proxy quy-trinh:1880
 	}
 {% endif %}
 {{ trang_chu() }}}
@@ -155,14 +188,6 @@ https://{{ ten_box }}:443 {
 {{ dia_chi(cong.open_webui) }} {
 	import onebee_tls
 	reverse_proxy open-webui:8080 {
-		stream_close_delay 5m
-	}
-}
-
-{# Không thêm tiêu đề CSP ở đây: n8n tự đặt CSP sandbox cho biểu mẫu #}
-{{ dia_chi(cong.n8n) }} {
-	import onebee_tls
-	reverse_proxy n8n:5678 {
 		stream_close_delay 5m
 	}
 }
@@ -209,8 +234,13 @@ https://{{ onebee_box_ip }}:{{ cong.uptime_kuma }} {
 }
 {% endif %}
 {% else %}
-# Cổng 80: trang chủ cho mọi tên gọi Box (IP, {{ onebee_box_ten_mdns }}.local qua mDNS)
+# Cổng 80: trang chủ cho mọi tên gọi Box (IP, {{ onebee_box_ten_mdns }}.local qua mDNS).
+# Điểm nhận webhook vẫn chạy (khóa X-OneBee-Key từng tuyến) để sao lưu/cảnh báo không chờ bật HTTPS;
+# trình soạn luồng (/quy-trinh/) và các tuyến dữ liệu vẫn KHÔNG tồn tại khi HTTPS tắt.
 :80 {
+	handle /webhook/* {
+		reverse_proxy quy-trinh:1880
+	}
 	root * /srv
 	file_server
 	header {

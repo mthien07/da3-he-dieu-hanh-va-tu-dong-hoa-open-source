@@ -17,7 +17,7 @@ body:
         - OneBee Box (máy chủ)
         - Máy trạm OneBee OS Desktop
         - Trợ lý AI / lệnh hoi
-        - Quy trình tự động (n8n) / email
+        - Quy trình tự động (Node-RED) / email
         - Sao lưu / khôi phục
         - HTTPS / chứng chỉ
         - Tài liệu hướng dẫn
