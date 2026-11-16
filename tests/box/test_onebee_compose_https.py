@@ -80,6 +80,16 @@ class ComposeHaiCheDo(unittest.TestCase):
         self.assertEqual(s["ai-rag"]["healthcheck"]["test"][0], "CMD")
         self.assertIn("./ai-rag:/app:ro", s["ai-rag"]["volumes"])
 
+    def test_quy_trinh_co_healthcheck_rieng_khong_dung_cua_image(self):
+        # Kiểm tra mặc định của image đọc /data/settings.js (không có: cấu hình ở /cau-hinh) nên luôn "unhealthy"
+        for che_do in (False, True):
+            hc = ve(che_do)["quy-trinh"]["healthcheck"]
+            self.assertEqual(hc["test"][:2], ["CMD", "node"], che_do)
+            lenh = " ".join(hc["test"])
+            self.assertNotIn("/healthcheck.js", lenh)
+            self.assertIn("127.0.0.1:1880/quy-trinh/auth/login", lenh)   # cổng và đường dẫn gốc trình soạn trong settings.js
+            self.assertIn("start_period", hc)
+
     def test_ca_gui_den_cac_cong_cu_cung_mot_nguon(self):
         # image không đổi giữa hai chế độ → chuyển HTTP ↔ HTTPS không phải tải lại gì
         a, b = ve(False), ve(True)
