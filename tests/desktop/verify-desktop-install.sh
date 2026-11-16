@@ -53,6 +53,10 @@ check "Có file cấu hình định dạng mặc định LibreOffice" \
   grep -q 'MS Word 2007 XML' /usr/lib/libreoffice/share/registry/onebee-office-defaults.xcd
 
 check "Có hình nền OneBee" test -s /usr/share/backgrounds/onebee/onebee-wallpaper.png
+if [[ -d /usr/share/plymouth/themes && -x /usr/sbin/update-initramfs ]]; then
+  check "Màn hình khởi động OneBee là chủ đề Plymouth mặc định" bash -c \
+    "test -s /usr/share/plymouth/themes/onebee/onebee.script && update-alternatives --query default.plymouth | grep -q '^Value: /usr/share/plymouth/themes/onebee/onebee.plymouth$'"
+fi
 check "Có lệnh áp giao diện OneBee và tự chạy khi đăng nhập" bash -c \
   "test -x /usr/local/bin/onebee-ap-giao-dien && grep -q '^Exec=/usr/local/bin/onebee-ap-giao-dien$' /etc/xdg/autostart/onebee-ap-giao-dien.desktop"
 if [[ -f /usr/share/glib-2.0/schemas/org.cinnamon.desktop.background.gschema.xml ]]; then
