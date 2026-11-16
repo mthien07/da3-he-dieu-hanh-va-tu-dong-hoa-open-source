@@ -364,12 +364,13 @@ class OnebeeBoxShell(unittest.TestCase):
 
     def test_xoay_khoa_can_xac_nhan_va_dung_may(self):
         self.cap_may("ketoan-01", "10.1.1.5")
+        log = f"{self.t}/out/ai-rag.log"
+        truoc = open(log).read() if os.path.exists(log) else ""
         self.assertNotEqual(self.chay("xoay-khoa", "--may", "khong-co", "--dong-y", kiem=False).returncode, 0)
         self.assertNotEqual(self.chay("xoay-khoa", kiem=False).returncode, 0)
         r = subprocess.run([self.cmd, "xoay-khoa", "--may", "ketoan-01"], capture_output=True, text=True, env=self.env, input="khong\n")
         self.assertNotEqual(r.returncode, 0)                                                   # không gõ đúng câu xác nhận → hủy
-        log = f"{self.t}/out/ai-rag.log"
-        self.assertFalse(os.path.exists(log) and "khoa cap" in open(log).read())
+        self.assertEqual(open(log).read() if os.path.exists(log) else "", truoc)               # hủy thì không cấp khóa mới
 
     def test_xoay_khoa_box_doi_bi_mat_va_chay_bo_cai(self):
         for f, nd in (("webui-admin-password", "admin-cu"), ("quy-trinh-soan-luong", "soan-cu"), ("quy-trinh-soan-hash", "h-cu"), ("webui-secret-key", "sk-cu"),
