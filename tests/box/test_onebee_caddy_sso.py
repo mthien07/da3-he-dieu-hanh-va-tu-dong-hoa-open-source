@@ -127,7 +127,7 @@ class CaddySso(unittest.TestCase):
         open(f"{t}/srv/index.html", "w").write("OneBee Box trang chu")
         open(f"{t}/srv/trang-thai.json", "w").write("{}")
         open(f"{t}/srv-http/index.html", "w").write("huong dan cai CA")
-        cls.cong = {k: cong_trong() for k in ("portal", "open_webui", "n8n", "rest_server", "uptime_kuma", "http")}
+        cls.cong = {k: cong_trong() for k in ("portal", "open_webui", "rest_server", "uptime_kuma", "http")}
         cls.sv = {"authelia": may_chu(authelia), "postgrest": may_chu(ghi_va_tra(PHIA_SAU_THAY, "postgrest")),
                   "ollama": may_chu(ghi_va_tra(OLLAMA_THAY, "ollama")), "uptime-kuma": may_chu(ghi_va_tra(KUMA_THAY, "kuma")),
                   "khac": may_chu(ghi_va_tra(Ghi(), "khac"))}
@@ -156,7 +156,7 @@ class CaddySso(unittest.TestCase):
         v = yaml.safe_load(open(os.path.join(ROOT, "box/ansible/group_vars/all.yml"), encoding="utf-8"))
         v.update(onebee_box_ip="127.0.0.1", onebee_box_ma_don_vi="anphu", onebee_https_hieu_luc=True, onebee_kuma_dia_chi="0.0.0.0",
                  onebee_sso_hieu_luc=sso,
-                 onebee_box_ports={"portal": 80, "open_webui": c["open_webui"], "n8n": c["n8n"], "rest_server": c["rest_server"],
+                 onebee_box_ports={"portal": 80, "open_webui": c["open_webui"], "rest_server": c["rest_server"],
                                    "uptime_kuma": c["uptime_kuma"]})
         env = jinja2.Environment(keep_trailing_newline=True, trim_blocks=True)
         env.filters["bool"] = bool
@@ -166,7 +166,7 @@ class CaddySso(unittest.TestCase):
         nd = nd.replace("/srv-http", f"{t}/srv-http").replace("root * /srv\n", f"root * {t}/srv\n").replace("/pki/", f"{t}/pki/")
         p = {k: s.server_port for k, s in cls.sv.items()}
         for goc, moi in (("authelia:9091", cong_trong() if authelia_chet else p["authelia"]), ("cau-noi:8080", cls.cong_cau_noi), ("ollama:11434", p["ollama"]),
-                         ("uptime-kuma:3001", p["uptime-kuma"]), ("open-webui:8080", p["khac"]), ("n8n:5678", p["khac"]),
+                         ("uptime-kuma:3001", p["uptime-kuma"]), ("open-webui:8080", p["khac"]), ("quy-trinh:1880", p["khac"]),
                          ("rest-server:8000", p["khac"])):
             nd = nd.replace(goc, f"127.0.0.1:{moi}")
         open(f"{t}/Caddyfile", "w").write(nd)
@@ -293,7 +293,7 @@ class CaddySso(unittest.TestCase):
         self.assertEqual((ma, chuyen), ("308", f"https://{TEN}:{k}/dashboard"))
 
     def test_l_cac_cong_khac_giu_nguyen(self):
-        for cong in (self.cong["open_webui"], self.cong["n8n"], self.cong["rest_server"]):
+        for cong in (self.cong["open_webui"], self.cong["rest_server"]):
             ma, than, _, _ = curl("--cacert", f"{self.t}/ca/root.crt", f"https://127.0.0.1:{cong}/x")
             self.assertEqual(ma, "200", cong)
         self.assertEqual(AUTHELIA_THAY.ds, [])

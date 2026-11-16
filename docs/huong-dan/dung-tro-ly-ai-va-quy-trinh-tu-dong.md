@@ -52,20 +52,19 @@ Khi mọi nhân viên đã dùng khóa riêng: đặt `onebee_box_hoi_khoa_may: 
 rồi `sudo onebee-box go-khoa-hoi-may` (xóa các tài khoản `may-<tên>@onebee.lan`). Từ đó `them-may` thôi cấp khóa theo máy. Cấu hình địa chỉ ở `/etc/onebee-hoi.conf`;
 mật khẩu sao lưu ở `/etc/onebee/` chỉ root đọc được.
 
-**Đổi mật khẩu quản trị (Trợ lý AI, n8n) trên giao diện web**: ghi mật khẩu mới vào file tương ứng trong
+**Đổi mật khẩu quản trị (Trợ lý AI) trên giao diện web**: ghi mật khẩu mới vào file tương ứng trong
 `/etc/onebee-box/secrets/` (`webui-admin-password`) — nếu không, bộ cài vẫn chạy nhưng báo cảnh báo và không cập nhật được
-"Trợ lý OneBee". Tài khoản chủ n8n do bộ cài quản lý (`N8N_INSTANCE_OWNER_MANAGED_BY_ENV`) — **không đổi mật khẩu chủ
-n8n trên giao diện** (chưa kiểm n8n có đặt lại theo bộ cài hay không); dùng mật khẩu trong `in-khoa`.
+"Trợ lý OneBee". Mật khẩu trình soạn luồng do bộ cài quản lý — **không đổi trên giao diện Node-RED**; xoay bằng `sudo onebee-box xoay-khoa --box` rồi chạy lại bộ cài.
 
-## 3. Quy trình tự động (n8n, `http://<ip-box>:5678`)
-Tài khoản chủ tạo sẵn: `quantri@onebee.lan`, mật khẩu dòng `n8n-owner-password` trong `in-khoa`.
+## 3. Quy trình tự động (Node-RED, `https://box.<mã>.onebee.internal/quy-trinh/` sau đăng nhập một lần)
+Tài khoản trình soạn: `kythuat`, mật khẩu dòng `quy-trinh-soan-luong` trong `sudo onebee-box in-khoa` (nhóm `ky_thuat` đăng nhập một lần hai lớp trước).
 
 | Quy trình | Chạy khi | Kết quả |
 |---|---|---|
 | Báo cáo sao lưu | Sau mỗi lần sao lưu 23:00 (và `onebee-box email-thu`) | Email ĐẠT/LỖI + tình trạng từng máy trạm (sao lưu, cập nhật, ổ đĩa, mất liên lạc) |
 | Nhắc hạn nộp báo cáo, thuế | 7:30 hằng ngày | Email khi còn 7, 3, 1 ngày và đúng ngày hạn |
-| Tóm tắt văn bản PDF | Nhân viên mở `http://<ip-box>:5678/form/onebee-tom-tat` | Bản tóm tắt 3/5/7 ý (AI trên Box) |
-| Nhập đơn hàng | Nhân viên mở `http://<ip-box>:5678/form/onebee-don-hang` | Ghi vào thư mục chung `don-hang/` |
+| Tóm tắt văn bản PDF | Nhân viên mở mục Tóm tắt văn bản của Sổ điều hành (giai đoạn 4) | Bản tóm tắt 3/5/7 ý (AI trên Box) |
+| Nhập đơn hàng | Nhân viên mở mục Nhập đơn hàng của Sổ điều hành (giai đoạn 4) | Ghi thẳng CSDL `onebee.don_hang`, chờ quản lý duyệt |
 | Tổng hợp đơn hàng | 17:00 hằng ngày | Email số đơn, tổng tiền, theo mặt hàng |
 | Báo cần hỗ trợ | Nhân viên mở menu "Báo cần hỗ trợ" hoặc `/form/onebee-ho-tro` | Ghi sổ + email kỹ thuật (GẤP ghi ở tiêu đề) |
 | Xử lý yêu cầu hỗ trợ | Kỹ thuật mở `/form/onebee-xu-ly` (tài khoản `kythuat`) | Ghi cách xử lý, số phút |
@@ -98,6 +97,6 @@ Sửa `onebee_box_lich_han` trong `box/ansible/group_vars/all.yml` rồi chạy 
 - Email đi qua máy chủ thư của đơn vị (ra Internet) và **có chứa dữ liệu kinh doanh** (tên khách, số lượng, số tiền trong
   email tổng hợp đơn hàng). Không gửi văn bản PDF hay câu hỏi AI qua email.
 - Chưa kiểm trên máy thật; kiểm tự động trong container (xem `tests/README.md` — kết quả lần chạy gần nhất ghi trong changelog).
-- Nhập lại quy trình mẫu (khi nâng cấp) sẽ ghi đè chỉnh sửa trên giao diện n8n của các quy trình mẫu — muốn sửa riêng thì
+- Luồng mẫu chỉ là bản khởi tạo: bộ cài không ghi đè luồng đã sửa trong trình soạn Node-RED — muốn sửa riêng thì
   nhân bản quy trình rồi sửa bản sao.
-- n8n tự gọi `api.n8n.io` để tải danh mục máy chủ MCP (thấy trong nhật ký khi test). Chưa rà hết các kết nối ra ngoài khác của n8n.
+- Node-RED tắt kiểm bản mới, danh mục gói và thống kê; không cài thêm gói từ Internet (Box có thể không có mạng).

@@ -21,7 +21,7 @@
   <a href="docs/huong-dan/huong-dan-cai-dat-tu-a-den-z.md"><b>📖 Cài từ A đến Z</b></a> ·
   <a href="#-tài-liệu">Tài liệu</a> ·
   <a href="tests/README.md">Kiểm thử</a> ·
-  <a href="docs/kiem-thu-tren-may-that.md">Kết quả kiểm thử</a> ·
+  <a href="plans/reports/261010-kiem-thu-tren-may-that.md">Kết quả kiểm thử</a> ·
   <a href="SECURITY.md">Bảo mật</a> ·
   <a href="CONTRIBUTING.md">Đóng góp</a>
 </p>
@@ -37,14 +37,14 @@
 | Thành phần | Làm gì |
 |---|---|
 | **OneBee OS Desktop** | Bộ cài biến Linux Mint 22 thành máy văn phòng tiếng Việt: gõ Telex (IBus + Bamboo), LibreOffice lưu mặc định .docx/.xlsx, font thay thế giữ bố cục file Word, tự cập nhật, tự sao lưu lên Box, lệnh `hoi` hỏi Trợ lý AI, báo cần hỗ trợ, hỗ trợ từ xa có đồng ý |
-| **OneBee Box** | Bộ cài máy chủ nội bộ (Ubuntu Server 24.04): Trợ lý AI tiếng Việt chạy tại chỗ (Gemma 4 qua Ollama + Open WebUI), tự động hóa n8n gửi email (báo cáo sao lưu, nhắc hạn thuế/BHXH, đơn hàng, tóm tắt PDF, sổ hỗ trợ), thư mục chung, sao lưu 2 tầng chống mã độc tống tiền, quản lý và cập nhật máy trạm từ 1 lệnh |
+| **OneBee Box** | Bộ cài máy chủ nội bộ (Ubuntu Server 24.04): Trợ lý AI tiếng Việt chạy tại chỗ (Gemma 4 qua Ollama + Open WebUI), động cơ quy trình Node-RED gửi email (báo cáo sao lưu, nhắc hạn thuế/BHXH, đơn hàng, sổ hỗ trợ), thư mục chung, sao lưu 2 tầng chống mã độc tống tiền, quản lý và cập nhật máy trạm từ 1 lệnh |
 | **Dịch vụ** | Khảo sát → sao lưu nguyên ổ Windows → cài → đào tạo 3 buổi → bảo trì (theo dõi báo cáo hằng ngày, xử lý yêu cầu hỗ trợ có đo thời gian) |
 
 ```
  Máy trạm (Linux Mint + OneBee OS)                 OneBee Box (Ubuntu Server 24.04, trong LAN)
  ├─ gõ tiếng Việt, LibreOffice          sao lưu    ├─ Trợ lý AI: Open WebUI + Ollama (Gemma 4) — không gửi dữ liệu ra ngoài
  ├─ onebee-sao-luu (12:00)         ───────────────▶├─ restic rest-server (chỉ-thêm) → ổ ngoài 23:00
- ├─ onebee-bao-tinh-trang (mỗi giờ) ──────────────▶├─ n8n: email báo cáo, nhắc hạn, đơn hàng, sổ hỗ trợ, khảo sát
+ ├─ onebee-bao-tinh-trang (mỗi giờ) ──────────────▶├─ Node-RED: email báo cáo, nhắc hạn, đơn hàng, phê duyệt
  ├─ hoi "câu hỏi"                   ──────────────▶├─ Samba: thư mục chung
  └─ onebee-ho-tro (khi người dùng bấm)◀──SSH────── └─ onebee-box: them-may, may-tram, cap-nhat-may, bao-cao-tuan …
 ```
@@ -91,8 +91,8 @@ cd onebee && sudo ./desktop/onebee-install.sh
 - ✅ Đủ tính năng cho 1 đơn vị: máy trạm, Box, Trợ lý AI, quy trình email, quản lý máy trạm, hỗ trợ từ xa, sổ hỗ trợ + khảo sát,
   giám sát, HTTPS nội bộ (CA riêng của Box), xoay khóa, **khôi phục toàn bộ Box khi hỏng ổ**; giao diện quen thuộc như Windows
   (thanh tác vụ ghim sẵn ứng dụng, Win+E/D/L, LibreOffice dạng Ribbon).
-- ✅ Nghiệm thu tự động trong container ngày 14–15/10/2026 ([báo cáo](reports/nghiem-thu-v1-docker.md)):
-  **Box đầy đủ 127 PASS / 0 FAIL** với model sản phẩm `gemma4:e2b-it-qat` (cài 2 lần, AI, n8n qua email, sao lưu, máy trạm, quản lý tập trung,
+- ✅ Nghiệm thu tự động trong container ngày 14–15/10/2026 ([báo cáo](plans/reports/261014-nghiem-thu-v1-docker.md)):
+  **Box đầy đủ 127 PASS / 0 FAIL** với model sản phẩm `gemma4:e2b-it-qat` (cài 2 lần, AI, quy trình qua email, sao lưu, máy trạm, quản lý tập trung,
   tường lửa (cả khi dừng/bật lại Docker), hỏng ổ → khôi phục, bật/tắt HTTPS, xoay khóa, khởi động lại); **Desktop trong container Linux Mint 22.3 71 PASS / 0 FAIL**;
   cả hai bộ cài chạy lần 2 `changed=0 failed=0`. Unit test Box 119 + Desktop 62 + AI 17 bài; lint sạch.
 - ✅ Model AI chọn bằng bộ chấm 40 câu tiếng Việt (98%): [ADR 0003](docs/adr/0003-chon-model-ai-gemma.md), [reports/ai/](reports/ai/).
@@ -100,7 +100,7 @@ cd onebee && sudo ./desktop/onebee-install.sh
   4 gợi ý tiếng Việt và 4 mẫu soạn văn bản của Trợ lý AI, trang chủ Box có mục soạn văn bản và số máy trạm đã sao lưu.
   **Chưa kiểm trên máy thật**: chưa có file kết quả nào trong [reports/trai-nghiem/](reports/trai-nghiem/); phiếu kiểm: [kiem-thu-trai-nghiem-may-that.md](docs/kiem-thu-trai-nghiem-may-that.md).
 - ⏳ **Chưa cài trên máy thật tại đơn vị nào** (phiên Cinnamon thật, phần cứng, LAN thật, Windows mở thư mục chung, tốc độ AI) →
-  [phiếu kiểm thử máy thật](docs/kiem-thu-tren-may-that.md), [danh sách thử](docs/huong-dan/thu-nghiem-tren-may-ao.md).
+  [phiếu kiểm thử máy thật](plans/reports/261010-kiem-thu-tren-may-that.md), [danh sách thử](docs/huong-dan/thu-nghiem-tren-may-ao.md).
 - ⏳ Chạy thử 4 tuần tại HTX OneBee → số liệu thật cho giá, video hướng dẫn.
 
 Mọi con số về tốc độ, chi phí, tiết kiệm chỉ công bố khi có file đo trong `reports/`. Hiện **chưa có** số đo trên máy thật.
@@ -121,7 +121,7 @@ Mã nguồn repo: **MIT** ([LICENSE](LICENSE)). Thành phần giữ giấy phép
 | Linux Mint/Ubuntu, LibreOffice, IBus/Bamboo, Ollama, restic, Samba, Caddy, Uptime Kuma, x11vnc | Nguồn mở (chuẩn OSI) |
 | Gemma 4 | Apache-2.0 (theo model card — kiểm lại trước khi ghi vào hợp đồng) |
 | Open WebUI | BSD-3 + điều khoản thương hiệu (không gỡ/đổi thương hiệu khi > 50 người dùng) |
-| n8n | Sustainable Use License — **fair-code, không phải nguồn mở chuẩn OSI**; chỉ cài cho nhu cầu nội bộ của khách |
+| Node-RED | Apache-2.0 — nguồn mở chuẩn OSI; thay động cơ quy trình fair-code cũ |
 
 ## 🖥️ Demo web và hồ sơ hội thi
 `demo/index.html` là giao diện **mô phỏng** (số liệu minh họa, không chạy AI thật). Hồ sơ dự thi: `docs/hoi-thi/`.

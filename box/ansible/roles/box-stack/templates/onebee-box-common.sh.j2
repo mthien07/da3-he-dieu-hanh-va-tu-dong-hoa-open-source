@@ -58,7 +58,7 @@ may_da_cap() {
   done
 }
 
-# Thư mục file đánh dấu máy đã cấp: n8n (gắn chỉ đọc) chỉ nhận báo cáo tình trạng của máy có file <tên> ở đây.
+# Thư mục file đánh dấu máy đã cấp: động cơ quy trình (gắn chỉ đọc) chỉ nhận báo cáo tình trạng của máy có file <tên> ở đây.
 # In "đã đổi" khi có thay đổi (để bộ cài Ansible báo changed đúng)
 MAY_DA_CAP_DIR="${DATA}/may-da-cap"
 dong_bo_ten_may() {
@@ -151,7 +151,21 @@ THONG_BAO_TEP="${DATA}/authelia/thong-bao.txt"         # mã xác minh ghi danh 
 NHOM_NGUOI_DUNG=({{ onebee_box_nhom_nguoi_dung | join(' ') }})
 nguoi_dung_py() { python3 -I /usr/local/lib/onebee-box/onebee-nguoi-dung.py "$@"; }
 AI_PORT="{{ onebee_box_ports.open_webui }}"
-N8N_PORT="{{ onebee_box_ports.n8n }}"
+
+# ---- Động cơ quy trình (role box-quy-trinh): không công bố cổng, chỉ gọi được qua Caddy trên tên Box ----
+TEN_BOX="box.{{ onebee_box_ma_don_vi }}.onebee.internal"
+QUY_TRINH_GOC="https://${TEN_BOX}"
+CA_BOX="${SECRETS}/ca/root.crt"
+# Địa chỉ gốc của động cơ quy trình: HTTPS qua tên Box (sau Caddy, có CA riêng) hay HTTP qua cổng 80 của Caddy khi chưa bật HTTPS
+quy_trinh_goc() { if https_bat; then printf 'https://%s' "${TEN_BOX}"; else printf 'http://127.0.0.1'; fi; }
+# quy_trinh_curl: gọi webhook qua Caddy trên chính Box (không phụ thuộc DNS của LAN)
+quy_trinh_curl() {
+  if https_bat; then
+    curl --cacert "${CA_BOX}" --resolve "${TEN_BOX}:443:127.0.0.1" -fsS -m 30 "$@"
+  else
+    curl -fsS -m 30 "$@"
+  fi
+}
 
 # ---- Dữ liệu cấu trúc (role box-du-lieu): PostgreSQL trong container onebee-postgres, chỉ nối qua docker exec ----
 KET_XUAT_DIR="${DATA}/postgres-ket-xuat"   # onebee.dump (sao lưu đêm) + truoc-luoc-do-*.dump (trước mỗi lần đổi lược đồ)
@@ -205,5 +219,5 @@ cho_csdl() {
   done
   return 1
 }
-# Chuyển sổ cũ (CSV n8n còn ghi, JSON tình trạng máy) vào CSDL: chạy lại nhiều lần, chỉ nạp dòng mới
+# Chuyển sổ cũ (CSV bản cũ còn ghi, JSON tình trạng máy) vào CSDL: chạy lại nhiều lần, chỉ nạp dòng mới
 chuyen_du_lieu() { python3 -I /usr/local/lib/onebee-box/onebee-chuyen-du-lieu.py "${DATA}"; }

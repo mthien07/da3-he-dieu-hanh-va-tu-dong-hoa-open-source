@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+---
+# Kiểm kê mười quy trình của công cụ cũ và chỗ thay thế trên Node-RED. Cột webhook trống = việc nay nằm trong
+# ứng dụng Sổ điều hành (giai đoạn 4) hoặc do lệnh onebee-box làm trực tiếp, không cần điểm nhận riêng.
+onebee_quy_trinh_flows:
+  - {ma: 01-bao-cao-sao-luu, webhook: /onebee-bao-cao-sao-luu, noi_thay: 'luồng nền gửi thư báo cáo sao lưu'}
+  - {ma: 02-nhac-han-bao-cao-thue, webhook: '', noi_thay: 'lịch 07:30 trong luồng nền (thư nhắc hạn)'}
+  - {ma: 03-tom-tat-van-ban, webhook: '', noi_thay: 'trang Trợ lý AI (/ai/)'}
+  - {ma: 04-nhap-don-hang, webhook: '', noi_thay: 'ứng dụng Sổ điều hành (giai đoạn 4), ghi thẳng CSDL'}
+  - {ma: 05-tong-hop-don-hang, webhook: /onebee-tong-hop-don-hang, noi_thay: 'lịch 07:30 đọc CSDL rồi gửi thư'}
+  - {ma: 06-nhan-tinh-trang-may-tram, webhook: /onebee-tinh-trang, noi_thay: 'điểm nhận lưu nguyên bao bì có chữ ký'}
+  - {ma: 07-yeu-cau-ho-tro, webhook: '', noi_thay: 'ứng dụng Sổ điều hành (giai đoạn 4)'}
+  - {ma: 08-xu-ly-yeu-cau, webhook: '', noi_thay: 'ứng dụng Sổ điều hành (giai đoạn 4)'}
+  - {ma: 09-khao-sat-hai-long, webhook: '', noi_thay: 'ứng dụng Sổ điều hành (giai đoạn 4)'}
+  - {ma: 10-canh-bao-su-co, webhook: /onebee-canh-bao, noi_thay: 'điểm nhận gửi thư cảnh báo'}
+
+# Điểm nhận do luồng nền mở (mỗi điểm một nút function gọi xuLy('<tên>', msg) trong onebee-quy-trinh.js)
+onebee_quy_trinh_diem_nhan:
+  - {ten: suc-khoe, duong_dan: /suc-khoe, phuong_thuc: get}
+  - {ten: bao-cao-sao-luu, duong_dan: /onebee-bao-cao-sao-luu, phuong_thuc: post}
+  - {ten: nhac-han, duong_dan: /onebee-nhac-han, phuong_thuc: post}
+  - {ten: tong-hop-don-hang, duong_dan: /onebee-tong-hop-don-hang, phuong_thuc: post}
+  - {ten: tinh-trang, duong_dan: /onebee-tinh-trang, phuong_thuc: post}
+  - {ten: canh-bao, duong_dan: /onebee-canh-bao, phuong_thuc: post}
+  - {ten: phe-duyet, duong_dan: /onebee-phe-duyet, phuong_thuc: post}
+
+# Danh mục dùng cho sổ hỗ trợ (lược đồ CSDL và ứng dụng Sổ điều hành dùng chung)
+onebee_ho_tro_loai:
+  - File không mở được / sai định dạng
+  - Phần mềm chỉ chạy trên Windows
+  - Máy in / máy quét
+  - Mạng / Internet
+  - Gõ tiếng Việt
+  - Máy chậm / treo
+  - Sao lưu / mất file
+  - Khác
+onebee_ho_tro_cach_xu_ly:
+  - Hướng dẫn người dùng
+  - Sửa cấu hình
+  - Cài thêm phần mềm
+  - Thay phần cứng
+  - Quay về Windows (máy/phần mềm)
+  - Chưa xử lý được
+
+# Cổng nội bộ container (không công bố ra LAN; Caddy là cửa duy nhất)
+onebee_quy_trinh_cong: 1880
+onebee_quy_trinh_soan_user: kythuat

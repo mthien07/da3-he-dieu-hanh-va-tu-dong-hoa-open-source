@@ -60,7 +60,7 @@ class DanhGia(unittest.TestCase):
 
 
 def bao_cao_ky(bi_mat, ten, tt, nhan_luc=None, mat_khau="mat-khau-kho-ketoan-01", gui_luc=None):
-    """Tạo file <ten>.json như n8n ghi cho báo cáo có chữ ký, và file bí mật may-<ten>-repo như Box lưu."""
+    """Tạo file <ten>.json như động cơ quy trình ghi cho báo cáo có chữ ký, và file bí mật may-<ten>-repo như Box lưu."""
     now = time.time()
     du_lieu = json.dumps(dict(tt, ten=ten, gui_luc=now if gui_luc is None else gui_luc))
     return {"ten": ten, "dinh_dang": 2, "du_lieu": du_lieu, "ky": mt.ky_bao_cao(mat_khau, du_lieu),
@@ -68,7 +68,7 @@ def bao_cao_ky(bi_mat, ten, tt, nhan_luc=None, mat_khau="mat-khau-kho-ketoan-01"
 
 
 class ChuKy(unittest.TestCase):
-    """Rà soát bảo mật F2: báo cáo có chữ ký suy từ mật khẩu kho sao lưu; n8n không giữ khóa → không giả được."""
+    """Rà soát bảo mật F2: báo cáo có chữ ký suy từ mật khẩu kho sao lưu; động cơ quy trình không giữ khóa → không giả được."""
 
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -114,7 +114,7 @@ class ChuKy(unittest.TestCase):
 
     def test_sai_mat_khau_sua_noi_dung_ten_lech_dong_ho(self):
         now = time.time()
-        # 1) ký bằng mật khẩu khác (máy giả / n8n bị chiếm không biết mật khẩu kho)
+        # 1) ký bằng mật khẩu khác (máy giả / kẻ chiếm động cơ quy trình không biết mật khẩu kho)
         self.ghi("ketoan-01", bao_cao_ky(self.bi_mat, "ketoan-01", {}, mat_khau="doan-mo"))
         self.assertEqual(self.doc()["_ky"], "sai")
         # 2) sửa nội dung sau khi ký (đổi IP)

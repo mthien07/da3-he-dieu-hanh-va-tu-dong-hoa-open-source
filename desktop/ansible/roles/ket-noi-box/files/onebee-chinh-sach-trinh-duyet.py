@@ -72,7 +72,7 @@ def rang_buoc(file_pem):
     return cidr, dns
 
 
-DICH_VU = [("Trợ lý AI", 3000, ""), ("Tự động hóa (n8n)", 5678, ""), ("Giám sát", 3001, ""),
+DICH_VU = [("Trợ lý AI", 3000, ""), ("Quy trình tự động", 443, "quy-trinh/"), ("Giám sát", 3001, ""),
            ("Báo cần hỗ trợ", 5678, "form/onebee-ho-tro"), ("Nhập đơn hàng", 5678, "form/onebee-don-hang")]
 
 

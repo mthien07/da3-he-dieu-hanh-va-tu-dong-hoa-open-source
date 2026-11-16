@@ -179,12 +179,12 @@ for x in "onebee-authelia onebee-box_sso " "onebee-cau-noi onebee-box_api onebee
   m="$(docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' "${ct}")"
   [ "${m}" = "${x#* }" ] || { echo "FAIL  ${ct} nằm ngoài mạng riêng: ${m}"; exit 1; }
 done
-# n8n (nút Code chạy mã tùy ý) nằm ở mạng default: không phân giải/không nối được tới cầu nối và dịch vụ định danh
+# Động cơ quy trình (trình soạn luồng chạy mã tùy ý) nằm ở mạng default: không phân giải/không nối được tới cầu nối và dịch vụ định danh
 for dich in http://cau-noi:8080/api/toi http://authelia:9091/api/health; do
-  docker exec onebee-n8n node -e "fetch('${dich}', {signal: AbortSignal.timeout(5000)}).then(() => process.exit(0), () => process.exit(7))" && rc=0 || rc=$?
-  [ "${rc}" = 7 ] || { echo "FAIL  n8n gọi thẳng được ${dich} (mã ${rc})"; exit 1; }
+  docker exec onebee-quy-trinh node -e "fetch('${dich}', {signal: AbortSignal.timeout(5000)}).then(() => process.exit(0), () => process.exit(7))" && rc=0 || rc=$?
+  [ "${rc}" = 7 ] || { echo "FAIL  động cơ quy trình gọi thẳng được ${dich} (mã ${rc})"; exit 1; }
 done
-echo 'PASS  onebee-authelia, onebee-cau-noi không công bố cổng (docker port rỗng), chỉ ở mạng sso (cầu nối thêm mạng api); n8n không gọi thẳng được cầu nối'
+echo 'PASS  onebee-authelia, onebee-cau-noi không công bố cổng (docker port rỗng), chỉ ở mạng sso (cầu nối thêm mạng api); động cơ quy trình không gọi thẳng được cầu nối'
 EOF
 
 echo "===== ĐĂNG NHẬP MỘT LẦN: XOAY KHÓA ====="
