@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Dữ liệu cấu trúc của OneBee Box (ADR 0006): PostgreSQL + pgvector và API tự sinh PostgREST sau cầu nối danh tính.
 # Dịch vụ khai trong docker-compose.yml của box-stack; role này chạy CSDL, áp dụng lược đồ có ghi sổ, đặt mật khẩu vai trò,
 # rồi mới chạy PostgREST. Chạy sau box-dinh-danh (khóa ký JWT dùng chung với cầu nối đã có).

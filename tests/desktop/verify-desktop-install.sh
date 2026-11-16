@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra kết quả cài OneBee OS Desktop trên máy (hoặc container) vừa chạy onebee-install.sh.
 # In PASS/FAIL từng mục, thoát mã 1 nếu có mục FAIL.
 set -uo pipefail

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # shellcheck disable=SC2016  # thân các lệnh giả viết trong nháy đơn: biến phải mở rộng lúc lệnh giả chạy, không phải lúc tạo
 # Kiểm thử lệnh "onebee-box chan-doan" (8 hạng mục: mạng, tài nguyên, Docker, Trợ lý AI, Samba, kho tệp, sao lưu, chứng chỉ) mà KHÔNG cần Box thật:
 # dựng các mẫu .j2 thành lệnh trong thư mục tạm, thay ping/ip/docker/systemctl/restic/mountpoint/runuser/df/tailscale bằng bản GIẢ

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử docker-compose.yml.j2 ở hai chế độ HTTP / HTTPS (không cần Docker): chỉ Caddy công bố cổng khi HTTPS,
 cấu hình ứng dụng đổi đúng (động cơ quy trình không cổng riêng, cookie Secure, CORS), chế độ HTTP giữ nguyên cổng như trước và vẫn giới hạn CORS.
 Chạy: python3 -m unittest"""

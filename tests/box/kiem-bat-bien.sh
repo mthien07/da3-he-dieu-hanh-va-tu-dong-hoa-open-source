@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # kiem-bat-bien.sh — Bất biến bảo mật của OneBee Box (chạy trên Box bằng root, cả chế độ HTTP và HTTPS):
 # chỉ Caddy công bố cổng; dịch vụ backend không lộ cổng; tuyến lõi (/api/, /files/, /ai/, /quy-trinh/) chỉ vào được
 # sau đăng nhập một lần; trình soạn luồng không phiên thì không vào được; điểm nhận webhook tự kiểm X-OneBee-Key;

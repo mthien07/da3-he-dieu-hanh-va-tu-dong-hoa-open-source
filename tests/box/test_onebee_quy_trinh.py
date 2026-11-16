@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Động cơ quy trình Node-RED của Box (role box-quy-trinh), không cần Docker:
 - compose: dịch vụ quy-trinh không công bố cổng, ghim tag + digest, không tự nâng quyền, không vào mạng sso/api/csdl,
   danh sách máy đã cấp (may-da-cap) và cấu hình gắn CHỈ ĐỌC; Caddy có tên Box trong mạng default (Node-RED gọi lại /api/ qua Caddy);

@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: MIT
+-- Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 -- Trợ lý AI tra cứu tri thức (pgvector) và nhật ký hỏi đáp. Bộ cài áp dụng MỘT lần; đã áp dụng thì không sửa tệp này — thay đổi tiếp là tệp mới.
 -- Bảng tai_lieu_tri_thuc và lich_su_hoi_ai đã có (RLS bật và ép) từ tệp 001, chưa cấp quyền cho vai trò nào.
 -- Đọc tri thức: mọi nhân viên (kỹ thuật và quản lý thừa hưởng nhan_vien). Ghi tri thức: chỉ chủ CSDL, qua `onebee-box nap-tri-thuc`.

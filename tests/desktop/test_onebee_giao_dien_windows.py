@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử nhanh cho giao diện kiểu Windows (role theme + office): file override gsettings, ghim ứng dụng, Ribbon LibreOffice.
 Không cần Cinnamon/LibreOffice thật. Chạy: python3 -m unittest"""
 import configparser

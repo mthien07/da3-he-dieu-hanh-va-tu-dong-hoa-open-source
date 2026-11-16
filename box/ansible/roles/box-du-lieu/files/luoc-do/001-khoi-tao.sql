@@ -1,3 +1,5 @@
+-- SPDX-License-Identifier: MIT
+-- Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 -- Lược đồ dữ liệu tác nghiệp của OneBee Box (PostgreSQL + pgvector). Bộ cài áp dụng MỘT lần, ghi vào onebee.lich_su_luoc_do;
 -- đã áp dụng thì không sửa tệp này nữa — thay đổi lược đồ luôn là tệp mới có số tiếp theo.
 -- Thời gian: timestamp without time zone theo giờ Việt Nam, khớp dạng yyyy-MM-dd HH:mm của sổ cũ (CSV do bản cũ ghi).

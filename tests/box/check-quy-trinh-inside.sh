@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # check-quy-trinh-inside.sh — Kiểm động cơ quy trình Node-RED trên Box (chạy trên Box bằng root).
 # Không cần cổng công bố: gọi thẳng Node-RED trong container (127.0.0.1:1880, httpNodeRoot /webhook) và gửi thư qua Mailpit giả lập.
 #

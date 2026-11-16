@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Hướng dẫn dùng Trợ lý AI OneBee: Trợ lý hỏi bằng lệnh `hoi` trong cửa sổ dòng lệnh (không còn giao diện web riêng).
 # Mục menu này chỉ hiện hướng dẫn; cấu hình khóa nằm trong /etc/onebee-hoi.conf do bộ cài tạo.
 set -uo pipefail

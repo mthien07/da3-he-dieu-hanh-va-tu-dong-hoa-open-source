@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử việc áp hình nền OneBee cho người dùng: script chạy một lần theo phiên bản giao diện, đăng nhập tự áp,
 bộ cài áp ngay cho phiên đồ họa đang mở. Không cần Cinnamon thật (gsettings giả). Chạy: python3 -m unittest"""
 import os

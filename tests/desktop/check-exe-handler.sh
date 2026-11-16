@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra bộ trợ lý file cài đặt Windows (.exe, .msi) và gợi ý ứng dụng thay thế (Task 03)
 # In PASS/FAIL từng mục, thoát mã 1 nếu có lỗi.
 set -uo pipefail

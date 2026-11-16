@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử Task 01 — tên onebee.local (avahi mDNS) và trang chủ Dashboard cổng 80 của Box (không cần Box thật).
 Kiểm: box-base cài + bật avahi-daemon, cấu hình chỉ quảng bá IPv4 trên cổng mạng chính, không lộ thông tin máy, tệp dịch vụ http cổng 80;
 trang chủ có tên đơn vị (thoát HTML), lối tắt, cẩm nang, ô tình trạng, không tải gì từ Internet;
@@ -141,7 +143,7 @@ class TrangChu(unittest.TestCase):
         self.assertIn("hoi &lt;câu hỏi&gt;", h)
         self.assertNotIn('data-port="3000"', h)                                       # không còn cổng 3000 ra LAN
         self.assertIn('data-port="443" data-path="quy-trinh/"', h)                   # Quy trình tự động (Node-RED) sau đăng nhập một lần
-        self.assertIn("Sổ điều hành", h)                                              # ứng dụng H-P-D-I thay biểu mẫu n8n
+        self.assertIn("Sổ điều hành", h)                                              # ứng dụng H-P-D-I thay biểu mẫu cũ
         self.assertIn("Bật HTTPS", h)                                                 # ở chế độ HTTP, ứng dụng chưa tồn tại
         self.assertNotIn("form/onebee-ho-tro", h)
         self.assertIn('id="smb-win"', h)                                              # \\onebee.local\chung (Windows)

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử dịch vụ Trợ lý AI (box-ai/files/onebee-ai-rag.py): phân đoạn tri thức, dựng lời nhắc có trích nguồn và dòng nhắc kiểm tra,
 sinh câu lệnh nạp tri thức không trùng, kho khóa API, và máy chủ HTTP chạy THẬT trên cổng tạm với Ollama và cầu nối danh tính giả
 (ghi lại mọi yêu cầu nhận được). Dịch vụ đứng sau Caddy forward_auth: chỉ tin Remote-User/Remote-Groups, hoặc khóa API do onebee-box cấp.

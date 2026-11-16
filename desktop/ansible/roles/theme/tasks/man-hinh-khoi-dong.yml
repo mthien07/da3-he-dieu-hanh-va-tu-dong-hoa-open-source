@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Màn hình khởi động OneBee (Plymouth). Chỉ làm khi máy có Plymouth và initramfs-tools (Mint đầy đủ); container rút gọn bỏ qua.
 # Chủ đề đặt làm mặc định qua update-alternatives (ưu tiên 200, cao hơn các chủ đề của Mint).
 # Chạy lại bộ cài chỉ đặt lại khi chủ đề mặc định đang khác OneBee, và chỉ dựng lại initramfs khi vừa có thay đổi.

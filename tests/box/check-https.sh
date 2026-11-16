@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra bật/tắt HTTPS (rà soát bảo mật F3, Pha 4) trên máy test, SAU khi Box và máy trạm ketoan-01 đã chạy ở chế độ HTTP:
 # chốt chặn máy chưa nhận CA → bật HTTPS → Caddy là nơi duy nhất công bố cổng, TLS đúng CA riêng, http:// bị chuyển 308, cookie Secure, CORS,
 # trình soạn luồng Node-RED không vào được khi chưa phiên, điểm nhận webhook tự kiểm X-OneBee-Key, bất biến bảo mật (kiem-bat-bien.sh),

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm ứng dụng Sổ điều hành H-P-D-I trên Box đã BẬT HTTPS và đăng nhập một lần:
 # chưa đăng nhập bị chuyển sang trang đăng nhập; nhân viên gửi đơn kèm PDF qua kho tệp (CLEAN) → đơn CHO_DUYET;
 # mức độ ngoài danh mục → 400; nhân viên khác không đọc được đơn; tự duyệt bị từ chối; quản lý duyệt → DA_DUYET;

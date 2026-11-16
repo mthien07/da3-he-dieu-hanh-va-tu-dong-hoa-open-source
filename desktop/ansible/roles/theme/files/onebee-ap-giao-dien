@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Áp hình nền OneBee cho người dùng đang đăng nhập, đúng một lần cho mỗi phiên bản giao diện.
 # Lý do: mặc định hệ thống (gschema override) không đè giá trị người dùng đã có và phiên đang mở chưa đọc lại, nên
 # máy cài xong chưa đổi hình. Sau lần áp này người dùng tự đổi hình nền thì được giữ; muốn áp lại cho mọi người

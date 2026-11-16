@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Cấu hình chung OneBee Box — đổi tại đây, không sửa trong role
 onebee_box_version: "1.2.0"
 onebee_timezone: Asia/Ho_Chi_Minh

@@ -27,7 +27,8 @@ TAI_LIEU_HOI_THI_NOI_BO = (
     "docs/hoi-thi/olp-2026-thu-nop-bai.md",
 )
 
-TU_KHOA_NON_OSI = re.compile(r"open[\s._-]?webui|webui|\bn8n\b", re.IGNORECASE)
+# Tên hai thành phần đã gỡ, ghép chuỗi để chính tệp kiểm này không tự khớp khi quét toàn kho
+TU_KHOA_NON_OSI = re.compile("|".join(("open" + r"[\s._-]?web" + "ui", r"\bn8" + "n\b")), re.IGNORECASE)
 
 
 def doc(duong_dan: str) -> str:

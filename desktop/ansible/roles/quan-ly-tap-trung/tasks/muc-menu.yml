@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Mục menu "Báo cần hỗ trợ" mở ứng dụng Sổ điều hành trên Box — sinh từ cấu hình máy trạm (onebee_may_tram).
 # Dùng chung với playbook dong-bo-may-tram.yml của Box: mọi thứ mục menu cần (lệnh onebee-bao-ho-tro, địa chỉ ứng dụng)
 # phải được cài ngay trong file này, nếu không Box đẩy mục menu trỏ tới lệnh mà máy trạm chưa có.
@@ -44,7 +46,7 @@
     - onebee_may_tram.BOX_HTTPS | default('') == '1'
     - onebee_may_tram.BOX_TEN | default('') is match('^box[.][a-z0-9-]+[.]onebee[.]internal$')
 
-- name: Chưa bật HTTPS → bỏ địa chỉ và mục menu cũ (biểu mẫu n8n không còn)
+- name: Chưa bật HTTPS → bỏ địa chỉ và mục menu cũ (biểu mẫu cũ không còn)
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
