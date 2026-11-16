@@ -139,6 +139,26 @@ class GoiThu(unittest.TestCase):
         with open(os.path.join(self.tmp, "dist/ghi-chu-phat-hanh.md"), encoding="utf-8") as f:
             self.assertIn("Bản cũ", f.read())
 
+    def test_ghi_chu_ban_that_co_lenh_cai_nhanh_ghim_dung_phien_ban(self):
+        kq = self.chay("1.2.0")
+        self.assertEqual(kq.returncode, 0, kq.stdout + kq.stderr)
+        with open(os.path.join(self.tmp, "dist/ghi-chu-phat-hanh.md"), encoding="utf-8") as f:
+            ghi_chu = f.read()
+        self.assertIn("### Cài nhanh", ghi_chu)
+        self.assertIn("/releases/download/v1.2.0", ghi_chu)
+        self.assertIn("onebee-os-1.2.0.tar.gz", ghi_chu)
+        self.assertIn("sha256sum -c SHA256SUMS", ghi_chu)
+        self.assertIn("sudo ./desktop/onebee-install.sh", ghi_chu)
+        # Biến shell phải còn nguyên để người dùng dán chạy được, không bị script đóng gói thay mất
+        self.assertIn('cd "$(mktemp -d)"', ghi_chu)
+        self.assertIn('"$B/onebee-os-1.2.0.tar.gz"', ghi_chu)
+
+    def test_ghi_chu_ban_dev_khong_co_lenh_cai_nhanh(self):
+        kq = self.chay("1.3.0-dev")
+        self.assertEqual(kq.returncode, 0, kq.stdout + kq.stderr)
+        with open(os.path.join(self.tmp, "dist/ghi-chu-phat-hanh.md"), encoding="utf-8") as f:
+            self.assertNotIn("Cài nhanh", f.read())
+
 
 if __name__ == "__main__":
     unittest.main()
