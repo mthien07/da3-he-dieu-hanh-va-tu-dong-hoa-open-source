@@ -215,6 +215,12 @@ sudo ./box/onebee-box-install.sh
 - Lần thử nâng cấp từ 1.2.0 lên 1.3.0 trên máy ảo mất khoảng **25 phút** (tải thêm các dịch vụ mới).
 - Xong, chân trang của trang giới thiệu Box ghi đúng số phiên bản mới (ví dụ `OneBee Box 1.3.0`). Chạy `sudo onebee-box chan-doan` để xem lại tình trạng.
 
+Trang giới thiệu Box của cùng một máy, trước và sau khi nâng cấp từ 1.2.0 lên 1.3.0 (chế độ sáng):
+
+| Trước (1.2.0) | Sau (1.3.0) |
+|---|---|
+| ![Box 1.2.0](anh/03-box-1-2-0-giao-dien-cu.png) | ![Box 1.3.0](anh/01-trang-gioi-thieu-box.png) |
+
 ---
 
 ## Phần 4. Gắn ổ sao lưu cho Box (bắt buộc — đừng bỏ qua)
@@ -338,6 +344,10 @@ rm ~/ketoan-01.env
 > rồi trên máy trạm `sudo nano /etc/onebee/may-tram.env`, dán vào, lưu lại.
 
 ### 6.3. Chạy bộ cài OneBee OS
+Máy trạm lúc này vẫn là Linux Mint nguyên bản, chưa có OneBee (ảnh chụp từ máy ảo Mint 22.3 vừa cài xong):
+
+![Linux Mint mới cài, trước khi chạy bộ cài OneBee](anh/09-mint-sach-truoc-khi-cai.png)
+
 ```bash
 cd ~/onebee
 sudo ./desktop/onebee-install.sh
@@ -381,6 +391,10 @@ Mọi dòng phải là `PASS`, dòng cuối `KẾT QUẢ: tất cả mục đạ
 
    ![Màn hình đăng nhập](anh/11-man-hinh-dang-nhap.png)
 
+   Nếu bạn xem màn hình đăng nhập **trước khi khởi động lại** (ví dụ đăng xuất ngay sau khi cài), nó vẫn là màn hình của Mint vì đã chạy từ trước. Khởi động lại máy là hết:
+
+   ![Màn hình đăng nhập của Mint, trước khi khởi động lại](anh/14-dang-nhap-cu-truoc-khi-khoi-dong-lai.png)
+
 3. **Lần đăng nhập đầu tiên:** cửa sổ **Trung tâm OneBee** tự mở với bốn thẻ Bắt đầu, Phím tắt, Kiểm tra máy, Cần giúp đỡ.
 
    ![Trung tâm OneBee tự mở ở lần đăng nhập đầu](anh/12-trung-tam-onebee-lan-dau.png)
@@ -388,6 +402,10 @@ Mọi dòng phải là `PASS`, dòng cuối `KẾT QUẢ: tất cả mục đạ
 4. **Màn hình làm việc:** hình nền chỉ có logo, nút **Bắt đầu** mang logo OneBee, thanh tác vụ có sẵn Thư mục, Trình duyệt, Soạn văn bản, Bảng tính.
 
    ![Màn hình làm việc OneBee](anh/13-man-hinh-lam-viec.png)
+
+5. **Menu Bắt đầu:** bấm nút Bắt đầu ở góc dưới bên trái để mở danh sách ứng dụng.
+
+   ![Menu Bắt đầu](anh/15-menu-bat-dau.png)
 
 Xem cả quá trình từ lúc cài Mint đến lúc đăng nhập (ảnh động khoảng 20 giây): [may-sach-tu-dau-den-cuoi.gif](anh/may-sach-tu-dau-den-cuoi.gif).
 
@@ -477,6 +495,7 @@ Chưa có khóa nào thì Box giữ nguyên mật khẩu và in cảnh báo, đ�
 | Nhân viên lỡ xóa file | Khôi phục từ bản sao lưu của máy trạm, xem [quan-ly-may-tram.md](quan-ly-may-tram.md) |
 | **Hỏng ổ Box** | Cài lại Ubuntu (Phần 2) và Box (Phần 3, **cùng mã đơn vị và IP**), gắn lại ổ sao lưu (Phần 4 bước 3, **không** chạy lại `mkfs`). Chép nội dung tờ `in-khoa` vào file `~/khoa.txt`, rồi chạy: `sudo onebee-box khoi-phuc-toan-bo ~/khoa.txt` → `sudo ./box/onebee-box-install.sh` → `sudo onebee-box khoi-phuc-thu`. Mật khẩu cũ dùng lại được, **máy trạm không phải làm gì** |
 | Bộ cài (Box hoặc máy trạm) dừng giữa chừng, báo `fatal` và `connection timed out` | Mạng chập chờn. Kiểm tra mạng rồi **chạy lại đúng lệnh cài**. Bộ cài làm tiếp phần còn lại, chạy lại nhiều lần là an toàn |
+| `onebee-box chan-doan` báo `onebee-quy-trinh` "không khỏe (unhealthy)" nhưng trình soạn luồng vẫn mở được | Chỉ có ở Box **1.3.0** (phép kiểm tra sức khỏe của dịch vụ này sai, không phải lỗi thật). Nâng cấp lên 1.3.1 trở lên theo mục 3.5 là hết |
 | Dịch vụ không vào được | `sudo onebee-box trang-thai` xem dịch vụ nào ngừng. Thử khởi động lại Box. Vẫn lỗi: gửi `/var/log/onebee/` và `journalctl -b > ~/nhat-ky.txt` cho kỹ thuật |
 | Box hết chỗ trống | `sudo onebee-box trang-thai` xem dung lượng. Box tự dọn bản sao lưu cũ theo lịch |
 
