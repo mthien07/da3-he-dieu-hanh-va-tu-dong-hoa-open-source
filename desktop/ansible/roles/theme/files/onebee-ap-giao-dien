@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Áp hình nền OneBee cho người dùng đang đăng nhập, đúng một lần cho mỗi phiên bản giao diện.
+# Lý do: mặc định hệ thống (gschema override) không đè giá trị người dùng đã có và phiên đang mở chưa đọc lại, nên
+# máy cài xong chưa đổi hình. Sau lần áp này người dùng tự đổi hình nền thì được giữ; muốn áp lại cho mọi người
+# (khi đổi hình nền) thì tăng PHIEN_BAN.
+# Chạy bằng quyền người dùng: bộ cài gọi ngay sau khi cài, và /etc/xdg/autostart gọi ở mỗi lần đăng nhập.
+set -euo pipefail
+
+PHIEN_BAN=2
+HINH_NEN="${ONEBEE_HINH_NEN:-/usr/share/backgrounds/onebee/onebee-wallpaper.png}"
+THU_MUC="${XDG_STATE_HOME:-${HOME}/.local/state}/onebee"
+DANH_DAU="${THU_MUC}/giao-dien"
+
+[[ -f "${HINH_NEN}" ]] || exit 0
+command -v gsettings >/dev/null 2>&1 || exit 0
+if [[ -f "${DANH_DAU}" && "$(<"${DANH_DAU}")" == "${PHIEN_BAN}" ]]; then
+  exit 0
+fi
+
+# Không phải Cinnamon (không có schema) hoặc chưa có phiên D-Bus: bỏ qua, không đánh dấu để lần đăng nhập sau thử lại.
+gsettings set org.cinnamon.desktop.background picture-uri "file://${HINH_NEN}" 2>/dev/null || exit 0
+gsettings set org.cinnamon.desktop.background picture-options zoom 2>/dev/null || exit 0
+
+mkdir -p "${THU_MUC}"
+printf '%s\n' "${PHIEN_BAN}" > "${DANH_DAU}"

@@ -1,0 +1,51 @@
+# OneBee Plymouth theme (script module, no OpenGL needed, runs on old machines).
+# Background gradient matches the desktop wallpaper, logo centered, thin progress bar below.
+Window.SetBackgroundTopColor(0.086, 0.149, 0.231);
+Window.SetBackgroundBottomColor(0.020, 0.039, 0.071);
+
+rong = Window.GetWidth();
+cao = Window.GetHeight();
+
+logo.anh = Image("logo.png");
+logo.sprite = Sprite(logo.anh);
+logo.sprite.SetX(Window.GetX() + rong / 2 - logo.anh.GetWidth() / 2);
+logo.sprite.SetY(Window.GetY() + cao / 2 - logo.anh.GetHeight() / 2 - 24);
+
+nen.anh = Image("thanh-nen.png");
+nen.sprite = Sprite(nen.anh);
+nen.x = Window.GetX() + rong / 2 - nen.anh.GetWidth() / 2;
+nen.y = Window.GetY() + cao / 2 + logo.anh.GetHeight() / 2 + 40;
+nen.sprite.SetPosition(nen.x, nen.y, 1);
+
+day.anh = Image("thanh-tien-trinh.png");
+day.sprite = Sprite();
+day.sprite.SetPosition(nen.x, nen.y, 2);
+
+fun khi_tien_trinh(thoi_gian, tien_do) {
+  chieu_rong = Math.Int(day.anh.GetWidth() * tien_do);
+  if (chieu_rong < 1) chieu_rong = 1;
+  day.sprite.SetImage(day.anh.Scale(chieu_rong, day.anh.GetHeight()));
+}
+Plymouth.SetBootProgressFunction(khi_tien_trinh);
+
+# Encrypted disks: show the prompt and one dot per typed character, otherwise the user cannot tell a password is expected.
+loi_nhac.sprite = Sprite();
+dau.sprite = Sprite();
+
+fun hien_o_mat_khau(nhac, so_dau) {
+  loi_nhac.anh = Image.Text(nhac, 0.85, 0.87, 0.90);
+  loi_nhac.sprite.SetImage(loi_nhac.anh);
+  loi_nhac.sprite.SetPosition(Window.GetX() + rong / 2 - loi_nhac.anh.GetWidth() / 2, nen.y + 40, 3);
+  chuoi = "";
+  for (i = 0; i < so_dau; i++) chuoi += "* ";
+  dau.anh = Image.Text(chuoi, 0.96, 0.65, 0.14);
+  dau.sprite.SetImage(dau.anh);
+  dau.sprite.SetPosition(Window.GetX() + rong / 2 - dau.anh.GetWidth() / 2, nen.y + 76, 3);
+}
+Plymouth.SetDisplayPasswordFunction(hien_o_mat_khau);
+
+fun hien_binh_thuong() {
+  loi_nhac.sprite.SetOpacity(0);
+  dau.sprite.SetOpacity(0);
+}
+Plymouth.SetDisplayNormalFunction(hien_binh_thuong);
