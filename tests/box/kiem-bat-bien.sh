@@ -112,11 +112,11 @@ else
     fi
   done
   code="$(ma_http -X POST -H 'Accept: application/json' -H 'Remote-User: gia' -H 'Remote-Groups: quan_ly' \
-    -H 'Content-Type: application/json' -d '{}' "https://${TEN_BOX}/ai/api/chat" 2>/dev/null || true)"
+    -H 'Content-Type: application/json' -d '{"cau_hoi":"thử"}' "https://${TEN_BOX}/ai/hoi" 2>/dev/null || true)"
   if [[ "${code}" = 401 ]]; then
-    pass "HTTPS: /ai/api/chat tự gửi Remote-User mà không phiên → 401"
+    pass "HTTPS: /ai/hoi tự gửi Remote-User mà không phiên → 401"
   else
-    fail "HTTPS: /ai/api/chat trả ${code} (mong 401)"
+    fail "HTTPS: /ai/hoi trả ${code} (mong 401)"
   fi
   # Trình soạn luồng (nơi chạy mã tùy ý) không phiên: chuyển trang đăng nhập hoặc 401, không bao giờ 200
   code="$(ma_http "https://${TEN_BOX}/quy-trinh/" 2>/dev/null || true)"
