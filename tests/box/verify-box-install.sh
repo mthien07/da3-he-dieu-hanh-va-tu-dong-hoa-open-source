@@ -20,6 +20,11 @@ check "Image ClamAV dựng cục bộ đã bỏ libclamunrar (không còn tệp 
 check "Chữ ký ClamAV đã có trên Box (kiểm dịch quét được tệp thật)" bash -c \
   "ls /srv/onebee/clamav/*.cvd /srv/onebee/clamav/*.cld 2>/dev/null | grep -q ."
 check "Tuyến /files/ không tồn tại ở chế độ HTTP (404)" code_in http://127.0.0.1/files/ 404
+check "Ứng dụng Sổ điều hành có trang tĩnh trong portal (HTML, CSS, JS)" bash -c \
+  "[ -s /opt/onebee-box/portal/site/so-dieu-hanh/index.html ] \
+   && [ -s /opt/onebee-box/portal/site/so-dieu-hanh/so-dieu-hanh.css ] \
+   && [ -s /opt/onebee-box/portal/site/so-dieu-hanh/so-dieu-hanh.js ]"
+check "Tuyến /so-dieu-hanh/ không tồn tại ở chế độ HTTP (404)" code_in http://127.0.0.1/so-dieu-hanh/ 404
 check "Trang giới thiệu :80 hiển thị OneBee Box" bash -c "curl -s -m 10 http://127.0.0.1/ | grep -q 'OneBee Box'"
 check "Dịch vụ Trợ lý AI khỏe (/suc-khoe)" tro_ly_ai_tra_loi
 check "Dịch vụ Trợ lý AI không công bố cổng ra LAN" bash -c "[ -z \"\$(docker port onebee-ai-rag)\" ]"

@@ -72,13 +72,17 @@ def rang_buoc(file_pem):
     return cidr, dns
 
 
-DICH_VU = [("Quy trình tự động", 443, "quy-trinh/"), ("Giám sát", 3001, "")]
+# Sổ điều hành nằm trên tên Box ở cổng 443; vào bằng IP thì Caddy chuyển 308 sang tên nên dấu trang vẫn mở được
+DICH_VU = [("Quy trình tự động", 443, "quy-trinh/"), ("Giám sát", 3001, ""),
+           ("Sổ điều hành", 0, "so-dieu-hanh/")]
 
 
 def dau_trang(ip):
     """Danh sách dấu trang do quản trị đặt (định dạng ManagedBookmarks dùng chung cho Firefox và Chrome)."""
+    def dia_chi(cong, duong):
+        return f"https://{ip}/{duong}" if not cong else f"https://{ip}:{cong}/{duong}"
     return [{"toplevel_name": "OneBee Box"}, {"name": "Trang giới thiệu OneBee Box", "url": f"https://{ip}/"}] + \
-        [{"name": ten, "url": f"https://{ip}:{cong}/{duong}"} for ten, cong, duong in DICH_VU]
+        [{"name": ten, "url": dia_chi(cong, duong)} for ten, cong, duong in DICH_VU]
 
 
 def cai(file_pem, ip_https=None):

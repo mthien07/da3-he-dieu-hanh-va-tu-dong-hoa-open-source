@@ -85,6 +85,11 @@
     <div class="card"><span class="bieu-tuong" aria-hidden="true">📁</span><b>Thư mục dùng chung</b>
       <small>Windows: bấm <kbd>Windows + R</kbd>, gõ</small><br><code id="smb-win">\\{{ onebee_box_ten_mdns }}.local\{{ onebee_box_samba_share }}</code><br>
       <small>Linux Mint, macOS: thanh địa chỉ trình quản lý tệp, gõ</small><br><code id="smb">smb://{{ onebee_box_ten_mdns }}.local/{{ onebee_box_samba_share }}</code></div>
+{% if onebee_https_hieu_luc | bool %}
+    <a class="card" href="/so-dieu-hanh/"><span class="bieu-tuong" aria-hidden="true">📒</span><b>Sổ điều hành</b><span>Gửi đơn hàng kèm tệp, báo cần hỗ trợ, khảo sát, duyệt đơn và bảng điều hành — sau đăng nhập một lần</span></a>
+{% else %}
+    <div class="card"><span class="bieu-tuong" aria-hidden="true">📒</span><b>Sổ điều hành</b><span>Bật HTTPS để dùng ứng dụng Sổ điều hành: đơn hàng, báo hỗ trợ, duyệt đơn, bảng điều hành</span></div>
+{% endif %}
     <a class="card" href="#cam-nang"><span class="bieu-tuong" aria-hidden="true">📖</span><b>Cẩm nang sử dụng</b><span>Phím tắt, in ấn, lưu trữ và sao lưu</span></a>
   </div>
 

@@ -18,9 +18,11 @@ tram 'mkdir -p /run/sshd && /usr/sbin/sshd
   grep -qx "passwordauthentication no" <<<"${t}" && grep -qx "permitrootlogin no" <<<"${t}"
   grep -qx "allowusers onebee-quantri" <<<"${t}" && grep -qx "maxauthtries 3" <<<"${t}"
   echo "PASS  Máy trạm: tài khoản quản trị của Box (ẩn, chỉ nhận khóa từ IP Box), SSH tắt đăng nhập mật khẩu và root, chỉ cho tài khoản quản trị"
-  grep -qx "Exec=onebee-bao-ho-tro" /usr/share/applications/onebee-bao-ho-tro.desktop \
-    || { echo "FAIL  Thiếu mục menu Báo cần hỗ trợ"; exit 1; }
-  # Trang Báo cần hỗ trợ thuộc ứng dụng Sổ điều hành (giai đoạn 4, chưa có) → chỉ kiểm hai địa chỉ đã có thật dưới đây
+  # Ứng dụng Sổ điều hành chỉ tồn tại trên tên Box ở chế độ HTTPS: máy chưa bật HTTPS thì KHÔNG còn mục menu trỏ biểu mẫu n8n cũ
+  ! grep -q "form/onebee-ho-tro\|:5678" /etc/onebee-ho-tro.conf /usr/share/applications/onebee-bao-ho-tro.desktop 2>/dev/null \
+    || { echo "FAIL  Chế độ HTTP còn mục menu trỏ biểu mẫu n8n cũ"; exit 1; }
+  [ ! -e /etc/onebee-ho-tro.conf ] && [ ! -e /usr/share/applications/onebee-bao-ho-tro.desktop ] \
+    || { echo "FAIL  Chế độ HTTP còn mục menu Báo cần hỗ trợ trỏ tới tuyến không tồn tại"; exit 1; }
   box_ip="$(sed -n "s/^BOX_IP=//p" /etc/onebee/may-tram.env)"
   https="$(sed -n "s/^BOX_HTTPS=//p" /etc/onebee/may-tram.env)"
   url="$(sed -n "s/^TINH_TRANG_URL=//p" /etc/onebee/may-tram.env)"
@@ -31,9 +33,9 @@ tram 'mkdir -p /run/sshd && /usr/sbin/sshd
     [ "${url}" = "http://${box_ip}:80/webhook/onebee-tinh-trang" ] \
       || { echo "FAIL  TINH_TRANG_URL (HTTP) chưa trỏ Caddy cổng 80 của Box: ${url}"; exit 1; }
   fi
-  grep -Eq "^HOI_URL=https?://[0-9.]+:3000$" /etc/onebee/may-tram.env \
+  grep -Eq "^HOI_URL=https://box\\.[a-z0-9-]+\\.onebee\\.internal$" /etc/onebee/may-tram.env \
     || { echo "FAIL  Thiếu HOI_URL của Trợ lý AI"; exit 1; }
-  echo "PASS  Menu máy trạm có \"Báo cần hỗ trợ (OneBee)\"; may-tram.env trỏ đúng TINH_TRANG_URL (động cơ quy trình, đúng chế độ HTTP/HTTPS) và HOI_URL (Trợ lý AI)"'
+  echo "PASS  Menu máy trạm: chưa bật HTTPS nên chưa có mục Sổ điều hành/biểu mẫu cũ; may-tram.env trỏ đúng TINH_TRANG_URL (động cơ quy trình, đúng chế độ HTTP/HTTPS) và HOI_URL (Trợ lý AI)"'
 
 tram 'onebee-bao-tinh-trang'
 box "f=${TT}/ketoan-01.json; [ -s \$f ] || { echo 'FAIL  Box chưa nhận tình trạng máy trạm'; exit 1; }

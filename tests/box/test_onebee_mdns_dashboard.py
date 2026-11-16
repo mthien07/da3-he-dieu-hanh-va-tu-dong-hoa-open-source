@@ -141,6 +141,9 @@ class TrangChu(unittest.TestCase):
         self.assertIn("hoi &lt;câu hỏi&gt;", h)
         self.assertNotIn('data-port="3000"', h)                                       # không còn cổng 3000 ra LAN
         self.assertIn('data-port="443" data-path="quy-trinh/"', h)                   # Quy trình tự động (Node-RED) sau đăng nhập một lần
+        self.assertIn("Sổ điều hành", h)                                              # ứng dụng H-P-D-I thay biểu mẫu n8n
+        self.assertIn("Bật HTTPS", h)                                                 # ở chế độ HTTP, ứng dụng chưa tồn tại
+        self.assertNotIn("form/onebee-ho-tro", h)
         self.assertIn('id="smb-win"', h)                                              # \\onebee.local\chung (Windows)
         self.assertIn('id="smb"', h)                                                  # smb://onebee.local/chung
         self.assertIn('href="#cam-nang"', h)
