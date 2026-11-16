@@ -59,7 +59,7 @@ EOF
 
 echo "===== BẢN CHẠY THỬ CÔNG KHAI: THANH THÔNG BÁO DEMO ====="
 box <<'EOF'
-trang="$(find /opt/onebee-box/portal/site -maxdepth 4 -type f -path '*so-dieu-hanh*' 2>/dev/null | head -1)"
+trang="$(find /opt/onebee-box/portal/site/so-dieu-hanh -maxdepth 1 -type f -name 'index.html' 2>/dev/null | head -1)"
 # Chưa gộp trang Sổ điều hành: bỏ qua mục này thay vì báo hỏng (bài kiểm chạy lại sau khi gộp sẽ kiểm thật)
 [ -n "${trang}" ] || { echo 'SKIP  Chưa có trang Sổ điều hành — mục thanh thông báo chạy sau khi gộp trang'; exit 0; }
 grep -q 'Dữ liệu giả lập' "${trang}" && grep -q '03:00' "${trang}" \
