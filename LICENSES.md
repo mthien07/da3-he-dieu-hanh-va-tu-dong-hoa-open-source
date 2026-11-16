@@ -45,3 +45,16 @@ Clonezilla (sao lưu/nhân bản ổ đĩa, chỉ dùng như công cụ khi cài
 Giấy phép phần Box ghi theo trang của từng dự án — cần kiểm lại khi nâng phiên bản và trước khi phát hành v1.0.
 
 → Khi giới thiệu sản phẩm là "mã nguồn mở", phải nói rõ n8n là fair-code và điều khoản thương hiệu của Open WebUI.
+
+## Lõi DX-OS: thành phần của kiến trúc ba tầng
+<!-- Khối của hồ sơ kiến trúc (docs/kien-truc-dx-os.md): liệt kê đủ thành phần Tầng 1 theo Đề thi, kể cả dòng đã có ở bảng Box phía trên -->
+Nguồn: [ADR 0006](docs/adr/0006-loi-dx-os-open-core.md), tệp giấy phép đọc đúng tag đã dựng thử. Mã do dự án viết (cầu nối danh tính, dịch vụ tệp,
+`onebee-ai-rag`, trang Sổ điều hành, `onebee-box`, `hoi`) là MIT, xem [LICENSE](LICENSE).
+
+| Thành phần | Giấy phép | Ghi chú |
+|---|---|---|
+| SeaweedFS 4.53 (kho tệp kiểu đối tượng) | Apache-2.0 | https://raw.githubusercontent.com/seaweedfs/seaweedfs/4.53/LICENSE |
+| ClamAV 1.5.4 (kiểm dịch tệp tải lên, chạy từng lượt bằng `clamscan`) | GPL-2.0-only (lõi) | Image dựng cục bộ **xóa `libclamunrar`** (giấy phép UnRAR, không phải OSI); các thư viện kèm theo giữ giấy phép riêng (LGPL-2.1, Apache-2.0, BSD-3-Clause, MIT, Zlib). https://raw.githubusercontent.com/Cisco-Talos/clamav/clamav-1.5.4/COPYING.txt |
+| cvdupdate 1.2.0 (tải chữ ký ClamAV ở máy có Internet, chép sang Box không có mạng) | Apache-2.0 | Chỉ chạy ở máy kỹ thuật, không cài trên Box |
+| Node-RED 5.0.9 (động cơ quy trình) | Apache-2.0 | https://raw.githubusercontent.com/node-red/node-red/5.0.9/LICENSE |
+| node-red-node-email 5.2.5 (nút gửi thư SMTP) | Apache-2.0 | Gói npm khai `Apache-2.0` |
