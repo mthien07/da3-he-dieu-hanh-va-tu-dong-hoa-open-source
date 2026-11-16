@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # onebee-loi-tat-chia-se — chạy khi người dùng đăng nhập (/etc/xdg/autostart): đặt lối tắt "Chia sẻ nội bộ (OneBee Box)" lên
 # màn hình nền như ổ mạng trên Windows. Lối tắt gốc do role ket-noi-box sinh từ BOX_IP (/usr/share/applications/onebee-chia-se-noi-bo.desktop).
 # Chỉ đặt MỘT lần cho mỗi người: người dùng xóa lối tắt thì lần sau không đặt lại (dấu ở ~/.config/onebee/).

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Chấm 1 câu trả lời theo ý bắt buộc (khớp chuỗi) và ý cấm (regex). So khớp chữ thường, NFC, giữ dấu."""
 import re
 import unicodedata

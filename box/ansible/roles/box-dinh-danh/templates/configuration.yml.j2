@@ -1,0 +1,95 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Quản lý bởi OneBee OS (box/ansible/roles/box-dinh-danh) — sửa group_vars rồi chạy lại bộ cài, không sửa tay.
+# Đăng nhập một lần cho OneBee Box (Authelia 4.39.28, ADR 0006). KHÔNG chứa bí mật: khóa phiên, khóa mã hóa CSDL, khóa JWT đọc từ tệp
+# trong {{ onebee_box_secrets }} qua biến AUTHELIA_*_FILE (docker-compose.yml).
+{% set ten_box = 'box.' ~ onebee_box_ma_don_vi ~ '.onebee.internal' %}
+theme: auto
+
+server:
+  # Trang đăng nhập ở đường dẫn con của cổng 443 (QĐ3); Authelia chỉ nhận đường dẫn gồm chữ và số
+  address: 'tcp://:9091/dangnhap'
+  endpoints:
+    authz:
+      # Caddy forward_auth gọi /api/authz/forward-auth. Chỉ nhận cookie phiên: tiêu đề Authorization/Proxy-Authorization
+      # (đăng nhập bằng mật khẩu gửi kèm từng yêu cầu) không được dùng để vào tuyến lõi
+      forward-auth:
+        implementation: 'ForwardAuth'
+        authn_strategies:
+          - name: 'CookieSession'
+
+log:
+  level: 'info'
+
+totp:
+  issuer: 'OneBee Box {{ onebee_box_ma_don_vi }}'
+
+webauthn:
+  disable: true
+
+authentication_backend:
+  # Người dùng đổi/xóa trong tệp có hiệu lực ngay ở yêu cầu kế tiếp (không phải đợi phiên hết hạn)
+  refresh_interval: 'always'
+  password_reset:
+    disable: true   # chưa có email: quản trị cấp mật khẩu tạm bằng onebee-box them-nguoi
+  file:
+    # Box quản lý tệp này (onebee-box them-nguoi / xoa-nguoi); bộ cài chỉ tạo khi chưa có
+    path: '/data/users_database.yml'
+    watch: true
+    password:
+      algorithm: 'argon2'
+
+access_control:
+  default_policy: 'deny'
+  # Luật đầu tiên khớp thắng; luật không phân biệt cổng → trang giám sát (cổng {{ onebee_box_ports.uptime_kuma }}) được Caddy gắn tiền tố /giam-sat
+  rules:
+    - domain: '{{ ten_box }}'
+      resources: ['^/giam-sat([/?].*)?$']
+      subject: ['group:ky_thuat']
+      policy: 'two_factor'
+    # Trình soạn luồng (ky_thuat) và điểm duyệt đơn của ứng dụng (quan_ly): hai lớp; Node-RED còn mật khẩu riêng cho trình soạn
+    - domain: '{{ ten_box }}'
+      resources: ['^/quy-trinh([/?].*)?$']
+      subject: ['group:ky_thuat', 'group:quan_ly']
+      policy: 'two_factor'
+    # Ứng dụng Sổ điều hành: kỹ thuật và quản lý hai lớp, nhân viên một lớp (trang tĩnh và các lời gọi /api/, /files/, /ai/)
+    - domain: '{{ ten_box }}'
+      resources: ['^/so-dieu-hanh([/?].*)?$']
+      subject: ['group:ky_thuat', 'group:quan_ly']
+      policy: 'two_factor'
+    - domain: '{{ ten_box }}'
+      resources: ['^/so-dieu-hanh([/?].*)?$']
+      subject: ['group:nhan_vien']
+      policy: 'one_factor'
+    - domain: '{{ ten_box }}'
+      resources: ['^/(api|files|ai)/']
+      subject: ['group:ky_thuat', 'group:quan_ly']
+      policy: 'two_factor'
+    - domain: '{{ ten_box }}'
+      resources: ['^/(api|files|ai)/']
+      subject: ['group:nhan_vien']
+      policy: 'one_factor'
+
+session:
+  # Cookie phiên đặt cho đúng tên Box (QĐ2: không dùng IP); dùng chung giữa các cổng của tên này
+  cookies:
+    - domain: '{{ ten_box }}'
+      authelia_url: 'https://{{ ten_box }}/dangnhap'
+      default_redirection_url: 'https://{{ ten_box }}/'
+  expiration: '8h'
+  inactivity: '1h'
+
+regulation:
+  max_retries: 5
+  find_time: '2m'
+  ban_time: '10m'
+
+storage:
+  local:
+    path: '/data/db.sqlite3'
+
+# Chưa có SMTP (QĐ7): mã xác minh khi ghi danh hai lớp ghi vào tệp; quản trị đọc bằng: sudo onebee-box ma-xac-nhan
+notifier:
+  filesystem:
+    filename: '/data/thong-bao.txt'

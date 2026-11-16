@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Kiểm thử đơn vị cho nhật ký tuần (box-fleet/files/onebee-bao-cao-tuan.py). Chạy: python3 -m unittest"""
 import datetime as dt
 import importlib.util
@@ -37,7 +39,7 @@ def lam(thu_muc, khao_sat):
 class BaoCaoTuan(unittest.TestCase):
     def test_nhan_khop_voi_bieu_mau(self):
         import yaml
-        v = yaml.safe_load(open(os.path.join(HERE, "../../box/ansible/roles/box-n8n/vars/main.yml"), encoding="utf-8"))
+        v = yaml.safe_load(open(os.path.join(HERE, "../../box/ansible/roles/box-quy-trinh/vars/main.yml"), encoding="utf-8"))
         self.assertEqual(v["onebee_ho_tro_loai"], bct.LOAI)
         self.assertEqual(v["onebee_ho_tro_cach_xu_ly"], bct.CACH_XU_LY)
 
@@ -137,6 +139,61 @@ class BaoCaoTuan(unittest.TestCase):
             md = bct.bao_cao(d, dt.date(2026, 10, 8), {})
         self.assertIn("Mới trong tuần: **0**", md)
         self.assertIn("Không có phiếu trong tuần.", md)
+
+    def test_doc_tu_csdl_giong_het_doc_thu_muc(self):
+        import io
+        import subprocess
+        from unittest import mock
+
+        may = {"may_tram": [{"ten": "kho-02", "canh_bao": ["ổ đĩa sắp đầy (còn 5%)"], "gio_tu_lan_cuoi": 80},
+                            {"ten": "ketoan-01", "canh_bao": []}]}
+        ngay = dt.date(2026, 10, 8)
+        bay_gio = dt.datetime(2026, 10, 12, 8, 0)
+        with tempfile.TemporaryDirectory() as d:
+            md_thu_muc = lam(d, KHAO_SAT_2)
+
+        lenh_da_goi = []
+
+        def gia_chay_lenh(lenh):
+            lenh_da_goi.append(lenh)
+            cau = lenh[-1]
+            if "onebee.yeu_cau_ho_tro" in cau:
+                nd = YEU_CAU
+            elif "onebee.xu_ly_ho_tro" in cau:
+                nd = XU_LY
+            elif "onebee.khao_sat" in cau:
+                nd = KHAO_SAT_2
+            else:
+                raise AssertionError(f"Truy vấn lạ: {cau}")
+            return subprocess.CompletedProcess(lenh, 0, stdout=nd, stderr="")
+
+        with mock.patch.object(bct, "chay_lenh", side_effect=gia_chay_lenh):
+            md_csdl = bct.bao_cao("csdl", ngay, may, bay_gio=bay_gio)
+
+        self.assertEqual(md_csdl, md_thu_muc)
+        self.assertEqual(len(lenh_da_goi), 3)
+        for lenh in lenh_da_goi:
+            self.assertEqual(lenh[:7], ["docker", "exec", "onebee-postgres", "psql", "-U", "postgres", "-d"])
+            self.assertIn("ORDER BY nguon NULLS LAST, dong, id", lenh[-1])
+            self.assertIn("TO STDOUT WITH CSV", lenh[-1])
+
+    def test_loi_goi_csdl_thoat_ma_khac_0(self):
+        import io
+        import subprocess
+        from contextlib import redirect_stderr, redirect_stdout
+        from unittest import mock
+
+        def gia_loi(lenh):
+            return subprocess.CompletedProcess(lenh, 1, stdout="", stderr="psql: không kết nối được")
+
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.object(bct, "chay_lenh", side_effect=gia_loi):
+            with redirect_stdout(out), redirect_stderr(err):
+                with self.assertRaises(SystemExit) as ctx:
+                    bct.bao_cao("csdl", dt.date(2026, 10, 8), {})
+        self.assertNotEqual(ctx.exception.code, 0)
+        self.assertEqual(out.getvalue(), "")
+        self.assertNotEqual(err.getvalue().strip(), "")
 
 
 if __name__ == "__main__":

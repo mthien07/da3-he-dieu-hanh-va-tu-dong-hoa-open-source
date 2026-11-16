@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# onebee-canh-bao — Gửi cảnh báo sự cố chủ động qua Telegram Bot và Webhook n8n
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# onebee-canh-bao — Gửi cảnh báo sự cố chủ động qua Telegram Bot và động cơ quy trình (Node-RED)
 # Cú pháp:
 #   onebee-canh-bao INFO "Tiêu đề" "Nội dung"
 #   onebee-canh-bao WARN "Tiêu đề" "Nội dung"
@@ -51,28 +53,22 @@ ${NOI_DUNG}"
   fi
 fi
 
-# 2. Gửi Webhook nội bộ tới n8n (chuyển tiếp Zalo, Email, ghi log)
-N8N_PORT="{{ onebee_box_ports.n8n }}"
-WEBHOOK_SECRET_FILE="${SECRETS}/n8n-webhook-box"
-WEBHOOK_AUTH_HEADER=""
-if [[ -f "${WEBHOOK_SECRET_FILE}" ]]; then
-  WEBHOOK_AUTH_HEADER="X-OneBee-Box-Token: $(cat "${WEBHOOK_SECRET_FILE}")"
+# 2. Gửi webhook nội bộ tới động cơ quy trình (gửi email cho quản trị, ghi nhật ký).
+# Không còn cổng riêng: Caddy trên tên Box là cửa duy nhất; tuyến tự kiểm khóa X-OneBee-Key (chỉ root trên Box đọc được).
+TEN_BOX="{{ 'box.' ~ onebee_box_ma_don_vi ~ '.onebee.internal' }}"
+WEBHOOK_KEY_FILE="${SECRETS}/quy-trinh-webhook-key"
+PAYLOAD="$(MUC_DO="${MUC_DO_IN_HOA}" TIEU_DE="${TIEU_DE}" NOI_DUNG="${NOI_DUNG}" DON_VI="${TEN_DON_VI}" THOI_GIAN="${THOI_GIAN}" \
+  python3 -c 'import json, os; print(json.dumps({k: os.environ[v] for k, v in (("muc_do","MUC_DO"),("tieu_de","TIEU_DE"),("noi_dung","NOI_DUNG"),("don_vi","DON_VI"),("thoi_gian","THOI_GIAN"))}, ensure_ascii=False))')"
+if [[ -s "${WEBHOOK_KEY_FILE}" ]]; then
+  if [[ -f "${SECRETS}/https-da-bat" ]]; then
+    GOC="https://${TEN_BOX}"; CA=(--cacert "${SECRETS}/ca/root.crt" --resolve "${TEN_BOX}:443:127.0.0.1")
+  else
+    GOC="http://127.0.0.1"; CA=()
+  fi
+  curl -s -m 15 "${CA[@]}" \
+    -X POST "${GOC}/webhook/onebee-canh-bao" \
+    -H "Content-Type: application/json" -H "X-OneBee-Key: $(cat "${WEBHOOK_KEY_FILE}")" \
+    -d "${PAYLOAD}" >/dev/null 2>&1 || true
 fi
-
-PAYLOAD=$(cat <<EOF
-{
-  "muc_do": "${MUC_DO_IN_HOA}",
-  "tieu_de": "${TIEU_DE}",
-  "noi_dung": "${NOI_DUNG}",
-  "don_vi": "${TEN_DON_VI}",
-  "thoi_gian": "${THOI_GIAN}"
-}
-EOF
-)
-
-curl -s -m 5 -X POST "http://127.0.0.1:${N8N_PORT}/webhook/onebee-canh-bao" \
-  -H "Content-Type: application/json" \
-  ${WEBHOOK_AUTH_HEADER:+-H "${WEBHOOK_AUTH_HEADER}"} \
-  -d "${PAYLOAD}" >/dev/null 2>&1 || true
 
 echo "Đã gửi cảnh báo [${MUC_DO_IN_HOA}]: ${TIEU_DE}"

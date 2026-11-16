@@ -1,9 +1,12 @@
 ---
-# Mục menu mở biểu mẫu trên Box — sinh từ cấu hình máy trạm (onebee_may_tram). Dùng chung với playbook dong-bo-may-tram.yml của Box:
-# mọi thứ mục menu cần (lệnh onebee-bao-ho-tro, địa chỉ biểu mẫu) phải được cài ngay trong file này, nếu không Box đẩy mục menu
-# trỏ tới lệnh mà máy trạm chưa có.
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Mục menu "Báo cần hỗ trợ" mở ứng dụng Sổ điều hành trên Box — sinh từ cấu hình máy trạm (onebee_may_tram).
+# Dùng chung với playbook dong-bo-may-tram.yml của Box: mọi thứ mục menu cần (lệnh onebee-bao-ho-tro, địa chỉ ứng dụng)
+# phải được cài ngay trong file này, nếu không Box đẩy mục menu trỏ tới lệnh mà máy trạm chưa có.
+# Ứng dụng chỉ tồn tại trên tên Box ở chế độ HTTPS: máy chưa bật HTTPS thì không có mục menu trỏ tới tuyến không tồn tại.
 
-- name: Cài lệnh mở biểu mẫu Báo cần hỗ trợ
+- name: Cài lệnh mở Sổ điều hành (mục Báo cần hỗ trợ)
   ansible.builtin.copy:
     src: onebee-bao-ho-tro
     dest: /usr/local/bin/onebee-bao-ho-tro
@@ -11,27 +14,27 @@
     group: root
     mode: "0755"
 
-- name: Ghi địa chỉ biểu mẫu Báo cần hỗ trợ
+- name: Ghi địa chỉ ứng dụng Sổ điều hành cho mục Báo cần hỗ trợ
   ansible.builtin.copy:
     dest: /etc/onebee-ho-tro.conf
     content: |
       # Quản lý bởi OneBee OS
-      HO_TRO_URL={{ onebee_giao_thuc }}://{{ onebee_may_tram.BOX_IP }}:5678/form/onebee-ho-tro
+      HO_TRO_URL=https://{{ onebee_may_tram.BOX_TEN }}/so-dieu-hanh/
     owner: root
     group: root
     mode: "0644"
-  vars:
-    onebee_giao_thuc: "{{ 'https' if onebee_may_tram.BOX_HTTPS | default('') == '1' else 'http' }}"
-  when: onebee_may_tram.BOX_IP | default('') is match('^[0-9]{1,3}(\.[0-9]{1,3}){3}$')
+  when:
+    - onebee_may_tram.BOX_HTTPS | default('') == '1'
+    - onebee_may_tram.BOX_TEN | default('') is match('^box[.][a-z0-9-]+[.]onebee[.]internal$')
 
-- name: Thêm mục "Báo cần hỗ trợ" vào menu (mở biểu mẫu trên Box)
+- name: Thêm mục "Báo cần hỗ trợ" vào menu (mở ứng dụng Sổ điều hành trên Box)
   ansible.builtin.copy:
     dest: /usr/share/applications/onebee-bao-ho-tro.desktop
     content: |
       [Desktop Entry]
       Type=Application
       Name=Báo cần hỗ trợ (OneBee)
-      Comment=Gửi yêu cầu hỗ trợ cho kỹ thuật OneBee
+      Comment=Gửi yêu cầu hỗ trợ trong Sổ điều hành của đơn vị
       Exec=onebee-bao-ho-tro
       Icon=help-browser
       Terminal=false
@@ -39,6 +42,17 @@
     owner: root
     group: root
     mode: "0644"
-  vars:
-    onebee_giao_thuc: "{{ 'https' if onebee_may_tram.BOX_HTTPS | default('') == '1' else 'http' }}"
-  when: onebee_may_tram.BOX_IP | default('') is match('^[0-9]{1,3}(\.[0-9]{1,3}){3}$')
+  when:
+    - onebee_may_tram.BOX_HTTPS | default('') == '1'
+    - onebee_may_tram.BOX_TEN | default('') is match('^box[.][a-z0-9-]+[.]onebee[.]internal$')
+
+- name: Chưa bật HTTPS → bỏ địa chỉ và mục menu cũ (biểu mẫu cũ không còn)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/onebee-ho-tro.conf
+    - /usr/share/applications/onebee-bao-ho-tro.desktop
+  when: >-
+    not (onebee_may_tram.BOX_HTTPS | default('') == '1'
+         and onebee_may_tram.BOX_TEN | default('') is match('^box[.][a-z0-9-]+[.]onebee[.]internal$'))

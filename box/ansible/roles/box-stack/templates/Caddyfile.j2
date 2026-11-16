@@ -1,8 +1,10 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Quản lý bởi OneBee OS — cổng vào của OneBee Box
 {% if onebee_https_hieu_luc | bool %}
 {% set cong = onebee_box_ports %}
 {% set kuma_san_sang = onebee_kuma_dia_chi | default('0.0.0.0') == '0.0.0.0' %}
-{% set cong_tls = [443, cong.open_webui, cong.n8n, cong.rest_server] + ([cong.uptime_kuma] if kuma_san_sang else []) %}
+{% set cong_tls = [443, cong.rest_server] + ([cong.uptime_kuma] if kuma_san_sang else []) %}
 {# Mỗi cổng TLS có 2 địa chỉ: IP của Box (LAN) và box.<mã>.onebee.internal (kỹ thuật vào qua Tailscale, thêm dòng /etc/hosts trỏ tới IP Tailscale của Box) #}
 {% macro dia_chi(c) %}https://{{ onebee_box_ip }}:{{ c }}, https://box.{{ onebee_box_ma_don_vi }}.onebee.internal:{{ c }}{% endmacro %}
 {# HTTPS (Pha 4): CA riêng đặt sẵn (gốc + trung gian, ràng buộc tên); Caddy chỉ cấp chứng chỉ lá cho IP của Box và box.<mã>.onebee.internal #}
@@ -51,33 +53,182 @@
 	header -Server
 }
 
-{{ dia_chi(443) }} {
-	import onebee_tls
-	root * /srv
-	file_server
-	header {
-		X-Content-Type-Options nosniff
-		X-Frame-Options DENY
-		Referrer-Policy no-referrer
+{# Đăng nhập một lần (ADR 0006): forward_auth chép đúng tài liệu Authelia 4.39.28 (integration/proxies/caddy.md).
+   Authelia trả 200 kèm Remote-* (Caddy chép vào yêu cầu), 302/303 tới trang đăng nhập, 401 (Accept: application/json) hoặc 403 #}
+{% if onebee_sso_hieu_luc | bool %}
+(onebee_sso) {
+	forward_auth authelia:9091 {
+		uri /api/authz/forward-auth
+		copy_headers Remote-User Remote-Groups Remote-Email Remote-Name
 	}
-	# Số liệu tình trạng trên trang chủ đổi mỗi phút (onebee-trang-thai-web.timer) → trình duyệt không giữ bản cũ
-	header /trang-thai.json Cache-Control no-store
+}
+{% endif %}
+
+{# Danh tính do máy khách tự gửi không bao giờ tới dịch vụ phía sau: xóa ở đầu khối trang (request_header chạy TRƯỚC mọi handle/forward_auth) #}
+(onebee_bo_danh_tinh_may_khach) {
+	request_header -Remote-User
+	request_header -Remote-Groups
+	request_header -Remote-Email
+	request_header -Remote-Name
+	request_header -Authorization
+	request_header -Proxy-Authorization
 }
 
-{{ dia_chi(cong.open_webui) }} {
-	import onebee_tls
-	reverse_proxy open-webui:8080 {
-		stream_close_delay 5m
+{% macro trang_chu() %}
+	handle {
+		root * /srv
+		file_server
+		header {
+			X-Content-Type-Options nosniff
+			X-Frame-Options DENY
+			Referrer-Policy no-referrer
+		}
+		# Số liệu tình trạng trên trang chủ đổi mỗi phút (onebee-trang-thai-web.timer) → trình duyệt không giữ bản cũ
+		header /trang-thai.json Cache-Control no-store
 	}
-}
+{% endmacro %}
+{% set ten_box = 'box.' ~ onebee_box_ma_don_vi ~ '.onebee.internal' %}
+{# Vào bằng IP: chỉ trang chủ (công khai, không có dữ liệu nội bộ). Tuyến lõi chỉ phục vụ trên tên (QĐ2) → chuyển sang tên #}
+https://{{ onebee_box_ip }}:443 {
+	import onebee_tls
+	@so_dieu_hanh path /so-dieu-hanh /so-dieu-hanh/*
+	redir @so_dieu_hanh https://{{ ten_box }}{uri} 308
+	@tuyen_loi path /dangnhap /dangnhap/* /api/* /files/* /ai/*
+	handle @tuyen_loi {
+		redir https://{{ ten_box }}{uri} 308
+	}
+{{ trang_chu() }}}
 
-{# Không thêm tiêu đề CSP ở đây: n8n tự đặt CSP sandbox cho biểu mẫu #}
-{{ dia_chi(cong.n8n) }} {
+https://{{ ten_box }}:443 {
 	import onebee_tls
-	reverse_proxy n8n:5678 {
-		stream_close_delay 5m
+	import onebee_bo_danh_tinh_may_khach
+	# Trang đăng nhập (Authelia, đường dẫn con /dangnhap — QĐ3)
+	handle /dangnhap* {
+		reverse_proxy authelia:9091
 	}
-}
+{% if onebee_sso_hieu_luc | bool %}
+	# Sổ điều hành: trang tĩnh cùng gốc, sau đăng nhập một lần. CSP chặt vì trang không tải gì từ Internet:
+	# mã và kiểu riêng cùng thư mục, không script/style nhúng, không khung, không gửi biểu mẫu ra ngoài.
+	@so_dieu_hanh path /so-dieu-hanh /so-dieu-hanh/*
+	handle @so_dieu_hanh {
+		import onebee_sso
+		root * /srv
+		file_server
+		header {
+			Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; font-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'"
+			Cache-Control "no-store"
+			X-Content-Type-Options nosniff
+			X-Frame-Options DENY
+			Referrer-Policy no-referrer
+		}
+	}
+	# route giữ đúng thứ tự: xác thực trên đường dẫn gốc (luật Authelia khớp ^/api/) rồi mới tới dịch vụ.
+	# Không dùng handle_path: nó bỏ tiền tố TRƯỚC forward_auth
+	handle /api/* {
+		route {
+			import onebee_sso
+			request_body {
+				max_size 1MB
+			}
+			reverse_proxy cau-noi:8080
+		}
+	}
+	# Trợ lý AI: chỉ mở đúng hai đường hỏi đáp và tóm tắt của dịch vụ; mọi đường khác dưới /ai/ trả 404,
+	# kể cả khi đã đăng nhập (dịch vụ cũng tự trả 404).
+	# Máy trạm đi bằng khóa API riêng (X-OneBee-Khoa): không có phiên đăng nhập nên tuyến này KHÔNG qua forward_auth —
+	# dịch vụ tự từ chối khóa sai. Trình duyệt có phiên đi tuyến dưới, dịch vụ nhận Remote-User/Remote-Groups.
+	@ai_khoa {
+		method POST
+		path /ai/hoi /ai/tom-tat
+		# Chỉ khóa đúng dạng mới đi tuyến riêng; sai dạng rơi xuống tuyến có forward_auth (401/302), không vào dịch vụ.
+		# Viết 48 lớp [0-9a-f] thay vì {48}: Caddy coi {…} là placeholder và sẽ thay rỗng trước khi chạy regexp.
+		header_regexp X-OneBee-Khoa ^obk-{{ '[0-9a-f]' * 48 }}$
+	}
+	handle @ai_khoa {
+		route {
+			request_header -Cookie
+			request_body {
+				max_size 1MB
+			}
+			reverse_proxy ai-rag:8092
+		}
+	}
+	@ai_hoi_dap {
+		method POST
+		path /ai/hoi /ai/tom-tat
+	}
+	handle @ai_hoi_dap {
+		route {
+			import onebee_sso
+			request_header -Cookie
+			request_body {
+				max_size 1MB
+			}
+			reverse_proxy ai-rag:8092
+		}
+	}
+	handle /ai/* {
+		respond 404
+	}
+	# Kho tệp: xác thực trên đường dẫn gốc rồi mới bỏ tiền tố (Authelia khớp ^/files/). Giới hạn thân ở Caddy là chốt chặn
+	# tài nguyên; dịch vụ kho tệp vẫn tự kiểm giới hạn 10 MB và trả 413 (11 MB tới được dịch vụ để có câu trả lời rõ ràng).
+	handle /files/* {
+		route {
+			import onebee_sso
+			request_body {
+				max_size 11MB
+			}
+			uri strip_prefix /files
+			reverse_proxy kho-tep:8080
+		}
+	}
+	# Điểm nhận của động cơ quy trình cho các script chạy trên chính Box (báo cáo sao lưu, cảnh báo, tình trạng máy trạm).
+	# Không có phiên đăng nhập: mỗi tuyến tự kiểm X-OneBee-Key (mô-đun onebee-quy-trinh.js), khóa chỉ root trên Box đọc được.
+	handle /webhook/* {
+		reverse_proxy quy-trinh:1880
+	}
+	redir /quy-trinh /quy-trinh/ 308
+	# Điểm duyệt đơn của ứng dụng: đường dẫn công khai /quy-trinh/webhook/..., bỏ tiền tố để Node-RED nhận đúng httpNodeRoot /webhook.
+	# Dưới /quy-trinh nên vẫn qua đăng nhập một lần (nhóm ky_thuat/quan_ly, hai lớp); Node-RED đọc Remote-User + cookie phiên.
+	handle /quy-trinh/webhook/* {
+		route {
+			import onebee_sso
+			request_body {
+				max_size 1MB
+			}
+			uri strip_prefix /quy-trinh
+			reverse_proxy quy-trinh:1880
+		}
+	}
+	# Trình soạn luồng: giữ nguyên đường dẫn vì Node-RED phục vụ trình soạn dưới httpAdminRoot /quy-trinh;
+	# Node-RED tự kiểm mật khẩu riêng của trình soạn (lớp hai độc lập với đăng nhập một lần).
+	handle /quy-trinh/* {
+		route {
+			import onebee_sso
+			request_body {
+				max_size 1MB
+			}
+			reverse_proxy quy-trinh:1880
+		}
+	}
+{% else %}
+	# Đăng nhập một lần đang TẠM TẮT (onebee-box tat-sso-tam): không ai vào được dữ liệu — không mở toang khi định danh hỏng
+	@so_dieu_hanh path /so-dieu-hanh /so-dieu-hanh/*
+	handle @so_dieu_hanh {
+		header Content-Type "text/plain; charset=utf-8"
+		respond "Đăng nhập một lần đang tạm tắt để sửa — ứng dụng tạm khóa, thử lại sau" 503
+	}
+	@tuyen_loi path /api/* /files/* /ai/* /quy-trinh/*
+	handle @tuyen_loi {
+		header Content-Type "text/plain; charset=utf-8"
+		respond "Đăng nhập một lần đang tạm tắt để sửa — dữ liệu tạm khóa, thử lại sau" 503
+	}
+	# Điểm nhận webhook vẫn chạy để lệnh trên Box không hỏng khi kỹ thuật đang sửa đăng nhập
+	handle /webhook/* {
+		reverse_proxy quy-trinh:1880
+	}
+{% endif %}
+{{ trang_chu() }}}
 
 {{ dia_chi(cong.rest_server) }} {
 	import onebee_tls
@@ -86,8 +237,33 @@
 	}
 	reverse_proxy rest-server:8000
 }
-{% if kuma_san_sang %}
+{% if kuma_san_sang and (onebee_sso_hieu_luc | bool) %}
 
+{# Giám sát sau đăng nhập một lần: chỉ ky_thuat, hai lớp (QĐ7). Luật Authelia không phân biệt cổng → Authelia thấy đường dẫn có tiền tố
+   /giam-sat (luật riêng của trang giám sát); tiền tố bỏ trước khi tới Uptime Kuma. Uptime Kuma tắt đăng nhập riêng (onebee-kuma.js) #}
+https://{{ ten_box }}:{{ cong.uptime_kuma }} {
+	import onebee_tls
+	import onebee_bo_danh_tinh_may_khach
+	route {
+		uri strip_prefix /giam-sat
+		forward_auth authelia:9091 {
+			uri /api/authz/forward-auth
+			header_up X-Forwarded-Uri /giam-sat{http.request.uri}
+			copy_headers Remote-User Remote-Groups Remote-Email Remote-Name
+		}
+		reverse_proxy uptime-kuma:3001 {
+			stream_close_delay 5m
+		}
+	}
+}
+
+https://{{ onebee_box_ip }}:{{ cong.uptime_kuma }} {
+	import onebee_tls
+	redir https://{{ ten_box }}:{{ cong.uptime_kuma }}{uri} 308
+}
+{% elif kuma_san_sang %}
+
+{# Đăng nhập một lần tạm tắt: Uptime Kuma tự đòi đăng nhập (bộ cài bật lại đăng nhập riêng trước khi mở cổng này) #}
 {{ dia_chi(cong.uptime_kuma) }} {
 	import onebee_tls
 	reverse_proxy uptime-kuma:3001 {
@@ -96,8 +272,16 @@
 }
 {% endif %}
 {% else %}
-# Cổng 80: trang chủ cho mọi tên gọi Box (IP, {{ onebee_box_ten_mdns }}.local qua mDNS)
+# Cổng 80: trang chủ cho mọi tên gọi Box (IP, {{ onebee_box_ten_mdns }}.local qua mDNS).
+# Điểm nhận webhook vẫn chạy (khóa X-OneBee-Key từng tuyến) để sao lưu/cảnh báo không chờ bật HTTPS;
+# trình soạn luồng (/quy-trinh/) và các tuyến dữ liệu vẫn KHÔNG tồn tại khi HTTPS tắt.
 :80 {
+	# Ứng dụng Sổ điều hành chỉ tồn tại trên tên Box ở chế độ HTTPS (QĐ2, B3)
+	@so_dieu_hanh path /so-dieu-hanh /so-dieu-hanh/*
+	respond @so_dieu_hanh 404
+	handle /webhook/* {
+		reverse_proxy quy-trinh:1880
+	}
 	root * /srv
 	file_server
 	header {

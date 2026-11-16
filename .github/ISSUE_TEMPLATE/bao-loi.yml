@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 name: 🐞 Báo lỗi
 description: Bộ cài dừng, dịch vụ không chạy, kết quả sai với tài liệu
 title: "[Lỗi] "
@@ -17,7 +19,7 @@ body:
         - OneBee Box (máy chủ)
         - Máy trạm OneBee OS Desktop
         - Trợ lý AI / lệnh hoi
-        - Quy trình tự động (n8n) / email
+        - Quy trình tự động (Node-RED) / email
         - Sao lưu / khôi phục
         - HTTPS / chứng chỉ
         - Tài liệu hướng dẫn

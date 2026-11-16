@@ -31,8 +31,8 @@ flowchart LR
         end
         subgraph BOX["🗄️ OneBee Box — 1 máy, bật suốt ngày đêm, IP cố định"]
             direction TB
-            AI["🤖 Trợ lý AI tiếng Việt<br/>chạy tại chỗ :3000"]
-            N8N["⚙️ Tự động hóa, email :5678"]
+            AI["🤖 Trợ lý AI tiếng Việt<br/>chạy tại chỗ /ai/ (lệnh hoi)"]
+            QT["⚙️ Quy trình tự động (Node-RED), email /quy-trinh/"]
             KUMA["📈 Giám sát :3001"]
             SMB["📁 Thư mục chung"]
             KHO["🔒 Kho sao lưu máy trạm :8000"]
@@ -177,20 +177,22 @@ sudo ./box/onebee-box-install.sh
 ```bash
 sudo onebee-box in-khoa
 ```
-Lệnh in ra các mật khẩu, trong đó:
-- `webui-admin-password`: mật khẩu **Trợ lý AI**.
-- `n8n-owner-password`: mật khẩu **Tự động hóa**.
+Lệnh in ra mọi khóa trong `/etc/onebee-box/secrets/` và vân tay CA của Box, trong đó:
+- `quy-trinh-soan-luong`: mật khẩu **trình soạn luồng** Node-RED (lớp hai, độc lập với đăng nhập một lần).
 - `uptime-kuma-password`: mật khẩu **Giám sát**.
+- `samba-onebee`: mật khẩu **thư mục chung**.
+- `van-tay-ca-onebee-box`: vân tay CA để đối chiếu khi cài chứng chỉ lên thiết bị khác.
 
-Tài khoản đăng nhập Trợ lý AI và Tự động hóa là `quantri@onebee.lan`, còn Giám sát là `quantri`.
+Tài khoản người dùng tạo bằng `sudo onebee-box them-nguoi <tên> <nhóm>` (`nhan_vien`, `ky_thuat`, `quan_ly`); Trợ lý AI vào bằng chính tài khoản đó sau khi đăng nhập một lần, hoặc bằng khóa `obk-` cấp riêng cho từng người (chỉ in một lần lúc cấp).
 
 Từ một máy khác cùng mạng, mở trình duyệt vào `http://<ip-box>/`. Trang giới thiệu có nút tới từng dịch vụ:
 
 | Dịch vụ | Địa chỉ | Dùng để |
 |---|---|---|
-| Trợ lý AI | `http://<ip-box>:3000` | Hỏi đáp, soạn văn bản bằng tiếng Việt |
-| Tự động hóa (n8n) | `http://<ip-box>:5678` | Email báo cáo, nhắc hạn thuế/BHXH, đơn hàng, sổ hỗ trợ |
-| Giám sát | `http://<ip-box>:3001` | Xem dịch vụ nào đang ngừng |
+| Trợ lý AI | `https://box.<mã>.onebee.internal/ai/` hoặc lệnh `hoi` | Hỏi đáp, tóm tắt, soạn văn bản bằng tiếng Việt (cần HTTPS) |
+| Quy trình tự động (Node-RED) | `https://box.<mã>.onebee.internal/quy-trinh/` | Email báo cáo, nhắc hạn thuế/BHXH, đơn hàng, phê duyệt |
+| Sổ điều hành H-P-D-I | `https://box.<mã>.onebee.internal/so-dieu-hanh/` | Gửi đơn kèm tệp, duyệt đơn, bảng điều hành (cần HTTPS và đăng nhập một lần) |
+| Giám sát | `https://box.<mã>.onebee.internal/giam-sat/` | Xem dịch vụ nào đang ngừng (chỉ nhóm `ky_thuat`) |
 | Thư mục chung | `smb://<ip-box>/chung` | Chia sẻ file trong đơn vị (tài khoản `onebee`, mật khẩu: `sudo cat /etc/onebee-box/secrets/samba-onebee`) |
 
 ---
@@ -205,7 +207,7 @@ flowchart LR
     end
     subgraph BX["🗄️ OneBee Box"]
         K["Kho sao lưu máy trạm<br/>🔒 chỉ-thêm: máy trạm KHÔNG xóa được bản cũ<br/>→ chống mã độc tống tiền"]
-        D["Dữ liệu của Box<br/>Trợ lý AI, n8n, thư mục chung,<br/>sổ hỗ trợ, khóa bí mật"]
+        D["Dữ liệu của Box<br/>Trợ lý AI, động cơ quy trình, thư mục chung,<br/>sổ hỗ trợ, khóa bí mật"]
     end
     O[("💽 Ổ sao lưu ngoài<br/>🔒 mã hóa")]
     G["📄 Tờ in-khoa<br/>cất két"]
@@ -408,7 +410,7 @@ Chưa có khóa nào thì Box giữ nguyên mật khẩu và in cảnh báo, đ�
    Lệnh này **không được in tên máy nào**. Có máy đang tắt thì bật lên rồi chạy `sudo onebee-box dong-bo-may --tat-ca`.
 2. Trong `box/ansible/group_vars/all.yml`, đổi `onebee_box_https: false` thành `onebee_box_https: true`, lưu lại, rồi chạy `sudo ./box/onebee-box-install.sh`.
    Nếu còn máy chưa nhận chứng chỉ, bộ cài **giữ HTTP** và nêu tên máy đó (không làm hỏng gì).
-3. Từ đây dùng `https://<ip-box>:3000`… Máy trạm tự chuyển sang HTTPS. **Điện thoại, laptop cá nhân** muốn dùng thì cài chứng chỉ theo
+3. Từ đây dùng `https://<ip-box>/` (hoặc `https://box.<mã>.onebee.internal/`)… Máy trạm tự chuyển sang HTTPS. **Điện thoại, laptop cá nhân** muốn dùng thì cài chứng chỉ theo
    [cai-dat-onebee-box.md](cai-dat-onebee-box.md) mục "Bật HTTPS" bước 5.
    **Đã cài chứng chỉ rồi mà vẫn thấy cảnh báo bảo mật khi vào Box thì không bấm "tiếp tục".** Báo ngay cho kỹ thuật.
 4. Muốn quay lại HTTP: đặt lại `false` rồi chạy bộ cài.

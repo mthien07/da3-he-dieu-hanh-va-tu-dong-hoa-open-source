@@ -1,65 +1,113 @@
+<!-- SPDX-License-Identifier: MIT -->
+<!-- Copyright (c) 2026 Dương Minh Thiện, HTX OneBee -->
 {# Trang chủ OneBee Box (cổng 80; HTTPS: cổng 443). Một tệp, không tải gì từ Internet: Box trong LAN có thể không ra mạng được.
-   Lối tắt dịch vụ (Trợ lý AI, n8n, giám sát) luôn mở bằng IP của Box — cùng địa chỉ với biểu tượng Trợ lý AI và dấu trang trên máy trạm
+   Trợ lý AI hỏi bằng lệnh hoi trên máy trạm, không có giao diện web riêng.
+   Lối tắt dịch vụ (động cơ quy trình, giám sát) luôn mở bằng IP của Box — cùng địa chỉ với dấu trang trên máy trạm
    (HOI_URL), để phiên đăng nhập là MỘT origin; trừ khi trang được mở bằng tên Tailscale box.<mã>.onebee.internal (kỹ thuật ở xa không tới
-   được IP LAN). Tên {{ onebee_box_ten_mdns }}.local chỉ dùng để vào trang chủ và thư mục chung. Số liệu: /trang-thai.json (onebee-trang-thai-web.timer). #}
+   được IP LAN). Tên {{ onebee_box_ten_mdns }}.local chỉ dùng để vào trang chủ và thư mục chung.
+   Số liệu: /trang-thai.json (onebee-trang-thai-web.timer). #}
 <!doctype html>
 <html lang="vi">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>OneBee Box{% if onebee_box_ten_don_vi %} — {{ onebee_box_ten_don_vi | e }}{% endif %}</title>
 <style>
-  :root { --navy:#0E1B2C; --card:#17304A; --honey:#F5A524; --teal:#2DD4BF; --red:#F87171; --text:#F8FAFC; --sub:#94A3B8; }
+  :root { --nen:#F5F5F7; --the:#FFFFFF; --chu:#1D1D1F; --phu:#6E6E73; --vach:#E5E5EA; --nhan:#F5A524; --nhan-chu:#9A5B00; --tot:#34C759; --canh-bao:#F5A524; --loi:#FF3B30; --thanh:#E5E5EA; }
+  @media (prefers-color-scheme: dark) {
+    :root { --nen:#000000; --the:#1C1C1E; --chu:#F5F5F7; --phu:#98989D; --vach:#2C2C2E; --nhan-chu:#F5A524; --thanh:#2C2C2E; }
+  }
   * { box-sizing: border-box; }
-  body { margin:0; min-height:100vh; font-family: "Noto Sans", system-ui, sans-serif; background:var(--navy); color:var(--text); padding:24px 16px; line-height:1.45; }
-  main { width:min(860px,100%); margin:0 auto; }
-  h1 { margin:0; font-size:clamp(28px,6vw,44px); }
-  .don-vi { margin:2px 0 0; font-size:clamp(18px,4vw,24px); color:var(--honey); font-weight:600; }
-  p.sub { margin:4px 0 24px; color:var(--sub); }
-  h2 { margin:28px 0 12px; font-size:16px; color:var(--sub); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
-  .card { display:block; padding:16px 18px; border-radius:12px; background:var(--card); color:var(--text); text-decoration:none; border-left:6px solid var(--honey); }
-  a.card:hover, a.card:focus { outline:2px solid var(--teal); }
-  .card b { display:block; font-size:19px; }
-  .card span, .card small { color:var(--sub); }
-  .card .bieu-tuong { font-size:26px; float:right; margin-left:8px; }
-  .phu .card { border-left-color:var(--teal); }
-  .phu .card b { font-size:17px; }
-  code { color:var(--teal); font-size:15px; word-break:break-all; }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; min-height:100vh; background:var(--nen); color:var(--chu); line-height:1.47; padding:48px 20px 40px;
+         font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Noto Sans", system-ui, sans-serif; }
+  main { width:min(980px,100%); margin:0 auto; }
+  a { color:var(--nhan-chu); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  :focus-visible { outline:3px solid var(--nhan); outline-offset:2px; border-radius:6px; }
+  code { font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size:.88em; overflow-wrap:anywhere; }
+  kbd { font:inherit; font-size:.9em; padding:1px 7px; border-radius:6px; background:var(--nen); border:1px solid var(--vach); white-space:nowrap; }
+  h1 { margin:0; font-size:clamp(34px,7vw,56px); line-height:1.07; font-weight:700; letter-spacing:-.025em; }
+  h2 { margin:64px 0 16px; font-size:clamp(24px,4vw,32px); line-height:1.12; font-weight:700; letter-spacing:-.02em; }
+  .dau { display:flex; align-items:center; gap:14px; margin-bottom:20px; }
+  .dau svg { width:44px; height:44px; flex:none; }
+  .dau .ten { font-size:19px; font-weight:600; letter-spacing:-.01em; }
+  .don-vi { margin:10px 0 0; font-size:clamp(19px,3.2vw,24px); color:var(--phu); font-weight:500; }
+  .gioi-thieu { margin:10px 0 0; color:var(--phu); font-size:17px; max-width:640px; }
+  .tom-tat { display:inline-flex; align-items:center; gap:10px; margin-top:28px; padding:9px 16px; border-radius:999px; background:var(--the); font-size:15px; }
+  .tom-tat::before, .dich-vu b::before { content:""; width:9px; height:9px; border-radius:50%; background:var(--phu); flex:none; align-self:center; }
+  .tom-tat[data-muc="tot"]::before, .dich-vu b[data-muc="tot"]::before { background:var(--tot); }
+  .tom-tat[data-muc="canh-bao"]::before, .dich-vu b[data-muc="canh-bao"]::before { background:var(--canh-bao); }
+  .tom-tat[data-muc="loi"]::before, .dich-vu b[data-muc="loi"]::before { background:var(--loi); }
+  .luoi { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:16px; margin-top:40px; }
+  .the { display:block; padding:28px; border-radius:22px; background:var(--the); color:var(--chu); transition:transform .25s ease, box-shadow .25s ease; }
+  a.the:hover { text-decoration:none; transform:translateY(-2px); box-shadow:0 10px 30px rgba(0,0,0,.08); }
+  .the b { display:block; margin-bottom:6px; font-size:21px; font-weight:600; letter-spacing:-.015em; }
+  .the span, .the small { color:var(--phu); font-size:15px; }
+  .the code { color:var(--chu); }
+  .the .dieu-huong { display:block; width:fit-content; margin-top:14px; color:var(--nhan-chu); font-size:15px; font-weight:500; }
   /* Tình trạng hệ thống */
-  .so-lieu { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
-  .chi-so { background:var(--card); border-radius:12px; padding:14px 16px; }
-  .chi-so .ten { color:var(--sub); font-size:14px; }
-  .chi-so .gia-tri { font-size:26px; font-weight:700; }
-  .thanh { height:8px; border-radius:4px; background:#0B1522; overflow:hidden; margin-top:6px; }
-  .thanh i { display:block; height:100%; width:0; background:var(--teal); transition:width .4s; }
-  [data-muc="canh-bao"] .thanh i { background:var(--honey); }
-  [data-muc="loi"] .thanh i { background:var(--red); }
-  .dich-vu { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
-  .dich-vu span { padding:6px 12px; border-radius:999px; background:var(--card); font-size:15px; }
-  .dich-vu b { font-weight:600; color:var(--sub); }
-  .dich-vu b[data-muc="tot"] { color:var(--teal); }
-  .dich-vu b[data-muc="canh-bao"] { color:var(--honey); }
-  .dich-vu b[data-muc="loi"] { color:var(--red); }
-  #tt-cap-nhat { color:var(--sub); font-size:13px; margin-top:8px; }
-  #tt-cap-nhat[data-muc="loi"] { color:var(--honey); }
+  .so-lieu { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
+  .chi-so { background:var(--the); border-radius:22px; padding:24px 24px 22px; }
+  .chi-so .ten { color:var(--phu); font-size:15px; }
+  .chi-so .gia-tri { margin-top:4px; font-size:40px; line-height:1.1; font-weight:700; letter-spacing:-.025em; }
+  .thanh { height:4px; border-radius:2px; background:var(--thanh); overflow:hidden; margin-top:16px; }
+  .thanh i { display:block; height:100%; width:0; background:var(--nhan); transition:width .5s ease; }
+  [data-muc="loi"] .thanh i { background:var(--loi); }
+  .dich-vu { list-style:none; margin:16px 0 0; padding:0; background:var(--the); border-radius:22px; overflow:hidden; }
+  .dich-vu li { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:15px 24px; font-size:16px; }
+  .dich-vu li + li { border-top:1px solid var(--vach); }
+  .dich-vu li[hidden] { display:none; }
+  .dich-vu b { display:inline-flex; align-items:baseline; gap:9px; font-weight:500; color:var(--phu); text-align:right; }
+  #tt-cap-nhat { margin-top:14px; color:var(--phu); font-size:14px; }
+  #tt-cap-nhat[data-muc="loi"] { color:var(--nhan-chu); }
   /* Cẩm nang */
-  details { background:var(--card); border-radius:12px; padding:12px 16px; margin-bottom:10px; }
-  summary { cursor:pointer; font-weight:600; font-size:17px; }
-  details ul { margin:10px 0 4px; padding-left:20px; }
-  details li { margin:4px 0; }
-  kbd { background:#0B1522; border:1px solid #334155; border-radius:4px; padding:1px 6px; font-family:inherit; font-size:14px; white-space:nowrap; }
-  .note { margin-top:20px; color:var(--sub); font-size:14px; }
-  .note a { color:var(--teal); }
+  .nhom { background:var(--the); border-radius:22px; overflow:hidden; }
+  details { padding:0 24px; }
+  details + details { border-top:1px solid var(--vach); }
+  summary { cursor:pointer; padding:18px 0; gap:16px; font-size:18px; font-weight:600; letter-spacing:-.01em; list-style:none; display:flex; justify-content:space-between; align-items:center; }
+  summary::-webkit-details-marker { display:none; }
+  summary::after { content:"+"; color:var(--phu); font-size:24px; font-weight:400; line-height:1; }
+  details[open] summary::after { content:"\2212"; }
+  details ul { margin:0 0 18px; padding-left:20px; color:var(--phu); font-size:16px; }
+  details li { margin:6px 0; }
+  details li b { color:var(--chu); font-weight:600; }
+  /* Quản trị và chân trang */
+  .quan-tri { margin-top:56px; color:var(--phu); font-size:15px; }
+  .quan-tri a { margin-right:20px; }
+  .note { margin:16px 0 0; color:var(--phu); font-size:14px; max-width:720px; }
+  .chan { margin-top:40px; color:var(--phu); font-size:13px; }
+  @media (prefers-reduced-motion: reduce) { .the, .thanh i { transition:none; } a.the:hover { transform:none; } }
+  @media (max-width:520px) { body { padding:32px 16px 32px; } .the { padding:22px; } .chi-so { padding:20px; } .chi-so .gia-tri { font-size:34px; } }
 </style>
 </head>
 <body>
 <main>
-  <h1>OneBee Box</h1>
+  <header>
+    <div class="dau">
+      <svg viewBox="0 0 200 200" aria-hidden="true"><polygon points="100,8 180,54 180,146 100,192 20,146 20,54" fill="#F5A524"/><polygon points="100,30 161,65 161,135 100,170 39,135 39,65" fill="#0E1B2C"/><path d="M68 78 L96 100 L68 122" stroke="#F5A524" stroke-width="13" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="104" y="114" width="36" height="12" rx="6" fill="#F5A524"/></svg>
+      <span class="ten">OneBee</span>
+    </div>
+    <h1>OneBee Box</h1>
 {% if onebee_box_ten_don_vi %}
-  <p class="don-vi">{{ onebee_box_ten_don_vi | e }}</p>
+    <p class="don-vi">{{ onebee_box_ten_don_vi | e }}</p>
 {% endif %}
-  <p class="sub">Máy chủ nội bộ — dữ liệu ở lại trong đơn vị. Vào trang này bằng tên <code id="ten-box">{{ onebee_box_ten_mdns }}.local</code>, không cần nhớ IP.</p>
+    <p class="gioi-thieu">Máy chủ nội bộ — dữ liệu ở lại trong đơn vị. Vào trang này bằng tên <code id="ten-box">{{ onebee_box_ten_mdns }}.local</code>, không cần nhớ IP.</p>
+    <div class="tom-tat" id="tt-tom-tat" role="status">Đang kiểm tra…</div>
+  </header>
+
+  <div class="luoi">
+{% if onebee_https_hieu_luc | bool %}
+    <a class="the" href="/so-dieu-hanh/"><b>Sổ điều hành</b><span>Gửi đơn hàng kèm tệp, báo cần hỗ trợ, khảo sát, duyệt đơn và bảng điều hành — sau đăng nhập một lần.</span><span class="dieu-huong">Mở Sổ điều hành &rsaquo;</span></a>
+{% else %}
+    <div class="the"><b>Sổ điều hành</b><span>Bật HTTPS để dùng ứng dụng Sổ điều hành: đơn hàng, báo hỗ trợ, duyệt đơn, bảng điều hành.</span></div>
+{% endif %}
+    <div class="the"><b>Thư mục dùng chung</b>
+      <small>Windows: bấm <kbd>Windows + R</kbd>, gõ</small><br><code id="smb-win">\\{{ onebee_box_ten_mdns }}.local\{{ onebee_box_samba_share }}</code><br>
+      <small>Linux Mint, macOS: thanh địa chỉ trình quản lý tệp, gõ</small><br><code id="smb">smb://{{ onebee_box_ten_mdns }}.local/{{ onebee_box_samba_share }}</code></div>
+    <div class="the"><b>Trợ lý AI nội bộ</b><span>Hỏi đáp, soạn công văn, tóm tắt — AI chạy ngay tại đơn vị. Trên máy trạm mở cửa sổ dòng lệnh, gõ <code>hoi &lt;câu hỏi&gt;</code></span></div>
+  </div>
 
   <section id="trang-thai" aria-labelledby="h-trang-thai">
     <h2 id="h-trang-thai">Tình trạng hệ thống</h2>
@@ -68,42 +116,18 @@
       <div class="chi-so" id="tt-ram-o"><div class="ten">Bộ nhớ (RAM) đang dùng</div><div class="gia-tri" id="tt-ram">…</div><div class="thanh"><i></i></div></div>
       <div class="chi-so" id="tt-o-dia-o"><div class="ten">Ổ dữ liệu còn trống</div><div class="gia-tri" id="tt-o-dia">…</div><div class="thanh"><i></i></div></div>
     </div>
-    <div class="dich-vu">
-      <span>Trợ lý AI: <b id="dv-tro_ly_ai">…</b></span>
-      <span>Thư mục chung: <b id="dv-thu_muc_chung">…</b></span>
-      <span>Sao lưu: <b id="dv-sao_luu">…</b></span>
-      <span id="dv-may_tram-o" hidden>Máy trạm đã sao lưu: <b id="dv-may_tram">…</b></span>
-    </div>
+    <ul class="dich-vu">
+      <li><span>Trợ lý AI</span><b id="dv-tro_ly_ai">…</b></li>
+      <li><span>Thư mục chung</span><b id="dv-thu_muc_chung">…</b></li>
+      <li><span>Sao lưu</span><b id="dv-sao_luu">…</b></li>
+      <li id="dv-may_tram-o" hidden><span>Máy trạm đã sao lưu</span><b id="dv-may_tram">…</b></li>
+    </ul>
     <div id="tt-cap-nhat">Đang tải số liệu…</div>
   </section>
 
-  <h2>Truy cập nhanh</h2>
-  <div class="grid">
-    <a class="card" data-port="{{ onebee_box_ports.open_webui }}" href="#"><span class="bieu-tuong" aria-hidden="true">🤖</span><b>Trợ lý AI nội bộ</b><span>Hỏi đáp, soạn công văn, tóm tắt — AI chạy ngay tại đơn vị</span></a>
-    <div class="card"><span class="bieu-tuong" aria-hidden="true">📁</span><b>Thư mục dùng chung</b>
-      <small>Windows: bấm <kbd>Windows + R</kbd>, gõ</small><br><code id="smb-win">\\{{ onebee_box_ten_mdns }}.local\{{ onebee_box_samba_share }}</code><br>
-      <small>Linux Mint, macOS: thanh địa chỉ trình quản lý tệp, gõ</small><br><code id="smb">smb://{{ onebee_box_ten_mdns }}.local/{{ onebee_box_samba_share }}</code></div>
-    <a class="card" data-port="{{ onebee_box_ports.n8n }}" data-path="form/onebee-ho-tro" href="#"><span class="bieu-tuong" aria-hidden="true">🛠️</span><b>Yêu cầu hỗ trợ kỹ thuật</b><span>Gửi kỹ thuật OneBee: máy lỗi, cần cài đặt, cần hướng dẫn</span></a>
-    <a class="card" href="#cam-nang"><span class="bieu-tuong" aria-hidden="true">📖</span><b>Cẩm nang sử dụng</b><span>Phím tắt, in ấn, lưu trữ và sao lưu</span></a>
-  </div>
-
-  <h2>Soạn văn bản bằng Trợ lý AI</h2>
-  <div class="grid phu">
-{% for g in onebee_goi_y %}
-    <a class="card" data-port="{{ onebee_box_ports.open_webui }}" data-q="{{ g.content | e }}" href="#"><b>{{ g.title[0] | e }}</b><span>{{ (g.title[1] if g.title | length > 1 else '') | e }}</span></a>
-{% endfor %}
-  </div>
-
-  <h2>Biểu mẫu và quản trị (tài khoản do quản trị cấp)</h2>
-  <div class="grid phu">
-    <a class="card" data-port="{{ onebee_box_ports.n8n }}" data-path="form/onebee-don-hang" href="#"><b>Nhập đơn hàng</b><span>Ghi vào thư mục chung</span></a>
-    <a class="card" data-port="{{ onebee_box_ports.n8n }}" data-path="form/onebee-tom-tat" href="#"><b>Tóm tắt văn bản PDF</b><span>Bằng AI tại đơn vị</span></a>
-    <a class="card" data-port="{{ onebee_box_ports.n8n }}" href="#"><b>Tự động hóa (n8n)</b><span>Nhắc việc, báo cáo, chuyển dữ liệu</span></a>
-    <a class="card" data-port="{{ onebee_box_ports.uptime_kuma }}" href="#"><b>Giám sát</b><span>Máy chủ và dịch vụ còn chạy hay không</span></a>
-  </div>
-
   <section id="cam-nang" aria-labelledby="h-cam-nang">
     <h2 id="h-cam-nang">Cẩm nang sử dụng</h2>
+    <div class="nhom">
     <details>
       <summary>Phím tắt hay dùng</summary>
       <ul>
@@ -136,21 +160,30 @@
     <details>
       <summary>Hỏi Trợ lý AI ngay từ máy văn phòng</summary>
       <ul>
-        <li>Bấm biểu tượng <b>Trợ lý AI OneBee</b> trên thanh tác vụ của máy văn phòng</li>
+        <li>Mở cửa sổ dòng lệnh trên máy văn phòng và gõ <code>hoi &lt;câu hỏi&gt;</code></li>
         <li>Câu hỏi và tài liệu chỉ đi tới Box trong đơn vị, không gửi ra Internet</li>
       </ul>
     </details>
+    </div>
   </section>
 
-  <p class="note"><a href="/onebee-ca.crt">Chứng chỉ OneBee Box</a> — chỉ cài khi đã đối chiếu vân tay với bản in của quản trị (<code>sudo onebee-box in-ca</code>)</p>
-  <p class="note">OneBee Box {{ onebee_box_version }} · HTX OneBee</p>
+  <p class="quan-tri">Quản trị (tài khoản do quản trị cấp):
+    <a data-port="443" data-path="quy-trinh/" href="#">Quy trình tự động (Node-RED)</a>
+    <a data-port="{{ onebee_box_ports.uptime_kuma }}" href="#">Giám sát máy chủ và dịch vụ</a></p>
+  <p class="note"><a href="#cam-nang">Cẩm nang sử dụng</a> · <a href="/onebee-ca.crt">Chứng chỉ OneBee Box</a> — chỉ cài khi đã đối chiếu vân tay với bản in của quản trị (<code>sudo onebee-box in-ca</code>)</p>
+{% if onebee_sso_hieu_luc %}
+  <p class="note">Tài khoản OneBee (đăng nhập một lần cho dữ liệu, kho tệp, giám sát): mở bằng tên
+    <a href="https://box.{{ onebee_box_ma_don_vi }}.onebee.internal/dangnhap/">https://box.{{ onebee_box_ma_don_vi }}.onebee.internal/</a>
+    — vào bằng địa chỉ IP chỉ có trang này.</p>
+{% endif %}
+  <p class="chan">OneBee Box {{ onebee_box_version }} · HTX OneBee</p>
 </main>
 <script>
   var host = window.location.hostname;
   // Mở trang chủ bằng onebee.local mà dịch vụ cũng theo tên đó thì Trợ lý AI là origin khác với biểu tượng trên máy trạm (mở bằng IP)
   // → đăng nhập lại; HTTPS còn hỏng hẳn (chứng chỉ không cấp cho .local). Dịch vụ luôn theo IP Box, trừ tên Tailscale của kỹ thuật.
   var hostDichVu = host === "box.{{ onebee_box_ma_don_vi }}.onebee.internal" ? host : "{{ onebee_box_ip }}";
-  document.querySelectorAll("a.card[data-port]").forEach(function (a) {
+  document.querySelectorAll("a[data-port]").forEach(function (a) {
     var goc = window.location.protocol + "//" + hostDichVu + ":" + a.getAttribute("data-port") + "/";
     a.href = goc + (a.getAttribute("data-path") || "");
     // Thẻ mẫu soạn văn bản: mở Trợ lý với câu mở đầu điền sẵn, người dùng bổ sung rồi tự bấm gửi (submit=false)
@@ -172,6 +205,11 @@
     o.setAttribute("data-muc", daDung >= 95 ? "loi" : daDung >= 85 ? "canh-bao" : "tot");
     o.querySelector(".thanh i").style.width = daDung + "%";
   }
+  function tomTat(chu, muc) {
+    var o = document.getElementById("tt-tom-tat");
+    o.textContent = chu;
+    o.setAttribute("data-muc", muc);
+  }
   function capNhat(d) {
     chiSo("tt-cpu", pt(d.cpu_phan_tram) + "%", pt(d.cpu_phan_tram));
     chiSo("tt-ram", pt(d.ram_phan_tram) + "%", pt(d.ram_phan_tram));
@@ -192,8 +230,13 @@
       oMt.hidden = true;
     }
     var t = new Date(d.cap_nhat), e = document.getElementById("tt-cap-nhat");
+    var cu = Date.now() - t.getTime() > 5 * 60000;
+    var cao = [pt(d.cpu_phan_tram), pt(d.ram_phan_tram), pt(od.da_dung_phan_tram)].some(function (x) { return x >= 85; });
+    var dvLech = ["tro_ly_ai", "thu_muc_chung", "sao_luu"].some(function (k) { return MUC[(d.dich_vu || {})[k]] !== "tot"; });
+    tomTat(cu ? "Số liệu chưa được cập nhật gần đây" : cao ? "Máy chủ đang dùng nhiều tài nguyên" : dvLech ? "Có mục cần chú ý ở phần tình trạng" : "Mọi thứ đang chạy bình thường",
+           cu ? "loi" : (cao || dvLech) ? "canh-bao" : "tot");
     e.textContent = "Cập nhật lúc " + t.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-    e.setAttribute("data-muc", Date.now() - t.getTime() > 5 * 60000 ? "loi" : "tot");   // số liệu cũ: lịch cập nhật trên Box đã ngừng
+    e.setAttribute("data-muc", cu ? "loi" : "tot");   // số liệu cũ: lịch cập nhật trên Box đã ngừng
   }
   function tai() {
     fetch("/trang-thai.json", { cache: "no-store" })
@@ -203,6 +246,7 @@
         var e = document.getElementById("tt-cap-nhat");
         e.textContent = "Chưa đọc được số liệu tình trạng — thử tải lại trang sau 1 phút";
         e.setAttribute("data-muc", "loi");
+        tomTat("Chưa đọc được số liệu tình trạng", "canh-bao");
       });
   }
   tai();

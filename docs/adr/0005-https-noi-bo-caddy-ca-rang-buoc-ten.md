@@ -1,7 +1,7 @@
 # ADR 0005 — HTTPS nội bộ: Caddy + CA riêng ràng buộc tên
 
 - Ngày: 10/10/2026 · Trạng thái: Đã làm trên nhánh rà soát bảo mật (Pha 3–4); **chưa thử trên Box/máy trạm thật** · Thay quyết định 5 của ADR 0002
-- Nguồn: `docs/security-audit.md` mục F3, QĐ3, QĐ5–QĐ8
+- Nguồn: `plans/reports/261010-ra-soat-bao-mat.md` mục F3, QĐ3, QĐ5–QĐ8
 
 ## Bối cảnh
 Mật khẩu (Trợ lý AI, biểu mẫu n8n, kho sao lưu), khóa API `hoi`, báo cáo tình trạng đi qua LAN dạng rõ. LAN văn phòng không phải mạng tin cậy

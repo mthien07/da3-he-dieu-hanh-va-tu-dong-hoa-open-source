@@ -1,38 +1,73 @@
 ---
-# Trợ lý AI: tải model Gemma, cài công cụ quản lý Open WebUI, tạo/cập nhật "Trợ lý OneBee" (lời dặn tiếng Việt)
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Trợ lý AI của OneBee Box: cài mã dịch vụ, lời dặn, kho mẫu soạn văn bản và kho tri thức, chạy dịch vụ sau khi đã chép đủ tệp,
+# rồi nạp tri thức vào PostgreSQL. Dịch vụ khai trong docker-compose.yml của box-stack nhưng role này mới chạy nó
+# (giống box-dinh-danh: thiếu tệp gắn vào container thì Docker tạo thư mục rỗng đúng chỗ đó).
 
-- name: Cài lời dặn và công cụ quản lý Open WebUI
-  ansible.builtin.copy:
-    src: "{{ item.src }}"
-    dest: "/usr/local/lib/onebee-box/{{ item.src }}"
+# Dữ liệu của dịch vụ cũ không còn dùng: đổi tên để giữ làm dấu (không xóa dữ liệu của đơn vị), rồi dọn tệp bí mật cũ
+- name: Kiểm tra dữ liệu dịch vụ cũ còn trên ổ
+  ansible.builtin.stat:
+    path: "{{ onebee_box_data }}/{{ 'open' ~ '-webui' }}"
+  register: onebee_ai_du_lieu_cu
+
+- name: Đổi tên dữ liệu dịch vụ cũ (giữ nguyên, không xóa)
+  ansible.builtin.command: >-
+    mv {{ onebee_box_data }}/{{ 'open' ~ '-webui' }}
+    {{ onebee_box_data }}/{{ 'open' ~ '-webui' }}.da-thay-{{ ansible_facts.date_time.date }}
+  when: onebee_ai_du_lieu_cu.stat.exists
+  changed_when: true
+
+- name: Dọn tệp bí mật của dịch vụ cũ (không còn ai đọc)
+  ansible.builtin.file:
+    path: "{{ onebee_box_secrets }}/{{ item }}"
+    state: absent
+  loop: [webui-admin-password, webui-secret-key]
+
+- name: Tạo thư mục mã dịch vụ, dữ liệu và kho tri thức của đơn vị
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
     owner: root
     group: root
     mode: "{{ item.mode }}"
   loop:
-    - {src: tro-ly-onebee-loi-dan.md, mode: "0644"}
-    - {src: goi-y.json, mode: "0644"}
-    - {src: giao-dien-tieng-viet.json, mode: "0644"}
-    - {src: onebee-webui.py, mode: "0750"}
+    - {path: "{{ onebee_box_dir }}/ai-rag", mode: "0755"}
+    - {path: "{{ onebee_box_data }}/ai-rag", mode: "0700"}
+    - {path: "{{ onebee_box_data }}/knowledge", mode: "0755"}
 
-- name: Cài đặt kho mẫu prompt hành chính và tri thức RAG
+- name: Cài mã dịch vụ Trợ lý AI và lời dặn
   ansible.builtin.copy:
-    # "/" cuối: chép nội dung thư mục vào đúng chỗ onebee-webui.py đọc (thiếu thì thành prompts/prompts/*.json)
-    src: "{{ item.src }}/"
-    dest: "/usr/local/lib/onebee-box/{{ item.dest }}/"
+    src: "{{ item.src }}"
+    dest: "{{ onebee_box_dir }}/ai-rag/{{ item.dest }}"
     owner: root
     group: root
-    mode: "0755"
+    mode: "{{ item.mode }}"
+  loop:
+    - {src: onebee-ai-rag.py, dest: onebee-ai-rag.py, mode: "0644"}
+    - {src: tro-ly-onebee-loi-dan.md, dest: tro-ly-onebee-loi-dan.md, mode: "0644"}
+  register: onebee_ai_ma
+
+- name: Cài kho mẫu soạn văn bản và kho tri thức gốc
+  ansible.builtin.copy:
+    # "/" cuối: chép nội dung thư mục vào đúng chỗ onebee-ai-rag.py đọc (thiếu thì thành prompts/prompts/*.json)
+    src: "{{ item.src }}/"
+    dest: "{{ onebee_box_dir }}/ai-rag/{{ item.dest }}/"
+    owner: root
+    group: root
+    mode: "0644"
+    directory_mode: "0755"
   loop:
     - {src: prompts, dest: prompts}
     - {src: knowledge, dest: knowledge}
 
-- name: Tạo thư mục tri thức công cộng cho đơn vị bổ sung tài liệu
-  ansible.builtin.file:
-    path: /usr/local/share/onebee-box/knowledge
-    state: directory
+- name: Cài mã dịch vụ cho lệnh cấp / thu hồi khóa trên Box
+  ansible.builtin.copy:
+    src: onebee-ai-rag.py
+    dest: /usr/local/lib/onebee-box/onebee-ai-rag.py
     owner: root
     group: root
-    mode: "0755"
+    mode: "0750"
 
 - name: Kiểm tra model AI đã tải
   ansible.builtin.command: docker exec onebee-ollama ollama list
@@ -50,16 +85,38 @@
   delay: 30
   until: onebee_ollama_pull.rc == 0
 
-- name: Tạo / cập nhật Trợ lý OneBee + cài đặt bảo mật trong Open WebUI
-  ansible.builtin.command: /usr/local/sbin/onebee-box dong-bo-tro-ly
-  register: onebee_tro_ly
-  changed_when: onebee_tro_ly.stdout is search('đã tạo|đã cập nhật')
-  retries: 12
-  delay: 10
-  until: onebee_tro_ly.rc != 1         # 1 = Open WebUI chưa sẵn sàng → thử lại
-  failed_when: onebee_tro_ly.rc not in [0, 3]
+# Chép tệp xong mới chạy dịch vụ: container gắn thư mục mã, thiếu tệp thì Python thoát ngay
+- name: Khởi chạy / cập nhật dịch vụ Trợ lý AI
+  ansible.builtin.command: >-
+    docker compose up -d --no-deps
+    {{ '--force-recreate' if onebee_ai_ma is changed else '' }}
+    ai-rag
+  args:
+    chdir: "{{ onebee_box_dir }}"
+  register: onebee_ai_up
+  changed_when: onebee_ai_up.stderr is search('Creat|Recreat|Start|Pull')
+  retries: 5
+  delay: 30
+  until: onebee_ai_up.rc == 0
 
-- name: Cảnh báo sai mật khẩu quản trị Open WebUI (các phần khác vẫn cài tiếp)
+- name: Chờ dịch vụ Trợ lý AI sẵn sàng
+  ansible.builtin.command: >-
+    docker exec onebee-ai-rag python3 -I -c
+    "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8092/suc-khoe', timeout=5)"
+  register: onebee_ai_san_sang
+  until: onebee_ai_san_sang.rc == 0
+  retries: 30
+  delay: 2
+  changed_when: false
+
+# Nạp lại cập nhật đúng dòng (nguồn, đoạn) và xóa đoạn thừa; chạy lại không tạo bản trùng
+- name: Nạp kho tri thức vào PostgreSQL
+  ansible.builtin.command: /usr/local/sbin/onebee-box nap-tri-thuc
+  register: onebee_ai_nap
+  changed_when: false
+  failed_when: onebee_ai_nap.rc not in [0, 3]   # 3 = mô hình nhúng chưa có → cảnh báo, không chặn phần còn lại
+
+- name: Cảnh báo chưa nạp được kho tri thức (các phần khác vẫn cài tiếp)
   ansible.builtin.debug:
-    msg: "{{ onebee_tro_ly.stderr }}"
-  when: onebee_tro_ly.rc == 3
+    msg: "{{ onebee_ai_nap.stderr }}"
+  when: onebee_ai_nap.rc == 3

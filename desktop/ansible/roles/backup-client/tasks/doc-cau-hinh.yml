@@ -1,4 +1,6 @@
 ---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Đọc /etc/onebee/may-tram.env → onebee_backup_conf (có file hay không) + onebee_may_tram (dòng KHÓA=giá trị).
 # Dùng chung: bộ cài desktop (role backup-client) và playbook dong-bo-may-tram.yml của Box (include_role … tasks_from: doc-cau-hinh).
 

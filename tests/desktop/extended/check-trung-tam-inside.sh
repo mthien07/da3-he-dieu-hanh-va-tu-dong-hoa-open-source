@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra Trung tâm OneBee (onebee-trung-tam) — chạy bằng tài khoản thường trong container đã cài OneBee OS.
 # Mở màn hình ảo Xvfb, dựng cửa sổ và mọi trang bằng --tu-kiem, và xác nhận --lan-dau không tự mở lại khi đã có file dấu.
 set -euo pipefail

@@ -1,0 +1,106 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Dữ liệu cấu trúc của OneBee Box (ADR 0006): PostgreSQL + pgvector và API tự sinh PostgREST sau cầu nối danh tính.
+# Dịch vụ khai trong docker-compose.yml của box-stack; role này chạy CSDL, áp dụng lược đồ có ghi sổ, đặt mật khẩu vai trò,
+# rồi mới chạy PostgREST. Chạy sau box-dinh-danh (khóa ký JWT dùng chung với cầu nối đã có).
+
+- name: Tạo thư mục dữ liệu CSDL và thư mục kết xuất
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    # Thư mục con (dữ liệu sống) do image tạo, chủ là tài khoản postgres trong container, 0700
+    - {path: "{{ onebee_box_data }}/postgres", mode: "0755"}
+    # Bản kết xuất (pg_dump): onebee.dump của sao lưu đêm + truoc-luoc-do-*.dump trước mỗi lần đổi lược đồ
+    - {path: "{{ onebee_box_data }}/postgres-ket-xuat", mode: "0700"}
+    - {path: /usr/local/lib/onebee-box/luoc-do, mode: "0755"}
+
+# Sinh một lần (lookup password ghi tệp 0600 khi chưa có). postgrest-password do .env của box-stack sinh (PGRST_DB_URI).
+# Xoay bằng onebee-box xoay-khoa --box (ALTER ROLE trước, ghi tệp sau). Chỉ giữ số đếm trong biến, không giữ mật khẩu
+- name: Sinh mật khẩu chủ CSDL (lần đầu)
+  ansible.builtin.set_fact:
+    onebee_csdl_so_khoa: >-
+      {{ lookup('ansible.builtin.password', onebee_box_secrets ~ '/postgres-password',
+                chars=['ascii_letters', 'digits'], length=32) | length }}
+  no_log: true
+
+- name: Cài tệp lược đồ CSDL
+  ansible.builtin.copy:
+    src: luoc-do/
+    dest: /usr/local/lib/onebee-box/luoc-do/
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Cài công cụ áp dụng lược đồ và lệnh chuyển dữ liệu sổ cũ (onebee-box chuyen-du-lieu)
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/usr/local/lib/onebee-box/{{ item }}"
+    owner: root
+    group: root
+    mode: "0750"
+  loop: [onebee-luoc-do.sh, onebee-chuyen-du-lieu.py]
+
+- name: Khởi chạy / cập nhật PostgreSQL
+  ansible.builtin.command: docker compose up -d --no-deps postgres
+  args:
+    chdir: "{{ onebee_box_dir }}"
+  register: onebee_csdl_up
+  changed_when: onebee_csdl_up.stderr is search('Creat|Recreat|Start|Pull')
+  retries: 5   # lần đầu phải tải image (mạng chập chờn)
+  delay: 30
+  until: onebee_csdl_up.rc == 0
+
+# Lần đầu image khởi tạo bằng một máy chủ tạm chỉ nghe socket → chờ tới khi nghe TCP (máy chủ thật)
+- name: Chờ PostgreSQL sẵn sàng
+  ansible.builtin.command: docker exec onebee-postgres pg_isready -q -h 127.0.0.1 -U postgres -d onebee
+  register: onebee_csdl_san_sang
+  until: onebee_csdl_san_sang.rc == 0
+  retries: 60
+  delay: 2
+  changed_when: false
+
+# Chỉ chạy tệp chưa có trong sổ onebee.lich_su_luoc_do; tệp đã áp dụng mà đổi nội dung → dừng với lỗi.
+# CSDL đã có lược đồ thì kết xuất ra postgres-ket-xuat/truoc-luoc-do-<tệp>.dump trước khi áp dụng tệp mới
+- name: Áp dụng lược đồ CSDL (có ghi sổ, kết xuất trước khi đổi)
+  ansible.builtin.command: >-
+    /usr/local/lib/onebee-box/onebee-luoc-do.sh /usr/local/lib/onebee-box/luoc-do {{ onebee_box_data }}/postgres-ket-xuat
+  register: onebee_luoc_do
+  changed_when: "'đã áp dụng' in onebee_luoc_do.stdout"
+
+# Mật khẩu postgres, xac_thuc trong CSDL phải khớp tệp bí mật (lần đầu xac_thuc chưa có mật khẩu; sau khôi phục toàn bộ
+# CSDL của bản cài lại mang mật khẩu mới còn tệp bí mật là bản cũ). Thử đăng nhập bằng tệp; sai thì ALTER ROLE
+- name: Đồng bộ mật khẩu vai trò CSDL với tệp bí mật
+  ansible.builtin.command: /usr/local/sbin/onebee-box dong-bo-mat-khau-csdl
+  register: onebee_csdl_mat_khau
+  changed_when: "'đã đổi' in onebee_csdl_mat_khau.stdout"
+
+# Khóa ký JWT sinh lại (lần đầu, hoặc sau xoay-khoa --box; box-dinh-danh đã ghi nhận) → tạo lại: tệp gắn vào container là inode cũ.
+# Mật khẩu trong .env đổi thì compose tự tạo lại; lược đồ đổi thì PostgREST tự nạp lại (NOTIFY pgrst)
+- name: Khởi chạy / cập nhật dịch vụ dữ liệu (PostgREST)
+  ansible.builtin.command: >-
+    docker compose up -d --no-deps
+    {{ '--force-recreate' if not (onebee_cn_khoa_cu.stat.exists | default(true)) else '' }}
+    postgrest
+  args:
+    chdir: "{{ onebee_box_dir }}"
+  register: onebee_api_up
+  changed_when: onebee_api_up.stderr is search('Creat|Recreat|Start|Pull')
+  retries: 5
+  delay: 30
+  until: onebee_api_up.rc == 0
+
+# Image PostgREST không có shell → hỏi cổng quản trị /ready từ cầu nối danh tính (cùng mạng api): 200 = đã nối được CSDL
+- name: Chờ dịch vụ dữ liệu sẵn sàng
+  ansible.builtin.command: >-
+    docker exec onebee-cau-noi python3 -I -c
+    "import urllib.request; urllib.request.urlopen('http://postgrest:3001/ready', timeout=5)"
+  register: onebee_api_san_sang
+  until: onebee_api_san_sang.rc == 0
+  retries: 30
+  delay: 2
+  changed_when: false

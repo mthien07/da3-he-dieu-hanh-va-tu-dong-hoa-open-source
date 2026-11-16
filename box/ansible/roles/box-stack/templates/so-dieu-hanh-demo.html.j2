@@ -1,0 +1,7 @@
+{# SPDX-License-Identifier: MIT #}
+{# Khối chèn vào trang Sổ điều hành: dán nguyên khối dưới đây ngay sau thẻ <body> (trước <main>) của so-dieu-hanh.html.j2.
+   Chế độ demo tắt: khối không in gì. Không dùng thẻ <style> nhúng vì CSP của trang chỉ cho tài nguyên cùng gốc
+   (style-src 'self'); thanh dùng lớp .thong-bao có sẵn của trang và vẫn hiện rõ nếu lớp đó đổi tên. #}
+{% if onebee_box_che_do_demo | default(false) | bool %}
+<div class="thong-bao thanh-demo" role="status"><strong>Bản chạy thử công khai</strong> — Dữ liệu giả lập, tự đặt lại lúc 03:00 mỗi ngày. Vui lòng không nhập thông tin thật.</div>
+{% endif %}

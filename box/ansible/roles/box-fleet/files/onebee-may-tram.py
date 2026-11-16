@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Tình trạng các máy trạm OneBee (được lệnh onebee-box gọi, chỉ thư viện chuẩn).
 
   onebee-may-tram.py bang    <thu-muc-tinh-trang> ten=gio ...        In bảng cho người quản trị
   onebee-may-tram.py payload <thu-muc-tinh-trang> <trang_thai> <noi_dung> ten=gio ...
-                                                                     JSON báo cáo gửi n8n (email hằng ngày)
+                                                                     JSON báo cáo gửi động cơ quy trình (email hằng ngày)
   onebee-may-tram.py dem     <thu-muc-tinh-trang> ten=gio ...        JSON hai con số {tong, sao_luu_trong_han, luc} cho trang chủ (không có tên máy)
   onebee-may-tram.py kho     <thu-muc-tinh-trang> ten ...            In "ten ip [ghim|chua-ghim]" của máy có thể SSH tới (cập nhật qua SSH)
 
@@ -12,16 +14,16 @@ Biến môi trường (do lệnh onebee-box đặt):
   ONEBEE_DA_GHIM danh sách máy đã ghim khóa SSH (ngăn cách bằng dấu phẩy, có thể rỗng): quy tắc tin IP của lệnh kho (bắt buộc đặt cho kho).
 
 Chữ ký báo cáo (rà soát bảo mật 10/10, F2): máy trạm gửi {"ten", "du_lieu": "<JSON dạng chuỗi>", "ky": HMAC-SHA256}. Khóa ký suy từ
-mật khẩu kho sao lưu của máy (RESTIC_PASSWORD — chưa từng đi qua mạng), n8n KHÔNG giữ khóa nên không giả được báo cáo; Box tự kiểm ở đây.
+mật khẩu kho sao lưu của máy (RESTIC_PASSWORD — chưa từng đi qua mạng), động cơ quy trình KHÔNG giữ khóa nên không giả được báo cáo; Box tự kiểm ở đây.
 Báo cáo cũ (JSON phẳng, không chữ ký) vẫn đọc được nhưng bị gắn nhãn "chưa ký" và không được tin để chọn địa chỉ SSH máy chưa ghim.
 Chữ ký đúng nhưng giờ ký lệch giờ Box quá 10 phút → nhãn "lech-gio" (đồng hồ máy sai, hoặc báo cáo cũ bị phát lại): hiện cảnh báo, không tin để chọn IP
-máy chưa ghim. Giới hạn: qua n8n bình thường vẫn phát lại được trong ±10 phút; n8n bị chiếm có thể phát lại báo cáo ký cũ (IP nằm trong phần đã ký +
+máy chưa ghim. Giới hạn: qua động cơ quy trình bình thường vẫn phát lại được trong ±10 phút; kẻ chiếm được động cơ quy trình có thể phát lại báo cáo ký cũ (IP nằm trong phần đã ký +
 khóa SSH đã ghim + bước chứng minh nên không lái được SSH tới máy lạ).
 Lệnh kho BẮT BUỘC có ONEBEE_BI_MAT và ONEBEE_DA_GHIM (thiếu thì từ chối — không có chế độ "tin IP chưa ký").
 
 ten=gio: tên máy trạm đã cấp (onebee-box them-may) = số giờ từ lần sao lưu cuối (Box tự đọc kho sao lưu;
 "null" = chưa có bản nào, "loi" = không đọc được kho, ví dụ đang bận dọn; số âm = có bản ghi ngày tương lai).
-Tình trạng khác (cập nhật, ổ đĩa...) do máy trạm tự gửi mỗi giờ qua n8n → <thu-muc>/<ten>.json.
+Tình trạng khác (cập nhật, ổ đĩa...) do máy trạm tự gửi mỗi giờ qua động cơ quy trình → <thu-muc>/<ten>.json.
 """
 import hashlib
 import hmac

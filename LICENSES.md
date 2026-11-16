@@ -29,14 +29,22 @@ Clonezilla (sao lưu/nhân bản ổ đĩa, chỉ dùng như công cụ khi cài
 | Ubuntu Server 24.04, Docker (docker.io), Samba | Nguồn mở (Apache-2.0, GPL-3.0…) | Gói từ kho Ubuntu |
 | Ollama | MIT | |
 | Model Gemma 4 (`gemma4:e2b-it-qat`, Google) | Apache-2.0 (theo model card Gemma 4) | Kiểm lại trang giấy phép chính thức trước khi ghi vào hợp đồng |
+| Model nhúng Nomic Embed Text (`nomic-embed-text:v1.5`, Nomic AI) | Apache-2.0 | Dùng cho kho tri thức pgvector; tải bằng Ollama |
 | Mailpit (chỉ dùng trong kiểm thử, không cài cho khách) | MIT | |
 | vncsnapshot (chỉ dùng trong kiểm thử hỗ trợ từ xa) | GPL | Gói Ubuntu |
-| Open WebUI | BSD-3 + điều khoản thương hiệu (từ v0.6.6) | >50 người dùng/30 ngày: không được gỡ/đổi thương hiệu "Open WebUI". OneBee không đổi tên/logo. |
-| n8n | Sustainable Use License (fair-code, **không** phải nguồn mở chuẩn OSI) | Theo n8n: chỉ giúp khách dựng n8n nội bộ của chính khách thì không cần giấy phép thương mại. Không bán n8n như dịch vụ host chung. |
+| Node-RED 5.0.9 | Apache-2.0 | Động cơ quy trình của Box: dùng, sửa, phân phối lại được, chỉ cần giữ thông báo bản quyền và tệp giấy phép. https://raw.githubusercontent.com/node-red/node-red/5.0.9/LICENSE |
+| node-red-node-email 5.2.5 (nút gửi thư SMTP) | Apache-2.0 | Gói npm khai `Apache-2.0` |
+| cvdupdate 1.2.0 (tải chữ ký ClamAV ở máy có Internet, chép sang Box không có mạng) | Apache-2.0 | Chỉ chạy ở máy kỹ thuật, không cài trên Box |
 | Uptime Kuma | MIT | |
 | restic, rest-server | BSD-2-Clause | |
 | Caddy | Apache-2.0 | |
+| Authelia 4.39.28 (đăng nhập một lần, hai lớp) | Apache-2.0 | Tệp giấy phép đúng tag: https://raw.githubusercontent.com/authelia/authelia/v4.39.28/LICENSE (ADR 0006) |
+| Python 3.14.10 (image `python:3.14.10-slim-trixie`, chạy cầu nối danh tính và dịch vụ Trợ lý AI — mã trong repo, MIT) | PSF-2.0 (Python-2.0) | Gói Debian trong image giữ giấy phép riêng; https://raw.githubusercontent.com/python/cpython/v3.14.10/LICENSE |
+| PostgreSQL 18.7 (image `pgvector/pgvector:0.8.7-pg18-trixie`, CSDL dữ liệu cấu trúc) | PostgreSQL License (kiểu BSD/MIT) | https://raw.githubusercontent.com/postgres/postgres/REL_18_7/COPYRIGHT (ADR 0006); gói Debian trong image giữ giấy phép riêng |
+| pgvector 0.8.7 (mở rộng vector trong cùng image) | PostgreSQL License | https://raw.githubusercontent.com/pgvector/pgvector/v0.8.7/LICENSE (ADR 0006) |
+| PostgREST 16.5 (API tự sinh trên CSDL) | MIT | https://raw.githubusercontent.com/PostgREST/postgrest/v16.5/LICENSE (ADR 0006) |
+| SeaweedFS 4.53 (kho tệp đối tượng) | Apache-2.0 | https://raw.githubusercontent.com/seaweedfs/seaweedfs/4.53/LICENSE (ADR 0006) |
+| ClamAV 1.5.4 (kiểm dịch tệp, chạy từng lượt; image `onebee/clamav-khong-unrar:1.5.4` dựng cục bộ từ image chính chủ đã ghim digest, đã bỏ `libclamunrar`) | GPL-2.0-only (lõi; thư viện đi kèm giữ giấy phép riêng: LGPL-2.1, Apache-2.0, BSD-3-Clause, MIT, Zlib…) | `libclamunrar` (giấy phép UnRAR, ngoài OSI) đã bỏ khỏi image; https://raw.githubusercontent.com/Cisco-Talos/clamav/clamav-1.5.4/COPYING.txt (ADR 0006) |
 
 Giấy phép phần Box ghi theo trang của từng dự án — cần kiểm lại khi nâng phiên bản và trước khi phát hành v1.0.
 
-→ Khi giới thiệu sản phẩm là "mã nguồn mở", phải nói rõ n8n là fair-code và điều khoản thương hiệu của Open WebUI.

@@ -1,0 +1,194 @@
+<!doctype html>
+{# SPDX-License-Identifier: MIT #}
+{# Quản lý bởi OneBee OS. Sổ điều hành H-P-D-I: trang tĩnh sau đăng nhập một lần tại /so-dieu-hanh/,
+   mã ở so-dieu-hanh.js, kiểu ở so-dieu-hanh.css (CSP của Caddy chỉ cho tài nguyên cùng gốc). #}
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sổ điều hành{% if onebee_box_ten_don_vi %} — {{ onebee_box_ten_don_vi | e }}{% endif %}</title>
+<link rel="stylesheet" href="/so-dieu-hanh/so-dieu-hanh.css">
+</head>
+<body data-mo-hinh-ai="{{ onebee_box_ai_model | e }}" data-cong-giam-sat="{{ onebee_box_ports.uptime_kuma }}">
+{% if onebee_box_che_do_demo | default(false) | bool %}
+<div class="thong-bao thanh-demo" role="status"><strong>Bản chạy thử công khai</strong> — Dữ liệu giả lập, tự đặt lại lúc 03:00 mỗi ngày. Vui lòng không nhập thông tin thật.</div>
+{% endif %}
+<main>
+  <header>
+    <div>
+      <h1>Sổ điều hành</h1>
+{% if onebee_box_ten_don_vi %}
+      <p class="don-vi">{{ onebee_box_ten_don_vi | e }}</p>
+{% endif %}
+      <p class="phu"><a href="/">Về trang chủ OneBee Box</a></p>
+    </div>
+    <div class="ho-so">
+      <span class="huy-hieu" id="ten-nguoi-dung">Đang kiểm tra phiên đăng nhập…</span>
+      <span class="huy-hieu" id="vai-tro">—</span>
+    </div>
+  </header>
+  <div id="thong-bao-chung" class="thong-bao" hidden></div>
+
+  <nav class="the" role="tablist" aria-label="Bốn khu làm việc H, P, D, I">
+    <button type="button" role="tab" aria-selected="true" data-khu="khu-h">[H] Bàn làm việc</button>
+    <button type="button" role="tab" aria-selected="false" data-khu="khu-p">[P] Quy trình và duyệt</button>
+    <button type="button" role="tab" aria-selected="false" data-khu="khu-d">[D] Bảng điều hành</button>
+    <button type="button" role="tab" aria-selected="false" data-khu="khu-i">[I] Trợ lý AI</button>
+  </nav>
+
+  <section id="khu-h" class="khu hien" role="tabpanel">
+    <div class="luoi">
+      <div class="the-noi-dung">
+        <h2>Tài khoản của bạn</h2>
+        <p>Tên đăng nhập: <b id="h-ten">—</b></p>
+        <p>Vai trò: <b id="h-vai-tro">—</b></p>
+        <p class="phu" id="h-quyen">Quyền được kiểm ở cơ sở dữ liệu cho từng dòng; trang này chỉ hiển thị.</p>
+      </div>
+      <div class="the-noi-dung">
+        <h2>Việc của tôi</h2>
+        <p>Đơn của tôi đang chờ duyệt: <b id="h-don-cho">—</b></p>
+        <p id="h-cho-toi-o" hidden>Đơn đang chờ tôi duyệt: <b id="h-cho-toi">—</b></p>
+      </div>
+      <div class="the-noi-dung">
+        <h2>Lối vào</h2>
+        <ul>
+          <li>Thư mục dùng chung: <code>\\{{ onebee_box_ten_mdns | e }}.local\{{ onebee_box_samba_share | e }}</code></li>
+          <li>Gửi đơn hàng, báo hỗ trợ, khảo sát: khu <b>[P]</b></li>
+          <li>Hỏi Trợ lý AI: khu <b>[I]</b></li>
+          <li id="h-giam-sat-o" hidden>Giám sát dịch vụ: <a id="h-giam-sat" href="/">mở trang giám sát</a></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="khu-p" class="khu" role="tabpanel">
+    <div class="luoi">
+      <div class="the-noi-dung">
+        <h2>1. Gửi đơn hàng</h2>
+        <form id="form-don" novalidate>
+          <label for="don-khach">Khách hàng</label>
+          <input id="don-khach" name="khach_hang" maxlength="200" autocomplete="off">
+          <label for="don-mat-hang">Mặt hàng</label>
+          <input id="don-mat-hang" name="mat_hang" maxlength="200" autocomplete="off">
+          <label for="don-so-luong">Số lượng (kg)</label>
+          <input id="don-so-luong" name="so_luong_kg" type="number" min="0" step="any" inputmode="decimal">
+          <label for="don-gia">Đơn giá (đồng)</label>
+          <input id="don-gia" name="don_gia" type="number" min="0" step="any" inputmode="decimal">
+          <p class="phu">Thành tiền: <b id="don-thanh-tien">0</b> đồng</p>
+          <label for="don-ngay-giao">Ngày giao (không bắt buộc)</label>
+          <input id="don-ngay-giao" name="ngay_giao" type="date">
+          <label for="don-ghi-chu">Ghi chú</label>
+          <input id="don-ghi-chu" name="ghi_chu" maxlength="500" autocomplete="off">
+          <label for="don-tep">Tệp đính kèm (PDF, ảnh, Word, Excel; tối đa 10 MB; được quét mã độc)</label>
+          <input id="don-tep" type="file" accept=".pdf,.png,.jpg,.jpeg,.txt,.docx,.xlsx,.odt,.ods">
+          <button type="submit" class="nut">Gửi đơn (chờ duyệt)</button>
+        </form>
+        <div id="kq-don" class="thong-bao" hidden></div>
+      </div>
+
+      <div class="the-noi-dung" id="the-ho-tro">
+        <h2>2. Báo cần hỗ trợ</h2>
+        <form id="form-ho-tro" novalidate>
+          <label for="ht-may">Tên máy</label>
+          <input id="ht-may" name="may" maxlength="64" autocomplete="off">
+          <label for="ht-loai">Loại sự cố</label>
+          <select id="ht-loai" name="loai">
+            <option>File không mở được / sai định dạng</option>
+            <option>Phần mềm chỉ chạy trên Windows</option>
+            <option>Máy in / máy quét</option>
+            <option>Mạng / Internet</option>
+            <option>Gõ tiếng Việt</option>
+            <option>Máy chậm / treo</option>
+            <option>Sao lưu / mất file</option>
+            <option>Khác</option>
+          </select>
+          <label for="ht-muc-do">Mức độ</label>
+          <select id="ht-muc-do" name="muc_do">
+            <option value="binh-thuong">Bình thường</option>
+            <option value="gap">Gấp (đang dừng việc)</option>
+          </select>
+          <label for="ht-nguoi-bao">Người báo (không bắt buộc)</label>
+          <input id="ht-nguoi-bao" name="nguoi_bao" maxlength="100" autocomplete="off">
+          <label for="ht-mo-ta">Mô tả</label>
+          <textarea id="ht-mo-ta" name="mo_ta" rows="3" maxlength="1500"></textarea>
+          <button type="submit" class="nut">Gửi yêu cầu hỗ trợ</button>
+        </form>
+        <div id="kq-ho-tro" class="thong-bao" hidden></div>
+      </div>
+
+      <div class="the-noi-dung">
+        <h2>3. Khảo sát hài lòng (ẩn danh)</h2>
+        <form id="form-khao-sat" novalidate>
+          <label for="ks-1">Máy chạy ổn định, nhanh (1 đến 5)</label>
+          <input id="ks-1" name="diem_1" type="number" min="1" max="5" step="1" value="5">
+          <label for="ks-2">Mở, sửa, gửi file Word, Excel (1 đến 5)</label>
+          <input id="ks-2" name="diem_2" type="number" min="1" max="5" step="1" value="5">
+          <label for="ks-3">Gõ tiếng Việt (1 đến 5)</label>
+          <input id="ks-3" name="diem_3" type="number" min="1" max="5" step="1" value="5">
+          <label for="ks-4">Được hỗ trợ kịp thời (1 đến 5)</label>
+          <input id="ks-4" name="diem_4" type="number" min="1" max="5" step="1" value="5">
+          <label for="ks-5">Muốn tiếp tục dùng (1 đến 5)</label>
+          <input id="ks-5" name="diem_5" type="number" min="1" max="5" step="1" value="5">
+          <label for="ks-gop-y">Góp ý thêm</label>
+          <input id="ks-gop-y" name="gop_y" maxlength="500" autocomplete="off">
+          <p class="phu">Phiếu không ghi tên người gửi; chỉ quản lý xem được điểm trung bình theo tuần.</p>
+          <button type="submit" class="nut">Gửi phiếu</button>
+        </form>
+        <div id="kq-khao-sat" class="thong-bao" hidden></div>
+      </div>
+    </div>
+
+    <div class="the-noi-dung">
+      <h2>4. Đơn chờ duyệt</h2>
+      <p class="phu">Quản lý duyệt hoặc từ chối; không ai tự duyệt đơn do chính mình tạo (cơ sở dữ liệu chặn). Từ chối phải ghi lý do.</p>
+      <label for="ly-do-duyet">Lý do (bắt buộc khi từ chối)</label>
+      <input id="ly-do-duyet" maxlength="300" autocomplete="off">
+      <div id="kq-duyet" class="thong-bao" hidden></div>
+      <div class="cuon">
+        <table>
+          <thead><tr><th>Số</th><th>Khách hàng</th><th>Mặt hàng</th><th>Thành tiền</th><th>Người tạo</th><th>Tệp đính kèm</th><th>Thao tác</th></tr></thead>
+          <tbody id="bang-cho-duyet"><tr><td colspan="7">Đang tải danh sách…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="khu-d" class="khu" role="tabpanel">
+    <div id="d-chan-quyen" class="thong-bao" hidden>Bảng điều hành dành cho quản lý. Cơ sở dữ liệu không cho tài khoản này đọc số liệu tổng hợp.</div>
+    <div class="luoi" id="d-so-lieu">
+      <div class="the-noi-dung"><h2>Đơn hàng</h2><div class="so-lon" id="d-don-tong">—</div><p class="phu" id="d-don-chi-tiet">—</p></div>
+      <div class="the-noi-dung"><h2>Yêu cầu hỗ trợ</h2><div class="so-lon" id="d-ht-tong">—</div><p class="phu" id="d-ht-chi-tiet">—</p></div>
+      <div class="the-noi-dung"><h2>Máy trạm báo tình trạng</h2><div class="so-lon" id="d-may-tong">—</div><p class="phu">máy đã gửi báo cáo</p></div>
+      <div class="the-noi-dung"><h2>Tệp đã kiểm dịch</h2><div class="so-lon" id="d-tep-tong">—</div><p class="phu" id="d-tep-chi-tiet">—</p></div>
+    </div>
+    <div class="the-noi-dung">
+      <h2>Khảo sát theo tuần (điểm trung bình 1 đến 5)</h2>
+      <div class="cuon">
+        <table>
+          <thead><tr><th>Tuần (thứ Hai)</th><th>Số phiếu</th><th>Ổn định</th><th>Văn bản</th><th>Tiếng Việt</th><th>Hỗ trợ</th><th>Tiếp tục dùng</th></tr></thead>
+          <tbody id="d-khao-sat"><tr><td colspan="7">Chưa có số liệu.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <button type="button" class="nut" id="d-tai-lai">Tải lại số liệu</button>
+  </section>
+
+  <section id="khu-i" class="khu" role="tabpanel">
+    <div class="the-noi-dung">
+      <h2>Trợ lý AI nội bộ</h2>
+      <p class="phu">Chạy ngay trên Box của đơn vị, không gửi dữ liệu ra Internet.</p>
+      <label for="i-cau-hoi">Câu hỏi hoặc yêu cầu soạn thảo</label>
+      <textarea id="i-cau-hoi" rows="4" maxlength="4000"></textarea>
+      <div class="hang-nut">
+        <button type="button" class="nut" id="i-hoi">Hỏi Trợ lý</button>
+        <button type="button" class="nut phu-nut" id="i-tom-tat">Nhờ Trợ lý tóm tắt tuần này</button>
+      </div>
+      <p class="phu">Tóm tắt tuần chỉ gửi số liệu tổng hợp (số đơn, số yêu cầu…), không có tên người, số điện thoại hay nội dung đơn. Dành cho quản lý.</p>
+      <div id="i-ket-qua" class="thong-bao" hidden></div>
+      <p id="luu-y-ai" class="phu">Lưu ý: AI có thể sai. Người ký duyệt cần kiểm tra lại số liệu và căn cứ trước khi dùng chính thức.</p>
+    </div>
+  </section>
+</main>
+<script src="/so-dieu-hanh/so-dieu-hanh.js"></script>
+</body>
+</html>

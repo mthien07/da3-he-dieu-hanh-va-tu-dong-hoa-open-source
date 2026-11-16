@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: MIT
+# Quản lý bởi OneBee OS — hẹn giờ đặt lại dữ liệu giả lập lúc 03:00 mỗi ngày
+[Unit]
+Description=OneBee OS — hẹn giờ đặt lại dữ liệu giả lập bản chạy thử công khai
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm tra kết quả cài OneBee OS Desktop trên máy (hoặc container) vừa chạy onebee-install.sh.
 # In PASS/FAIL từng mục, thoát mã 1 nếu có mục FAIL.
 set -uo pipefail
@@ -53,6 +55,12 @@ check "Có file cấu hình định dạng mặc định LibreOffice" \
   grep -q 'MS Word 2007 XML' /usr/lib/libreoffice/share/registry/onebee-office-defaults.xcd
 
 check "Có hình nền OneBee" test -s /usr/share/backgrounds/onebee/onebee-wallpaper.png
+if [[ -d /usr/share/plymouth/themes && -x /usr/sbin/update-initramfs ]]; then
+  check "Màn hình khởi động OneBee là chủ đề Plymouth mặc định" bash -c \
+    "test -s /usr/share/plymouth/themes/onebee/onebee.script && update-alternatives --query default.plymouth | grep -q '^Value: /usr/share/plymouth/themes/onebee/onebee.plymouth$'"
+fi
+check "Có lệnh áp giao diện OneBee và tự chạy khi đăng nhập" bash -c \
+  "test -x /usr/local/bin/onebee-ap-giao-dien && grep -q '^Exec=/usr/local/bin/onebee-ap-giao-dien$' /etc/xdg/autostart/onebee-ap-giao-dien.desktop"
 if [[ -f /usr/share/glib-2.0/schemas/org.cinnamon.desktop.background.gschema.xml ]]; then
   check "Cinnamon dùng hình nền OneBee mặc định" bash -c \
     "GSETTINGS_BACKEND=memory gsettings get org.cinnamon.desktop.background picture-uri | grep -q onebee-wallpaper.png"
@@ -102,7 +110,7 @@ if [[ -f /usr/share/glib-2.0/schemas/org.cinnamon.desktop.background.gschema.xml
     done
   fi
 fi
-check "Có lệnh mở Trợ lý AI + mục menu Trợ lý AI OneBee" bash -c \
+check "Có lệnh hướng dẫn Trợ lý AI + mục menu Trợ lý AI OneBee" bash -c \
   "test -x /usr/local/bin/onebee-mo-tro-ly-ai && grep -q '^Exec=onebee-mo-tro-ly-ai$' /usr/share/applications/onebee-tro-ly-ai.desktop"
 check "Logo OneBee là biểu tượng hệ thống onebee-logo (SVG + PNG 48px, đã làm mới bộ đệm)" bash -c \
   "test -s /usr/share/icons/hicolor/scalable/apps/onebee-logo.svg && test -s /usr/share/icons/hicolor/48x48/apps/onebee-logo.png \

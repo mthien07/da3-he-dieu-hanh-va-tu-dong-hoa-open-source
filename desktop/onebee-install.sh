@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # OneBee OS Desktop — bộ cài chạy trên Linux Mint 22.x (nền Ubuntu 24.04 "noble").
 # Cách dùng:  sudo ./onebee-install.sh
 # Chạy lại nhiều lần an toàn: lần sau chỉ sửa những gì bị lệch so với chuẩn OneBee.
@@ -55,6 +57,21 @@ LC_ALL=C.UTF-8 ANSIBLE_CONFIG="${PLAYBOOK_DIR}/ansible.cfg" ansible-playbook sit
 status=${PIPESTATUS[0]}
 set -e
 
+# Áp hình nền OneBee ngay cho các phiên đồ họa đang mở để người cài thấy giao diện mới mà không cần đăng xuất.
+# Người dùng lấy từ chính phiên (loginctl), không đoán từ biến môi trường của sudo. Không có phiên đồ họa thì bỏ qua.
+ap_giao_dien_phien_dang_mo() {
+  command -v loginctl >/dev/null 2>&1 || return 0
+  local id uid user loai
+  while read -r id uid user _; do
+    [[ "$(loginctl show-session "${id}" -p Class --value 2>/dev/null)" == "user" ]] || continue
+    loai="$(loginctl show-session "${id}" -p Type --value 2>/dev/null)"
+    [[ "${loai}" == "x11" || "${loai}" == "wayland" ]] || continue
+    [[ -S "/run/user/${uid}/bus" ]] || continue
+    runuser -u "${user}" -- env "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${uid}/bus" "XDG_RUNTIME_DIR=/run/user/${uid}" \
+      /usr/local/bin/onebee-ap-giao-dien || true
+  done < <(loginctl list-sessions --no-legend 2>/dev/null)
+}
+
 if [[ ${status} -eq 0 ]]; then
   # 6. Cài đặt Trợ lý tập tin Windows (.exe, .msi) và đăng ký MIME handler
   log "Cài đặt Trợ lý tập tin Windows (onebee-windows-app-helper)..."
@@ -93,7 +110,9 @@ if [[ ${status} -eq 0 ]]; then
     fi
   done
 
-  log "Hoàn tất. Hãy khởi động lại máy để áp dụng ngôn ngữ, bộ gõ tiếng Việt và giao diện."
+  ap_giao_dien_phien_dang_mo
+
+  log "Hoàn tất. Giao diện OneBee đã áp cho phiên đang mở. Khởi động lại máy để áp dụng ngôn ngữ và bộ gõ tiếng Việt."
 else
   die "Cài đặt chưa xong (mã lỗi ${status}). Gửi file ${LOG_FILE} cho kỹ thuật OneBee."
 fi

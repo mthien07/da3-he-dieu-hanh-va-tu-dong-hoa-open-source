@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Quản lý bởi OneBee OS (box/ansible/roles/box-stack) — sửa group_vars rồi chạy lại bộ cài, không sửa tay
 {# HTTPS (Pha 4): Caddy (portal) là dịch vụ DUY NHẤT công bố cổng; backend chỉ nằm trong mạng Docker #}
 {% set https = onebee_https_hieu_luc | bool %}
@@ -21,8 +23,6 @@ services:
       - "0.0.0.0:{{ onebee_box_ports.portal }}:80"
 {% if https %}
       - "0.0.0.0:443:443"
-      - "0.0.0.0:{{ onebee_box_ports.open_webui }}:{{ onebee_box_ports.open_webui }}"
-      - "0.0.0.0:{{ onebee_box_ports.n8n }}:{{ onebee_box_ports.n8n }}"
       - "0.0.0.0:{{ onebee_box_ports.rest_server }}:{{ onebee_box_ports.rest_server }}"
 {# Giám sát chỉ được công bố sau khi có tài khoản quản trị (trước đó trang "tạo tài khoản đầu tiên" ai mở trước được) #}
 {% if onebee_kuma_dia_chi | default('0.0.0.0') == '0.0.0.0' %}
@@ -33,6 +33,14 @@ services:
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]
     cap_add: [NET_BIND_SERVICE]
+    # default: các dịch vụ ứng dụng; sso: mạng riêng (không ra ngoài) chỉ Caddy nối tới được dịch vụ định danh và cầu nối danh tính.
+    # Tên box.<mã>.onebee.internal trỏ tới Caddy TRONG mạng default để động cơ quy trình gọi lại /api/ qua đúng cửa
+    # (không đi thẳng vào cầu nối/PostgREST, nơi tin tiêu đề danh tính do máy khách gửi).
+    networks:
+      default:
+        aliases:
+          - box.{{ onebee_box_ma_don_vi }}.onebee.internal
+      sso:
     volumes:
       # Gắn cả thư mục (không gắn riêng file): bộ cài ghi file mới = inode mới, bind-mount từng file sẽ giữ bản cũ trong container
       - ./portal/caddy:/etc/caddy:ro
@@ -49,120 +57,72 @@ services:
     restart: unless-stopped
     logging: *logging
     security_opt: ["no-new-privileges:true"]   # F11: tiến trình trong container không tự nâng quyền
-    # Không mở cổng ra LAN: chỉ Open WebUI gọi được (API Ollama không có mật khẩu)
+    # Không mở cổng ra LAN: chỉ dịch vụ Trợ lý AI gọi được (API Ollama không có mật khẩu). Mạng "ai" là đường riêng
+    # giữa dịch vụ Trợ lý AI và Ollama, không chứa dịch vụ nào khác.
+    networks: [default, ai]
     volumes:
       - {{ onebee_box_data }}/ollama:/root/.ollama
 
-  open-webui:
-    image: {{ onebee_box_images.open_webui }}
-    container_name: onebee-open-webui
+  # Trợ lý AI (mã trong repo: box-ai/files/onebee-ai-rag.py, chỉ thư viện chuẩn Python): trả lời câu hỏi, tóm tắt văn bản,
+  # tra kho tri thức trong PostgreSQL. Chỉ Caddy gọi tới (mạng sso) và chỉ nó gọi được Ollama (mạng ai); không công bố cổng.
+  # Mã, lời dặn, kho mẫu và kho tri thức do role box-ai chép vào ./ai-rag rồi mới chạy dịch vụ này.
+  ai-rag:
+    image: {{ onebee_box_images.python }}
+    container_name: onebee-ai-rag
     restart: unless-stopped
     logging: *logging
-    security_opt: ["no-new-privileges:true"]   # F11: tiến trình trong container không tự nâng quyền
-    depends_on: [ollama]
-{% if not https %}
-    ports: ["0.0.0.0:{{ onebee_box_ports.open_webui }}:8080"]
-{% endif %}
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
+    networks: [sso, ai]
+    # root của container (không có quyền đặc biệt nào) để đọc/ghi thư mục dữ liệu và tệp khóa chỉ root đọc được
+    user: "0:0"
+    command: ["python3", "-I", "/app/onebee-ai-rag.py", "chay-dich-vu"]
     environment:
-      OLLAMA_BASE_URL: http://ollama:11434
       TZ: {{ onebee_timezone }}   # "hôm nay" trong lời dặn Trợ lý theo giờ Việt Nam
-      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
-      # Tạo sẵn tài khoản quản trị lúc khởi động lần đầu → tự tắt đăng ký tự do (không còn "ai mở trước thành quản trị")
-      WEBUI_ADMIN_EMAIL: {{ onebee_box_admin_email }}
-      WEBUI_ADMIN_PASSWORD: ${WEBUI_ADMIN_PASSWORD}
-      WEBUI_ADMIN_NAME: Quản trị OneBee
-      ENABLE_SIGNUP: "false"
-      DEFAULT_MODELS: onebee-tro-ly
-      # Khóa API cho lệnh "hoi" trên máy trạm — chỉ gọi được hỏi đáp và danh sách model
-      ENABLE_API_KEYS: "true"
-      USER_PERMISSIONS_FEATURES_API_KEYS: "true"
-      ENABLE_API_KEYS_ENDPOINT_RESTRICTIONS: "true"
-      API_KEYS_ALLOWED_ENDPOINTS: /api/chat/completions,/api/models
-      DEFAULT_LOCALE: vi-VN
-      ENABLE_OPENAI_API: "false"   # không gọi AI đám mây — dữ liệu ở lại trong LAN
-      # Rà soát bảo mật 10/10: Box không dùng Functions/Tools (mã Python do quản trị thêm chạy trong container) → tắt hẳn,
-      # để lộ phiên quản trị cũng không thành chạy mã trên máy chủ. Trợ lý đã đặt builtin_tools=False (onebee-webui.py)
-      ENABLE_PLUGINS: "false"
-      # Quản trị không đọc/xuất được chat của nhân viên (2 biến đầu chỉ đọc từ môi trường); nhân viên không chia sẻ chat cho nhau;
-      # không chia sẻ lên cộng đồng; phiên 30 ngày. 3 cài đặt sau lưu trong CSDL → Box đã cài được chỉnh qua API (onebee-webui.py)
-      ENABLE_ADMIN_CHAT_ACCESS: "false"
-      ENABLE_ADMIN_EXPORT: "false"
-      USER_PERMISSIONS_CHAT_SHARE: "false"
-      ENABLE_COMMUNITY_SHARING: "false"
-      JWT_EXPIRES_IN: "30d"   # phiên đăng nhập 1 tháng (mặc định của Open WebUI: 4 tuần)
-{% if https %}
-      # HTTPS qua Caddy: cookie chỉ gửi qua HTTPS; CORS đúng địa chỉ thật (lệch thì WebSocket chat hỏng mà không báo lỗi); mở bằng tên/IP khác → khai onebee_box_cors_them
-      WEBUI_SESSION_COOKIE_SECURE: "true"
-      WEBUI_AUTH_COOKIE_SECURE: "true"
-      CORS_ALLOW_ORIGIN: "https://{{ onebee_box_ip }}:{{ onebee_box_ports.open_webui }};https://box.{{ onebee_box_ma_don_vi }}.onebee.internal:{{ onebee_box_ports.open_webui }}{% for nguon in onebee_box_cors_them %};{{ nguon }}{% endfor %}"
-{% else %}
-      # HTTP nội bộ: chỉ cho phép WebUI tự gọi chính nó (IP LAN + tên <mdns>.local trong LAN + tên kỹ thuật qua Tailscale), chặn trang web lạ gửi request
-      # kèm cookie/credentials (không đặt thì Open WebUI phản chiếu mọi Origin kèm allow-credentials); thêm Origin khác: onebee_box_cors_them
-      CORS_ALLOW_ORIGIN: "http://{{ onebee_box_ip }}:{{ onebee_box_ports.open_webui }};http://{{ onebee_box_ten_mdns }}.local:{{ onebee_box_ports.open_webui }};http://box.{{ onebee_box_ma_don_vi }}.onebee.internal:{{ onebee_box_ports.open_webui }}{% for nguon in onebee_box_cors_them %};{{ nguon }}{% endfor %}"
-{% endif %}
-      OFFLINE_MODE: "true"
-      SCARF_NO_ANALYTICS: "true"
-      DO_NOT_TRACK: "true"
-      ANONYMIZED_TELEMETRY: "false"
+      PYTHONDONTWRITEBYTECODE: "1"
+      AI_OLLAMA_URL: http://ollama:11434
+      AI_CAU_NOI_URL: http://cau-noi:8080
+      AI_MO_HINH: {{ onebee_box_ai_model }}
+      AI_MO_HINH_NHUNG: {{ onebee_box_ai_model_nhung }}
+      AI_SO_NGUON: "3"
+      AI_DU_LIEU: /data
+      AI_LOI_DAN: /app/tro-ly-onebee-loi-dan.md
+      AI_TRI_THUC: /app/knowledge
+      AI_MAU: /app/prompts
+      AI_TRI_THUC_DON_VI: /du-lieu-tri-thuc
+    healthcheck:
+      test: ["CMD", "python3", "-I", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8092/suc-khoe', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     volumes:
-      - {{ onebee_box_data }}/open-webui:/app/backend/data
+      - ./ai-rag:/app:ro
+      - {{ onebee_box_data }}/ai-rag:/data
+      # Tài liệu đơn vị tự bổ sung: onebee-box nap-tri-thuc đọc và nhúng vào kho tri thức chung
+      - {{ onebee_box_data }}/knowledge:/du-lieu-tri-thuc:ro
 
-  n8n:
-    image: {{ onebee_box_images.n8n }}
-    container_name: onebee-n8n
+  quy-trinh:
+    image: {{ onebee_box_images.node_red }}
+    container_name: onebee-quy-trinh
     restart: unless-stopped
     logging: *logging
     security_opt: ["no-new-privileges:true"]   # F11: tiến trình trong container không tự nâng quyền
-{% if not https %}
-    ports: ["0.0.0.0:{{ onebee_box_ports.n8n }}:5678"]
-{% endif %}
+    cap_drop: [ALL]
+    # KHÔNG ports: cổng soạn luồng không bao giờ mở ra LAN (chỉ Caddy gọi tới, sau đăng nhập một lần + mật khẩu riêng)
+    command: ["--settings", "/cau-hinh/settings.js"]
     environment:
-      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
-      N8N_LISTEN_ADDRESS: 0.0.0.0  # mặc định n8n nghe "::" (IPv6) → lỗi trên máy tắt IPv6
-      GENERIC_TIMEZONE: {{ onebee_timezone }}
       TZ: {{ onebee_timezone }}
-{% if not https %}
-      N8N_SECURE_COOKIE: "false"   # chạy HTTP trong LAN; truy cập từ xa chỉ qua VPN (Tailscale/WireGuard)
-{% endif %}
-      N8N_DIAGNOSTICS_ENABLED: "false"
-      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
-      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
-      N8N_PERSONALIZATION_ENABLED: "false"
-      # Khóa chặt (ghi rõ, không dựa vào mặc định của từng phiên bản n8n): không chạy lệnh hệ thống, không đọc
-      # biến môi trường (có khóa mã hóa) trong nút Code, chỉ đọc/ghi file trong thư mục dành cho n8n
-      NODES_EXCLUDE: '["n8n-nodes-base.executeCommand", "n8n-nodes-base.localFileTrigger", "n8n-nodes-base.ssh", "n8n-nodes-base.git"]'
-      N8N_BLOCK_ENV_ACCESS_IN_NODE: "true"
-      N8N_RESTRICT_FILE_ACCESS_TO: /home/node/.n8n-files
-      # Từ n8n 2.41.1 mô-đun Agents bật sẵn, Box không dùng → tắt (không ghi cùng lúc vào N8N_ENABLED_MODULES: sẽ lỗi).
-      # MCP (máy chủ MCP của n8n) tắt và khóa bằng biến môi trường, không để đổi trên giao diện
-      N8N_DISABLED_MODULES: agents
-      N8N_MCP_MANAGED_BY_ENV: "true"
-      N8N_MCP_ACCESS_ENABLED: "false"
-      # Địa chỉ n8n in vào đường dẫn biểu mẫu (người dùng trong LAN mở được). N8N_WEBHOOK_URL thay WEBHOOK_URL (lỗi thời từ 2.35)
-{% if https %}
-      # Sau Caddy: n8n tự nhận mình ở https://<IP>:5678 (đường dẫn biểu mẫu, cookie Secure); tin 1 tầng proxy (Caddy; n8n không còn tự công bố cổng)
-      N8N_PROTOCOL: https
-      N8N_HOST: {{ onebee_box_ip }}
-      N8N_EDITOR_BASE_URL: https://{{ onebee_box_ip }}:{{ onebee_box_ports.n8n }}/
-      N8N_WEBHOOK_URL: https://{{ onebee_box_ip }}:{{ onebee_box_ports.n8n }}/
-      N8N_PROXY_HOPS: "1"
-{% else %}
-      N8N_WEBHOOK_URL: http://{{ onebee_box_ip }}:{{ onebee_box_ports.n8n }}/
-{% endif %}
-      # Tạo sẵn tài khoản chủ n8n (mật khẩu: onebee-box in-khoa) — không còn "ai mở trước thành chủ"
-      N8N_INSTANCE_OWNER_MANAGED_BY_ENV: "true"
-      N8N_INSTANCE_OWNER_EMAIL: {{ onebee_box_admin_email }}
-      N8N_INSTANCE_OWNER_FIRST_NAME: Quản trị
-      N8N_INSTANCE_OWNER_LAST_NAME: OneBee
-      N8N_INSTANCE_OWNER_PASSWORD_HASH: ${N8N_OWNER_HASH}
+      ONEBEE_CAU_HINH: /cau-hinh
+    # Chỉ mạng default: mô-đun gọi lại API qua tên Box trỏ tới Caddy trong mạng này, không đi thẳng vào cầu nối/PostgREST
+    networks: [default]
     volumes:
-      - {{ onebee_box_data }}/n8n:/home/node/.n8n
-      - {{ onebee_box_dir }}/n8n-import:/import:ro
-      - {{ onebee_box_data }}/{{ onebee_box_samba_share }}/don-hang:/home/node/.n8n-files/don-hang
-      - {{ onebee_box_data }}/tinh-trang-may:/home/node/.n8n-files/tinh-trang-may
-      # Danh sách máy đã cấp (mỗi máy 1 file đánh dấu, Box ghi): quy trình nhận tình trạng chỉ nhận máy có file ở đây; n8n chỉ ĐỌC
-      - {{ onebee_box_data }}/may-da-cap:/home/node/.n8n-files/may-da-cap:ro
-      - {{ onebee_box_data }}/ho-tro:/home/node/.n8n-files/ho-tro
+      - ./quy-trinh:/cau-hinh:ro
+      - {{ onebee_box_data }}/node-red:/data
+      - {{ onebee_box_data }}/may-da-cap:/may-da-cap:ro
+      - {{ onebee_box_data }}/tinh-trang-may:/tinh-trang-may
 
   uptime-kuma:
     image: {{ onebee_box_images.uptime_kuma }}
@@ -196,3 +156,171 @@ services:
       OPTIONS: "--private-repos --append-only"
     volumes:
       - {{ onebee_box_data }}/restic:/data
+
+  # Đăng nhập một lần + hai lớp (ADR 0006). Khai ở cả hai chế độ HTTP/HTTPS (chuyển chế độ không đổi danh sách dịch vụ);
+  # chỉ Caddy (nhánh HTTPS, trên tên box.<mã>.onebee.internal) chuyển yêu cầu tới. Không công bố cổng nào.
+  # Bộ cài (role box-dinh-danh) sinh cấu hình, tệp người dùng, bí mật rồi mới chạy dịch vụ này.
+  authelia:
+    image: {{ onebee_box_images.authelia }}
+    container_name: onebee-authelia
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]   # chạy bằng root của container nhưng không có quyền đặc biệt nào: chỉ đọc/ghi tệp root sở hữu
+    networks: [sso]   # dịch vụ mạng default (động cơ quy trình, kho tệp…) không gọi thẳng được; chỉ vào qua Caddy
+    # Gọi thẳng authelia (không qua entrypoint.sh: bước chown/su-exec của nó cần quyền đã bỏ ở trên)
+    command: ["authelia", "--config", "/config/configuration.yml"]
+    environment:
+      TZ: {{ onebee_timezone }}
+      # Bí mật đọc từ tệp (chỉ root đọc) — không nằm trong cấu hình, .env hay docker inspect
+      AUTHELIA_SESSION_SECRET_FILE: /run/secrets/authelia-session-secret
+      AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE: /run/secrets/authelia-storage-key
+      AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE: /run/secrets/authelia-jwt-secret
+    volumes:
+      - ./authelia:/config:ro
+      # Tệp người dùng (users_database.yml), CSDL phiên/ghi danh hai lớp (db.sqlite3), thư mục thông báo (mã xác minh)
+      - {{ onebee_box_data }}/authelia:/data
+      - {{ onebee_box_secrets }}/authelia-session-secret:/run/secrets/authelia-session-secret:ro
+      - {{ onebee_box_secrets }}/authelia-storage-key:/run/secrets/authelia-storage-key:ro
+      - {{ onebee_box_secrets }}/authelia-jwt-secret:/run/secrets/authelia-jwt-secret:ro
+
+  # Cầu nối danh tính (mã trong repo: box-dinh-danh/files/onebee-cau-noi-danh-tinh.py, chỉ thư viện chuẩn Python): tin Remote-User/Remote-Groups
+  # do Caddy chép từ Authelia, ký JWT 60 giây cho dịch vụ dữ liệu. Chỉ Caddy, dịch vụ định danh và dịch vụ tệp nối tới được
+  # (mạng sso; không container nào chạy mã người dùng nằm ở mạng này), không công bố cổng.
+  cau-noi:
+    image: {{ onebee_box_images.python }}
+    container_name: onebee-cau-noi
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
+    networks: [sso, api]   # api: chỉ cầu nối nối được tới dịch vụ dữ liệu (PostgREST)
+    command: ["python3", "-I", "/app/onebee-cau-noi-danh-tinh.py"]
+    environment:
+      TZ: {{ onebee_timezone }}
+      PYTHONDONTWRITEBYTECODE: "1"
+      CAU_NOI_PHIA_SAU: http://postgrest:3000
+      CAU_NOI_JWT_SECRET_FILE: /run/secrets/cau-noi-jwt-secret
+    volumes:
+      - ./cau-noi:/app:ro
+      - {{ onebee_box_secrets }}/cau-noi-jwt-secret:/run/secrets/cau-noi-jwt-secret:ro
+
+  # Dữ liệu cấu trúc (ADR 0006): PostgreSQL + pgvector. Chỉ PostgREST nối tới được (mạng csdl); không công bố cổng.
+  # Bộ cài (role box-du-lieu) chạy dịch vụ này, áp dụng lược đồ có ghi sổ rồi đặt mật khẩu vai trò. Mật khẩu chủ CSDL chỉ dùng
+  # lúc khởi tạo thư mục dữ liệu (đổi về sau bằng ALTER ROLE: onebee-box xoay-khoa --box). Không sao lưu thư mục sống này:
+  # onebee-box sao-luu kết xuất (pg_dump) ra {{ onebee_box_data }}/postgres-ket-xuat rồi mới chụp.
+  postgres:
+    image: {{ onebee_box_images.postgres }}
+    container_name: onebee-postgres
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ["no-new-privileges:true"]
+    # Bước khởi động của image chạy bằng root: sửa chủ thư mục dữ liệu rồi chuyển sang tài khoản postgres (gosu) — chỉ giữ đúng các quyền đó
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    networks: [csdl]
+    environment:
+      TZ: {{ onebee_timezone }}
+      POSTGRES_DB: onebee
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres-password
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-h", "127.0.0.1", "-U", "postgres", "-d", "onebee"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    volumes:
+      - {{ onebee_box_data }}/postgres:/var/lib/postgresql
+      - {{ onebee_box_secrets }}/postgres-password:/run/secrets/postgres-password:ro
+
+  # API tự sinh trên lược đồ onebee (PostgREST). Chỉ cầu nối danh tính gọi tới được (mạng api); không có vai trò ẩn danh: yêu cầu
+  # không mang JWT do cầu nối ký (cùng khóa cau-noi-jwt-secret, khán giả onebee-api) bị từ chối 401. Mọi quyền kiểm bằng RLS trong CSDL.
+  # Image không có shell: sức khỏe kiểm từ ngoài (cổng quản trị 3001, /ready) trong onebee-box chan-doan.
+  postgrest:
+    image: {{ onebee_box_images.postgrest }}
+    container_name: onebee-postgrest
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    read_only: true
+    # root của container (không có quyền đặc biệt nào) để đọc tệp khóa chỉ root đọc được
+    user: "0:0"
+    networks: [api, csdl]
+    depends_on: [postgres]
+    environment:
+      TZ: {{ onebee_timezone }}
+      PGRST_DB_URI: ${PGRST_DB_URI}
+      PGRST_DB_SCHEMAS: onebee
+      PGRST_JWT_SECRET: "@/run/secrets/cau-noi-jwt-secret"
+      PGRST_JWT_AUD: onebee-api
+      PGRST_ADMIN_SERVER_PORT: "3001"
+    volumes:
+      - {{ onebee_box_secrets }}/cau-noi-jwt-secret:/run/secrets/cau-noi-jwt-secret:ro
+
+  # ===== Kho tệp: SeaweedFS + cổng /files/ và kiểm dịch ClamAV từng lượt =====
+  # SeaweedFS giữ đối tượng đã kiểm dịch; chỉ dịch vụ cổng tệp nối tới được (mạng riêng kho_tep); không công bố cổng.
+  seaweedfs:
+    image: {{ onebee_box_images.seaweedfs }}
+    container_name: onebee-seaweedfs
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    # Entrypoint của image chown /data rồi su-exec sang người dùng thường — cần capability mà dịch vụ đã bỏ hết.
+    # Chạy thẳng weed bằng uid 1000 (role box-kho-tep giao thư mục dữ liệu cho uid này), không cần capability nào.
+    user: "1000:1000"
+    entrypoint: ["/usr/bin/weed"]
+    command: ["server", "-dir=/data", "-filer=true", "-volume.max=10"]
+    networks: [kho_tep]
+    volumes:
+      - {{ onebee_box_data }}/seaweedfs:/data
+
+  # Cổng /files/: Caddy chuyển tới sau forward_auth (chỉ HTTPS, trên tên box.<mã>.onebee.internal), dịch vụ tin Remote-User.
+  # Quét ClamAV từng lượt ngay trong image cục bộ (đã bỏ libclamunrar); ghi metadata qua cầu nối danh tính (JWT của người tải).
+  kho-tep:
+    image: onebee/clamav-khong-unrar:1.5.4   # dựng cục bộ từ image ClamAV đã ghim digest trong group_vars (role box-kho-tep)
+    container_name: onebee-kho-tep
+    restart: unless-stopped
+    logging: *logging
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp]
+    networks: [sso, kho_tep]   # sso: Caddy + cầu nối danh tính (ghi metadata bằng JWT); kho_tep: chỉ SeaweedFS
+    depends_on: [seaweedfs]
+    entrypoint: ["python3", "-I", "/app/onebee-kho-tep.py"]
+    command: ["serve"]   # thay CMD "/init" của image ClamAV (không chạy clamd)
+    # Image ClamAV có healthcheck của clamd (không chạy ở đây) → kiểm đúng tiến trình cổng tệp và SeaweedFS
+    healthcheck:
+      test: ["CMD", "python3", "-I", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/suc-khoe', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    environment:
+      TZ: {{ onebee_timezone }}
+      PYTHONDONTWRITEBYTECODE: "1"
+      PORT: "8080"
+      KHO_TEP_DIR: /data/kho-tep
+      SEAWEED_FILER_URL: http://seaweedfs:8888
+      CAU_NOI_URL: http://cau-noi:8080
+      CLAMAV_DATABASE_DIR: /var/lib/clamav
+    volumes:
+      - ./kho-tep:/app:ro
+      - {{ onebee_box_data }}/kho-tep:/data/kho-tep
+      - {{ onebee_box_data }}/clamav:/var/lib/clamav:ro   # chữ ký ClamAV: bộ cài tải lần đầu, nộp ngoại tuyến bằng onebee-box
+
+networks:
+  sso:
+    internal: true   # không có đường ra ngoài; chỉ các container được khai vào mạng này nói chuyện với nhau
+  api:
+    internal: true   # cầu nối danh tính ↔ PostgREST
+  csdl:
+    internal: true   # PostgREST ↔ PostgreSQL
+  kho_tep:
+    internal: true   # dịch vụ cổng tệp ↔ SeaweedFS
+  ai:
+    internal: true   # dịch vụ Trợ lý AI ↔ Ollama (không có dịch vụ nào khác)

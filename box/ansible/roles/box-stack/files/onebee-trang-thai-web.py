@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 """Số liệu tình trạng Box cho trang chủ (ô "Tình trạng hệ thống"): CPU, RAM, ổ dữ liệu còn trống, Trợ lý AI / thư mục chung / sao lưu.
 Ghi 1 tệp JSON tĩnh trong thư mục trang chủ để Caddy phục vụ (không mở thêm cổng hay API nào). Chỉ số phần trăm và trạng thái —
 không có tên máy, IP, tên người dùng. Lịch onebee-trang-thai-web.timer chạy mỗi phút.
@@ -118,8 +120,8 @@ def main(argv):
         "ram_phan_tram": ram,
         "o_dia": o_dia(du_lieu),
         "dich_vu": {
-            # Trợ lý dùng được khi cả giao diện (Open WebUI) lẫn bộ chạy model (Ollama) đều chạy
-            "tro_ly_ai": "chay" if container_chay("onebee-open-webui", "onebee-ollama") else "dung",
+            # Trợ lý dùng được khi cả dịch vụ Trợ lý AI lẫn bộ chạy model (Ollama) đều chạy
+            "tro_ly_ai": "chay" if container_chay("onebee-ai-rag", "onebee-ollama") else "dung",
             "thu_muc_chung": "chay" if dich_vu_chay("smbd") else "dung",
             "sao_luu": sao_luu(tep_sao_luu, time.time()),
         },
