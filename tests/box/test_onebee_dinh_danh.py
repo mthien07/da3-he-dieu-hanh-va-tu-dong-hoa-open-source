@@ -212,6 +212,9 @@ class CauHinhAuthelia(unittest.TestCase):
             if "ansible.builtin.shell" in t:
                 self.assertEqual(tham.get("creates"), "{{ onebee_box_data }}/authelia/users_database.yml", t["name"])
                 self.assertIn("umask 077", hd)
+                # Thiếu set -e thì lần sinh băm hỏng vẫn ghi tệp mật khẩu rỗng, Authelia khởi động lại liên tục
+                self.assertIn("set -euo pipefail", hd)
+                self.assertIn("'$argon2'*", hd)
         # Ba bí mật sinh một lần trong thư mục bí mật; task đọc bí mật không in ra nhật ký Ansible
         noi_dung = open(os.path.join(DINH_DANH, "tasks/main.yml"), encoding="utf-8").read()
         for ten in ("authelia-session-secret", "authelia-storage-key", "authelia-jwt-secret"):
