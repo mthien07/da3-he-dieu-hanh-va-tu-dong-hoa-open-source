@@ -10,11 +10,14 @@ import io
 import json
 import os
 import shutil
+import socket
 import ssl
 import stat
 import subprocess
+import sys
 import tempfile
 import threading
+import time
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -218,6 +221,84 @@ class HoiQuaDuongAi(unittest.TestCase):
         ma, out, _, _ = self.hoi("tóm tắt đoạn này", piped="Nội dung cần tóm tắt.")
         self.assertEqual(ma, 0)
         self.assertEqual(TroLyGia.nhat_ky[-1], "/ai/hoi")
+
+    # --- thời gian chờ nối tách khỏi thời gian chờ trả lời ---
+    CHO_NOI = 2
+
+    def chay_hoi_tien_trinh(self, url, cau_hoi="xin chào", han=60):
+        """Chạy hoi trong tiến trình riêng (có hạn chót để bài kiểm không treo) với cấu hình/CA giả. Trả về (mã, stdout, stderr, giây)."""
+        self.dat_conf(url, khoa_may="obk-" + "a" * 48)
+        mong = (f"import importlib.machinery as M, importlib.util as U, sys\n"
+                f"l = M.SourceFileLoader('hoi_tp', {HOI_PATH!r}); s = U.spec_from_loader('hoi_tp', l)\n"
+                f"m = U.module_from_spec(s); l.exec_module(m)\n"
+                f"m.CONF, m.CA_ONEBEE, m.KHOA_NV = {self.conf!r}, {self.t + '/ca/root.crt'!r}, {self.home + '/khong-co'!r}\n"
+                f"sys.argv = ['hoi', {cau_hoi!r}]\n"
+                f"sys.exit(m.main())\n")
+        env = dict(os.environ, ONEBEE_HOI_CHO_NOI=str(self.CHO_NOI))
+        t0 = time.monotonic()
+        try:
+            r = subprocess.run([sys.executable, "-I", "-c", mong], capture_output=True, text=True, timeout=han, env=env)
+        except subprocess.TimeoutExpired:
+            self.fail(f"hoi chưa kết thúc sau {han} giây — thời gian chờ nối không được tách riêng")
+        return r.returncode, r.stdout, r.stderr, time.monotonic() - t0
+
+    def mo_dia_chi_treo(self):
+        """Socket nghe 127.0.0.1, backlog nhỏ, không accept, hàng đợi đã đầy: kết nối mới bị nuốt gói SYN và treo ở bắt tay.
+        Không tạo được địa chỉ treo ổn định (ví dụ trên macOS) thì bỏ qua bài kiểm."""
+        nghe = socket.socket()
+        self.addCleanup(nghe.close)
+        nghe.bind(("127.0.0.1", 0))
+        nghe.listen(0)
+        lap = []
+        self.addCleanup(lambda: [s.close() for s in lap])
+        for _ in range(8):
+            s = socket.socket()
+            s.setblocking(False)
+            lap.append(s)
+            try:
+                s.connect(nghe.getsockname())
+            except BlockingIOError:
+                pass
+        time.sleep(0.3)
+        thu = socket.socket()
+        try:
+            thu.settimeout(0.7)
+            thu.connect(nghe.getsockname())
+        except OSError:
+            pass
+        else:
+            self.skipTest("nền tảng này không để kết nối treo ở bước bắt tay")
+        finally:
+            thu.close()
+        return f"https://127.0.0.1:{nghe.getsockname()[1]}"
+
+    def test_box_khong_tra_loi_bat_tay_thi_bao_loi_som(self):
+        url = self.mo_dia_chi_treo()
+        ma, _, err, giay = self.chay_hoi_tien_trinh(url)
+        self.assertNotEqual(ma, 0, err)
+        self.assertIn("Không kết nối được OneBee Box", err)
+        self.assertLess(giay, self.CHO_NOI + 3)
+
+    def test_tra_loi_cham_hon_thoi_gian_cho_noi_van_nhan_du(self):
+        TroLyGia.khoa_hop_le["obk-" + "a" * 48] = "an"
+
+        class TraLoiCham(TroLyGia):
+            def do_POST(self):
+                time.sleep(4)                  # lớn hơn CHO_NOI: chỉ bước nối bị giới hạn, bước chờ trả lời thì không
+                super().do_POST()
+
+        t = self.t
+        sv = HTTPServer(("127.0.0.1", 0), TraLoiCham)
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.load_cert_chain(f"{t}/chuoi.pem", f"{t}/l.key")
+        sv.socket = ctx.wrap_socket(sv.socket, server_side=True)
+        luong = threading.Thread(target=sv.serve_forever, daemon=True)
+        luong.start()
+        self.addCleanup(sv.server_close)
+        self.addCleanup(sv.shutdown)
+        ma, out, err, giay = self.chay_hoi_tien_trinh(f"https://127.0.0.1:{sv.server_port}")
+        self.assertEqual((ma, out.strip()), (0, "trả lời cho an"), err)
+        self.assertGreaterEqual(giay, 4)
 
 
 if __name__ == "__main__":

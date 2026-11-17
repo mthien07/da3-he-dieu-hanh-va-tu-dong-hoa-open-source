@@ -18,6 +18,7 @@ import getpass
 import json
 import os
 import select
+import socket
 import ssl
 import stat
 import sys
@@ -36,6 +37,27 @@ class KhongTuChuyenHuong(urllib.request.HTTPRedirectHandler):
         return None
 
 
+CHO_NOI_MAC_DINH = 10   # giây; ONEBEE_HOI_CHO_NOI chỉ để kiểm thử
+
+
+def thu_noi(url):
+    """Nối thử TCP tới máy chủ của url với thời gian chờ ngắn rồi đóng ngay (không gửi dữ liệu).
+    Box không tới được (gói bị bỏ) thì báo lỗi sau vài giây, thay vì im lặng suốt thời gian chờ trả lời (300 giây) của mo()."""
+    try:
+        cho_noi = float(os.environ.get("ONEBEE_HOI_CHO_NOI") or CHO_NOI_MAC_DINH)
+        if cho_noi <= 0:
+            cho_noi = CHO_NOI_MAC_DINH
+    except ValueError:
+        cho_noi = CHO_NOI_MAC_DINH
+    p = urllib.parse.urlsplit(url)
+    try:
+        if not p.hostname:
+            return   # URL hỏng: để urllib báo lỗi theo đường cũ
+        socket.create_connection((p.hostname, p.port or (443 if p.scheme.lower() == "https" else 80)), timeout=cho_noi).close()
+    except (OSError, ValueError):   # gồm socket.timeout, lỗi phân giải tên, từ chối kết nối, cổng sai
+        sys.exit("Không kết nối được OneBee Box. Kiểm tra mạng nội bộ hoặc báo người quản trị.")
+
+
 def mo(req, timeout):
     """urlopen có ghim CA: https:// chỉ tin CA riêng của OneBee Box (không tin CA công cộng); http:// bị từ chối khi máy đã bật HTTPS
     (kẻ chen giữa mạng LAN không hạ cấp được kết nối về HTTP để đọc mật khẩu/khóa)."""
@@ -48,6 +70,7 @@ def mo(req, timeout):
             sys.exit("Máy chưa có chứng chỉ CA của OneBee Box. Báo người quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>")
     elif os.path.exists(HTTPS_BAT):
         sys.exit("Máy này đã bật HTTPS nhưng cấu hình còn địa chỉ http:// — KHÔNG gửi. Báo người quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>")
+    thu_noi(req.full_url)
     try:
         return urllib.request.build_opener(KhongTuChuyenHuong, urllib.request.HTTPSHandler(context=ngu_canh)).open(req, timeout=timeout)
     except urllib.error.HTTPError as e:
