@@ -137,7 +137,7 @@ Giai đoạn 4 chỉ sửa trong `desktop/` và `tests/desktop/`; Giai đoạn 2
 - [ ] Lượt duyệt có `--ngay N` hết hạn thì tự thu hồi trong 15 phút; lượt không hạn giữ nguyên tới khi thu hồi tay.
 - [x] Máy về LAN tự dùng lại IP LAN trong 5 phút, người dùng không gõ lệnh nào.
 - [ ] Máy không được duyệt từ xa hành xử y như 1.3.1 (không đổi URL, không đổi lối tắt).
-- [ ] Bộ cài Box và máy trạm chạy lần hai đạt `changed=0 failed=0`; `shellcheck`, `yamllint`, `ansible-lint` sạch; CI `box=true` xanh.
+- [x] Bộ cài Box và máy trạm chạy lần hai đạt `changed=0 failed=0`; `shellcheck`, `yamllint`, `ansible-lint` sạch; CI `box=true` xanh. *(17/11: máy thật và CI run 44075503025)*
 
 ## Validation Log
 
