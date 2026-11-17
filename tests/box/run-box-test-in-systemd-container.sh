@@ -444,7 +444,8 @@ don_c6() {
 pid_https="$(mo_https_giu "${C6_HTTPS}" "${C6_TIN}")"
 rm -f "${C6_SMB_IN}" "${C6_SMB_OUT}"
 mkfifo "${C6_SMB_IN}"
-ip netns exec may-xa smbclient //100.64.0.1/chung -U "onebee%${PW_SMB}" -m SMB3 -t 3 <"${C6_SMB_IN}" >"${C6_SMB_OUT}" 2>&1 &
+# stdbuf: stdout là tệp thì smbclient đệm cả khối, kết quả "ls" chỉ ra tệp lúc thoát — ép ghi từng dòng
+ip netns exec may-xa stdbuf -oL -eL smbclient //100.64.0.1/chung -U "onebee%${PW_SMB}" -m SMB3 -t 3 <"${C6_SMB_IN}" >"${C6_SMB_OUT}" 2>&1 &
 pid_smb=$!
 exec 7>"${C6_SMB_IN}"
 echo ls >&7
