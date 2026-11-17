@@ -26,32 +26,6 @@
 - Script đặt lại dữ liệu mẫu có dấu chế độ demo và chỉ xoá chứng từ trong phạm vi của đơn bị đặt lại.
 - Kế toán mở được khu Kho ở chế độ chỉ đọc để đối chiếu tồn với tài khoản 156.
 
-### Dữ liệu cấu trúc: PostgreSQL và API tự sinh (lõi DX-OS, ADR 0006)
-Đã kiểm bằng unit test và `check-csdl-rls.sh` (PostgreSQL thật từ image đã ghim, chạy trong CI); bộ kiểm Box (`check-du-lieu-qua-cong.sh`,
-bài khôi phục toàn bộ) chạy trên máy ảo VMware `onebee-kiem-box`. Chưa thử trên Box thật.
-#### Thêm
-- Role `box-du-lieu`: PostgreSQL 18.7 + pgvector 0.8.7, PostgREST 16.5 sau cầu nối danh tính (`/api/<bảng>`); lược đồ `onebee`
-  (đơn hàng có duyệt, yêu cầu/xử lý hỗ trợ, khảo sát ẩn danh, tình trạng máy trạm) áp dụng có ghi sổ (`onebee.lich_su_luoc_do`).
-- `onebee-box chuyen-du-lieu`: nạp sổ CSV/JSON cũ vào CSDL, chạy lại chỉ nạp dòng mới; `bao-cao-tuan` đọc từ CSDL.
-- `chan-doan`: PostgreSQL nhận kết nối, PostgREST trả lời, kết xuất CSDL không cũ quá 48 giờ.
-#### Bảo mật
-- Phân quyền tới cấp dòng (RLS bật và ép trên mọi bảng); không có vai trò ẩn danh; không ai tự duyệt đơn của mình (ràng buộc trong CSDL).
-- PostgreSQL và PostgREST không công bố cổng, bỏ capability; mạng riêng: chỉ cầu nối tới được PostgREST, chỉ PostgREST tới được PostgreSQL.
-- Sao lưu kết xuất CSDL trước khi tạm dừng dịch vụ; `xoay-khoa --box` đổi mật khẩu CSDL bằng `ALTER ROLE` trước khi ghi tệp bí mật.
-
-### Đăng nhập một lần và cổng API (lõi DX-OS, ADR 0006)
-- Dịch vụ định danh Authelia 4.39.28 (role `box-dinh-danh`): nhóm `nhan_vien` một lớp, `ky_thuat`/`quan_ly` hai lớp (TOTP);
-  lệnh `onebee-box them-nguoi`, `xoa-nguoi`, `danh-sach-nguoi`, `ma-xac-nhan` (mã xác minh ghi danh hai lớp khi chưa có email).
-- Chỉ khi HTTPS bật, trên tên `box.<mã>.onebee.internal`: `/dangnhap/`, `/api/` (qua cầu nối danh tính ký JWT 60 giây, phía sau là dịch vụ
-  (qua cầu nối danh tính ký JWT HS256 sống 60 giây, phía sau là PostgREST), `/ai/` (chỉ `POST /ai/hoi`, `POST /ai/tom-tat`), `/files/` (kho tệp có kiểm dịch). Vào bằng IP chỉ có trang chủ.
-- Trang giám sát sau đăng nhập một lần (chỉ kỹ thuật, hai lớp), Uptime Kuma không đòi đăng nhập lần hai.
-- `onebee-box tat-sso-tam` / `bat-sso-lai`: lối thoát khi dịch vụ định danh hỏng (dữ liệu khóa 503, giám sát về mật khẩu riêng).
-- Cấu hình máy trạm có dòng `BOX_TEN`; máy trạm ghi dòng `/etc/hosts` cho tên Box.
-#### Bảo mật
-- Caddy xóa `Remote-*`, `Authorization`, `Proxy-Authorization` do máy khách gửi trước mọi bước xác thực; cầu nối bỏ thêm `Cookie`.
-- Authelia và cầu nối không công bố cổng, bỏ mọi capability, chỉ nằm trong mạng Docker nội bộ `sso` cùng Caddy (không dịch vụ nào khác gọi thẳng được).
-- Sao lưu Box gồm `/srv/onebee/authelia`; `xoay-khoa --box` đổi khóa phiên và khóa ký JWT, giữ khóa mã hóa ghi danh hai lớp.
-
 ### Sửa
 - `onebee-box chan-doan` không còn cảnh báo giả "Chứng chỉ HTTPS còn 0 ngày" khi bật HTTPS: chứng chỉ do Caddy cấp sống 12 giờ và tự gia hạn, nay chỉ cảnh báo khi còn dưới một phần ba thời hạn (tối đa 15 ngày).
 - `hoi` báo "Không kết nối được OneBee Box" trong khoảng 10 giây khi không tới được Box, thay vì im lặng tới 5 phút; câu trả lời dài của Trợ lý AI vẫn nhận đủ.
@@ -81,6 +55,32 @@ Thay đổi của lõi DX-OS dự thi OLP 2026. Đã kiểm bằng CI `box=true`
 - Giấy phép từng tệp và đóng gói: mọi tệp mã có dòng `SPDX-License-Identifier: MIT` (`scripts/chen-giay-phep.py`, chạy lại không chèn trùng; CI chạy `--kiem` chặn tệp mã mới thiếu giấy phép); nhật ký thay đổi ra gốc repo (`CHANGELOG.md`); gói phát hành đóng kèm `LICENSE`, `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`; `scripts/dong-goi-ban-phat-hanh.sh X.Y.Z-dev` đóng gói thử từ mục `[Unreleased]`.
 - Tài liệu và hồ sơ nộp bài: kiến trúc ba tầng DX-OS, ROADMAP, đặc tả API, bảng tự chấm PoF, kịch bản trình diễn và thư nộp bài.
 - Giao diện tối giản: trang chủ Box, hình nền và màn hình khởi động Plymouth cho máy trạm.
+
+### Dữ liệu cấu trúc: PostgreSQL và API tự sinh (lõi DX-OS, ADR 0006)
+Đã kiểm bằng unit test và `check-csdl-rls.sh` (PostgreSQL thật từ image đã ghim, chạy trong CI); bộ kiểm Box (`check-du-lieu-qua-cong.sh`,
+bài khôi phục toàn bộ) chạy trên máy ảo VMware `onebee-kiem-box`. Chưa thử trên Box thật.
+#### Thêm
+- Role `box-du-lieu`: PostgreSQL 18.7 + pgvector 0.8.7, PostgREST 16.5 sau cầu nối danh tính (`/api/<bảng>`); lược đồ `onebee`
+  (đơn hàng có duyệt, yêu cầu/xử lý hỗ trợ, khảo sát ẩn danh, tình trạng máy trạm) áp dụng có ghi sổ (`onebee.lich_su_luoc_do`).
+- `onebee-box chuyen-du-lieu`: nạp sổ CSV/JSON cũ vào CSDL, chạy lại chỉ nạp dòng mới; `bao-cao-tuan` đọc từ CSDL.
+- `chan-doan`: PostgreSQL nhận kết nối, PostgREST trả lời, kết xuất CSDL không cũ quá 48 giờ.
+#### Bảo mật
+- Phân quyền tới cấp dòng (RLS bật và ép trên mọi bảng); không có vai trò ẩn danh; không ai tự duyệt đơn của mình (ràng buộc trong CSDL).
+- PostgreSQL và PostgREST không công bố cổng, bỏ capability; mạng riêng: chỉ cầu nối tới được PostgREST, chỉ PostgREST tới được PostgreSQL.
+- Sao lưu kết xuất CSDL trước khi tạm dừng dịch vụ; `xoay-khoa --box` đổi mật khẩu CSDL bằng `ALTER ROLE` trước khi ghi tệp bí mật.
+
+### Đăng nhập một lần và cổng API (lõi DX-OS, ADR 0006)
+- Dịch vụ định danh Authelia 4.39.28 (role `box-dinh-danh`): nhóm `nhan_vien` một lớp, `ky_thuat`/`quan_ly` hai lớp (TOTP);
+  lệnh `onebee-box them-nguoi`, `xoa-nguoi`, `danh-sach-nguoi`, `ma-xac-nhan` (mã xác minh ghi danh hai lớp khi chưa có email).
+- Chỉ khi HTTPS bật, trên tên `box.<mã>.onebee.internal`: `/dangnhap/`, `/api/` (qua cầu nối danh tính ký JWT 60 giây, phía sau là dịch vụ
+  (qua cầu nối danh tính ký JWT HS256 sống 60 giây, phía sau là PostgREST), `/ai/` (chỉ `POST /ai/hoi`, `POST /ai/tom-tat`), `/files/` (kho tệp có kiểm dịch). Vào bằng IP chỉ có trang chủ.
+- Trang giám sát sau đăng nhập một lần (chỉ kỹ thuật, hai lớp), Uptime Kuma không đòi đăng nhập lần hai.
+- `onebee-box tat-sso-tam` / `bat-sso-lai`: lối thoát khi dịch vụ định danh hỏng (dữ liệu khóa 503, giám sát về mật khẩu riêng).
+- Cấu hình máy trạm có dòng `BOX_TEN`; máy trạm ghi dòng `/etc/hosts` cho tên Box.
+#### Bảo mật
+- Caddy xóa `Remote-*`, `Authorization`, `Proxy-Authorization` do máy khách gửi trước mọi bước xác thực; cầu nối bỏ thêm `Cookie`.
+- Authelia và cầu nối không công bố cổng, bỏ mọi capability, chỉ nằm trong mạng Docker nội bộ `sso` cùng Caddy (không dịch vụ nào khác gọi thẳng được).
+- Sao lưu Box gồm `/srv/onebee/authelia`; `xoay-khoa --box` đổi khóa phiên và khóa ký JWT, giữ khóa mã hóa ghi danh hai lớp.
 
 ## [1.2.0] — 14/11/2026 — Trải nghiệm người dùng: Trung tâm OneBee, tự phục vụ, Trợ lý AI dùng được ngay
 Đã chạy phiếu kiểm trải nghiệm tự động trên máy ảo Linux Mint 22.3 kèm một Box thử (`reports/trai-nghiem/261113-may-ao-vmware-mint-22-3.md`): các mục không đạt đã sửa hoặc ghi là giới hạn đã biết. Chưa có người xác nhận lại các mục về cảm nhận và chưa thử trên máy thật hay từ điện thoại.
