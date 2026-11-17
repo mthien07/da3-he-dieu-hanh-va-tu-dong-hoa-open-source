@@ -97,7 +97,7 @@ Sửa `cai-dat-onebee-box.md`: câu ở dòng 35 về máy kỹ thuật và thư
 
 ## Todo
 
-- [ ] C1 đến C11 đạt trong CI `box=true`
+- [x] C1 đến C11 đạt trong CI `box=true` (run 44075503025)
 - [x] T1 đến T12 chạy thật, có báo cáo (`plans/reports/261117-kiem-thu-may-di-cong-tac.md`)
 - [x] Hướng dẫn `may-tram-di-cong-tac.md`
 - [x] Bốn tài liệu cũ đã sửa, ADR 0008 cập nhật trạng thái

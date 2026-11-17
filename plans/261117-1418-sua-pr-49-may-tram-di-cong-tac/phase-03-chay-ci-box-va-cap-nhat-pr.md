@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Chạy CI Box, xử lý C7 đến C11, sửa mô tả PR"
-status: pending
+status: completed
 priority: P1
 effort: "1,5h"
 dependencies: [1, 2]

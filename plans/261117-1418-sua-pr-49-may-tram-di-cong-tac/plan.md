@@ -1,7 +1,7 @@
 ---
 title: "Sửa PR #49 máy trạm đi công tác trước khi gộp"
 description: "Sửa lỗi thứ tự cắt kết nối khi lượt duyệt hết hạn, viết lại bài kiểm C6 đang kiểm sai, rồi chạy CI Box tới khi C1 đến C11 đều đạt."
-status: in-progress
+status: completed
 priority: P1
 effort: 5,5h
 issue: 49
@@ -37,7 +37,7 @@ Phía máy trạm (`onebee-chon-duong-box`, `onebee-cong-tac`, dispatcher Networ
 |---|-------|---------|------|-----------|--------|
 | 1 | [Box: cắt kết nối sau khi dựng lại tường lửa khi hết hạn](./phase-01-box-cat-ket-noi-sau-khi-dung-tuong-lua.md) | P1 | 1h | — | Completed |
 | 2 | [Viết lại C6 và mở rộng C7 giữ kết nối thật](./phase-02-viet-lai-c6-va-mo-rong-c7.md) | P1 | 2h | — (song song được với 1) | Completed |
-| 3 | [Chạy CI Box, xử lý C7 đến C11, sửa mô tả PR](./phase-03-chay-ci-box-va-cap-nhat-pr.md) | P1 | 1,5h | 1, 2, 4 | Pending |
+| 3 | [Chạy CI Box, xử lý C7 đến C11, sửa mô tả PR](./phase-03-chay-ci-box-va-cap-nhat-pr.md) | P1 | 1,5h | 1, 2, 4 | Completed |
 | 4 | [Tường lửa: dựng lại không có khoảng hở](./phase-04-tuong-lua-dung-lai-khong-khoang-ho.md) | P1 | 1h | — | Completed |
 
 Giai đoạn 1 chỉ sửa `onebee-box-tu-xa.sh.j2` và `test_onebee_tu_xa.py`; Giai đoạn 2 chỉ sửa `run-box-test-in-systemd-container.sh` và `tests/README.md`. Hai giai đoạn không đụng chung tệp nên giao hai máy làm song song được.
