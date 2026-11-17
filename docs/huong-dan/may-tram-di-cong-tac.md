@@ -36,7 +36,7 @@ Chính sách này cố ý **không có mục `ssh`**: không thiết bị nào �
    ```bash
    sudo onebee-cong-tac bat
    ```
-   Lệnh tự cài Tailscale (nếu chưa có), chạy `tailscale up --reset --hostname=<tên-máy> --accept-dns=false --accept-routes=false --shields-up --ssh=false` và in đường link đăng nhập để kỹ thuật duyệt vào tailnet (gắn `tag:congtac`). Có thể truyền `--khoa tskey-auth-…` (khóa dùng một lần đã gắn sẵn `tag:congtac`) để không phải mở link.
+   Lệnh tự cài Tailscale (nếu chưa có), chạy `tailscale up --reset --hostname=<tên-máy> --accept-dns=false --accept-routes=false --shields-up --ssh=false` và in đường link đăng nhập để kỹ thuật duyệt vào tailnet (gắn `tag:congtac`). Có thể truyền `--khoa tskey-auth-…` (khóa dùng một lần đã gắn sẵn `tag:congtac`) để không phải mở link; nên ghi khóa vào một tệp chỉ root đọc được rồi truyền `--khoa file:/đường/dẫn/tệp`, để khóa không hiện trong danh sách tiến trình.
 2. **Trên Box:**
    ```bash
    sudo onebee-box duyet-tu-xa ketoan-01
@@ -80,7 +80,8 @@ Cần người cầm máy biết mật khẩu tài khoản quản trị (`quantr
    ```bash
    sudo onebee-cong-tac bat --box-tu-xa 100.64.0.1
    ```
-   Ghi lại địa chỉ IP Tailscale của máy trạm in ra trên màn hình (ví dụ `100.64.0.7`).
+   Ghi lại địa chỉ IP Tailscale của máy trạm in ra trên màn hình (ví dụ `100.64.0.7`). Lệnh này cũng đổi kho sao lưu của máy sang tên Box,
+   vì Box không đẩy được cấu hình mới xuống máy đang ở xa; nhờ vậy `onebee-sao-luu` chạy được qua VPN.
 3. Trên Box:
    ```bash
    sudo onebee-box duyet-tu-xa ketoan-01 --ip 100.64.0.7 --ngay 14
