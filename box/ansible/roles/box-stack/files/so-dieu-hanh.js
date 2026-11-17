@@ -6,9 +6,12 @@
 var MAU_TOM_TAT = "Tóm tắt số liệu tuần này bằng tiếng Việt, ngắn gọn, chỉ dùng đúng các con số trong JSON; không bịa thêm số liệu ngoài JSON. Trả lời bằng tiếng Việt.\n";
 var DUOI_TEP = [".pdf", ".png", ".jpg", ".jpeg", ".txt", ".docx", ".xlsx", ".odt", ".ods"];
 var TOI_DA_TEP = 10 * 1024 * 1024;
-var TEN_KHU = ["khu-h", "khu-p", "khu-d", "khu-i"];
+var TEN_KHU = ["khu-h", "khu-p", "khu-d", "khu-i", "khu-k", "khu-t"];
+var VAI_TRO_KHO = ["thu_kho", "ke_toan", "quan_ly"];   // kế toán chỉ xem tồn và sổ kho, không nhập kho
+var VAI_TRO_KE_TOAN = ["ke_toan", "quan_ly"];
 var HOSO = { ten: "", vai_tro: "" };
 var SO_LIEU = {};
+var MAT_HANG = [];
 
 function chu(v) {
   return typeof v === "string" ? v.trim() : "";
@@ -31,7 +34,7 @@ function dungDonHang(d) {
   var khach = chu(d.khach_hang), hang = chu(d.mat_hang);
   if (!khach) return { loi: "Vui lòng nhập khách hàng." };
   if (khach.length > 200) return { loi: "Khách hàng dài quá 200 ký tự." };
-  if (!hang) return { loi: "Vui lòng nhập mặt hàng." };
+  if (!hang) return { loi: "Vui lòng chọn mặt hàng trong danh mục kho." };
   if (hang.length > 200) return { loi: "Mặt hàng dài quá 200 ký tự." };
   var soLuong = Number(d.so_luong_kg);
   if (!isFinite(soLuong) || soLuong <= 0) return { loi: "Số lượng phải là số lớn hơn 0." };
@@ -59,6 +62,8 @@ function dungDonHang(d) {
   };
   if (ngay) than.ngay_giao = ngay;
   if (ghiChu) than.ghi_chu = ghiChu;
+  var maHang = Number(d.mat_hang_id);
+  if (isFinite(maHang) && maHang > 0) than.mat_hang_id = maHang;
   return { than: than };
 }
 
@@ -78,8 +83,19 @@ function thongBaoLoi(ma, than) {
     if (loi.indexOf("loai_trong_danh_muc") >= 0) return "Loại sự cố không nằm trong danh mục của biểu mẫu.";
     if (loi.indexOf("khong_tu_duyet") >= 0) return "Không được tự duyệt đơn do chính mình tạo.";
     if (loi.indexOf("so_luong_duong_don_gia_khong_am") >= 0) return "Số lượng phải lớn hơn 0 và đơn giá không âm.";
+    // Kho và kế toán: giữ nguyên lời báo tiếng Việt của CSDL (nêu mặt hàng, tồn còn, số cần)
+    if (loi.indexOf("Không đủ tồn kho") >= 0) return loi;
+    if (loi.indexOf("Số lượng nhập") >= 0 || loi.indexOf("Đơn giá nhập") >= 0 || loi.indexOf("Phiếu nhập") >= 0) return loi;
+    if (loi.indexOf("Bút toán không cân") >= 0 || loi.indexOf("Mỗi dòng bút toán") >= 0) return loi;
+    if (loi.indexOf("mat_hang_chua_co") >= 0) {
+      return "Mặt hàng của đơn chưa có trong danh mục kho — vào khu Kho thêm mặt hàng rồi duyệt lại.";
+    }
+    if (loi.indexOf("mat_hang_ma_key") >= 0 || loi.indexOf("mat_hang_ten_key") >= 0 || loi.indexOf("duplicate key") >= 0) {
+      return "Mã hoặc tên mặt hàng đã có trong danh mục — dùng mã/tên khác.";
+    }
     return "Dữ liệu gửi lên chưa hợp lệ — kiểm tra lại các ô rồi thử lại (mã 400).";
   }
+  if (ma === 409) return "Việc này vừa được người khác xử lý — tải lại trang để xem trạng thái mới.";
   return "Box báo lỗi mã " + ma + " — thử lại sau hoặc báo người quản trị.";
 }
 
@@ -178,6 +194,14 @@ function chonKhu(ma) {
   }
   if (ma === "khu-d") taiBangDieuHanh().catch(function () {});
   if (ma === "khu-p") taiChoDuyet().catch(function () {});
+  if (ma === "khu-k") {
+    taiTonKho().catch(function (e) { hienThongBao("kq-ton", e.message, true); });
+    taiSoKho().catch(function (e) { hienThongBao("kq-so-kho", e.message, true); });
+  }
+  if (ma === "khu-t") {
+    taiNhatKy().catch(function (e) { hienThongBao("tq-nhat-ky", e.message, true); });
+    taiCanDoi().catch(function (e) { hienThongBao("tq-nhat-ky", e.message, true); });
+  }
 }
 
 function dem(duong) {
@@ -196,6 +220,19 @@ function taiHoSo() {
       "Quyền được kiểm ở cơ sở dữ liệu cho từng dòng; trang này chỉ hiển thị.";
     var quanLy = HOSO.vai_tro === "quan_ly";
     document.getElementById("h-cho-toi-o").hidden = !quanLy;
+    // Khu Kho và Kế toán chỉ mở theo vai trò; quyền thật vẫn do CSDL kiểm (RLS)
+    var laKho = VAI_TRO_KHO.indexOf(HOSO.vai_tro) >= 0;
+    var laKeToan = VAI_TRO_KE_TOAN.indexOf(HOSO.vai_tro) >= 0;
+    document.getElementById("nut-khu-k").hidden = !laKho;
+    document.getElementById("nut-khu-t").hidden = !laKeToan;
+    document.getElementById("k-than").hidden = !laKho;
+    document.getElementById("t-than").hidden = !laKeToan;
+    document.getElementById("k-chan-quyen").hidden = laKho;
+    document.getElementById("t-chan-quyen").hidden = laKeToan;
+    // Kế toán chỉ đối chiếu: ẩn hai biểu mẫu ghi kho (CSDL cũng không cấp quyền gọi hàm nhập kho)
+    var chiXemKho = HOSO.vai_tro === "ke_toan";
+    document.getElementById("the-nhap-kho").hidden = chiXemKho;
+    document.getElementById("the-them-mat-hang").hidden = chiXemKho;
     var cong = document.body.getAttribute("data-cong-giam-sat");
     if (HOSO.vai_tro && cong) {
       var o = document.getElementById("h-giam-sat-o");
@@ -410,9 +447,12 @@ function ganTepVaoDon(maTep, maDon) {
 function taiDon(ev) {
   ev.preventDefault();
   anThongBao("kq-don");
+  var chonHang = document.getElementById("don-mat-hang");
+  var maHang = chonHang.value ? Number(chonHang.value) : null;
   var d = {
     khach_hang: document.getElementById("don-khach").value,
-    mat_hang: document.getElementById("don-mat-hang").value,
+    mat_hang: maHang ? tenMatHang(maHang) : "",
+    mat_hang_id: maHang,
     so_luong_kg: document.getElementById("don-so-luong").value,
     don_gia: document.getElementById("don-gia").value,
     ngay_giao: document.getElementById("don-ngay-giao").value,
@@ -561,6 +601,44 @@ function dienSanTuDiaChi() {
   return Boolean(may || loai || moTa);
 }
 
+/* ---------- Danh mục mặt hàng cho biểu mẫu đơn ---------- */
+
+function tenMatHang(id) {
+  for (var i = 0; i < MAT_HANG.length; i++) {
+    if (String(MAT_HANG[i].id) === String(id)) return chu(MAT_HANG[i].ten);
+  }
+  return "";
+}
+
+function dienChonMatHang(chon, giuChon) {
+  var cu = giuChon ? chon.value : "";
+  while (chon.firstChild) chon.removeChild(chon.firstChild);
+  var dau = document.createElement("option");
+  dau.value = "";
+  dau.textContent = "— chọn mặt hàng —";
+  chon.appendChild(dau);
+  for (var i = 0; i < MAT_HANG.length; i++) {
+    var m = MAT_HANG[i];
+    if (m.hoat_dong === false) continue;
+    var o = document.createElement("option");
+    o.value = String(m.id);
+    o.textContent = chu(m.ten) + (chu(m.don_vi) ? " (" + chu(m.don_vi) + ")" : "");
+    chon.appendChild(o);
+  }
+  if (cu) chon.value = cu;
+}
+
+function taiVatTu() {
+  return goiApi("/api/mat_hang?select=id,ten,don_vi,hoat_dong&order=ten.asc").then(function (ds) {
+    MAT_HANG = Array.isArray(ds) ? ds : [];
+    dienChonMatHang(document.getElementById("don-mat-hang"), true);
+    dienChonMatHang(document.getElementById("nk-mat-hang"), true);
+    var conHang = 0;
+    for (var i = 0; i < MAT_HANG.length; i++) if (MAT_HANG[i].hoat_dong !== false) conHang++;
+    document.getElementById("don-mat-hang-trong").hidden = conHang > 0;
+  });
+}
+
 function khoiDong() {
   var moKhuP = dienSanTuDiaChi();
   var nutKhu = document.querySelectorAll("[data-khu]");
@@ -573,10 +651,31 @@ function khoiDong() {
   document.getElementById("i-hoi").addEventListener("click", hoiTroLy);
   document.getElementById("i-tom-tat").addEventListener("click", tomTatTuan);
   document.getElementById("d-tai-lai").addEventListener("click", function () { taiBangDieuHanh().catch(function () {}); });
+  document.getElementById("form-nhap-kho").addEventListener("submit", guiNhapKho);
+  document.getElementById("form-mat-hang").addEventListener("submit", guiMatHang);
+  document.getElementById("k-loc").addEventListener("click", function () {
+    taiSoKho().catch(function (e) { hienThongBao("kq-so-kho", e.message, true); });
+  });
+  document.getElementById("t-loc").addEventListener("click", function () {
+    taiNhatKy().catch(function (e) { hienThongBao("tq-nhat-ky", e.message, true); });
+    taiCanDoi().catch(function (e) { hienThongBao("tq-nhat-ky", e.message, true); });
+  });
+  document.getElementById("k-xuat-ton").addEventListener("click", xuatTonKhoCsv);
+  document.getElementById("k-xuat-so").addEventListener("click", xuatSoKhoCsv);
+  document.getElementById("t-xuat-nhat-ky").addEventListener("click", xuatNhatKyCsv);
+  document.getElementById("t-xuat-can-doi").addEventListener("click", xuatCanDoiCsv);
   document.getElementById("don-so-luong").addEventListener("input", capNhatThanhTien);
   document.getElementById("don-gia").addEventListener("input", capNhatThanhTien);
   capNhatThanhTien();
   taiHoSo()
+    .then(function () {
+      return taiVatTu().catch(function () {
+        var o = document.getElementById("don-mat-hang-trong");
+        o.textContent = "Không tải được danh mục mặt hàng — tải lại trang hoặc báo thủ kho.";
+        o.hidden = false;
+        return null;
+      });
+    })
     .then(function () {
       return taiViecCuaToi();
     })

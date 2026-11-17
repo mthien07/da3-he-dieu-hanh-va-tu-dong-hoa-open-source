@@ -163,6 +163,26 @@ EOF
 # ---------------------------------------------------------------------------------------------------
 # Tự duyệt và quản lý duyệt qua động cơ quy trình
 # ---------------------------------------------------------------------------------------------------
+# Duyệt đơn nay tự sinh phiếu xuất kho (trigger CSDL) và chặn khi thiếu tồn → cấp thẻ kho "Mật ong"
+# và tồn đầu 100 kg trước khi duyệt; chạy lại nhiều lần không nhân đôi nhờ ON CONFLICT/NOT EXISTS.
+echo "===== SỔ ĐIỀU HÀNH: CHUẨN BỊ TỒN KHO CHO BÀI DUYỆT ====="
+box <<'EOF'
+docker exec -i onebee-postgres psql -X -q -U postgres -d onebee -v ON_ERROR_STOP=1 <<'SQL'
+INSERT INTO onebee.mat_hang (ma, ten, don_vi, gia_von, gia_ban, nguoi_tao)
+VALUES ('SDL-MATONG', 'Mật ong', 'kg', 70000, 100000, 'kiem-thu')
+ON CONFLICT (ma) DO NOTHING;
+INSERT INTO onebee.phieu_kho (so_phieu, loai, ngay, dien_gia, nguoi_tao)
+VALUES ('PN-SDL-0001', 'NHAP', current_date, 'Kiểm thử: tồn cho bài duyệt đơn', 'kiem-thu')
+ON CONFLICT (so_phieu) DO NOTHING;
+INSERT INTO onebee.phieu_kho_dong (phieu_id, mat_hang_id, so_luong, don_gia)
+SELECT p.id, m.id, 100, 70000
+  FROM onebee.phieu_kho p, onebee.mat_hang m
+ WHERE p.so_phieu = 'PN-SDL-0001' AND m.ma = 'SDL-MATONG'
+   AND NOT EXISTS (SELECT 1 FROM onebee.phieu_kho_dong d WHERE d.phieu_id = p.id);
+SQL
+echo 'PASS  Thẻ kho Mật ong có tồn 100 kg cho bài duyệt đơn'
+EOF
+
 echo "===== SỔ ĐIỀU HÀNH: DUYỆT ĐƠN ====="
 box <<'EOF'
 . /root/sdlh/chung.sh

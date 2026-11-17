@@ -135,9 +135,14 @@ class LuocDo(unittest.TestCase):
         self.assertIn("CHECK (so_luong_kg > 0 AND don_gia >= 0)", sql)
         self.assertNotRegex(sql, r"(?i)\banon|\bweb_anon|TO PUBLIC")
         self.assertIn("current_setting('request.jwt.claims', true)", sql)
-        # Quản lý chỉ sửa được hai cột duyệt; không ai có UPDATE/DELETE khác
-        self.assertEqual(re.findall(r"GRANT [^;]*\b(?:UPDATE|DELETE)\b[^;]*;", sql),
-                         ["GRANT UPDATE (trang_thai_duyet, ly_do_duyet) ON onebee.don_hang TO quan_ly;"])
+        # Quản lý chỉ sửa được hai cột duyệt; thẻ kho là bảng duy nhất còn lại được sửa, và tệp 009 thu quyền
+        # mức bảng xuống mức cột (giá vốn chỉ do hàm nhập kho ghi); không vai trò nào có DELETE
+        cap_nhat = re.findall(r"GRANT [^;]*\b(?:UPDATE|DELETE)\b[^;]*;", sql)
+        self.assertIn("GRANT UPDATE (trang_thai_duyet, ly_do_duyet) ON onebee.don_hang TO quan_ly;", cap_nhat)
+        self.assertEqual([x for x in cap_nhat if "onebee.don_hang" not in x],
+                         ["GRANT INSERT, UPDATE ON onebee.mat_hang TO thu_kho, quan_ly;",
+                          "GRANT UPDATE (ten, don_vi, gia_ban, ton_toi_thieu, hoat_dong) ON onebee.mat_hang TO thu_kho, quan_ly;"])
+        self.assertNotRegex(sql, r"(?i)GRANT[^;]*\bDELETE\b")
 
     def test_dung_giao_keo_cot(self):
         sql = sql_tat_ca()
@@ -165,7 +170,9 @@ class LuocDo(unittest.TestCase):
     def test_ten_tep_luoc_do_dung_dang_va_khong_tu_mo_giao_dich(self):
         self.assertEqual([os.path.basename(f) for f in LUOC_DO],
                          ["001-khoi-tao.sql", "002-phan-quyen.sql", "003-khung-nhin-tong-hop.sql",
-                          "004-kho-tep.sql", "005-tri-thuc-va-lich-su-hoi-ai.sql"])
+                          "004-kho-tep.sql", "005-tri-thuc-va-lich-su-hoi-ai.sql",
+                          "006-kho-va-ke-toan.sql", "007-phan-quyen-kho-ke-toan.sql",
+                          "008-nhap-kho-tham-so-mac-dinh.sql", "009-toan-ven-so-lieu.sql"])
         for f in LUOC_DO:
             noi_dung = bo_chu_thich(open(f, encoding="utf-8").read())
             self.assertNotRegex(noi_dung, r"(?im)^\s*(BEGIN|COMMIT|ROLLBACK)\s*;", f)   # công cụ áp dụng bọc mỗi tệp một giao dịch

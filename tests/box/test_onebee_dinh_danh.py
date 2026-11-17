@@ -27,7 +27,7 @@ ROLES = os.path.join(ROOT, "box/ansible/roles")
 TEMPLATES = os.path.join(ROLES, "box-stack/templates")
 DINH_DANH = os.path.join(ROLES, "box-dinh-danh")
 CAU_HINH = os.path.join(DINH_DANH, "templates/configuration.yml.j2")
-NHOM = ["nhan_vien", "ky_thuat", "quan_ly"]
+NHOM = ["nhan_vien", "ky_thuat", "quan_ly", "thu_kho", "ke_toan"]
 TEN = "box.anphu.onebee.internal"
 
 
@@ -130,10 +130,13 @@ class CauHinhAuthelia(unittest.TestCase):
     def test_luat_truy_cap_theo_nhom(self):
         cfg = cau_hinh()
         self.assertEqual(cfg["access_control"]["default_policy"], "deny")
-        for duong_dan in ("/api/toi", "/files/a.txt", "/ai/api/chat"):
+        for duong_dan in ("/api/toi", "/files/a.txt", "/ai/api/chat", "/so-dieu-hanh/"):
             self.assertEqual(chinh_sach(cfg, ["nhan_vien"], duong_dan), "one_factor", duong_dan)
             self.assertEqual(chinh_sach(cfg, ["ky_thuat"], duong_dan), "two_factor", duong_dan)
             self.assertEqual(chinh_sach(cfg, ["quan_ly"], duong_dan), "two_factor", duong_dan)
+            # Thủ kho và kế toán: hai lớp như kỹ thuật/quản lý
+            self.assertEqual(chinh_sach(cfg, ["thu_kho"], duong_dan), "two_factor", duong_dan)
+            self.assertEqual(chinh_sach(cfg, ["ke_toan"], duong_dan), "two_factor", duong_dan)
             self.assertEqual(chinh_sach(cfg, ["nhan_vien", "quan_ly"], duong_dan), "two_factor", duong_dan)
             self.assertEqual(chinh_sach(cfg, [], duong_dan), "deny", duong_dan)
             self.assertEqual(chinh_sach(cfg, ["la"], duong_dan), "deny", duong_dan)
