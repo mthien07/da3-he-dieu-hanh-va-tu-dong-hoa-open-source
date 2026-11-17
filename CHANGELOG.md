@@ -16,7 +16,7 @@ Thay đổi của lõi DX-OS dự thi OLP 2026. Đã kiểm bằng CI `box=true`
 - Giao diện tối giản: trang chủ Box, hình nền và màn hình khởi động Plymouth cho máy trạm.
 
 ### Kho và kế toán trên Box (lõi DX-OS)
-Mới, chưa chạy trên Box thật: mới kiểm bằng unit test tĩnh và PostgreSQL thật trong Docker cục bộ.
+Đã chạy thử trên Box thật 192.168.100.127 (`check-kho-ke-toan.sh local` đạt toàn bộ) và kiểm giao diện bằng trình duyệt tự động 16/16 nút; cài lại `changed=0`.
 #### Thêm
 - Lược đồ `006-kho-va-ke-toan.sql`: danh mục mặt hàng (thẻ kho), phiếu nhập/xuất kho, hệ thống tài khoản, nhật ký kép
   (`but_toan`, `but_toan_dong`), khung nhìn `ton_kho`, `so_kho`, `so_nhat_ky`, `bang_can_doi`.
