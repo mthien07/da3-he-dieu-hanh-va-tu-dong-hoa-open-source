@@ -57,11 +57,17 @@ def doc_khoa_gia_tri(duong_dan):
     return kq
 
 
-def ip_toi_box(box_ip):
-    """IP của máy trạm trên đường tới Box (không gửi gói tin nào)."""
+def ip_toi_box(box_ip, box_ten=""):
+    """IP của máy trạm trên đường tới Box (không gửi gói tin nào). Ưu tiên địa chỉ mà BOX_TEN đang phân giải ra, lùi về BOX_IP."""
+    dich = box_ip
+    if box_ten:
+        try:
+            dich = socket.gethostbyname(box_ten)
+        except OSError:
+            dich = box_ip
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.connect((box_ip, 9))
+            s.connect((dich, 9))
             return s.getsockname()[0]
     except OSError:
         return None
@@ -160,7 +166,7 @@ def main():
     except (OSError, ValueError):
         sao_luu = None
     tt = {
-        "ten": conf["MAY_TRAM"], "ip": ip_toi_box(conf["BOX_IP"]), "hostname": socket.gethostname(),
+        "ten": conf["MAY_TRAM"], "ip": ip_toi_box(conf["BOX_IP"], conf.get("BOX_TEN", "")), "hostname": socket.gethostname(),
         "phien_ban": doc_khoa_gia_tri("/etc/onebee-release").get("ONEBEE_VERSION"),
         "he_dieu_hanh": doc_khoa_gia_tri("/etc/os-release").get("PRETTY_NAME"),
         "cap_nhat_cho": cho, "bao_mat_cho": bao_mat,
