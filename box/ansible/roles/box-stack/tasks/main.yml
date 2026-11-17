@@ -87,6 +87,7 @@
   loop:
     - {src: onebee-box-common.sh.j2, dest: /usr/local/lib/onebee-box/common.sh, mode: "0640"}
     - {src: onebee-box-sao-luu.sh.j2, dest: /usr/local/lib/onebee-box/sao-luu.sh, mode: "0640"}
+    - {src: onebee-box-tu-xa.sh.j2, dest: /usr/local/lib/onebee-box/tu-xa.sh, mode: "0640"}
     - {src: onebee-box-chan-doan.sh.j2, dest: /usr/local/lib/onebee-box/chan-doan.sh, mode: "0640"}
     - {src: onebee-canh-bao.sh.j2, dest: /usr/local/bin/onebee-canh-bao, mode: "0755"}
     - {src: onebee-box.sh.j2, dest: /usr/local/sbin/onebee-box, mode: "0750"}
@@ -449,3 +450,27 @@
 - name: Báo kết quả cấu hình giám sát
   ansible.builtin.debug:
     msg: "{{ onebee_kuma.stdout_lines | default([]) }}"
+
+# Lượt duyệt máy công tác (ADR 0008): áp dụng danh sách vào tường lửa + Samba sau bộ cài — tệp đổi mới báo changed
+- name: Áp dụng lượt duyệt máy công tác
+  ansible.builtin.command: /usr/local/sbin/onebee-box tu-xa-ap-dung
+  register: onebee_tu_xa_ap_dung
+  changed_when: "'đã đổi' in onebee_tu_xa_ap_dung.stdout"
+
+- name: Cài bộ hẹn giờ thu hồi lượt duyệt máy công tác hết hạn
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - onebee-tu-xa-het-han.service
+    - onebee-tu-xa-het-han.timer
+
+- name: Bật bộ hẹn giờ thu hồi lượt duyệt máy công tác
+  ansible.builtin.systemd_service:
+    name: onebee-tu-xa-het-han.timer
+    enabled: true
+    state: started
+    daemon_reload: true
