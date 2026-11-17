@@ -7,3 +7,8 @@ build/
 *.env
 !.env.example
 __pycache__/
+
+# Kế hoạch làm việc và cấu hình công cụ cá nhân: chỉ giữ trên máy, không đưa lên kho mã
+/plans/*
+!/plans/reports/
+/CLAUDE.md

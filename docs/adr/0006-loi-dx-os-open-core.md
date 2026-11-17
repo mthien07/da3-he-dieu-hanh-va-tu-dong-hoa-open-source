@@ -1,7 +1,6 @@
 # ADR 0006 — Lõi DX-OS open-core: SSO, cổng API, dữ liệu cấu trúc, kho tệp, kiểm dịch, động cơ quy trình
 
 - Ngày: 15/11/2026 · Trạng thái: Đề xuất, chờ duyệt · Đo và thử trên máy ảo, **chưa thử trên Box thật**
-- Nguồn: plan `plans/261113-0134-olp-2026-dx-os-open-core/` (giai đoạn 2) và bản thực thi `plans/261114-1646-thuc-thi-loi-dx-os-giai-doan-2-4-3/` (giai đoạn 1)
 - Liên quan: ADR 0005 (CA riêng ràng buộc tên, Caddy là dịch vụ duy nhất công bố cổng)
 
 ## Bối cảnh
