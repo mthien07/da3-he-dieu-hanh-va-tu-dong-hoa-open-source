@@ -6,7 +6,9 @@
 # Thư mục nằm NGOÀI ${SECRETS} nên không vào bản sao lưu Box: sau khôi phục toàn bộ phải duyệt lại (đóng mặc định).
 # Đọc bằng grep từng khóa + kiểm dạng, KHÔNG source — nội dung tệp không được tin là mã.
 # Giả định chưa thử thật (U2, U5 của kế hoạch): lọc theo cổng gốc sau DNAT nằm ở MỘT khối trong onebee-tuong-lua;
-# cắt kết nối đang mở nhờ conntrack -D. Trượt thì đổi đúng hai chỗ đó, phần còn lại giữ nguyên.
+# cắt kết nối đang mở nhờ conntrack -D (hàm cat_ket_noi_tu_xa). Trượt thì đổi đúng hai chỗ đó, phần còn lại giữ nguyên.
+# Thứ tự bắt buộc: dựng lại tường lửa (IP đã bị gỡ) RỒI mới conntrack -D. Làm ngược thì gói kế tiếp của kết nối cũ
+# tạo lại mục conntrack mới khi luật cũ vẫn còn IP đó, và kết nối sống tiếp.
 TU_XA_TEP_TUONG_LUA="/etc/onebee-box/tuong-lua-tu-xa.conf"
 TU_XA_TEP_SAMBA="/etc/onebee-box/samba-tu-xa.conf"
 
@@ -157,6 +159,20 @@ EOF
   fi
 }
 
+# Cắt mọi kết nối đang mở từ IP $1. Chỉ gọi SAU khi tường lửa đã dựng lại không còn IP đó.
+# conntrack -D không có mục nào khớp thì thoát 1 và in "0 flow entries have been deleted" — không phải lỗi.
+cat_ket_noi_tu_xa() {
+  local ip="$1" loi
+  if ! command -v conntrack >/dev/null 2>&1; then
+    warn "Không chạy được conntrack (chưa cài) — kết nối đang mở của ${ip} có thể chưa đứt (kết nối mới vẫn bị chặn)"
+    return 0
+  fi
+  if ! loi="$(conntrack -D -s "${ip}" 2>&1 >/dev/null)" && [[ "${loi}" != *"flow entries have been deleted"* ]]; then
+    warn "Không chạy được conntrack (${loi:-không rõ lỗi}) — kết nối đang mở của ${ip} có thể chưa đứt (kết nối mới vẫn bị chặn)"
+  fi
+  return 0
+}
+
 # Thân thu hồi (dùng chung cho thu-hoi-tu-xa và thu-hoi-may): im lặng khi máy không có lượt
 thu_hoi_tu_xa_thuc() {
   local ten="$1" kq ip het luc nguoi
@@ -164,8 +180,7 @@ thu_hoi_tu_xa_thuc() {
   read -r ip het luc nguoi <<<"${kq}"
   rm -f "${TU_XA_DIR}/${ten}"
   tu_xa_ap_dung >/dev/null
-  conntrack -D -s "${ip}" >/dev/null 2>&1 \
-    || warn "Không chạy được conntrack — kết nối đang mở của ${ip} có thể chưa đứt (kết nối mới vẫn bị chặn)"
+  cat_ket_noi_tu_xa "${ip}"
   logger -t onebee-tu-xa "thu hồi máy công tác ${ten} (${ip})" || true
   echo "Đã thu hồi quyền từ xa của ${ten} (${ip}): tường lửa đóng lại, kết nối đang mở bị cắt."
   echo "Còn lại: xoá thiết bị khỏi tailnet trên bảng điều khiển Tailscale; khi máy về LAN: sudo onebee-box dong-bo-may ${ten}"
@@ -185,6 +200,7 @@ cmd_thu_hoi_tu_xa() {
 # In "đã đổi" khi có thay đổi (bộ cài Ansible và bộ hẹn giờ gọi)
 tu_xa_ap_dung() {
   local doi=0 f ten kq ip het luc nguoi bay_gio tmp ip_k ds_ip="" ds_samba=""
+  local -a ip_cat=()
   exec 8>/run/onebee-box-tu-xa.lock
   flock 8
   bay_gio="$(date +%s)"
@@ -195,7 +211,7 @@ tu_xa_ap_dung() {
     read -r ip het luc nguoi <<<"${kq}"
     if [[ "${het}" != 0 && "${het}" -lt "${bay_gio}" ]]; then
       rm -f "${f}"
-      conntrack -D -s "${ip}" >/dev/null 2>&1 || true
+      ip_cat+=("${ip}")   # cắt kết nối ở cuối hàm, sau khi tường lửa đã dựng lại
       logger -t onebee-tu-xa "lượt duyệt của ${ten} (${ip}) hết hạn — đã thu hồi" || true
       echo "Đã thu hồi lượt hết hạn của ${ten} (${ip})"
       doi=1
@@ -225,6 +241,7 @@ tu_xa_ap_dung() {
       /usr/local/sbin/onebee-tuong-lua bat >/dev/null || warn "Không dựng lại được tường lửa — chạy tay: sudo onebee-tuong-lua bat"
     fi
     smbcontrol all reload-config >/dev/null 2>&1 || true
+    for ip in "${ip_cat[@]}"; do cat_ket_noi_tu_xa "${ip}"; done
     echo "đã đổi"
   fi
 }
