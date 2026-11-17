@@ -23,12 +23,11 @@ Tường lửa trên Box là lớp quyết định chính (lọc theo từng IP 
   "acls": [
     {"action": "accept", "src": ["tag:kythuat"], "dst": ["tag:box:22,80,443,445,3001,8000"]},
     {"action": "accept", "src": ["tag:congtac"], "dst": ["tag:box:443,445,8000"]}
-  ],
-  "ssh": [
-    {"action": "check", "src": ["tag:kythuat"], "dst": ["tag:box"], "users": ["autogroup:nonroot", "root"]}
   ]
 }
 ```
+
+Chính sách này cố ý **không có mục `ssh`**: không thiết bị nào được Tailscale SSH vào Box. Máy kỹ thuật vẫn SSH thường qua cổng 22 (đã mở ở dòng đầu của `acls`), và lệnh SSH đó vẫn đi qua tường lửa Box. Đừng thêm mục `ssh` kiểu `"action": "check"` với nguồn là tag: Tailscale từ chối lưu chính sách (`"check" action does not support tags in src`).
 
 ## 3. Bốn luồng vận hành
 
