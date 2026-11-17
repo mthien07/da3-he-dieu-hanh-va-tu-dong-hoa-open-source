@@ -1,6 +1,11 @@
 # Nhật ký thay đổi
 
 ## [Unreleased]
+### Sửa
+- `onebee-box chan-doan` không còn cảnh báo giả "Chứng chỉ HTTPS còn 0 ngày" khi bật HTTPS: chứng chỉ do Caddy cấp sống 12 giờ và tự gia hạn, nay chỉ cảnh báo khi còn dưới một phần ba thời hạn (tối đa 15 ngày).
+- `hoi` báo "Không kết nối được OneBee Box" trong khoảng 10 giây khi không tới được Box, thay vì im lặng tới 5 phút; câu trả lời dài của Trợ lý AI vẫn nhận đủ.
+- Kho tệp ghi thời gian từng chặng (đọc, quét, lưu, metadata) cho mỗi lượt tải lên và ghi một dòng gọn khi máy khách bỏ đi trước khi có trả lời, để chẩn đoán các lượt tải lên chậm.
+
 ### Máy trạm đi công tác kết nối Box từ xa (ADR 0008)
 Đã kiểm bằng unit test, CI `box=true` (kịch bản C1 đến C11 với `tailscale0` giả) và trên Box thật, máy Mint thật, tailnet thật (T1 đến T12, `plans/reports/261117-kiem-thu-may-di-cong-tac.md`).
 - Box duyệt từng máy qua Tailscale, chỉ cổng 443, 445, 8000: `onebee-box duyet-tu-xa <máy> [--ngay N]`, `thu-hoi-tu-xa`, `tu-xa`, `tu-xa-ap-dung`. Lượt mặc định không hạn; có `--ngay` thì bộ hẹn giờ 15 phút tự thu hồi. `thu-hoi-may` thu hồi luôn quyền từ xa.
