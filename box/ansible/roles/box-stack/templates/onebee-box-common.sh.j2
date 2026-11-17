@@ -88,6 +88,24 @@ box_ip() {
   ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}'
 }
 
+# ---- Máy trạm đi công tác (ADR 0008, chi tiết ở tu-xa.sh) ----
+TU_XA_DIR="/etc/onebee-box/tu-xa"   # lượt duyệt từng máy — NGOÀI ${SECRETS} nên không vào bản sao lưu (sau khôi phục phải duyệt lại)
+SAMBA_HOSTS_ALLOW="{{ onebee_box_samba_hosts_allow }}"
+TAILSCALE_KY_THUAT=({{ onebee_box_tailscale_cho_phep | join(' ') }})   # địa chỉ/dải máy kỹ thuật qua Tailscale
+# Địa chỉ IPv4 Tailscale (100.x) của chính Box; rỗng khi chưa nối tailnet
+box_ip_tu_xa() {
+  timeout 10 tailscale status --json 2>/dev/null | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except ValueError:
+    sys.exit()
+for ip in (d.get("Self") or {}).get("TailscaleIPs") or []:
+    if ip.count(".") == 3:
+        print(ip)
+        break' || true
+}
+
 # ---- CA riêng của Box (tạo bởi tasks/ca.yml → onebee-ca.sh) ----
 # Số ngày còn lại của chứng chỉ $1 (root | inter) trong ${CA_DIR}; in -1 nếu thiếu/đã hết hạn
 ca_con_ngay() {

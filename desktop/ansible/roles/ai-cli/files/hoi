@@ -18,6 +18,7 @@ import getpass
 import json
 import os
 import select
+import socket
 import ssl
 import stat
 import sys
@@ -34,6 +35,27 @@ class KhongTuChuyenHuong(urllib.request.HTTPRedirectHandler):
     Tắt hẳn: mọi chuyển hướng thành HTTPError để mo() tự quyết (chỉ https:// cùng máy chủ, vẫn chỉ tin CA OneBee)."""
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
+
+
+CHO_NOI_MAC_DINH = 10   # giây; ONEBEE_HOI_CHO_NOI chỉ để kiểm thử
+
+
+def thu_noi(url):
+    """Nối thử TCP tới máy chủ của url với thời gian chờ ngắn rồi đóng ngay (không gửi dữ liệu).
+    Box không tới được (gói bị bỏ) thì báo lỗi sau vài giây, thay vì im lặng suốt thời gian chờ trả lời (300 giây) của mo()."""
+    try:
+        cho_noi = float(os.environ.get("ONEBEE_HOI_CHO_NOI") or CHO_NOI_MAC_DINH)
+        if cho_noi <= 0:
+            cho_noi = CHO_NOI_MAC_DINH
+    except ValueError:
+        cho_noi = CHO_NOI_MAC_DINH
+    p = urllib.parse.urlsplit(url)
+    try:
+        if not p.hostname:
+            return   # URL hỏng: để urllib báo lỗi theo đường cũ
+        socket.create_connection((p.hostname, p.port or (443 if p.scheme.lower() == "https" else 80)), timeout=cho_noi).close()
+    except (OSError, ValueError):   # gồm socket.timeout, lỗi phân giải tên, từ chối kết nối, cổng sai
+        sys.exit("Không kết nối được OneBee Box. Kiểm tra mạng nội bộ hoặc báo người quản trị.")
 
 
 def mo(req, timeout):
@@ -119,6 +141,7 @@ def goi_api(conf, duong_dan, khoa=None, noi_dung=None, timeout=300):
         tieu_de["X-OneBee-Khoa"] = khoa
     req = urllib.request.Request(conf["HOI_URL"].rstrip("/") + duong_dan, method="POST", headers=tieu_de,
                                  data=json.dumps(noi_dung, ensure_ascii=False).encode("utf-8") if noi_dung is not None else None)
+    thu_noi(req.full_url)   # ngoài mo(): mo() phải giống hệt bản trong onebee-bao-tinh-trang
     try:
         with mo(req, timeout) as r:
             raw = r.read()

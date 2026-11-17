@@ -66,6 +66,18 @@
     validate: testparm -s %s
   notify: Khởi động lại Samba
 
+# Máy công tác đã duyệt (lệnh duyet-tu-xa trên Box sinh lại tệp này): hosts allow đặt tệp riêng để chạy lại bộ cài không mất danh sách.
+# Gồm cả IP máy kỹ thuật (onebee_box_tailscale_cho_phep) — Samba đang chỉ cho 127./10./172.16/12/192.168. nên máy kỹ thuật qua Tailscale
+# bị từ chối dù tài liệu hứa vào được (giả định U4 chưa thử thật; nếu trượt thì nội dung này vẫn vô hại).
+- name: Tạo tệp hosts allow cho máy từ xa nếu chưa có (chạy lại bộ cài không xóa danh sách đang có)
+  ansible.builtin.copy:
+    dest: /etc/onebee-box/samba-tu-xa.conf
+    content: "hosts allow = {{ onebee_box_samba_hosts_allow }}{% for ip in onebee_box_tailscale_cho_phep %} {{ ip }}{% endfor %}\n"
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+
 - name: Khai báo thư mục chung trong cấu hình Samba
   ansible.builtin.blockinfile:
     path: /etc/samba/smb.conf
@@ -81,6 +93,7 @@
          force group = onebee
          create mask = 0660
          directory mask = 2770
+         include = /etc/onebee-box/samba-tu-xa.conf
   notify: Khởi động lại Samba
 
 - name: Kiểm tra tài khoản Samba đã có chưa

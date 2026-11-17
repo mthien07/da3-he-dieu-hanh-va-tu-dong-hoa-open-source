@@ -28,7 +28,7 @@ Mỗi dòng đọc từ tệp giấy phép trong kho mã chính thức **đúng 
 | pgvector | 0.8.7 | PostgreSQL | https://raw.githubusercontent.com/pgvector/pgvector/v0.8.7/LICENSE | Có |
 | PostgREST | 16.5 | MIT | https://raw.githubusercontent.com/PostgREST/postgrest/v16.5/LICENSE | Có |
 | SeaweedFS | 4.53 | Apache-2.0 | https://raw.githubusercontent.com/seaweedfs/seaweedfs/4.53/LICENSE | Có |
-| ClamAV | 1.5.4 | GPL-2.0-only (lõi; kèm thư viện LGPL-2.1, Apache-2.0, BSD-3-Clause, MIT, Zlib…; riêng `libclamunrar` dùng giấy phép UnRAR, không phải OSI) | https://raw.githubusercontent.com/Cisco-Talos/clamav/clamav-1.5.4/COPYING.txt | Có (lõi) |
+| ClamAV | 1.5.4 | GPL-2.0-only (lõi; kèm thư viện LGPL-2.1, Apache-2.0, BSD-3-Clause, MIT, Zlib…; riêng `libclamunrar` dùng giấy phép UnRAR, không phải OSI — https://raw.githubusercontent.com/Cisco-Talos/clamav/clamav-1.5.4/COPYING/COPYING.unrar) | https://raw.githubusercontent.com/Cisco-Talos/clamav/clamav-1.5.4/COPYING.txt | Có (lõi); image chính chủ **có** `libclamunrar` → dùng bản đã bỏ (QĐ5) |
 | cvdupdate (tải chữ ký ClamAV ở máy có Internet) | 1.2.0 | Apache-2.0 | https://raw.githubusercontent.com/Cisco-Talos/cvdupdate/cvdupdate-1.2.0/LICENSE | Có |
 | Node-RED | 5.0.9 | Apache-2.0 | https://raw.githubusercontent.com/node-red/node-red/5.0.9/LICENSE | Có |
 | node-red-node-email (nút gửi thư của Node-RED) | 5.2.5 | Apache-2.0 | https://raw.githubusercontent.com/node-red/node-red-nodes/master/LICENSE (gói npm 5.2.5 khai `Apache-2.0`; kho dùng chung không gắn tag theo gói) | Có |
@@ -536,7 +536,7 @@ Digest là của bản đa kiến trúc (index), lấy bằng `docker buildx ima
 | API tự sinh | `docker.io/postgrest/postgrest:v16.5@sha256:1347d7552b88f17832912c06afbf7c43209af6eeeb60834b04aae12c9bd9d5cc` |
 | Cầu nối danh tính, dịch vụ tệp (mã trong repo, MIT) | `docker.io/library/python:3.14.10-slim-trixie@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f` |
 | Kho tệp phi cấu trúc | `docker.io/chrislusf/seaweedfs:4.53@sha256:ccad23e18639c8b98cee17e7100b95830a06077b56d8e5b006d6dcf8ec5e94a0` |
-| Kiểm dịch | `docker.io/clamav/clamav:1.5.4-debian13-slim@sha256:76a9c3b63764b78178dc68fa7efcceca0cde2c8c9d4f925a8e697cb4511f8fdc` |
+| Kiểm dịch | Dựng từ `docker.io/clamav/clamav:1.5.4-debian13-slim@sha256:76a9c3b63764b78178dc68fa7efcceca0cde2c8c9d4f925a8e697cb4511f8fdc`, bỏ `libclamunrar` và dồn về một lớp (QĐ5); nơi dựng chờ anh Thiện quyết |
 | Động cơ quy trình | `docker.io/nodered/node-red:5.0.9@sha256:2ccd38b4066648bd5e17430c50a2f8102c566a82fd4f2fc5c342e61664d6896f` (+ gói `node-red-node-email` 5.2.5) |
 | Mô hình AI | Ollama `0.34.4` + `gemma4:e2b-it-qat` (giữ nguyên) |
 
@@ -579,6 +579,66 @@ Cập nhật chữ ký khi Box không có Internet: kỹ thuật chạy `cvd upd
 `bytecode.cvd` sang Box (USB hoặc qua Tailscale) bằng một lệnh `onebee-box` ở giai đoạn kho tệp; `clamscan` đọc chữ ký mới ở lượt kế tiếp, không cần
 nạp lại tiến trình nào. Có máy trong LAN làm gương thì đặt `PrivateMirror` cho `freshclam`. Box có Internet thì `freshclam` chạy theo lịch.
 
+**Mô-đun UnRAR (giấy phép ngoài OSI).** Image chính chủ đã ghim có `libclamunrar`; `libclamav` không liên kết cứng với nó mà nạp bằng `dlopen`
+(`ldd /usr/lib/libclamav.so.12 | grep -i unrar` rỗng, chuỗi `libclamunrar_iface` nằm trong `libclamav.so.12.1.0`):
+```console
+$ docker run --rm --entrypoint sh clamav/clamav:1.5.4-debian13-slim@sha256:76a9c3b6… -c "find / -xdev -name 'libclamunrar*' 2>/dev/null | xargs ls -la"
+lrwxrwxrwx 1 root root     18 Nov  9 06:02 /usr/lib/libclamunrar.so -> libclamunrar.so.12
+lrwxrwxrwx 1 root root     22 Nov  9 06:02 /usr/lib/libclamunrar.so.12 -> libclamunrar.so.12.1.0
+-rw-r--r-- 1 root root 347008 Nov  9 06:01 /usr/lib/libclamunrar.so.12.1.0
+lrwxrwxrwx 1 root root     24 Nov  9 06:02 /usr/lib/libclamunrar_iface.so -> libclamunrar_iface.so.12
+lrwxrwxrwx 1 root root     28 Nov  9 06:02 /usr/lib/libclamunrar_iface.so.12 -> libclamunrar_iface.so.12.1.0
+-rw-r--r-- 1 root root  20736 Nov  9 06:02 /usr/lib/libclamunrar_iface.so.12.1.0
+```
+Đã thử ba cách loại (`thu-unrar.sh`, chữ ký tải bằng `freshclam` vào một volume riêng; `eicar.zip` là EICAR trong tệp zip):
+
+| Cách | Còn `libclamunrar` trong image | `clamscan` bao-cao.txt / eicar.com / eicar.zip | Ghi chú |
+|---|---|---|---|
+| 1. `FROM` image ghim + `RUN rm -f /usr/lib/libclamunrar*` | **Còn** trong lớp gốc (lớp trên chỉ có tệp che `.wh.libclamunrar*`) | OK / FOUND / FOUND | Không đạt: tệp vẫn được tải về và nằm trong image |
+| 2. Như 1 rồi `FROM scratch` + `COPY --from=goc / /` (một lớp) | **Không** (0 lớp có `libclamunrar`) | OK / FOUND / FOUND | Đạt; ClamAV vẫn là 1.5.4 chính chủ, 551 MB |
+| 3. Gói `clamav` kho main của Debian 13 trên `debian:trixie-slim@sha256:a72b4433…` | **Không** (gói `1.4.3+dfsg-1`; `libclamunrar12` không có trong kho main) | OK / FOUND / FOUND | Đạt; dòng 1.4 LTS được vá tới 15/08/2027 nhưng Debian đang ở 1.4.3, thượng nguồn đã có 1.4.6 |
+
+```console
+$ docker save onebee-thu/clamav-khong-unrar:1.5.4 | tar -x; tìm libclamunrar trong từng lớp     # cách 1
+lớp b66c239f… (gồm: usr/lib/libclamunrar.so usr/lib/libclamunrar.so.12 usr/lib/libclamunrar.so.12.1.0 usr/lib/libclamunrar_iface.so …)
+lớp d31c6395… (gồm: usr/lib/.wh.libclamunrar.so usr/lib/.wh.libclamunrar.so.12 usr/lib/.wh.libclamunrar.so.12.1.0 …)
+số lớp có libclamunrar: 2
+$ docker save onebee-thu/clamav-khong-unrar:1.5.4-mot-lop | tar -x; đếm lớp có libclamunrar     # cách 2
+lớp chứa clamscan: 1; lớp có libclamunrar: 0
+$ docker run --rm --network none -v <chữ ký>:/var/lib/clamav:ro -v <thư mục>:/quet:ro --entrypoint sh onebee-thu/clamav-khong-unrar:1.5.4-mot-lop -c "clamscan --version; clamscan --no-summary /quet/bao-cao.txt /quet/eicar.com /quet/eicar.zip; …"
+ClamAV 1.5.4/28183/Sat Nov 14 06:24:17 2026
+/quet/bao-cao.txt: OK
+/quet/eicar.com: Eicar-Test-Signature FOUND
+/quet/eicar.zip: Eicar-Test-Signature FOUND
+mã thoát: 1
+LibClamAV debug: Cannot dlopen libclamunrar_iface: /usr/lib/libclamunrar_iface..a: cannot open shared object file: No such file or directory - unrar support unavailable
+$ (đối chứng, image gốc) clamscan --debug … | grep -i unrar
+LibClamAV debug: unrar support loaded from /usr/lib/libclamunrar_iface.so.12.1.0
+$ docker run --rm -v <chữ ký>:/var/lib/clamav:ro -v <thư mục>:/quet:ro debian:trixie-slim@sha256:a72b4433… sh -c 'apt-get install -y clamav; …'   # cách 3
+  Installed: 1.4.3+dfsg-1
+ClamAV 1.4.3/28183/Sat Nov 14 06:24:17 2026
+libclamav12:amd64 1.4.3+dfsg-1
+số tệp libclamunrar*: 0
+apt-cache show libclamunrar12 (kho):
+E: No packages found
+/quet/bao-cao.txt: OK
+/quet/eicar.com: Eicar-Test-Signature FOUND
+/quet/eicar.zip: Eicar-Test-Signature FOUND
+```
+Chọn cách 2 (giữ đúng bản 1.5.4 đã đo). Dockerfile đã thử:
+```dockerfile
+FROM docker.io/clamav/clamav:1.5.4-debian13-slim@sha256:76a9c3b63764b78178dc68fa7efcceca0cde2c8c9d4f925a8e697cb4511f8fdc AS goc
+RUN rm -f /usr/lib/libclamunrar.so* /usr/lib/libclamunrar_iface.so*
+
+FROM scratch
+COPY --from=goc / /
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC
+EXPOSE 3310/tcp 7357/tcp
+HEALTHCHECK --start-period=6m CMD clamdcheck.sh
+ENTRYPOINT ["/init"]
+```
+Hệ quả: không mở được bên trong tệp `.rar` (zip vẫn quét được). Còn hai việc cần anh Thiện quyết (mục Rủi ro còn lại).
+
 ### QĐ6 — Động cơ quy trình: Node-RED
 Node-RED 5.0.9 làm được cả năm việc mẫu, RAM rảnh 66,87–71,36 MiB, khởi động 2,0 giây; là cấu hình duy nhất giữ tổng ≤ 1,5 GB cả lúc rảnh lẫn lúc quét.
 Bước duyệt không có sẵn nên tự làm: đơn chờ duyệt lưu trong một bảng PostgreSQL (qua PostgREST, không cần gói thêm; bản thử dùng bộ nhớ ngữ cảnh
@@ -597,6 +657,12 @@ Uptime Kuma: đứng sau `forward_auth`, luật Authelia chỉ cho `ky_thuat` v�
 `onebee-kuma.js` thêm việc đặt `disableAuth` để kỹ thuật không phải đăng nhập hai lần. Chỉ tắt đăng nhập riêng khi HTTPS và SSO có hiệu lực.
 
 ## Rủi ro còn lại
+- **Cần anh Thiện quyết — nơi dựng image ClamAV không có UnRAR.** Cách 2 ở QĐ5 vẫn phải kéo image chính chủ (có `libclamunrar`) về máy dựng.
+  (i) Dựng trên CI rồi đẩy lên một registry của dự án (ví dụ GHCR): Box chỉ tải bản sạch, nhưng dự án phải tự duy trì và ký một image;
+  (ii) bộ cài dựng ngay trên Box: không cần registry, nhưng image chính chủ có UnRAR vẫn được tải về Box của khách (xóa sau khi dựng);
+  (iii) dùng gói Debian `1.4.3+dfsg` (cách 3): không cần image chính chủ, nhưng chậm bản vá hơn thượng nguồn. Chưa chọn.
+- **Cần anh Thiện quyết — tệp `.rar`.** Không có UnRAR thì `clamscan` không mở được tệp `.rar`; chưa thử tệp `.rar` thật (không có công cụ tạo RAR
+  nguồn mở) nên chưa biết nó báo `OK` hay lỗi. Đề xuất: dịch vụ tệp từ chối tệp có chữ ký đầu `Rar!` thay vì cho qua mà không quét.
 - **Cầu nối danh tính, dịch vụ tệp và Uptime Kuma (khi `disableAuth`) tin bất kỳ ai nối được tới chúng trong mạng Docker.** Mọi container cùng mạng
   (Node-RED có nút function chạy mã tùy ý) gửi được `Remote-User: <bất kỳ>` thẳng tới `cau-noi:8080`. Phải tách mạng Docker: chỉ Caddy nối được tới
   cầu nối, dịch vụ tệp, Kuma; chỉ cầu nối nối được tới PostgREST.
@@ -612,5 +678,5 @@ Uptime Kuma: đứng sau `forward_auth`, luật Authelia chỉ cho `ky_thuat` v�
   `them-may`/`dong-bo-may` đẩy thêm dòng hosts; `onebee-kuma.js` thêm `disableAuth`. Cầu nối phải tự giải mã `Remote-Name` theo UTF-8.
 - Giai đoạn dữ liệu cấu trúc: PostgreSQL + pgvector + PostgREST, RLS theo claim `sub` (= tên đăng nhập) của JWT 60 giây.
 - Giai đoạn động cơ quy trình: Node-RED thay n8n; phải đóng gói sẵn `node-red-node-email` (Box có thể không có Internet lúc cài) và bảng trạng thái duyệt.
-- Giai đoạn kho tệp: SeaweedFS + hàng chờ kiểm dịch `clamscan` từng lượt + lệnh nhập chữ ký ClamAV ngoại tuyến.
+- Giai đoạn kho tệp: SeaweedFS + hàng chờ kiểm dịch `clamscan` từng lượt (image ClamAV không có UnRAR) + lệnh nhập chữ ký ClamAV ngoại tuyến.
 - Mỗi image mới có một dòng trong `LICENSES.md`, ghim tag + digest trong `group_vars/all.yml`, `no-new-privileges`, không có `ports:`.

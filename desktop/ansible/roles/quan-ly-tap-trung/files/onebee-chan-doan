@@ -66,7 +66,8 @@ dia_chi_cong() {
 
 hoi_url="$(doc_khoa "${HOI_CONF}" HOI_URL)"
 kho="$(doc_khoa "${CONF}" RESTIC_REPOSITORY)"
-box="$(doc_khoa "${CONF}" BOX_IP)"
+box="$(doc_khoa "${CONF}" BOX_TEN)"
+[[ -n "${box}" ]] || box="$(doc_khoa "${CONF}" BOX_IP)"
 read -r ai_host _ <<<"$(dia_chi_cong "${hoi_url}" 443)"   # chỉ lấy tên Box khi thiếu may-tram.env; Trợ lý AI không còn cổng riêng
 [[ -n "${box}" ]] || box="${ai_host}"
 sl_cong=8000   # cổng nhận sao lưu mặc định (HTTP và HTTPS cùng cổng)
@@ -94,6 +95,8 @@ else
   ket_qua loi "OneBee Box" "Box ${box} không trả lời" \
     "Box tắt hoặc mất mạng: kiểm tra Box có điện, đèn mạng. Máy khác vào được Box thì lỗi ở máy này; không máy nào vào được thì lỗi ở Box/router"
 fi
+duong_box="$(onebee-chon-duong-box --xem 2>/dev/null || /usr/local/bin/onebee-chon-duong-box --xem 2>/dev/null || echo "mạng văn phòng")"
+ket_qua ok "Đường tới Box" "${duong_box}"
 
 nhom 2 "Dịch vụ trên Box"
 if [[ ${box_song} -eq 0 ]]; then
