@@ -1,6 +1,15 @@
 # Nhật ký thay đổi
 
 ## [Unreleased]
+
+## [2.0.0] — 18/11/2026 — Sổ kho, kế toán và máy trạm đi công tác
+Bản lớn: lược đồ CSDL mới cho kho và kế toán, hai nhóm người dùng mới, luật duyệt đơn đổi.
+
+### Lưu ý khi nâng cấp từ 1.3.x
+- Duyệt đơn hàng nay trừ tồn kho và ghi bút toán, nên mặt hàng trong đơn phải có trong danh mục kho. Đơn đang chờ duyệt ghi mặt hàng chưa có trong danh mục sẽ bị chặn khi duyệt (`mat_hang_chua_co`): thủ kho thêm mặt hàng và nhập tồn trước, rồi quản lý duyệt lại.
+- Thêm hai nhóm `thu_kho` và `ke_toan` (đăng nhập hai lớp, cần mã TOTP). Tạo tài khoản bằng `sudo onebee-box them-nguoi <tên> thu_kho|ke_toan`.
+- Bộ cài kết xuất CSDL ra `postgres-ket-xuat/truoc-luoc-do-<tệp>.dump` trước khi áp từng tệp lược đồ mới; chạy lại bộ cài lần 2 vẫn `changed=0`.
+
 ### Kho và kế toán trên Box (lõi DX-OS)
 Đã chạy thử trên Box thật 192.168.100.127 (`check-kho-ke-toan.sh local` đạt toàn bộ) và kiểm giao diện bằng trình duyệt tự động 16/16 nút; cài lại `changed=0`.
 #### Thêm
@@ -295,7 +304,7 @@ chưa có số đo tốc độ AI trên máy thật.
 - Lệnh mới: `thu-hoi-may` (gỡ kho HTTP, khóa Trợ lý AI, ghim SSH, chỗ báo tình trạng; bền qua `khoi-phuc-toan-bo`), `ghim-lai-may`,
   `dong-bo-may` (đẩy lại `may-tram.env` từ Box, chỉ tới máy đã chứng minh; thiếu bí mật thì bỏ qua máy, không đẩy file thiếu — kiểm cả ở playbook).
   Cấp lại máy đã thu hồi **đổi cả mật khẩu kho sao lưu** (kho + mật khẩu cũ cất riêng). Dấu thu hồi ở `secrets/thu-hoi/<tên>`.
-  Sau rà soát Opus: sửa `ssh` nuốt danh sách khiến `--tat-ca` chỉ làm máy đầu (thêm `-n`), file tạm chứa mật khẩu dọn bằng trap EXIT,
+  Sau rà soát: sửa `ssh` nuốt danh sách khiến `--tat-ca` chỉ làm máy đầu (thêm `-n`), file tạm chứa mật khẩu dọn bằng trap EXIT,
   `kho` mặc định đóng, nhãn "lệch giờ".
   `in_cau_hinh_may` tách khỏi `them-may`: chỉ đọc bí mật có sẵn, không tạo tài khoản/khóa. Một hàm `may_da_cap` liệt kê máy cho mọi nơi;
   `secret_co_san` không tự sinh khóa. Nhật ký `/var/log/onebee-box/` chỉ root đọc.

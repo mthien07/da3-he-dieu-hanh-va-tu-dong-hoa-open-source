@@ -9,10 +9,13 @@ Chi tiết thay đổi từng bản: [docs/project-changelog.md](docs/project-ch
 | 1.0.0 | 15/10/2026 | Bộ cài máy trạm (Linux Mint 22.x: gõ Telex, LibreOffice .docx/.xlsx, `hoi`, tự sao lưu) và OneBee Box (Ubuntu Server 24.04: Trợ lý AI chạy tại chỗ, sao lưu hai tầng, giám sát, thư mục chung, quản lý tập trung máy trạm, HTTPS nội bộ bằng CA riêng) | `.tar.gz` + `SHA256SUMS` |
 | 1.1.0 | 22/10/2026 | Trang chủ Box tìm thấy bằng `onebee.local`, bộ tự chẩn đoán, trợ lý mở file Windows, kho mẫu soạn văn bản hành chính, cảnh báo sự cố qua Telegram, bộ cài USB offline | Không có (bản này chưa đính kèm file) |
 | 1.2.0 | 14/11/2026 | Trung tâm OneBee, trang Kiểm tra máy, nhắc sao lưu trễ, mẫu soạn văn bản cho Trợ lý AI | `.tar.gz` + `SHA256SUMS` |
+| 1.3.0 | 17/11/2026 | Lõi DX-OS Open-Core: đăng nhập một lần, cổng API, PostgreSQL có API tự sinh, kho tệp có kiểm dịch, Node-RED, AI trên lõi, Sổ điều hành H-P-D-I | `.tar.gz` + `SHA256SUMS` |
+| 1.3.1 | 17/11/2026 | Sửa cảnh báo giả của Node-RED trong bộ tự chẩn đoán | `.tar.gz` + `SHA256SUMS` |
+| 2.0.0 | 18/11/2026 | Sổ kho và sổ kế toán nhật ký kép, máy trạm đi công tác qua VPN, sửa các lỗi tìm ra khi thử trên Box thật | `.tar.gz` + `SHA256SUMS` |
 
 Nguồn: [Releases](https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source/releases).
 
-## Đang hoàn thiện: lõi DX-OS Open-Core (dự thi OLP 2026)
+## Lõi DX-OS Open-Core (dự thi OLP 2026, phát hành từ 1.3.0)
 Biến OneBee Box thành nền tảng lõi chạy ngầm theo Khung kiến trúc DX-OS của Đề thi. Chỉ ghi "đã chạy" khi bộ kiểm Box của bản đó đạt.
 - Đăng nhập một lần (Authelia, TOTP hai lớp cho `ky_thuat` và `quan_ly`) và cổng API trên Caddy; cầu nối danh tính ký JWT 60 giây.
 - Cơ sở dữ liệu PostgreSQL + pgvector, API tự sinh PostgREST, phân quyền tới cấp dòng (RLS) trên mọi bảng; lệnh chuyển sổ cũ vào CSDL.
@@ -22,7 +25,7 @@ Biến OneBee Box thành nền tảng lõi chạy ngầm theo Khung kiến trúc
 - Ứng dụng Sổ điều hành đi trọn bốn không gian H-P-D-I; chế độ bản chạy thử công khai với dữ liệu giả lập tự đặt lại lúc 03:00.
 - Dòng giấy phép trong từng tệp mã, gói phát hành có `LICENSE`.
 
-Việc còn mở trước khi nộp bài: chạy thử trên Box thật, dựng bản chạy thử công khai trên một host thật (cần nhà cung cấp, tên miền), phát hành bản có file tải.
+Đã chạy thử trên Box thật (báo cáo trong `plans/reports/`). Việc còn mở trước khi nộp bài: dựng bản chạy thử công khai trên một host thật (cần nhà cung cấp, tên miền).
 
 ## Định hướng (chưa làm, chưa có lịch)
 Xếp theo thứ tự ưu tiên hiện tại.

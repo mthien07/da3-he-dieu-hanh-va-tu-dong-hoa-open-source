@@ -42,7 +42,7 @@ Các bản sửa ngày 14/10 có mục kiểm riêng trong lần chạy này:
 - Chủ dự án chọn sửa vòng đời tường lửa gắn Docker trước phát hành → `8874345` (thêm 1 mục kiểm dừng/bật Docker vào runner).
 - Lượt 9–12 (`8874345`, 02:03–02:26 15/10, mỗi lượt khoảng 5 phút): Docker trong Box giả lập bị ngắt khi tải image từ `production.cloudfront.docker.com` (`EOF`) ở lần cài 1, chưa tới mục kiểm nào — lỗi mạng, log không có dòng `FAIL`.
 - Lượt 13 (`8874345`, 02:27–03:33 15/10): **đạt toàn bộ** 127 mục.
-- Desktop: lượt đầu (agent UI) hỏng vì `packages.linuxmint.com` từ chối kết nối trước khi chạy mã OneBee; lượt sau đạt 51 PASS (thiếu schema Cinnamon/Nemo nên một số mục bị bỏ qua); bổ sung `cinnamon-common` + `nemo-data` (`119ec76`) thì đạt 71 PASS.
+- Desktop: lượt đầu hỏng vì `packages.linuxmint.com` từ chối kết nối trước khi chạy mã OneBee; lượt sau đạt 51 PASS (thiếu schema Cinnamon/Nemo nên một số mục bị bỏ qua); bổ sung `cinnamon-common` + `nemo-data` (`119ec76`) thì đạt 71 PASS.
 
 ## Những gì bài nghiệm thu này KHÔNG chứng minh
 - **Máy thật:** phần cứng Box, ổ USB thật, LAN thật, router, máy in/máy quét, Windows 10/11 mở `\\onebee-box` (B15), Tailscale thật.

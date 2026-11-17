@@ -1,6 +1,6 @@
 # ADR 0008 — Máy trạm đi công tác kết nối Box từ xa
 
-- Ngày: 17/11/2026 · Trạng thái: Chấp nhận cho 1.4.0 — đã thử trên Box thật, máy Mint thật và tailnet thật ngày 17/11/2026 (`plans/reports/261117-kiem-thu-may-di-cong-tac.md`) · Nguồn: `plans/261117-0102-may-tram-di-cong-tac-ket-noi-box-tu-xa/plan.md`
+- Ngày: 17/11/2026 · Trạng thái: Chấp nhận cho 2.0.0 — đã thử trên Box thật, máy Mint thật và tailnet thật ngày 17/11/2026 (`plans/reports/261117-kiem-thu-may-di-cong-tac.md`)
 
 ## Bối cảnh
 Một máy trạm OneBee đem ra ngoài văn phòng vẫn cần dùng thư mục chung (Samba), kho tệp (`/files/`), Trợ lý AI (`hoi`), sao lưu (restic) và báo tình trạng. Ràng buộc: **không mở cổng nào trên router**; Box duyệt **từng máy, từng cổng**; thu hồi phải cắt cả kết nối đang mở; người dùng cuối (không có `sudo`) không phải làm gì khi đổi mạng. Cơ chế hỗ trợ từ xa hiện có (ADR 0004) là người dùng chủ động mở từng lần, không dùng được cho hằng ngày.
