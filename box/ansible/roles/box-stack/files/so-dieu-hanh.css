@@ -36,6 +36,12 @@ input[type="file"] { padding: 6px; }
 .thong-bao.loi { border-left-color: var(--loi); }
 .cuon { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+/* Bảng nhiều cột (tồn kho, sổ kho, nhật ký) giữ cột đủ rộng, cuộn ngang thay vì bóp chữ */
+.cuon table { min-width: 640px; }
+/* Khu Kho: thẻ Tồn kho chiếm trọn hàng để đủ 7 cột; hai biểu mẫu nằm dưới */
+#khu-k .luoi > .the-noi-dung:first-child { grid-column: 1 / -1; }
+#bang-ton-kho th, #bang-ton-kho td { white-space: nowrap; }
+#bang-ton-kho td:nth-child(n + 4) { text-align: right; }
 th, td { padding: 8px 10px; border-bottom: 1px solid var(--vien); text-align: left; vertical-align: top; }
 th { color: var(--phu); font-weight: 600; }
 .so-lon { font-size: 28px; font-weight: 700; }
