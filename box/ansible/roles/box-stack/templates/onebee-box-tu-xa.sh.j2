@@ -1,0 +1,256 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# shellcheck shell=bash
+# Lượt duyệt máy trạm đi công tác (ADR 0008) — thư viện được lệnh onebee-box nạp vào.
+# Mỗi lượt là một tệp ${TU_XA_DIR}/<tên-máy>, 4 dòng KHÓA=giá trị (IP, HET_HAN, DUYET_LUC, NGUOI_DUYET).
+# Thư mục nằm NGOÀI ${SECRETS} nên không vào bản sao lưu Box: sau khôi phục toàn bộ phải duyệt lại (đóng mặc định).
+# Đọc bằng grep từng khóa + kiểm dạng, KHÔNG source — nội dung tệp không được tin là mã.
+# Giả định chưa thử thật (U2, U5 của kế hoạch): lọc theo cổng gốc sau DNAT nằm ở MỘT khối trong onebee-tuong-lua;
+# cắt kết nối đang mở nhờ conntrack -D. Trượt thì đổi đúng hai chỗ đó, phần còn lại giữ nguyên.
+TU_XA_TEP_TUONG_LUA="/etc/onebee-box/tuong-lua-tu-xa.conf"
+TU_XA_TEP_SAMBA="/etc/onebee-box/samba-tu-xa.conf"
+
+# Đọc lượt duyệt: in "<ip> <het_han> <duyet_luc> <nguoi_duyet>"; thoát 1 khi thiếu tệp hoặc sai dạng
+doc_luot_tu_xa() {
+  local f="${TU_XA_DIR}/$1" ip het luc nguoi
+  [[ -f "${f}" ]] || return 1
+  ip="$(sed -n 's/^IP=//p' "${f}" | head -n1)"
+  het="$(sed -n 's/^HET_HAN=//p' "${f}" | head -n1)"
+  luc="$(sed -n 's/^DUYET_LUC=//p' "${f}" | head -n1)"
+  nguoi="$(sed -n 's/^NGUOI_DUYET=//p' "${f}" | head -n1)"
+  [[ "${ip}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ && "${het}" =~ ^[0-9]+$ && "${luc}" =~ ^[0-9]+$ \
+     && "${nguoi}" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || return 1
+  printf '%s %s %s %s\n' "${ip}" "${het}" "${luc}" "${nguoi}"
+}
+
+# Lượt duyệt còn hiệu lực? (HET_HAN=0 = không hạn)
+co_luot_tu_xa() {
+  local kq ip het luc nguoi
+  kq="$(doc_luot_tu_xa "$1" 2>/dev/null)" || return 1
+  read -r ip het luc nguoi <<<"${kq}"
+  [[ "${het}" == 0 ]] && return 0
+  (( het > $(date +%s) ))
+}
+
+# IP $1 có nằm trong dải $2 (CIDR) không?
+ip_trong_dai() {
+  python3 -I - "$1" "$2" <<'PY'
+import ipaddress, sys
+try:
+    sys.exit(0 if ipaddress.ip_address(sys.argv[1]) in ipaddress.ip_network(sys.argv[2]) else 1)
+except ValueError:
+    sys.exit(1)
+PY
+}
+
+# IP ứng viên dùng được cho máy công tác? die với lý do cụ thể khi không
+kiem_ip_tu_xa() {
+  local ip="$1" o k f ten_k ip_k
+  [[ "${ip}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || die "IP ${ip} không phải IPv4 đơn — xem bảng điều khiển Tailscale"
+  IFS=. read -r -a o <<<"${ip}"
+  (( o[0] == 100 && o[1] >= 64 && o[1] <= 127 && o[2] <= 255 && o[3] <= 255 )) \
+    || die "IP ${ip} nằm ngoài dải Tailscale 100.64.0.0/10"
+  [[ "${ip}" != "$(box_ip_tu_xa)" ]] || die "IP ${ip} là địa chỉ của chính Box — phải là địa chỉ của máy trạm"
+  for k in "${TAILSCALE_KY_THUAT[@]}"; do
+    if [[ "${k}" == "${ip}" ]] || { [[ "${k}" == */* ]] && ip_trong_dai "${ip}" "${k}"; }; then
+      die "IP ${ip} thuộc địa chỉ/dải máy kỹ thuật (${k}) — máy công tác phải dùng địa chỉ riêng"
+    fi
+  done
+  for f in "${TU_XA_DIR}"/*; do
+    [[ -f "${f}" ]] || continue
+    ten_k="$(basename "${f}")"
+    read -r ip_k _ _ _ <<<"$(doc_luot_tu_xa "${ten_k}" 2>/dev/null || true)" || true
+    [[ "${ip_k:-}" == "${ip}" ]] || continue
+    die "IP ${ip} đã được duyệt cho máy ${ten_k} — mỗi máy một địa chỉ riêng"
+  done
+}
+
+# Thiết bị trong tailnet có địa chỉ $1 → in "hệ-điều-hành lần-thấy-cuối"; in rỗng khi không thấy
+thong_tin_thiet_bi() {
+  tailscale status --json 2>/dev/null | python3 -I -c '
+import json, sys
+ip = sys.argv[1]
+try:
+    d = json.load(sys.stdin)
+except ValueError:
+    sys.exit()
+for p in (d.get("Peer") or {}).values():
+    if ip in (p.get("TailscaleIPs") or []):
+        print(p.get("OS", "?"), p.get("LastSeen") or "?")
+        break' "$1" || true
+}
+
+# Đúng MỘT thiết bị trong tailnet có HostName bằng $1 → in "<ip> <hệ-điều-hành> <lần-thấy-cuối>"; thoát 1 khi 0 hoặc nhiều hơn
+tim_ip_tu_xa() {
+  tailscale status --json 2>/dev/null | python3 -I -c '
+import json, sys
+ten = sys.argv[1]
+try:
+    d = json.load(sys.stdin)
+except ValueError:
+    sys.exit(1)
+khop = [p for p in (d.get("Peer") or {}).values() if p.get("HostName") == ten]
+if len(khop) != 1:
+    sys.exit(1)
+p = khop[0]
+v4 = next((i for i in p.get("TailscaleIPs") or [] if i.count(".") == 3), "")
+print(v4, p.get("OS", "?"), p.get("LastSeen") or "?")' "$1"
+}
+
+cmd_duyet_tu_xa() {
+  local ten="${1:-}" ip="" ngay="" dong_y=0 a kq box_ts het luc os_ts="" tra_loi
+  shift || true
+  while [[ $# -gt 0 ]]; do
+    a="$1"; shift
+    case "${a}" in
+      --ip) [[ $# -gt 0 ]] || die "Thiếu giá trị --ip"; ip="$1"; shift ;;
+      --ngay) [[ $# -gt 0 ]] || die "Thiếu giá trị --ngay"; ngay="$1"; shift ;;
+      --dong-y) dong_y=1 ;;
+      *) die "Cách dùng: sudo onebee-box duyet-tu-xa <tên-máy> [--ip <IPv4>] [--ngay 1-365] [--dong-y]" ;;
+    esac
+  done
+  [[ "${ten}" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]] \
+    || die "Cách dùng: sudo onebee-box duyet-tu-xa <tên-máy> [--ip <IPv4>] [--ngay 1-365] [--dong-y] (tên máy: chữ thường, số, gạch)"
+  la_may_da_cap "${ten}" || die "Máy ${ten} chưa được cấp — cấp trước: sudo onebee-box them-may ${ten}"
+  https_bat || die "HTTPS chưa bật trên Box — duyệt máy công tác cần HTTPS (onebee_box_https: true rồi chạy lại bộ cài)"
+  box_ts="$(box_ip_tu_xa)"
+  [[ -n "${box_ts}" ]] || die "Box chưa nối Tailscale (không có địa chỉ 100.x) — nối tailnet của đơn vị rồi thử lại"
+  if [[ -n "${ngay}" ]]; then
+    [[ "${ngay}" =~ ^[1-9][0-9]*$ && "${ngay}" -le 365 ]] || die "--ngay phải là số từ 1 đến 365"
+  fi
+  if [[ -z "${ip}" ]]; then
+    kq="$(tim_ip_tu_xa "${ten}")" \
+      || die "Không tìm thấy đúng MỘT thiết bị tên ${ten} trong tailnet — tìm địa chỉ trên bảng điều khiển Tailscale rồi chạy: sudo onebee-box duyet-tu-xa ${ten} --ip <IPv4>"
+    read -r ip os_ts <<<"${kq}"
+  else
+    os_ts="$(thong_tin_thiet_bi "${ip}")"
+  fi
+  kiem_ip_tu_xa "${ip}"
+  luc="$(date +%s)"
+  het=0
+  [[ -z "${ngay}" ]] || het=$(( luc + ngay * 86400 ))
+  echo "Sắp duyệt:"
+  echo "  Máy ${ten} — IP Tailscale ${ip}$([[ -n "${os_ts}" ]] && printf ' (%s)' "${os_ts}")"
+  if [[ ${het} -eq 0 ]]; then
+    echo "  Hạn: không hạn (nhớ thu hồi khi máy về: sudo onebee-box thu-hoi-tu-xa ${ten})"
+  else
+    echo "  Hạn: đến $(date -d "@${het}" '+%d/%m/%Y %H:%M') rồi tự thu hồi"
+  fi
+  if [[ ${dong_y} -ne 1 ]]; then
+    read -rp "Gõ 'duyet' để xác nhận: " tra_loi || die "Cần xác nhận: chạy trong cửa sổ dòng lệnh, hoặc thêm --dong-y"
+    [[ "${tra_loi}" == "duyet" ]] || die "Đã hủy"
+  fi
+  install -d -m 0700 "${TU_XA_DIR}"
+  (umask 077; cat >"${TU_XA_DIR}/${ten}" <<EOF
+IP=${ip}
+HET_HAN=${het}
+DUYET_LUC=${luc}
+NGUOI_DUYET=${SUDO_USER:-onebee}
+EOF
+)
+  tu_xa_ap_dung >/dev/null
+  logger -t onebee-tu-xa "duyệt máy công tác ${ten} (${ip}), hạn $([[ ${het} -eq 0 ]] && echo "không hạn" || echo "${ngay} ngày")" || true
+  echo "Đã duyệt máy ${ten} (${ip}) qua Tailscale — cổng 443, 445, 8000."
+  if ! "$0" dong-bo-may "${ten}" >/dev/null 2>&1; then
+    echo "Máy ${ten} chưa nhận được cấu hình (không SSH được — máy đang ở ngoài LAN?). Trên máy trạm chạy:"
+    echo "  sudo onebee-cong-tac bat --box-tu-xa ${box_ts}"
+  fi
+}
+
+# Thân thu hồi (dùng chung cho thu-hoi-tu-xa và thu-hoi-may): im lặng khi máy không có lượt
+thu_hoi_tu_xa_thuc() {
+  local ten="$1" kq ip het luc nguoi
+  kq="$(doc_luot_tu_xa "${ten}" 2>/dev/null)" || return 0
+  read -r ip het luc nguoi <<<"${kq}"
+  rm -f "${TU_XA_DIR}/${ten}"
+  tu_xa_ap_dung >/dev/null
+  conntrack -D -s "${ip}" >/dev/null 2>&1 \
+    || warn "Không chạy được conntrack — kết nối đang mở của ${ip} có thể chưa đứt (kết nối mới vẫn bị chặn)"
+  logger -t onebee-tu-xa "thu hồi máy công tác ${ten} (${ip})" || true
+  echo "Đã thu hồi quyền từ xa của ${ten} (${ip}): tường lửa đóng lại, kết nối đang mở bị cắt."
+  echo "Còn lại: xoá thiết bị khỏi tailnet trên bảng điều khiển Tailscale; khi máy về LAN: sudo onebee-box dong-bo-may ${ten}"
+}
+
+cmd_thu_hoi_tu_xa() {
+  local ten="${1:-}"
+  [[ "${ten}" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]] || die "Cách dùng: sudo onebee-box thu-hoi-tu-xa <tên-máy>"
+  if doc_luot_tu_xa "${ten}" >/dev/null 2>&1; then
+    thu_hoi_tu_xa_thuc "${ten}"
+  else
+    echo "Máy ${ten} không có lượt duyệt từ xa — không có gì để thu hồi."
+  fi
+}
+
+# Áp dụng danh sách lượt duyệt: thu hồi lượt hết hạn, sinh tuong-lua-tu-xa.conf và samba-tu-xa.conf.
+# In "đã đổi" khi có thay đổi (bộ cài Ansible và bộ hẹn giờ gọi)
+tu_xa_ap_dung() {
+  local doi=0 f ten kq ip het luc nguoi bay_gio tmp ip_k ds_ip="" ds_samba=""
+  exec 8>/run/onebee-box-tu-xa.lock
+  flock 8
+  bay_gio="$(date +%s)"
+  for f in "${TU_XA_DIR}"/*; do
+    [[ -f "${f}" ]] || continue
+    ten="$(basename "${f}")"
+    kq="$(doc_luot_tu_xa "${ten}" 2>/dev/null)" || continue
+    read -r ip het luc nguoi <<<"${kq}"
+    if [[ "${het}" != 0 && "${het}" -lt "${bay_gio}" ]]; then
+      rm -f "${f}"
+      conntrack -D -s "${ip}" >/dev/null 2>&1 || true
+      logger -t onebee-tu-xa "lượt duyệt của ${ten} (${ip}) hết hạn — đã thu hồi" || true
+      echo "Đã thu hồi lượt hết hạn của ${ten} (${ip})"
+      doi=1
+      continue
+    fi
+    ds_ip="${ds_ip:+${ds_ip},}${ip}"
+    ds_samba+=" ${ip}"
+  done
+  tmp="$(mktemp)"
+  printf 'TU_XA_CHO_PHEP="%s"\n' "${ds_ip}" >"${tmp}"
+  if ! cmp -s "${tmp}" "${TU_XA_TEP_TUONG_LUA}"; then
+    install -m 0644 "${tmp}" "${TU_XA_TEP_TUONG_LUA}"
+    doi=1
+  fi
+  { printf 'hosts allow = %s' "${SAMBA_HOSTS_ALLOW}"
+    for ip_k in "${TAILSCALE_KY_THUAT[@]}"; do printf ' %s' "${ip_k}"; done
+    [[ -z "${ds_samba}" ]] || printf '%s' "${ds_samba}"
+    printf '\n'
+  } >"${tmp}"
+  if ! cmp -s "${tmp}" "${TU_XA_TEP_SAMBA}"; then
+    install -m 0644 "${tmp}" "${TU_XA_TEP_SAMBA}"
+    doi=1
+  fi
+  rm -f "${tmp}"
+  if [[ ${doi} -eq 1 ]]; then
+    if systemctl is-active --quiet onebee-tuong-lua.service 2>/dev/null; then
+      /usr/local/sbin/onebee-tuong-lua bat >/dev/null || warn "Không dựng lại được tường lửa — chạy tay: sudo onebee-tuong-lua bat"
+    fi
+    smbcontrol all reload-config >/dev/null 2>&1 || true
+    echo "đã đổi"
+  fi
+}
+
+cmd_tu_xa() {
+  local f ten kq ip het luc nguoi co=0 bay_gio con
+  local -a dong=()
+  bay_gio="$(date +%s)"
+  for f in "${TU_XA_DIR}"/*; do
+    [[ -f "${f}" ]] || continue
+    ten="$(basename "${f}")"
+    kq="$(doc_luot_tu_xa "${ten}" 2>/dev/null)" || continue
+    read -r ip het luc nguoi <<<"${kq}"
+    co=1
+    if [[ "${het}" == 0 ]]; then
+      con="không hạn (duyệt $(date -d "@${luc}" '+%d/%m/%Y'))"
+    elif (( het < bay_gio )); then
+      con="ĐÃ QUÁ HẠN — bộ hẹn giờ sẽ thu hồi"
+    else
+      con="hết hạn $(date -d "@${het}" '+%d/%m/%Y %H:%M')"
+    fi
+    dong+=("$(printf '%-14s %-16s %-12s %s' "${ten}" "${ip}" "${nguoi}" "${con}")")
+  done
+  if [[ ${co} -eq 0 ]]; then
+    echo "Chưa duyệt máy công tác nào. Duyệt: sudo onebee-box duyet-tu-xa <tên-máy>"
+    return 0
+  fi
+  printf '%s\n' "${dong[@]}"
+}
