@@ -249,6 +249,39 @@ class TuXa(unittest.TestCase):
         self.assertTrue(os.path.exists(self.tep("tu-xa/ketoan-01")))
         self.assertEqual(self.log("conntrack"), [])
 
+    def test_duyet_in_trang_thai_truc_tuyen_de_doc(self):
+        """Tailscale để LastSeen = 0001-01-01… cho máy đang nối: không in ngày vô nghĩa đó ra màn hình xác nhận."""
+        st = json.loads(json.dumps(TS_STATUS))
+        st["Peer"]["k1"].update(Online=True, LastSeen="0001-01-01T00:00:00Z")
+        self.tao_may(ts_status=st)
+        r = self.chay(*self.DUYET, "--dong-y")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("đang trực tuyến", r.stdout)
+        self.assertNotIn("0001-01-01", r.stdout)
+
+    def test_duyet_lai_cung_may_de_doi_han(self):
+        """Duyệt lại chính máy đó (đổi hạn, hoặc từ có hạn sang không hạn) không bị chặn bởi kiểm "IP đã thuộc máy khác"."""
+        self.tao_may()
+        self.dat_luot(het_han=int(time.time()) + 3600)
+        r = self.chay(*self.DUYET, "--ip", IP_MAY, "--dong-y")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("HET_HAN=0", open(self.tep("tu-xa/ketoan-01"), encoding="utf-8").read())
+        self.assertEqual(self.log("conntrack"), [])                       # cùng IP: không cắt gì
+        # Đổi sang IP mới: kết nối của IP cũ bị cắt, sau khi tường lửa đã dựng lại
+        r = self.chay(*self.DUYET, "--ip", "100.64.0.9", "--dong-y")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn(f"-D -s {IP_MAY}", " ".join(self.log("conntrack")))
+        tt = self.log("thu-tu")
+        self.assertLess(max(i for i, x in enumerate(tt) if x == "tuong-lua bat"),
+                        max(i for i, x in enumerate(tt) if x.startswith("conntrack -D")), tt)
+        r = self.chay(*self.DUYET, "--ip", IP_MAY, "--dong-y")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        # Máy KHÁC xin đúng IP đó vẫn bị từ chối
+        self.tao_may("ketoan-02")
+        r = self.chay("duyet-tu-xa", "ketoan-02", "--ip", IP_MAY, "--dong-y")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("đã được duyệt cho máy ketoan-01", r.stdout + r.stderr)
+
     def test_thu_hoi(self):
         self.tao_may()
         self.dat_luot(het_han=int(time.time()) + 3600)

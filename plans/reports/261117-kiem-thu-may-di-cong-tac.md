@@ -54,6 +54,8 @@ Mọi số liệu dưới đây lấy từ đầu ra thật trong lượt thử,
 | Máy đã đi mà chưa chuẩn bị không sao lưu được: `--box-tu-xa` chỉ ghi `BOX_IP_TU_XA`, kho sao lưu vẫn theo IP LAN | `dial tcp 192.168.100.127:8000: i/o timeout` | `onebee-cong-tac` đổi máy chủ trong `RESTIC_REPOSITORY` (https, đang theo `BOX_IP`) sang `BOX_TEN`; hai bài kiểm mới; thử lại trên máy thật đạt |
 | ACL mẫu trong hướng dẫn không lưu được | Tailscale: `"check" action does not support tags in src` | Bỏ mục `ssh` khỏi ACL mẫu; sửa câu gợi ý trong `chan-doan` (tên tag sai `tag:ky-thuat`) |
 | C3 của CI trượt hay đạt tùy thời điểm | `curl | grep -q` dưới `pipefail`: tái hiện 20/20 lần trượt với trang lớn (curl thoát 23) | Dùng `grep >/dev/null` trong khối máy công tác |
+| Duyệt lại chính máy đó (đổi hạn) bị từ chối "IP đã được duyệt cho máy …" | C11 của CI (lần đầu chạy tới) dừng ở lệnh duyệt lại; bài kiểm đơn vị tái hiện | Kiểm trùng IP bỏ qua lượt của chính máy; đổi sang IP mới thì cắt kết nối của IP cũ sau khi tường lửa đổi |
+| Màn hình xác nhận duyệt in "lần thấy cuối 0001-01-01…" khi máy đang trực tuyến | T2 trên máy thật | In "đang trực tuyến" |
 | C6 mới không thấy phiên Samba | `smbclient` đệm stdout khi ghi ra tệp: tái hiện với smbd thật, không `stdbuf` 0 dòng sau 3 giây | `stdbuf -oL -eL` |
 
 ## Phát hiện ngoài phạm vi PR (chưa sửa)
@@ -61,8 +63,7 @@ Mọi số liệu dưới đây lấy từ đầu ra thật trong lượt thử,
 1. **Tải lên kho tệp treo trên Box này, cả qua LAN.** `PUT /files/...` sau đăng nhập không trả byte nào trong 60 đến 120 giây; nhật ký `onebee-kho-tep` có `BrokenPipeError`. Kho tệp quét ClamAV ngay trong container cho mỗi lượt tải; nghi chậm hoặc treo trên VM này. Không liên quan đường VPN.
 2. **`hoi` không báo lỗi sớm khi mất đường tới Box.** Sau thu hồi, lệnh chờ hơn 60 giây mà không nói gì, vì thời gian chờ của nó phải đủ dài cho mô hình chạy bằng CPU (lần đạt mất 265 giây). Nên tách thời gian chờ nối mạng (vài giây) khỏi thời gian chờ trả lời.
 3. **`chan-doan` cảnh báo "Chứng chỉ HTTPS còn 0 ngày" khi HTTPS bật.** Chứng chỉ lá do Caddy cấp từ CA nội bộ chỉ sống 12 giờ và tự gia hạn (`notBefore 08:33`, `notAfter 20:33` UTC), nên ngưỡng 15 ngày luôn báo. Cảnh báo giả, có từ trước PR này.
-4. **`duyet-tu-xa` in "lần thấy cuối" là `0001-01-01T00:00:00Z`** khi máy đang trực tuyến (Tailscale để trống trường này cho máy đang nối). Chỉ là hiển thị.
-5. **Box thật bị hai phiên dùng cùng lúc** mà không có cơ chế giữ chỗ. Nên quy ước: phiên nào dùng Box thật thì ghi một tệp khóa (ví dụ `/root/dang-dung-boi`) và phiên khác kiểm trước khi cài.
+4. **Box thật bị hai phiên dùng cùng lúc** mà không có cơ chế giữ chỗ. Nên quy ước: phiên nào dùng Box thật thì ghi một tệp khóa (ví dụ `/root/dang-dung-boi`) và phiên khác kiểm trước khi cài.
 
 ## Dọn dẹp
 
