@@ -60,6 +60,20 @@ so_bang="$(chu -c "SELECT count(*) FROM pg_tables WHERE schemaname = 'onebee'")"
   || fail "Bảng chưa bật/ép RLS: ${khong_rls} (tổng ${so_bang})"
 
 # ===== Phân quyền tới cấp dòng (khẳng định của bài kiểm) =====
+# Duyệt đơn nay tự sinh phiếu xuất kho (chặn khi thiếu tồn) → cấp thẻ kho và tồn đầu cho đơn mẫu.
+chu <<'SQL' || fail "Không cấp được thẻ kho và tồn đầu cho đơn mẫu"
+INSERT INTO onebee.mat_hang (ma, ten, don_vi, gia_von, gia_ban)
+VALUES ('RLS-MATONG', 'Mật ong mẫu', 'kg', 70000, 100000) ON CONFLICT (ma) DO NOTHING;
+INSERT INTO onebee.phieu_kho (so_phieu, loai, ngay, dien_gia, nguoi_tao)
+VALUES ('PN-RLS-0001', 'NHAP', current_date, 'Kiểm thử RLS: tồn cho đơn mẫu', 'kiem-thu')
+ON CONFLICT (so_phieu) DO NOTHING;
+INSERT INTO onebee.phieu_kho_dong (phieu_id, mat_hang_id, so_luong, don_gia)
+SELECT p.id, m.id, 100, 70000
+  FROM onebee.phieu_kho p, onebee.mat_hang m
+ WHERE p.so_phieu = 'PN-RLS-0001' AND m.ma = 'RLS-MATONG'
+   AND NOT EXISTS (SELECT 1 FROM onebee.phieu_kho_dong d WHERE d.phieu_id = p.id);
+SQL
+
 id_a="$(sql nhan_vien an <<'SQL'
 INSERT INTO onebee.don_hang (khach_hang, mat_hang, so_luong_kg, don_gia, thanh_tien, ngay_giao)
   VALUES ('Khách mẫu A', 'Mật ong mẫu', 2, 100000, 200000, '2026-11-20') RETURNING id;
