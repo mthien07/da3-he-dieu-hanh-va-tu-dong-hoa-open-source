@@ -16,6 +16,24 @@
         group: root
         mode: "0640"
 
+    # Script đặt lại dữ liệu mẫu chỉ dám xoá chứng từ khi dấu này bật — tránh xoá sổ thật nếu lỡ chạy tay
+    - name: Bật dấu chế độ demo trong CSDL
+      ansible.builtin.command:
+        argv:
+          - docker
+          - exec
+          - onebee-postgres
+          - psql
+          - -X
+          - -q
+          - -U
+          - postgres
+          - -d
+          - onebee
+          - -c
+          - "UPDATE onebee.che_do_demo SET bat = true"
+      changed_when: false
+
     - name: Tạo tệp mật khẩu tài khoản mẫu (chỉ root đọc)
       ansible.builtin.copy:
         content: ""
@@ -146,3 +164,20 @@
       ansible.builtin.file:
         path: /usr/local/lib/onebee-box/nap-du-lieu-demo.sql
         state: absent
+
+    - name: Tắt dấu chế độ demo trong CSDL
+      ansible.builtin.command:
+        argv:
+          - docker
+          - exec
+          - onebee-postgres
+          - psql
+          - -X
+          - -q
+          - -U
+          - postgres
+          - -d
+          - onebee
+          - -c
+          - "UPDATE onebee.che_do_demo SET bat = false"
+      changed_when: false

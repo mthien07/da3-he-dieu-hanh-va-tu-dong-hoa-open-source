@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 """Kiểm thử Ứng dụng Sổ điều hành H-P-D-I (box-stack: so-dieu-hanh.html.j2, so-dieu-hanh.css, so-dieu-hanh.js), không cần Box thật.
-Trang: tĩnh, không nguồn ngoài, không innerHTML, dưới 40 KB, đủ bốn khu H, P, D, I, chỉ gọi /api/, /files/, /ai/, /quy-trinh/webhook/onebee-phe-duyet;
+Trang: tĩnh, không nguồn ngoài, không innerHTML, mỗi tệp dưới 40 KB, đủ bốn khu H, P, D, I và hai khu Kho, Kế toán,
+chỉ gọi /api/, /files/, /ai/, /quy-trinh/webhook/onebee-phe-duyet;
 mã JavaScript chạy THẬT bằng node (nếu có): kiểm dữ liệu nhập, đọc số dòng, thông báo lỗi tiếng Việt, tóm tắt tuần chỉ có số liệu tổng hợp.
 Bộ cài tạo thư mục portal/site/so-dieu-hanh trước khi sinh trang; Caddyfile có tuyến sau đăng nhập; Authelia có luật theo nhóm; trang chủ và
 menu máy trạm trỏ tới ứng dụng. Chạy: python3 -m unittest"""
@@ -23,6 +24,7 @@ STACK = os.path.join(ROLES, "box-stack")
 TRANG = os.path.join(STACK, "templates/so-dieu-hanh.html.j2")
 CSS = os.path.join(STACK, "files/so-dieu-hanh.css")
 JS = os.path.join(STACK, "files/so-dieu-hanh.js")
+JS_KHO = os.path.join(STACK, "files/so-dieu-hanh-kho.js")
 MUC_MENU = os.path.join(ROOT, "desktop/ansible/roles/quan-ly-tap-trung/tasks/muc-menu.yml")
 NODE = shutil.which("node")
 
@@ -65,11 +67,15 @@ class TrangTinh(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.html, cls.css, cls.js = render(TRANG), doc(CSS), doc(JS)
-        cls.tat_ca = {"so-dieu-hanh.html": cls.html, "so-dieu-hanh.css": cls.css, "so-dieu-hanh.js": cls.js}
+        cls.js_kho = doc(JS_KHO)
+        cls.tat_ca = {"so-dieu-hanh.html": cls.html, "so-dieu-hanh.css": cls.css, "so-dieu-hanh.js": cls.js,
+                      "so-dieu-hanh-kho.js": cls.js_kho}
 
-    def test_nhe_duoi_40kb(self):
+    def test_moi_tep_duoi_40kb(self):
         tong = sum(len(t.encode("utf-8")) for t in self.tat_ca.values())
-        self.assertLess(tong, 40 * 1024, f"cả trang (HTML + CSS + JS) {tong} byte")
+        self.assertLess(tong, 72 * 1024, f"cả trang (HTML + CSS + JS) {tong} byte")
+        for ten, noi_dung in self.tat_ca.items():
+            self.assertLess(len(noi_dung.encode("utf-8")), 40 * 1024, f"{ten} {len(noi_dung.encode('utf-8'))} byte")
 
     def test_khong_innerhtml_khong_ma_dong(self):
         for ten, noi_dung in self.tat_ca.items():
@@ -87,8 +93,9 @@ class TrangTinh(unittest.TestCase):
         # CSP của Caddy chỉ cho script/style từ chính Box ('self'): trang không được có script/style nhúng, thuộc tính style, trình xử lý on…=
         h = self.html
         self.assertIn('<script src="/so-dieu-hanh/so-dieu-hanh.js"></script>', h)
+        self.assertIn('<script src="/so-dieu-hanh/so-dieu-hanh-kho.js"></script>', h)
         self.assertIn('<link rel="stylesheet" href="/so-dieu-hanh/so-dieu-hanh.css">', h)
-        self.assertEqual(len(re.findall(r"<script\b", h)), 1)
+        self.assertEqual(len(re.findall(r"<script\b", h)), 2)
         self.assertIsNone(re.search(r"<script(?![^>]*\bsrc=)[^>]*>", h), "script nhúng")
         self.assertNotRegex(h, r"<style\b")
         self.assertNotRegex(h, r"""\sstyle\s*=""")
@@ -114,10 +121,11 @@ class TrangTinh(unittest.TestCase):
         self.assertIn("<title>Sổ điều hành", render(TRANG, onebee_box_ten_don_vi=""))
 
     def test_chi_goi_dung_cac_duong_dan_da_giao_kem(self):
-        js = self.js
+        js = self.js + "\n" + self.js_kho
         duong = set(re.findall(r"""["'](/(?:api|files|ai|quy-trinh)/[A-Za-z0-9_/.\-]*)""", js))
         da_giao = {"/api/toi", "/api/don_hang", "/api/yeu_cau_ho_tro", "/api/khao_sat", "/api/khao_sat_tong_hop", "/api/tinh_trang_may",
-                   "/api/tep_dinh_kem", "/files/", "/ai/hoi", "/ai/tom-tat", "/quy-trinh/webhook/onebee-phe-duyet"}
+                   "/api/tep_dinh_kem", "/files/", "/ai/hoi", "/ai/tom-tat", "/quy-trinh/webhook/onebee-phe-duyet",
+                   "/api/mat_hang", "/api/ton_kho", "/api/so_kho", "/api/so_nhat_ky", "/api/bang_can_doi", "/api/rpc/them_nhap_kho"}
         self.assertEqual(duong, da_giao)
         self.assertNotIn("/ai/api/chat", js)   # dịch vụ Trợ lý chỉ mở /ai/hoi và /ai/tom-tat (Giai đoạn 3)
         self.assertNotIn("/webhook/", re.sub(r"/quy-trinh/webhook/", "", js))   # không gọi webhook không qua /quy-trinh/
@@ -336,10 +344,12 @@ class LuatAuthelia(unittest.TestCase):
         luat = [r for r in cfg["access_control"]["rules"] if any("so-dieu-hanh" in x for x in r.get("resources", []))]
         self.assertEqual(len(luat), 2)
         theo_nhom = {tuple(r["subject"]): r["policy"] for r in luat}
-        self.assertEqual(theo_nhom, {("group:ky_thuat", "group:quan_ly"): "two_factor", ("group:nhan_vien",): "one_factor"})
+        self.assertEqual(theo_nhom, {("group:ky_thuat", "group:quan_ly", "group:thu_kho", "group:ke_toan"): "two_factor",
+                                     ("group:nhan_vien",): "one_factor"})
         for r in luat:
             self.assertEqual(r["domain"], "box.anphu.onebee.internal")
-            for duong in ("/so-dieu-hanh/", "/so-dieu-hanh", "/so-dieu-hanh/so-dieu-hanh.js", "/so-dieu-hanh/?may=ketoan-01"):
+            for duong in ("/so-dieu-hanh/", "/so-dieu-hanh", "/so-dieu-hanh/so-dieu-hanh.js",
+                          "/so-dieu-hanh/so-dieu-hanh-kho.js", "/so-dieu-hanh/?may=ketoan-01"):
                 self.assertTrue(any(re.search(x, duong) for x in r["resources"]), duong)
             for duong in ("/so-dieu-hanh-gia/", "/x/so-dieu-hanh/", "/so-dieu-hanhx"):
                 self.assertFalse(any(re.search(x, duong) for x in r["resources"]), duong)

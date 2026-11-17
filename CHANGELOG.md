@@ -1,6 +1,31 @@
 # Nhật ký thay đổi
 
 ## [Unreleased]
+### Kho và kế toán trên Box (lõi DX-OS)
+Đã chạy thử trên Box thật 192.168.100.127 (`check-kho-ke-toan.sh local` đạt toàn bộ) và kiểm giao diện bằng trình duyệt tự động 16/16 nút; cài lại `changed=0`.
+#### Thêm
+- Lược đồ `006-kho-va-ke-toan.sql`: danh mục mặt hàng (thẻ kho), phiếu nhập/xuất kho, hệ thống tài khoản, nhật ký kép
+  (`but_toan`, `but_toan_dong`), khung nhìn `ton_kho`, `so_kho`, `so_nhat_ky`, `bang_can_doi`.
+- Duyệt đơn hàng tự sinh phiếu xuất kho và bút toán doanh thu (Nợ 131 / Có 511) + giá vốn (Nợ 632 / Có 156)
+  trong cùng giao dịch; tồn không đủ thì chặn duyệt kèm lời báo tiếng Việt (khoá dòng thẻ kho khi xuất).
+- Hàm `them_nhap_kho`: một giao dịch gồm phiếu nhập, giá vốn bình quân gia quyền và bút toán Nợ 156 / Có 111.
+- Vai trò `thu_kho`, `ke_toan` (hai lớp TOTP) trong Authelia, cầu nối danh tính và PostgreSQL; `onebee-box them-nguoi`
+  nhận thêm hai nhóm.
+- Sổ điều hành thêm khu **Kho** (tồn, nhập kho, thẻ kho, sổ kho) và khu **Kế toán** (nhật ký, bảng cân đối);
+  biểu mẫu đơn hàng chọn mặt hàng từ danh mục; mỗi sổ có nút xuất CSV (UTF-8 BOM, phân cách `;`) lọc theo ngày.
+- Dữ liệu mẫu của bản chạy thử có mặt hàng, tồn đầu kỳ và bút toán mở kho cân.
+- Tài liệu `docs/huong-dan/dung-so-kho-va-ke-toan.md`; bài kiểm Box `tests/box/check-kho-ke-toan.sh`.
+#### Bảo mật
+- RLS bật và ép trên mọi bảng mới; chứng từ kho và bút toán chỉ sinh qua hàm nội bộ/trigger, không cấp INSERT bảng thô.
+- Hàm ghi bút toán và trigger không cấp EXECUTE cho vai trò nào; nhân viên và thủ kho không đọc được sổ kế toán (403).
+- Lược đồ 009 siết quyền thẻ kho xuống mức cột: giá vốn chỉ do hàm nhập kho ghi; nhân viên không đọc giá vốn/giá bán.
+#### Sửa sau rà soát
+- Doanh thu bút toán do CSDL tính bằng số lượng × đơn giá; đơn gửi lệch thành tiền hoặc ghi tên mặt hàng khác thẻ kho bị chặn khi duyệt.
+- Nhập kho khoá thẻ kho trước khi đọc tồn và cộng dồn theo mặt hàng, tính đúng giá vốn bình quân khi một phiếu có nhiều dòng.
+- Xuất CSV tải đủ theo trang (trần 20.000 dòng, báo rõ khi chạm trần) và chặn ô bắt đầu bằng ký tự công thức.
+- Script đặt lại dữ liệu mẫu có dấu chế độ demo và chỉ xoá chứng từ trong phạm vi của đơn bị đặt lại.
+- Kế toán mở được khu Kho ở chế độ chỉ đọc để đối chiếu tồn với tài khoản 156.
+
 ### Sửa
 - `onebee-box chan-doan` không còn cảnh báo giả "Chứng chỉ HTTPS còn 0 ngày" khi bật HTTPS: chứng chỉ do Caddy cấp sống 12 giờ và tự gia hạn, nay chỉ cảnh báo khi còn dưới một phần ba thời hạn (tối đa 15 ngày).
 - `hoi` báo "Không kết nối được OneBee Box" trong khoảng 10 giây khi không tới được Box, thay vì im lặng tới 5 phút; câu trả lời dài của Trợ lý AI vẫn nhận đủ.

@@ -53,10 +53,11 @@ access_control:
       resources: ['^/quy-trinh([/?].*)?$']
       subject: ['group:ky_thuat', 'group:quan_ly']
       policy: 'two_factor'
-    # Ứng dụng Sổ điều hành: kỹ thuật và quản lý hai lớp, nhân viên một lớp (trang tĩnh và các lời gọi /api/, /files/, /ai/)
+    # Ứng dụng Sổ điều hành: kỹ thuật, quản lý, thủ kho, kế toán hai lớp; nhân viên một lớp
+    # (trang tĩnh và các lời gọi /api/, /files/, /ai/)
     - domain: '{{ ten_box }}'
       resources: ['^/so-dieu-hanh([/?].*)?$']
-      subject: ['group:ky_thuat', 'group:quan_ly']
+      subject: ['group:ky_thuat', 'group:quan_ly', 'group:thu_kho', 'group:ke_toan']
       policy: 'two_factor'
     - domain: '{{ ten_box }}'
       resources: ['^/so-dieu-hanh([/?].*)?$']
@@ -64,7 +65,7 @@ access_control:
       policy: 'one_factor'
     - domain: '{{ ten_box }}'
       resources: ['^/(api|files|ai)/']
-      subject: ['group:ky_thuat', 'group:quan_ly']
+      subject: ['group:ky_thuat', 'group:quan_ly', 'group:thu_kho', 'group:ke_toan']
       policy: 'two_factor'
     - domain: '{{ ten_box }}'
       resources: ['^/(api|files|ai)/']

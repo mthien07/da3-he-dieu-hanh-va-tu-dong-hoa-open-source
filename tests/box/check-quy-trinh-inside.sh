@@ -151,8 +151,17 @@ phe_duyet() {
   c() { curl -s -m 20 --cacert "${ca}" --resolve "${host}:443:${ip}" "$@"; }
   ma() { c -o /dev/null -w '%{http_code}' "$@"; }
   don_dep() {
-    [[ -z "${id_khac:-}${id_tu:-}" ]] || docker exec -i onebee-postgres psql -X -q -U postgres -d onebee -c \
-      "DELETE FROM onebee.don_hang WHERE id IN (${id_khac:-0}, ${id_tu:-0})" >/dev/null 2>&1 || true
+    # Duyệt đơn sinh phiếu xuất + bút toán; dọn cả chứng từ của hai đơn kiểm thử và thẻ kho mẫu
+    docker exec -i onebee-postgres psql -X -q -U postgres -d onebee >/dev/null 2>&1 <<SQL || true
+DELETE FROM onebee.but_toan_dong WHERE but_toan_id IN (SELECT id FROM onebee.but_toan
+  WHERE chung_tu IN ('don_hang:${id_khac:-0}', 'don_hang:${id_tu:-0}'));
+DELETE FROM onebee.but_toan WHERE chung_tu IN ('don_hang:${id_khac:-0}', 'don_hang:${id_tu:-0}');
+DELETE FROM onebee.phieu_kho_dong WHERE phieu_id IN (SELECT id FROM onebee.phieu_kho
+  WHERE don_hang_id IN (${id_khac:-0}, ${id_tu:-0}) OR so_phieu = 'PN-QT-0001');
+DELETE FROM onebee.phieu_kho WHERE don_hang_id IN (${id_khac:-0}, ${id_tu:-0}) OR so_phieu = 'PN-QT-0001';
+DELETE FROM onebee.don_hang WHERE id IN (${id_khac:-0}, ${id_tu:-0});
+DELETE FROM onebee.mat_hang WHERE ma = 'QT-HANG';
+SQL
     onebee-box xoa-nguoi duyet >/dev/null 2>&1 || true
     [[ -z "${d}" ]] || rm -rf "${d}"
   }
@@ -208,6 +217,19 @@ PY
     khoi_dong_mailpit   # phải sẵn sàng TRƯỚC khi duyệt: mô-đun gửi thư ngay trong yêu cầu duyệt
     thu_co=1
   fi
+  # Duyệt đơn nay sinh phiếu xuất kho và chặn khi thiếu tồn → cấp thẻ kho + tồn đầu cho mặt hàng kiểm thử
+  docker exec -i onebee-postgres psql -X -q -U postgres -d onebee -v ON_ERROR_STOP=1 >/dev/null <<'SQL'
+INSERT INTO onebee.mat_hang (ma, ten, don_vi, gia_von, gia_ban, nguoi_tao)
+VALUES ('QT-HANG', 'Hàng kiểm thử', 'cái', 1, 1, 'kiem-thu') ON CONFLICT (ma) DO NOTHING;
+INSERT INTO onebee.phieu_kho (so_phieu, loai, ngay, dien_gia, nguoi_tao)
+VALUES ('PN-QT-0001', 'NHAP', current_date, 'Kiểm thử quy trình: tồn cho đơn duyệt', 'kiem-thu')
+ON CONFLICT (so_phieu) DO NOTHING;
+INSERT INTO onebee.phieu_kho_dong (phieu_id, mat_hang_id, so_luong, don_gia)
+SELECT p.id, m.id, 10, 1
+  FROM onebee.phieu_kho p, onebee.mat_hang m
+ WHERE p.so_phieu = 'PN-QT-0001' AND m.ma = 'QT-HANG'
+   AND NOT EXISTS (SELECT 1 FROM onebee.phieu_kho_dong d WHERE d.phieu_id = p.id);
+SQL
   id_khac="$(docker exec -i onebee-postgres psql -X -q -At -U postgres -d onebee -v ON_ERROR_STOP=1 <<'SQL'
 INSERT INTO onebee.don_hang (khach_hang, mat_hang, so_luong_kg, don_gia, thanh_tien, nguoi_tao, trang_thai_duyet, ghi_chu)
 VALUES ('Khách kiểm thử', 'Hàng kiểm thử', 1, 1, 1, 'an', 'CHO_DUYET', 'quy-trinh-phe-duyet-khac') RETURNING id;

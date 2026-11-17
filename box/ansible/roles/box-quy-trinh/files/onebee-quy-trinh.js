@@ -370,6 +370,10 @@ async function pheDuyet(msg) {
   const ghi = await goiApi('PATCH', `/api/don_hang?id=eq.${id}&trang_thai_duyet=eq.CHO_DUYET`, cookie,
     { trang_thai_duyet: quyetDinh, ly_do_duyet: lyDo || null });
   if (ghi.ma === 400 && JSON.stringify(ghi.than).includes('khong_tu_duyet')) throw new LoiHttp(403, 'Không được tự duyệt đơn của chính mình');
+  if (ghi.ma === 400) {   // kho/kế toán: thiếu tồn, mặt hàng chưa có trong danh mục — giữ nguyên lời báo của CSDL
+    const thong = (ghi.than && (ghi.than.message || ghi.than.details)) || '';
+    if (thong) throw new LoiHttp(400, motDong(thong, 500));
+  }
   if (ghi.ma === 401 || ghi.ma === 403) throw new LoiHttp(ghi.ma, 'Phiên đăng nhập không có quyền duyệt đơn');
   if (ghi.ma !== 200 || !Array.isArray(ghi.than)) throw new LoiHttp(502, `API dữ liệu trả mã ${ghi.ma}`);
   if (!ghi.than.length) throw new LoiHttp(409, `Đơn ${id} vừa được người khác xử lý`);
