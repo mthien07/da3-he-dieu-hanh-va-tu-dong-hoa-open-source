@@ -32,6 +32,13 @@ Thay đổi của lõi DX-OS dự thi OLP 2026. Đã kiểm bằng CI `box=true`
 #### Bảo mật
 - RLS bật và ép trên mọi bảng mới; chứng từ kho và bút toán chỉ sinh qua hàm nội bộ/trigger, không cấp INSERT bảng thô.
 - Hàm ghi bút toán và trigger không cấp EXECUTE cho vai trò nào; nhân viên và thủ kho không đọc được sổ kế toán (403).
+- Lược đồ 009 siết quyền thẻ kho xuống mức cột: giá vốn chỉ do hàm nhập kho ghi; nhân viên không đọc giá vốn/giá bán.
+#### Sửa sau rà soát
+- Doanh thu bút toán do CSDL tính bằng số lượng × đơn giá; đơn gửi lệch thành tiền hoặc ghi tên mặt hàng khác thẻ kho bị chặn khi duyệt.
+- Nhập kho khoá thẻ kho trước khi đọc tồn và cộng dồn theo mặt hàng, tính đúng giá vốn bình quân khi một phiếu có nhiều dòng.
+- Xuất CSV tải đủ theo trang (trần 20.000 dòng, báo rõ khi chạm trần) và chặn ô bắt đầu bằng ký tự công thức.
+- Script đặt lại dữ liệu mẫu có dấu chế độ demo và chỉ xoá chứng từ trong phạm vi của đơn bị đặt lại.
+- Kế toán mở được khu Kho ở chế độ chỉ đọc để đối chiếu tồn với tài khoản 156.
 
 ### Dữ liệu cấu trúc: PostgreSQL và API tự sinh (lõi DX-OS, ADR 0006)
 Đã kiểm bằng unit test và `check-csdl-rls.sh` (PostgreSQL thật từ image đã ghim, chạy trong CI); bộ kiểm Box (`check-du-lieu-qua-cong.sh`,

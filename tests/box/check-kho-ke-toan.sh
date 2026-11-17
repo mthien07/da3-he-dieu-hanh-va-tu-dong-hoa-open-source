@@ -131,6 +131,7 @@ code="$(c -b "${D}/jar-kkt-thu-kho" -o "${D}/tl" -w '%{http_code}' -X POST -H 'C
         "https://${TEN}/api/rpc/them_nhap_kho")"
 [ "${code}" = 200 ] || { echo "FAIL  nhập kho không nhận 200 (mã ${code}): $(cat "${D}/tl")"; exit 1; }
 grep -q 'PN-' "${D}/tl" || { echo "FAIL  phản hồi nhập kho thiếu số phiếu: $(cat "${D}/tl")"; exit 1; }
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); d=d[0] if isinstance(d,list) else d; print(d["id"])' "${D}/tl" >"${D}/id-phieu"
 echo 'PASS  Thủ kho tạo thẻ kho và ghi phiếu nhập 100 kg qua API'
 EOF
 
@@ -147,13 +148,13 @@ import json, sys
 x = json.loads(sys.argv[1])[0]
 assert float(x["ton"]) == 100 and float(x["gia_von"]) == 70000, x
 PY
-so="$(c -b "${D}/jar-kkt-ke-toan" "https://${TEN}/api/so_nhat_ky?select=tai_khoan,no,co&order=dong_id")"
-python3 - "${so}" <<'PY' || exit 1
-import json, sys
-d = json.loads(sys.argv[1])
-tong = {x["tai_khoan"]: (float(x["no"]), float(x["co"])) for x in d}
-assert tong == {"156": (7000000.0, 0.0), "111": (0.0, 7000000.0)}, tong
-PY
+id_phieu="$(cat "${D}/id-phieu")"
+so="$(docker exec onebee-postgres psql -X -q -At -U postgres -d onebee -c \
+  "SELECT tai_khoan || ' ' || no || ' ' || co FROM onebee.but_toan_dong d JOIN onebee.but_toan b ON b.id = d.but_toan_id WHERE b.chung_tu = 'phieu_kho:${id_phieu}' ORDER BY d.id")"
+[ "${so}" = $'156 7000000.00 0.00\n111 0.00 7000000.00' ] || { echo "FAIL  bút toán nhập kho sai: ${so}"; exit 1; }
+# Kế toán vẫn đọc được sổ qua API (kiểm quyền, không kiểm toàn bộ nội dung)
+[ "$(ma -b "${D}/jar-kkt-ke-toan" "https://${TEN}/api/so_nhat_ky?select=so_hieu&limit=1")" = 200 ] \
+  || { echo 'FAIL  kế toán không đọc được sổ qua API'; exit 1; }
 [ "$(ma -b "${D}/jar-kkt-nv" "https://${TEN}/api/so_nhat_ky?select=so_hieu")" = 403 ] || { echo 'FAIL  nhân viên đọc được sổ kế toán'; exit 1; }
 [ "$(ma -b "${D}/jar-kkt-thu-kho" "https://${TEN}/api/so_nhat_ky?select=so_hieu")" = 403 ] || { echo 'FAIL  thủ kho đọc được sổ kế toán'; exit 1; }
 [ "$(ma -b "${D}/jar-kkt-ke-toan" -X PATCH -H 'Content-Type: application/json' -H 'Prefer: return=representation' \
@@ -185,21 +186,13 @@ PY
 phieu="$(docker exec onebee-postgres psql -X -q -At -U postgres -d onebee -c \
   "SELECT loai || ':' || so_luong FROM onebee.phieu_kho p JOIN onebee.phieu_kho_dong d ON d.phieu_id = p.id WHERE p.don_hang_id = ${id_don}")"
 [ "${phieu}" = 'XUAT:30' ] || { echo "FAIL  phiếu xuất của đơn sai: ${phieu}"; exit 1; }
-so="$(c -b "${D}/jar-kkt-ke-toan" "https://${TEN}/api/so_nhat_ky?select=so_hieu,tai_khoan,no,co&order=but_toan_id,dong_id")"
-python3 - "${so}" <<'PY' || exit 1
-import json, sys
-from collections import defaultdict
-d = json.loads(sys.argv[1])
-theo = defaultdict(list)
-for x in d:
-    theo[x["so_hieu"]].append((x["tai_khoan"], float(x["no"]), float(x["co"])))
-so_no = sum(float(x["no"]) for x in d)
-so_co = sum(float(x["co"]) for x in d)
-assert abs(so_no - so_co) < 0.005, (so_no, so_co)
-cac = sorted(tuple(sorted(v)) for v in theo.values())
-assert (("131", 3000000.0, 0.0), ("511", 0.0, 3000000.0)) in cac, cac      # doanh thu
-assert (("156", 0.0, 2100000.0), ("632", 2100000.0, 0.0)) in cac, cac      # giá vốn (sắp theo tài khoản)
-PY
+so="$(docker exec onebee-postgres psql -X -q -At -U postgres -d onebee -c \
+  "SELECT tai_khoan || ' ' || no || ' ' || co FROM onebee.but_toan_dong d JOIN onebee.but_toan b ON b.id = d.but_toan_id WHERE b.chung_tu = 'don_hang:${id_don}' ORDER BY d.id")"
+[ "${so}" = $'131 3000000.00 0.00\n511 0.00 3000000.00\n632 2100000.00 0.00\n156 0.00 2100000.00' ] \
+  || { echo "FAIL  bút toán duyệt đơn sai: ${so}"; exit 1; }
+can="$(docker exec onebee-postgres psql -X -q -At -U postgres -d onebee -c \
+  "SELECT sum(no) = sum(co) FROM onebee.but_toan_dong d JOIN onebee.but_toan b ON b.id = d.but_toan_id WHERE b.chung_tu = 'don_hang:${id_don}'")"
+[ "${can}" = t ] || { echo "FAIL  bút toán duyệt đơn không cân"; exit 1; }
 echo 'PASS  Duyệt đơn 30 kg: phiếu xuất 30 kg, tồn 70, doanh thu 3.000.000 và giá vốn 2.100.000, mọi bút toán cân'
 EOF
 

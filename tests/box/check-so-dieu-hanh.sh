@@ -168,8 +168,8 @@ EOF
 echo "===== SỔ ĐIỀU HÀNH: CHUẨN BỊ TỒN KHO CHO BÀI DUYỆT ====="
 box <<'EOF'
 docker exec -i onebee-postgres psql -X -q -U postgres -d onebee -v ON_ERROR_STOP=1 <<'SQL'
-INSERT INTO onebee.mat_hang (ma, ten, don_vi, gia_von, gia_ban)
-VALUES ('SDL-MATONG', 'Mật ong', 'kg', 70000, 100000)
+INSERT INTO onebee.mat_hang (ma, ten, don_vi, gia_von, gia_ban, nguoi_tao)
+VALUES ('SDL-MATONG', 'Mật ong', 'kg', 70000, 100000, 'kiem-thu')
 ON CONFLICT (ma) DO NOTHING;
 INSERT INTO onebee.phieu_kho (so_phieu, loai, ngay, dien_gia, nguoi_tao)
 VALUES ('PN-SDL-0001', 'NHAP', current_date, 'Kiểm thử: tồn cho bài duyệt đơn', 'kiem-thu')

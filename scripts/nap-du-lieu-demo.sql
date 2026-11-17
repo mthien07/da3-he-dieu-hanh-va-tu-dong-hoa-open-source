@@ -12,22 +12,52 @@ BEGIN;
 -- Bản ghi mẫu có nguon khác NULL nên trigger "đơn mới" cũng không can thiệp.
 SET LOCAL session_replication_role = replica;
 
+-- Chốt an toàn: chỉ xoá dữ liệu khi chế độ demo đang bật (dấu do bộ cài đặt, xem lược đồ 009).
+-- Chạy tay trên Box thật khi chưa bật demo sẽ dừng ngay, không đụng sổ kho/kế toán.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM onebee.che_do_demo WHERE bat) THEN
+    RAISE EXCEPTION 'Chỉ chạy khi chế độ demo đang bật (onebee_box_che_do_demo) — dấu onebee.che_do_demo chưa bật';
+  END IF;
+END $$;
+
+-- Trigger bị tắt trong giao dịch này (session_replication_role = replica) nên số phiếu, người tạo và bút toán
+-- phải ghi thẳng, không chờ trigger sinh; khoá ngoại cũng không tự xoá dây chuyền → xoá tường minh từ bảng con.
+-- Phạm vi xoá: chứng từ của đơn sắp bị đặt lại và phiếu/kho mẫu (nguoi_tao = 'demo'); không xoá sổ khác.
+DELETE FROM onebee.but_toan_dong WHERE but_toan_id IN (
+  SELECT id FROM onebee.but_toan WHERE chung_tu IN (
+    SELECT 'don_hang:' || id FROM onebee.don_hang
+     WHERE nguon IS NULL OR (nguon = 'nap-du-lieu-demo' AND dong > 5)
+    UNION ALL
+    SELECT 'phieu_kho:' || id FROM onebee.phieu_kho
+     WHERE nguoi_tao = 'demo'
+        OR don_hang_id IN (SELECT id FROM onebee.don_hang
+                            WHERE nguon IS NULL OR (nguon = 'nap-du-lieu-demo' AND dong > 5))));
+DELETE FROM onebee.but_toan WHERE chung_tu IN (
+  SELECT 'don_hang:' || id FROM onebee.don_hang
+   WHERE nguon IS NULL OR (nguon = 'nap-du-lieu-demo' AND dong > 5)
+  UNION ALL
+  SELECT 'phieu_kho:' || id FROM onebee.phieu_kho
+   WHERE nguoi_tao = 'demo'
+      OR don_hang_id IN (SELECT id FROM onebee.don_hang
+                          WHERE nguon IS NULL OR (nguon = 'nap-du-lieu-demo' AND dong > 5)));
+DELETE FROM onebee.phieu_kho_dong WHERE phieu_id IN (
+  SELECT id FROM onebee.phieu_kho
+   WHERE nguoi_tao = 'demo'
+      OR don_hang_id IN (SELECT id FROM onebee.don_hang
+                          WHERE nguon IS NULL OR (nguon = 'nap-du-lieu-demo' AND dong > 5)));
+DELETE FROM onebee.phieu_kho
+ WHERE nguoi_tao = 'demo'
+    OR don_hang_id IN (SELECT id FROM onebee.don_hang
+                        WHERE nguon IS NULL OR (nguon = 'nap-du-lieu-demo' AND dong > 5));
+DELETE FROM onebee.mat_hang WHERE ma IN ('GAO-ST25', 'HAT-DIEU', 'MAT-ONG', 'XOAI', 'PHAN-BON');
+
 -- Bỏ dòng phát sinh (API: nguon NULL) và dòng mẫu thừa trước khi nạp lại
 DELETE FROM onebee.xu_ly_ho_tro WHERE nguon IS NULL OR (nguon = 'nap-du-lieu-demo' AND dong > 1);
 DELETE FROM onebee.yeu_cau_ho_tro WHERE nguon IS NULL OR (nguon = 'nap-du-lieu-demo' AND dong > 3);
 DELETE FROM onebee.don_hang WHERE nguon IS NULL OR (nguon = 'nap-du-lieu-demo' AND dong > 5);
 DELETE FROM onebee.khao_sat WHERE nguon IS NULL OR (nguon = 'nap-du-lieu-demo' AND dong > 3);
 DELETE FROM onebee.tinh_trang_may WHERE ten LIKE 'demo-%';
-
--- Kho và kế toán mẫu: chế độ demo chỉ có dữ liệu giả nên dọn sạch chứng từ, mặt hàng rồi nạp lại
--- (đơn mẫu không gắn mat_hang_id; đơn người dùng vừa bị xóa ở trên nên không vướng khóa ngoại).
--- Trigger bị tắt trong giao dịch này (session_replication_role = replica) nên số phiếu, người tạo và bút toán
--- phải ghi thẳng, không chờ trigger sinh; khoá ngoại cũng không tự xoá dây chuyền → xoá tường minh từ bảng con.
-DELETE FROM onebee.but_toan_dong;
-DELETE FROM onebee.but_toan;
-DELETE FROM onebee.phieu_kho_dong;
-DELETE FROM onebee.phieu_kho;
-DELETE FROM onebee.mat_hang;
 
 -- Đơn hàng mẫu: đủ ba trạng thái duyệt để trình diễn hàng đợi và lịch sử
 INSERT INTO onebee.don_hang

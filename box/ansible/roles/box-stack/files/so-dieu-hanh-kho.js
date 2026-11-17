@@ -19,7 +19,25 @@ function soCsv(v) {
 
 function oCsv(v) {
   var s = v === null || v === undefined ? "" : String(v);
+  // Không để ô bắt đầu bằng ký tự công thức (=, +, -, @) khi mở bằng Excel/LibreOffice
+  if (/^[=+\-@]/.test(s)) s = "'" + s;
   return '"' + s.replace(/"/g, '""') + '"';
+}
+
+/* Tải hết theo trang (1000 dòng/lần, trần 20.000) để xuất CSV không bị cắt âm thầm. */
+function taiHet(duong) {
+  var MUC = 1000, TOI_DA = 20000, tat_ca = [], da = 0, cat = false;
+  function trang() {
+    return goiApi(duong + "&limit=" + MUC + "&offset=" + da).then(function (ds) {
+      var x = Array.isArray(ds) ? ds : [];
+      tat_ca = tat_ca.concat(x);
+      da += x.length;
+      if (x.length === MUC && da < TOI_DA) return trang();
+      cat = x.length === MUC;
+      return { dong: tat_ca, cat: cat };
+    });
+  }
+  return trang();
 }
 
 function xuatCsv(ten, tieuDe, cacDong) {
@@ -245,25 +263,35 @@ function xuatTonKhoCsv() {
 }
 
 function xuatSoKhoCsv() {
-  if (!SO_KHO.length) { hienThongBao("kq-so-kho", "Chưa có phiếu kho để xuất.", true); return; }
-  var dong = [];
-  for (var i = 0; i < SO_KHO.length; i++) {
-    var x = SO_KHO[i];
-    dong.push([chu(x.so_phieu), chu(x.ngay), x.loai === "NHAP" ? "Nhập" : "Xuất", chu(x.ten_hang), chu(x.don_vi),
-      soCsv(x.so_luong), soCsv(x.don_gia), soCsv(x.thanh_tien), chu(x.dien_gia)]);
-  }
-  xuatCsv(tenTepCsv("so-kho"), ["Số phiếu", "Ngày", "Loại", "Mặt hàng", "Đơn vị", "Số lượng", "Đơn giá", "Thành tiền", "Diễn giải"], dong);
+  var duong = locNgay("/api/so_kho?select=so_phieu,ngay,loai,ten_hang,don_vi,so_luong,don_gia,thanh_tien,dien_gia" +
+    "&order=ngay.desc,phieu_id.desc,dong_id.desc", "k-tu-ngay", "k-den-ngay");
+  taiHet(duong).then(function (kq) {
+    if (!kq.dong.length) { hienThongBao("kq-so-kho", "Chưa có phiếu kho để xuất.", true); return; }
+    if (kq.cat) hienThongBao("kq-so-kho", "Sổ quá lớn: chỉ xuất " + kq.dong.length + " dòng gần nhất — thu hẹp khoảng ngày để xuất đủ.", true);
+    var dong = [];
+    for (var i = 0; i < kq.dong.length; i++) {
+      var x = kq.dong[i];
+      dong.push([chu(x.so_phieu), chu(x.ngay), x.loai === "NHAP" ? "Nhập" : "Xuất", chu(x.ten_hang), chu(x.don_vi),
+        soCsv(x.so_luong), soCsv(x.don_gia), soCsv(x.thanh_tien), chu(x.dien_gia)]);
+    }
+    xuatCsv(tenTepCsv("so-kho"), ["Số phiếu", "Ngày", "Loại", "Mặt hàng", "Đơn vị", "Số lượng", "Đơn giá", "Thành tiền", "Diễn giải"], dong);
+  }).catch(function (e) { hienThongBao("kq-so-kho", e.message, true); });
 }
 
 function xuatNhatKyCsv() {
-  if (!NHAT_KY.length) { hienThongBao("tq-nhat-ky", "Chưa có bút toán để xuất.", true); return; }
-  var dong = [];
-  for (var i = 0; i < NHAT_KY.length; i++) {
-    var x = NHAT_KY[i];
-    dong.push([chu(x.so_hieu), chu(x.ngay), chu(x.dien_gia), chu(x.chung_tu), chu(x.tai_khoan),
-      chu(x.ten_tai_khoan), soCsv(x.no), soCsv(x.co)]);
-  }
-  xuatCsv(tenTepCsv("so-nhat-ky"), ["Số hiệu", "Ngày", "Diễn giải", "Chứng từ", "Tài khoản", "Tên tài khoản", "Nợ", "Có"], dong);
+  var duong = locNgay("/api/so_nhat_ky?select=so_hieu,ngay,dien_gia,chung_tu,tai_khoan,ten_tai_khoan,no,co" +
+    "&order=ngay.desc,but_toan_id.desc,dong_id.desc", "t-tu-ngay", "t-den-ngay");
+  taiHet(duong).then(function (kq) {
+    if (!kq.dong.length) { hienThongBao("tq-nhat-ky", "Chưa có bút toán để xuất.", true); return; }
+    if (kq.cat) hienThongBao("tq-nhat-ky", "Sổ quá lớn: chỉ xuất " + kq.dong.length + " dòng gần nhất — thu hẹp khoảng ngày để xuất đủ.", true);
+    var dong = [];
+    for (var i = 0; i < kq.dong.length; i++) {
+      var x = kq.dong[i];
+      dong.push([chu(x.so_hieu), chu(x.ngay), chu(x.dien_gia), chu(x.chung_tu), chu(x.tai_khoan),
+        chu(x.ten_tai_khoan), soCsv(x.no), soCsv(x.co)]);
+    }
+    xuatCsv(tenTepCsv("so-nhat-ky"), ["Số hiệu", "Ngày", "Diễn giải", "Chứng từ", "Tài khoản", "Tên tài khoản", "Nợ", "Có"], dong);
+  }).catch(function (e) { hienThongBao("tq-nhat-ky", e.message, true); });
 }
 
 function xuatCanDoiCsv() {

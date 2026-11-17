@@ -9,7 +9,7 @@ Tài liệu này hướng dẫn thủ kho, kế toán và quản lý dùng hai k
 |---|---|---|---|---|---|
 | `nhan_vien` | Không (chỉ thấy danh sách mặt hàng khi gửi đơn) | Không | Không | Không | Không |
 | `thu_kho` | Có | Có | Không | Không | Sổ kho, tồn kho |
-| `ke_toan` | Có | Không | Không | Có | Sổ kho, nhật ký, cân đối |
+| `ke_toan` | Có (chỉ đọc) | Không | Không | Có | Sổ kho, nhật ký, cân đối |
 | `quan_ly` | Có | Có | Có | Có | Tất cả |
 
 Tạo tài khoản (trên Box, cần quyền quản trị):
@@ -59,10 +59,10 @@ Hệ quả tự động, cùng giao dịch với thao tác duyệt:
 
 ### Bước 5 — Kế toán xem sổ và xuất dữ liệu
 
-Khu **Kế toán**:
+Khu **Kế toán** (và khu **Kho** ở chế độ chỉ đọc để đối chiếu tồn với tài khoản 156):
 
 - *Sổ nhật ký*: từng dòng Nợ/Có, số hiệu `BT-…`, chứng từ gốc (`don_hang:<id>` hoặc `phieu_kho:<id>`),
-  lọc theo khoảng ngày.
+  lọc theo khoảng ngày. Doanh thu do CSDL tự tính bằng số lượng × đơn giá; đơn ghi lệch thành tiền sẽ bị chặn khi duyệt.
 - *Bảng cân đối tài khoản*: tổng Nợ, tổng Có, dư Nợ hoặc dư Có của từng tài khoản.
 - Nút **Xuất CSV nhật ký** và **Xuất CSV bảng cân đối**: tệp UTF-8 có BOM, phân cách dấu `;`, số thập phân
   dùng dấu phẩy — mở trực tiếp bằng LibreOffice Calc hoặc Excel, tiếng Việt không lỗi font.
@@ -114,6 +114,11 @@ người sau thấy tồn đã trừ của người trước.
 - Giá vốn bình quân gia quyền, chưa có giá vốn theo lô/FIFO, chưa theo hạn dùng.
 - Chưa có khóa sổ cuối kỳ, chưa có tờ khai thuế và kết chuyển.
 - Chưa tự động ghi phiếu thu tiền (111/112/131) khi khách trả tiền.
+- **Một người chỉ giữ một vai trò**: người vừa làm thủ kho vừa làm kế toán chỉ nhận vai trò ưu tiên cao hơn (`ke_toan`),
+  nên không nhập kho được. Với HTX ít người, hãy lập hai tài khoản riêng, hoặc để quản lý kiêm cả hai việc.
+- Đơn đã duyệt mà bị chuyển sang `TU_CHOI` không tự sinh bút toán đảo; cần điều chỉnh tay (chưa có màn hình điều chỉnh).
+- Xuất CSV tối đa 20.000 dòng mỗi lần; quá mức đó phải thu hẹp khoảng ngày (màn hình báo rõ nếu chạm trần).
+- Nhân viên chỉ thấy mã, tên, đơn vị, trạng thái mặt hàng — không thấy giá vốn/giá bán trong danh mục.
 
 ## 6. Ảnh chụp giao diện
 

@@ -7,7 +7,7 @@ var MAU_TOM_TAT = "Tóm tắt số liệu tuần này bằng tiếng Việt, ng�
 var DUOI_TEP = [".pdf", ".png", ".jpg", ".jpeg", ".txt", ".docx", ".xlsx", ".odt", ".ods"];
 var TOI_DA_TEP = 10 * 1024 * 1024;
 var TEN_KHU = ["khu-h", "khu-p", "khu-d", "khu-i", "khu-k", "khu-t"];
-var VAI_TRO_KHO = ["thu_kho", "quan_ly"];
+var VAI_TRO_KHO = ["thu_kho", "ke_toan", "quan_ly"];   // kế toán chỉ xem tồn và sổ kho, không nhập kho
 var VAI_TRO_KE_TOAN = ["ke_toan", "quan_ly"];
 var HOSO = { ten: "", vai_tro: "" };
 var SO_LIEU = {};
@@ -229,6 +229,10 @@ function taiHoSo() {
     document.getElementById("t-than").hidden = !laKeToan;
     document.getElementById("k-chan-quyen").hidden = laKho;
     document.getElementById("t-chan-quyen").hidden = laKeToan;
+    // Kế toán chỉ đối chiếu: ẩn hai biểu mẫu ghi kho (CSDL cũng không cấp quyền gọi hàm nhập kho)
+    var chiXemKho = HOSO.vai_tro === "ke_toan";
+    document.getElementById("the-nhap-kho").hidden = chiXemKho;
+    document.getElementById("the-them-mat-hang").hidden = chiXemKho;
     var cong = document.body.getAttribute("data-cong-giam-sat");
     if (HOSO.vai_tro && cong) {
       var o = document.getElementById("h-giam-sat-o");
@@ -665,7 +669,12 @@ function khoiDong() {
   capNhatThanhTien();
   taiHoSo()
     .then(function () {
-      return taiVatTu().catch(function () { return null; });
+      return taiVatTu().catch(function () {
+        var o = document.getElementById("don-mat-hang-trong");
+        o.textContent = "Không tải được danh mục mặt hàng — tải lại trang hoặc báo thủ kho.";
+        o.hidden = false;
+        return null;
+      });
     })
     .then(function () {
       return taiViecCuaToi();
