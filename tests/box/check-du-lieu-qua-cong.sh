@@ -57,6 +57,17 @@ truong() { python3 -c 'import json, sys; d = json.load(open(sys.argv[1])); d = d
 [ "$(api - GET don_hang)" = 401 ] || { echo 'FAIL  /api/don_hang không phiên không nhận 401'; exit 1; }
 echo 'PASS  /api/don_hang không phiên: 401'
 
+# Duyệt đơn trừ tồn kho và ghi bút toán: mặt hàng phải có trong danh mục và đủ tồn. Dựng sẵn mặt hàng + 10 kg tồn bằng đúng hàm
+# nhập kho, danh tính đặt như PostgREST (request.jwt.claims), để bài này chỉ kiểm phân quyền dòng và luật không tự duyệt.
+docker exec -i onebee-postgres psql -X -q -v ON_ERROR_STOP=1 -U postgres -d onebee >/dev/null <<'SQL' || { echo 'FAIL  Không dựng được mặt hàng và tồn kho cho bài kiểm'; exit 1; }
+BEGIN;
+SET LOCAL request.jwt.claims = '{"sub":"kiem-thu-cong-api"}';
+INSERT INTO onebee.mat_hang (ma, ten, don_vi, gia_ban) VALUES ('KTC-MATONG', 'Mật ong thử', 'kg', 100000) ON CONFLICT DO NOTHING;
+SELECT onebee.them_nhap_kho(NULL, 'Tồn đầu cho bài kiểm cổng API',
+       jsonb_build_array(jsonb_build_object('mat_hang_id', id, 'so_luong', 10, 'don_gia', 70000)))
+  FROM onebee.mat_hang WHERE ma = 'KTC-MATONG';
+COMMIT;
+SQL
 DON='{"khach_hang":"Khách thử qua cổng","mat_hang":"Mật ong thử","so_luong_kg":3,"don_gia":100000,"thanh_tien":300000,"ngay_giao":"2026-12-01"}'
 [ "$(api an POST don_hang "${DON}")" = 201 ] || { echo "FAIL  an gửi đơn hợp lệ không nhận 201: $(cat "${D}/tl")"; exit 1; }
 id_an="$(truong id)"
