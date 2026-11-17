@@ -25,6 +25,16 @@ Dữ liệu kiểm được dọn sạch sau khi chạy (0 đơn, 0 mặt hàng,
 
 Chạy lại bộ cài ngay sau đó: `ok=160 changed=0 failed=0` — lần hai không đổi gì.
 
+## Kiểm giao diện bằng trình duyệt tự động (Playwright, 20:01–20:03)
+
+Đăng nhập sẵn bốn phiên rồi bấm thật từng nút: **16/16 đạt** — thêm mặt hàng, ghi phiếu nhập,
+xuất CSV tồn kho và sổ kho, gửi đơn, duyệt đơn, tồn còn 40, thấy bút toán 131/511, xuất CSV
+nhật ký và cân đối, ẩn/hiện nút Kho – Kế toán theo vai trò. Ảnh chụp ở `docs/huong-dan/anh/kho-ke-toan/`,
+gắn vào `docs/huong-dan/dung-so-kho-va-ke-toan.md`.
+
+Trong lúc chụp phát hiện bảng tồn kho bị bóp cột trong thẻ hẹp: sửa CSS cho thẻ Tồn kho chiếm trọn hàng
+và cột số căn phải; chụp lại bộ ảnh sau khi sửa.
+
 ## Lỗi gặp khi kiểm và cách xử lý
 
 | Lỗi | Nguyên nhân | Xử lý |
@@ -33,6 +43,9 @@ Chạy lại bộ cài ngay sau đó: `ok=160 changed=0 failed=0` — lần hai 
 | `PGRST202`: không khớp hàm `them_nhap_kho` | Lời gọi chỉ gửi `p_dien_gia`, `p_dong`; hàm không có giá trị mặc định | Thêm `008-nhap-kho-tham-so-mac-dinh.sql` (tạo lại hàm với DEFAULT) |
 | Bài kiểm báo sai thứ tự tài khoản | Kỳ vọng so sánh chưa sắp xếp tuple | Sửa kỳ vọng trong bài kiểm (dữ liệu thật vẫn đúng) |
 | Lớp hai TOTP hỏng: `no TOTP configuration`, thiếu mã xác minh | Authelia giới hạn số lần xin nâng phiên (bucket 1) khi chạy lại bài kiểm liền nhau | Bài kiểm chờ và thử lại khi gặp 429; khởi động lại `onebee-authelia` để xoá bộ đếm trong bộ nhớ |
+| `onebee-quy-trinh` unhealthy sau khi cài bản nhánh | Nhánh tách từ 1.3.0, thiếu bản vá healthcheck của 1.3.1 (image đọc `/data/settings.js`) | Cherry-pick `540cc39` (healthcheck riêng, gọi `/quy-trinh/auth/login`) vào nhánh; cài lại → healthy |
+| Playwright không chờ được do CSP `script-src 'self'` | `wait_for_function` chèn eval vào trang | Chờ bằng `page.evaluate` trong vòng lặp (bộ kiểm UI) |
+| Bảng tồn kho bị bóp/cắt cột | Thẻ hẹp 3 cột chứa bảng 7 cột | CSS: thẻ Tồn kho chiếm trọn hàng, cột số căn phải; chụp lại ảnh |
 
 ## Thay đổi trên Box test
 
