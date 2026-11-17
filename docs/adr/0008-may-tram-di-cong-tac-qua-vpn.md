@@ -1,6 +1,6 @@
 # ADR 0008 — Máy trạm đi công tác kết nối Box từ xa
 
-- Ngày: 17/11/2026 · Trạng thái: Đề xuất cho 1.4.0 — **chưa thử trên máy thật** · Nguồn: `plans/261117-0102-may-tram-di-cong-tac-ket-noi-box-tu-xa/plan.md`
+- Ngày: 17/11/2026 · Trạng thái: Chấp nhận cho 1.4.0 — đã thử trên Box thật, máy Mint thật và tailnet thật ngày 17/11/2026 (`plans/reports/261117-kiem-thu-may-di-cong-tac.md`) · Nguồn: `plans/261117-0102-may-tram-di-cong-tac-ket-noi-box-tu-xa/plan.md`
 
 ## Bối cảnh
 Một máy trạm OneBee đem ra ngoài văn phòng vẫn cần dùng thư mục chung (Samba), kho tệp (`/files/`), Trợ lý AI (`hoi`), sao lưu (restic) và báo tình trạng. Ràng buộc: **không mở cổng nào trên router**; Box duyệt **từng máy, từng cổng**; thu hồi phải cắt cả kết nối đang mở; người dùng cuối (không có `sudo`) không phải làm gì khi đổi mạng. Cơ chế hỗ trợ từ xa hiện có (ADR 0004) là người dùng chủ động mở từng lần, không dùng được cho hằng ngày.
@@ -31,7 +31,7 @@ Phân quyền (tường lửa + SSO):
 | Headscale tự dựng | Cũng cần cổng công khai; thêm một dịch vụ tự vận hành |
 
 ## Rủi ro còn lại (chấp nhận, đã ghi)
-- **Kết nối đang mở sống sót sau thu hồi**: quy tắc tường lửa hiện chỉ lọc `--ctstate NEW` → thu hồi và hết hạn phải chạy `conntrack -D -s <IP>` (chưa thử thật — giả định U5 của kế hoạch; nếu trượt, đổi sang quy tắc DROP mọi trạng thái cho IP bị thu hồi).
+- **Kết nối đang mở sống sót sau thu hồi**: quy tắc tường lửa hiện chỉ lọc `--ctstate NEW` → thu hồi và hết hạn chạy `conntrack -D -s <IP>` **sau khi** tường lửa đã dựng lại không còn IP đó (làm ngược thì gói kế tiếp tạo lại mục conntrack khi luật cũ còn cho qua). Đã thử thật: phiên SMB đang chép đứt khoảng 4 giây sau lệnh thu hồi.
 - **Tailscale SSH đi vòng tường lửa Box** (tailscaled nhận cổng 22 trước iptables): ACL mẫu không có mục `ssh` cho `tag:congtac`; `chan-doan` cảnh báo khi Box bật Tailscale SSH mà còn lượt duyệt.
 - **Samba một mật khẩu chung** (ADR 0004): thu hồi ở tầng mạng (tường lửa + `hosts allow`); mất máy thì đổi mật khẩu theo hướng dẫn.
 - **Mạng lạ trùng dải LAN văn phòng, thiết bị giả làm Box**: chỉ dùng IP LAN sau khi bắt tay TLS với CA đã ghim; không xác thực được thì dùng IP VPN.
@@ -44,5 +44,6 @@ Phân quyền (tường lửa + SSO):
 - Máy **đang ở xa** không nhận `cap-nhat-may`, `dong-bo-may`, `xoay-khoa` (`authorized_keys` có `from="<IP LAN Box>"`): máy giữ cấu hình cũ tới khi về LAN. Xoay khóa trong lúc máy đi công tác làm máy đó mất sao lưu và `hoi` cho tới khi về.
 - Hỗ trợ từ xa (x11vnc) tới máy đang đi công tác không có — máy chạy Tailscale `--shields-up`, không nhận kết nối vào.
 - Sao lưu qua VPN đi qua 4G tốn dung lượng; đã chọn vẫn mở cổng 8000.
-- Giả định chưa thử thật (U1 đến U8, tệp giai đoạn 1 của kế hoạch) quyết định chi tiết Giai đoạn 2 đến 4; phần liên quan U2, U3, U5 được giữ gọn một chỗ trong mã để đổi sang phương án thay không phải viết lại.
+- Kết quả thử thật các giả định: U1, U3, U5, U6, U7 đúng; U8 đúng một phần (chưa mở bằng Nemo); U4 chưa thử. **U2 không áp dụng khi có `tailscaled` thật**: `tailscaled` chèn `ts-forward` lên đầu FORWARD và ACCEPT mọi gói từ `tailscale0` trước `DOCKER-USER`, nên luật `--ctorigdstport` cho máy công tác không được xét. Lớp quyết định là mangle `ONEBEE-TAILSCALE` (chạy trước mọi chuỗi filter), đã chặn đúng máy chưa duyệt và cổng cấm. Luật `DOCKER-USER` giữ làm lớp dự phòng khi `tailscaled` chạy `--netfilter-mode=off`.
+- Máy đã đi mà chưa chuẩn bị (Box không SSH tới được): `onebee-cong-tac bat --box-tu-xa` ghi `BOX_IP_TU_XA` và đổi kho sao lưu https sang tên Box, nên sao lưu chạy được qua VPN mà không cần Box đẩy cấu hình.
 - Áp dụng cần: Box bật HTTPS, Box và máy trạm vào tailnet của đơn vị, đặt ACL một lần theo mẫu trong `docs/huong-dan/may-tram-di-cong-tac.md`.

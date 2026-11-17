@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Phase 5: Kiểm thử tích hợp và tài liệu"
-status: todo
+status: in-progress
 priority: P1
 effort: "1,5 ngày"
 dependencies: [2, 3, 4]
@@ -98,9 +98,9 @@ Sửa `cai-dat-onebee-box.md`: câu ở dòng 35 về máy kỹ thuật và thư
 ## Todo
 
 - [ ] C1 đến C11 đạt trong CI `box=true`
-- [ ] T1 đến T12 chạy thật, có báo cáo
-- [ ] Hướng dẫn `may-tram-di-cong-tac.md`
-- [ ] Bốn tài liệu cũ đã sửa, ADR 0008 cập nhật trạng thái
+- [x] T1 đến T12 chạy thật, có báo cáo (`plans/reports/261117-kiem-thu-may-di-cong-tac.md`)
+- [x] Hướng dẫn `may-tram-di-cong-tac.md`
+- [x] Bốn tài liệu cũ đã sửa, ADR 0008 cập nhật trạng thái
 - [ ] `CHANGELOG.md` và số phiên bản 1.4.0
 - [ ] Hai máy ảo và tailnet thử đã dọn
 

@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Phase 3: Box — lệnh duyệt, thu hồi, hết hạn"
-status: todo
+status: completed
 priority: P1
 effort: "1,5 ngày"
 dependencies: [2]
