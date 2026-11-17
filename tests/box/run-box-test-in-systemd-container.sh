@@ -360,44 +360,141 @@ fi
 ip netns exec may-xa ip addr del 100.64.0.8/10 dev ts-xa
 echo "PASS  C5: IP thứ hai 100.64.0.8 trong may-xa thử cổng 443 bị chặn (hết giờ)"
 
-# C6: Kết nối curl giữ lâu và phiên smbclient đang mở đứt trong 5 giây khi thu-hoi-tu-xa; kết nối mới hết giờ
-ip netns exec may-xa bash -c "
-  exec 3< <(while true; do echo 'https://${TEN_BOX}/'; sleep 0.4; done)
-  curl -sf --cacert '${CA}' --resolve '${TEN_BOX}:443:100.64.0.1' --max-time 2 --config - <&3 >/dev/null 2>&1
-" &
-pid_curl=$!
-ip netns exec may-xa bash -c "
-  while true; do echo ls; sleep 0.4; done | smbclient //100.64.0.1/chung -U 'onebee%${PW_SMB}' -m SMB3 -t 2 >/dev/null 2>&1
-" &
+# Công cụ giữ MỘT kết nối HTTPS (keep-alive) từ may-xa: in MO sau lượt yêu cầu đầu, SONG0 sau lượt thứ hai (Caddy giữ kết nối),
+# rồi chờ tệp tín hiệu và thử lượt thứ ba trên CHÍNH kết nối đó: có phản hồi trong 5 giây -> SONG, không -> DUT.
+# Tường lửa DROP (không RST) nên "đứt" nghĩa là không còn phản hồi, không phải tiến trình tự thoát.
+cat > /root/giu-ket-noi-https.py <<'PY'
+import socket, ssl, sys, os, time
+ip, cong, ten, ca, tin_hieu = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4], sys.argv[5]
+yc = f"GET / HTTP/1.1\r\nHost: {ten}\r\nConnection: keep-alive\r\n\r\n".encode()
+
+def doc_phan_hoi(s):
+    du = b""
+    while b"\r\n\r\n" not in du:
+        k = s.recv(65536)
+        if not k:
+            raise ConnectionError("đóng")
+        du += k
+    dau, than = du.split(b"\r\n\r\n", 1)
+    dong = dau.decode("latin-1").lower().split("\r\n")
+    if not dong[0].startswith("http/1.1 "):
+        raise ConnectionError(dong[0])
+    dai = next((int(x.split(":", 1)[1]) for x in dong if x.startswith("content-length:")), None)
+    if dai is not None:
+        while len(than) < dai:
+            k = s.recv(65536)
+            if not k:
+                raise ConnectionError("đóng")
+            than += k
+    elif any(x.startswith("transfer-encoding:") and "chunked" in x for x in dong):
+        while not than.endswith(b"0\r\n\r\n"):
+            k = s.recv(65536)
+            if not k:
+                raise ConnectionError("đóng")
+            than += k
+
+def in_ra(x):
+    print(x, flush=True)
+
+ctx = ssl.create_default_context(cafile=ca)
+s = ctx.wrap_socket(socket.create_connection((ip, cong), timeout=5), server_hostname=ten)
+s.sendall(yc); doc_phan_hoi(s); in_ra("MO")
+s.sendall(yc); doc_phan_hoi(s); in_ra("SONG0")
+han = time.time() + 120
+while not os.path.exists(tin_hieu):
+    if time.time() > han:
+        in_ra("HET_GIO_CHO_TIN_HIEU"); sys.exit(1)
+    time.sleep(0.1)
+s.settimeout(5)
+try:
+    s.sendall(yc); doc_phan_hoi(s); in_ra("SONG")
+except (OSError, ssl.SSLError, ConnectionError):
+    in_ra("DUT")
+PY
+
+# Chờ tệp $1 có dòng khớp $2 (grep -E), tối đa $3 giây
+cho_dong() {
+  local i
+  for i in $(seq $(( $3 * 10 ))); do
+    grep -Eq -- "$2" "$1" 2>/dev/null && return 0
+    sleep 0.1
+  done
+  return 1
+}
+
+# Mở kết nối HTTPS giữ lâu từ may-xa ở nền: $1 = tệp kết quả, $2 = tệp tín hiệu; in PID; chờ tới SONG0
+mo_https_giu() {
+  rm -f "$1" "$2"
+  ip netns exec may-xa python3 -I /root/giu-ket-noi-https.py 100.64.0.1 443 "${TEN_BOX}" "${CA}" "$2" >"$1" 2>&1 &
+  echo $!
+}
+
+# C6: Kết nối HTTPS và phiên Samba ĐANG MỞ (đã trao đổi được) không còn phản hồi trong 5 giây khi thu-hoi-tu-xa; kết nối mới hết giờ
+C6_HTTPS=/root/c6-https.out C6_TIN=/root/c6-da-thu-hoi C6_SMB_IN=/root/c6-smb.in C6_SMB_OUT=/root/c6-smb.out
+pid_https="" pid_smb=""
+don_c6() {
+  exec 7>&- 2>/dev/null || true
+  [[ -z "${pid_https}" ]] || kill "${pid_https}" 2>/dev/null || true
+  [[ -z "${pid_smb}" ]] || kill "${pid_smb}" 2>/dev/null || true
+  wait "${pid_https}" "${pid_smb}" 2>/dev/null || true
+  rm -f "${C6_HTTPS}" "${C6_TIN}" "${C6_SMB_IN}" "${C6_SMB_OUT}"
+}
+pid_https="$(mo_https_giu "${C6_HTTPS}" "${C6_TIN}")"
+rm -f "${C6_SMB_IN}" "${C6_SMB_OUT}"
+mkfifo "${C6_SMB_IN}"
+ip netns exec may-xa smbclient //100.64.0.1/chung -U "onebee%${PW_SMB}" -m SMB3 -t 3 <"${C6_SMB_IN}" >"${C6_SMB_OUT}" 2>&1 &
 pid_smb=$!
-sleep 1
-kill -0 "${pid_curl}" 2>/dev/null && kill -0 "${pid_smb}" 2>/dev/null \
-  || { echo "FAIL  C6: phiên curl hoặc smbclient chưa giữ mở được trước khi thu hồi"; exit 1; }
+exec 7>"${C6_SMB_IN}"
+echo ls >&7
+if ! cho_dong "${C6_HTTPS}" '^SONG0$' 10 || ! cho_dong "${C6_SMB_OUT}" 'blocks available' 10; then
+  echo "FAIL  C6: chưa giữ được kết nối HTTPS hoặc phiên Samba trước khi thu hồi"
+  cat "${C6_HTTPS}" "${C6_SMB_OUT}" 2>/dev/null || true
+  don_c6; exit 1
+fi
+[[ "$(grep -c 'blocks available' "${C6_SMB_OUT}")" == 1 ]] || { echo "FAIL  C6: phiên Samba trả lời lạ trước khi thu hồi"; don_c6; exit 1; }
 t0="$(date +%s)"
 onebee-box thu-hoi-tu-xa may-thu >/dev/null
-for _ in $(seq 50); do
-  if ! kill -0 "${pid_curl}" 2>/dev/null && ! kill -0 "${pid_smb}" 2>/dev/null; then break; fi
-  sleep 0.1
-done
+touch "${C6_TIN}"
+echo ls >&7
+if ! cho_dong "${C6_HTTPS}" '^(DUT|SONG)$' 8; then
+  echo "FAIL  C6: công cụ giữ kết nối không báo kết quả"; cat "${C6_HTTPS}"; don_c6; exit 1
+fi
 dt=$(( $(date +%s) - t0 ))
-if kill -0 "${pid_curl}" 2>/dev/null || kill -0 "${pid_smb}" 2>/dev/null || (( dt > 5 )); then
-  kill -9 "${pid_curl}" "${pid_smb}" 2>/dev/null || true
-  echo "FAIL  C6: kết nối đang mở không đứt trong 5 giây (${dt}s)"; exit 1
+if grep -qx SONG "${C6_HTTPS}" || (( dt > 8 )); then
+  echo "FAIL  C6: kết nối HTTPS đang mở vẫn được phục vụ sau thu-hoi-tu-xa (${dt}s)"; don_c6; exit 1
+fi
+sleep 5   # smbclient -t 3: đủ thời gian để lượt ls thứ hai có phản hồi nếu phiên còn sống
+if [[ "$(grep -c 'blocks available' "${C6_SMB_OUT}")" != 1 ]]; then
+  echo "FAIL  C6: phiên Samba đang mở vẫn được phục vụ sau thu-hoi-tu-xa"; cat "${C6_SMB_OUT}"; don_c6; exit 1
+fi
+if conntrack -L -s 100.64.0.7 2>/dev/null | grep -q ESTABLISHED; then
+  echo "FAIL  C6: conntrack còn kết nối ESTABLISHED của 100.64.0.7"; conntrack -L -s 100.64.0.7 2>/dev/null || true; don_c6; exit 1
 fi
 if ip netns exec may-xa timeout 2 bash -c "exec 3<>/dev/tcp/100.64.0.1/443" 2>/dev/null; then
-  echo "FAIL  C6: sau thu hồi vẫn mở được kết nối mới tới 443"; exit 1
+  echo "FAIL  C6: sau thu hồi vẫn mở được kết nối mới tới 443"; don_c6; exit 1
 fi
-echo "PASS  C6: Sau thu-hoi-tu-xa, kết nối curl và smbclient đang mở đứt trong ${dt}s (<= 5s); kết nối mới hết giờ"
+don_c6
+echo "PASS  C6: Sau thu-hoi-tu-xa, kết nối HTTPS và phiên Samba đang mở không còn phản hồi (HTTPS: ${dt}s); kết nối mới hết giờ"
 
-# C7: Duyệt lại, sửa HET_HAN về quá khứ, chạy tu-xa-ap-dung -> lượt bị xoá, 443 hết giờ
+# C7: Duyệt lại, mở kết nối HTTPS giữ lâu, sửa HET_HAN về quá khứ, chạy tu-xa-ap-dung -> lượt bị xoá, kết nối đang mở đứt, 443 hết giờ
 onebee-box duyet-tu-xa may-thu --ip 100.64.0.7 --ngay 1 --dong-y >/dev/null
+C7_HTTPS=/root/c7-https.out C7_TIN=/root/c7-het-han
+pid_c7="$(mo_https_giu "${C7_HTTPS}" "${C7_TIN}")"
+cho_dong "${C7_HTTPS}" '^SONG0$' 10 \
+  || { echo "FAIL  C7: chưa giữ được kết nối HTTPS trước khi hết hạn"; cat "${C7_HTTPS}"; kill "${pid_c7}" 2>/dev/null || true; exit 1; }
 sed -i 's/^HET_HAN=.*/HET_HAN=1000/' /etc/onebee-box/tu-xa/may-thu
 onebee-box tu-xa-ap-dung >/dev/null
+touch "${C7_TIN}"
+cho_dong "${C7_HTTPS}" '^(DUT|SONG)$' 8 || { echo "FAIL  C7: công cụ giữ kết nối không báo kết quả"; cat "${C7_HTTPS}"; kill "${pid_c7}" 2>/dev/null || true; exit 1; }
+kq_c7="$(grep -Ex 'DUT|SONG' "${C7_HTTPS}")"
+wait "${pid_c7}" 2>/dev/null || true
+rm -f "${C7_HTTPS}" "${C7_TIN}"
+[[ "${kq_c7}" == DUT ]] || { echo "FAIL  C7: kết nối đang mở vẫn sống sau khi lượt hết hạn"; exit 1; }
 [[ ! -f /etc/onebee-box/tu-xa/may-thu ]] || { echo "FAIL  C7: lượt hết hạn chưa bị xoá"; exit 1; }
 if ip netns exec may-xa timeout 2 bash -c "exec 3<>/dev/tcp/100.64.0.1/443" 2>/dev/null; then
   echo "FAIL  C7: lượt hết hạn đã xoá mà 443 vẫn vào được"; exit 1
 fi
-echo "PASS  C7: Lượt hết hạn bị tu-xa-ap-dung tự thu hồi, cổng 443 hết giờ"
+echo "PASS  C7: Lượt hết hạn bị tu-xa-ap-dung tự thu hồi, kết nối HTTPS đang mở đứt, cổng 443 hết giờ"
 
 # C8: Duyệt lại, khởi động lại Docker rồi khởi động lại dịch vụ tường lửa -> sau mỗi lần C3 và C4 vẫn đúng
 onebee-box duyet-tu-xa may-thu --ip 100.64.0.7 --ngay 1 --dong-y >/dev/null
