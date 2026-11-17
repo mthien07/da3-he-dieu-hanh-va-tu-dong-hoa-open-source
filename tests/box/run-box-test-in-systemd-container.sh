@@ -282,6 +282,8 @@ cp /etc/onebee-box/secrets/ca/root.sha256 /etc/onebee-box/secrets/ca-da-dong-bo/
 sed -i -E 's#^onebee_box_https: .*#onebee_box_https: true#' "${GV}"
 /root/onebee-test/box/onebee-box-install.sh > /root/cai-cong-tac-https.log 2>&1 || { tail -40 /root/cai-cong-tac-https.log; exit 1; }
 
+# Khối này chạy với pipefail: KHÔNG dùng "lệnh | grep -q" — grep -q thoát ngay khi khớp, lệnh trước ghi tiếp vào ống đã đóng,
+# nhận SIGPIPE/EPIPE (curl thoát 23) và cả ống bị coi là trượt tùy thời điểm. Dùng "grep … >/dev/null" (đọc hết đầu vào).
 # Cặp veth giả lập tailscale0 (100.64.0.1 phía Box) <-> ts-xa (100.64.0.7 trong không gian mạng may-xa)
 ip netns del may-xa 2>/dev/null || true
 ip link del tailscale0 2>/dev/null || true
@@ -318,13 +320,13 @@ systemctl restart onebee-tuong-lua
 
 kiem_c3_c4() {
   ip netns exec may-xa curl -sf -m 5 --cacert "${CA}" \
-    --resolve "${TEN_BOX}:443:100.64.0.1" "https://${TEN_BOX}/" | grep -q "OneBee Box" \
+    --resolve "${TEN_BOX}:443:100.64.0.1" "https://${TEN_BOX}/" | grep "OneBee Box" >/dev/null \
     || { echo "FAIL  $1: curl 443 qua tên Box lỗi"; exit 1; }
   local c8000
   c8000="$(ip netns exec may-xa curl -s -o /dev/null -m 5 -w '%{http_code}' --cacert "${CA}" \
     --resolve "${TEN_BOX}:8000:100.64.0.1" "https://${TEN_BOX}:8000/")"
   [[ "${c8000}" == "401" ]] || { echo "FAIL  $1: cổng 8000 không trả 401 (mã ${c8000})"; exit 1; }
-  ip netns exec may-xa smbclient -L //100.64.0.1 -U "onebee%${PW_SMB}" -m SMB3 2>/dev/null | grep -q "chung" \
+  ip netns exec may-xa smbclient -L //100.64.0.1 -U "onebee%${PW_SMB}" -m SMB3 2>/dev/null | grep "chung" >/dev/null \
     || { echo "FAIL  $1: smbclient tới 445 không thấy share chung"; exit 1; }
   for p in 22 3001 80 139; do
     if ip netns exec may-xa timeout 2 bash -c "exec 3<>/dev/tcp/100.64.0.1/${p}" 2>/dev/null; then
@@ -343,7 +345,7 @@ echo "PASS  C1: Chưa duyệt — từ may-xa thử cổng 443, 445, 8000, 22, 3
 
 # C2: Duyệt máy may-thu
 onebee-box duyet-tu-xa may-thu --ip 100.64.0.7 --ngay 1 --dong-y >/dev/null
-onebee-box tu-xa | grep -q "may-thu.*100.64.0.7" || { echo "FAIL  C2: tu-xa không liệt kê may-thu"; exit 1; }
+onebee-box tu-xa | grep "may-thu.*100.64.0.7" >/dev/null || { echo "FAIL  C2: tu-xa không liệt kê may-thu"; exit 1; }
 echo "PASS  C2: duyet-tu-xa may-thu --ip 100.64.0.7 --ngay 1 --dong-y thoát 0, tu-xa liệt kê máy"
 
 # C3 & C4: Ba cổng 443, 445, 8000 tới được; cổng 22, 3001, 80, 139 hết giờ
@@ -467,7 +469,7 @@ sleep 5   # smbclient -t 3: đủ thời gian để lượt ls thứ hai có ph�
 if [[ "$(grep -c 'blocks available' "${C6_SMB_OUT}")" != 1 ]]; then
   echo "FAIL  C6: phiên Samba đang mở vẫn được phục vụ sau thu-hoi-tu-xa"; cat "${C6_SMB_OUT}"; don_c6; exit 1
 fi
-if conntrack -L -s 100.64.0.7 2>/dev/null | grep -q ESTABLISHED; then
+if conntrack -L -s 100.64.0.7 2>/dev/null | grep ESTABLISHED >/dev/null; then
   echo "FAIL  C6: conntrack còn kết nối ESTABLISHED của 100.64.0.7"; conntrack -L -s 100.64.0.7 2>/dev/null || true; don_c6; exit 1
 fi
 if ip netns exec may-xa timeout 2 bash -c "exec 3<>/dev/tcp/100.64.0.1/443" 2>/dev/null; then
