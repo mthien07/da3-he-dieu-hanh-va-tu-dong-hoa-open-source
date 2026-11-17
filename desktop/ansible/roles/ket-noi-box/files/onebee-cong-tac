@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# onebee-cong-tac — bật / tắt / xem kết nối VPN Tailscale cho máy trạm đi công tác (ADR 0008).
+# Cách dùng:
+#   sudo onebee-cong-tac bat [--khoa <tskey-auth-…>] [--box-tu-xa <IPv4>]
+#   sudo onebee-cong-tac tat
+#   onebee-cong-tac xem
+set -euo pipefail
+
+CONF="${ONEBEE_CONF:-/etc/onebee/may-tram.env}"
+OS_RELEASE="${ONEBEE_TEST_OS_RELEASE:-/etc/os-release}"
+
+die() { printf 'LỖI: %s\n' "$*" >&2; exit 1; }
+
+can_root() {
+  if [[ "${ONEBEE_TEST_ROOT:-}" == "0" ]]; then
+    die "Hãy chạy bằng quyền quản trị: sudo onebee-cong-tac $*"
+  fi
+  if [[ "${ONEBEE_TEST_ROOT:-}" != "1" && ${EUID} -ne 0 ]]; then
+    die "Hãy chạy bằng quyền quản trị: sudo onebee-cong-tac $*"
+  fi
+}
+
+doc_khoa() {
+  [[ -r "$1" ]] || return 0
+  sed -n "s/^$2=//p" "$1" | head -n 1 | tr -d '\r"'
+}
+
+kiem_ip_tailscale() {
+  local ip="$1" o
+  [[ "${ip}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || die "Địa chỉ ${ip} không phải IPv4 hợp lệ"
+  IFS=. read -r -a o <<<"${ip}"
+  (( o[0] == 100 && o[1] >= 64 && o[1] <= 127 && o[2] <= 255 && o[3] <= 255 )) \
+    || die "Địa chỉ ${ip} nằm ngoài dải Tailscale 100.64.0.0/10"
+}
+
+cai_tailscale_neu_chua_co() {
+  command -v tailscale >/dev/null && return 0
+  [[ -r "${OS_RELEASE}" ]] || die "Không đọc được ${OS_RELEASE}"
+  # shellcheck disable=SC1090
+  . "${OS_RELEASE}"
+  local codename="${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}"
+  if ! [[ ( "${ID:-}" == ubuntu || " ${ID_LIKE:-} " == *" ubuntu "* ) && "${codename}" == noble ]]; then
+    die "Chỉ hỗ trợ Ubuntu 24.04 / Linux Mint 22 (nền noble). Máy này: ${PRETTY_NAME:-không rõ}"
+  fi
+  [[ "$(dpkg --print-architecture)" == amd64 ]] || die "Chỉ hỗ trợ máy 64-bit (amd64)"
+  export DEBIAN_FRONTEND=noninteractive
+  local apt_opts=(-q -o DPkg::Lock::Timeout=600)
+  echo "Đang cài Tailscale từ kho chính thức..."
+  apt-get "${apt_opts[@]}" install -y --no-install-recommends curl ca-certificates >/dev/null
+  install -d -m 0755 /usr/share/keyrings
+  curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg" -o /usr/share/keyrings/tailscale-archive-keyring.gpg
+  curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/noble.tailscale-keyring.list" -o /etc/apt/sources.list.d/tailscale.list
+  apt-get "${apt_opts[@]}" update >/dev/null
+  apt-get "${apt_opts[@]}" install -y tailscale >/dev/null
+}
+
+ghi_box_tu_xa() {
+  local ip="$1" tmp
+  tmp="$(mktemp)"
+  if [[ -f "${CONF}" ]]; then
+    grep -v '^BOX_IP_TU_XA=' "${CONF}" >"${tmp}" || true
+  fi
+  printf 'BOX_IP_TU_XA=%s\n' "${ip}" >>"${tmp}"
+  chmod 0600 "${tmp}" 2>/dev/null || true
+  mv -f "${tmp}" "${CONF}"
+  chmod 0600 "${CONF}" 2>/dev/null || true
+}
+
+goi_chon_duong() {
+  if command -v onebee-chon-duong-box >/dev/null; then
+    onebee-chon-duong-box "$@"
+  elif [[ -x /usr/local/bin/onebee-chon-duong-box ]]; then
+    /usr/local/bin/onebee-chon-duong-box "$@"
+  else
+    /usr/local/lib/onebee/onebee-chon-duong-box "$@"
+  fi
+}
+
+cmd_bat() {
+  can_root bat "$@"
+  local khoa="" box_tu_xa="" a may_tram ip_ts
+  while [[ $# -gt 0 ]]; do
+    a="$1"; shift
+    case "${a}" in
+      --khoa) [[ $# -gt 0 ]] || die "Thiếu giá trị cho --khoa"; khoa="$1"; shift ;;
+      --box-tu-xa) [[ $# -gt 0 ]] || die "Thiếu giá trị cho --box-tu-xa"; box_tu_xa="$1"; shift ;;
+      *) die "Cách dùng: sudo onebee-cong-tac bat [--khoa <tskey-auth-…>] [--box-tu-xa <IPv4>]" ;;
+    esac
+  done
+  [[ -z "${box_tu_xa}" ]] || kiem_ip_tailscale "${box_tu_xa}"
+  may_tram="$(doc_khoa "${CONF}" MAY_TRAM)"
+  [[ "${may_tram}" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]] \
+    || die "Chưa có tên máy hợp lệ (MAY_TRAM) trong ${CONF} — cấp máy trên Box trước: sudo onebee-box them-may <tên-máy>"
+
+  cai_tailscale_neu_chua_co
+  systemctl enable --now tailscaled >/dev/null 2>&1 || true
+
+  local ts_args=(up --reset "--hostname=${may_tram}" --accept-dns=false --accept-routes=false --shields-up --ssh=false)
+  if [[ -n "${khoa}" ]]; then
+    ts_args+=("--authkey=${khoa}")
+  else
+    echo "Nếu máy chưa đăng nhập Tailscale, mở đường link hiện ra bên dưới bằng tài khoản quản trị tailnet của đơn vị:"
+  fi
+  tailscale "${ts_args[@]}"
+
+  if [[ -n "${box_tu_xa}" ]]; then
+    ghi_box_tu_xa "${box_tu_xa}"
+  fi
+  goi_chon_duong >/dev/null || true
+  ip_ts="$(tailscale ip -4 2>/dev/null | head -n 1 || true)"
+  echo "Máy ${may_tram} — IP Tailscale: ${ip_ts:-chưa có}"
+  echo "Đường tới Box: $(goi_chon_duong --xem)"
+}
+
+cmd_tat() {
+  can_root tat "$@"
+  if command -v tailscale >/dev/null; then
+    tailscale logout || true
+  fi
+  goi_chon_duong >/dev/null || true
+  echo "Đã đăng xuất Tailscale. Đường tới Box: $(goi_chon_duong --xem)"
+}
+
+cmd_xem() {
+  echo "Đường tới Box: $(goi_chon_duong --xem)"
+  if ! command -v tailscale >/dev/null; then
+    echo "Tailscale: chưa cài"
+  elif ! tailscale status 2>/dev/null; then
+    echo "Tailscale: chưa nối"
+  fi
+}
+
+case "${1:-}" in
+  bat) shift; cmd_bat "$@" ;;
+  tat) shift; cmd_tat "$@" ;;
+  xem) shift; cmd_xem "$@" ;;
+  *) die "Cách dùng: onebee-cong-tac <bat|tat|xem> [tùy chọn]" ;;
+esac
