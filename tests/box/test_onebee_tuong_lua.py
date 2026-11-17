@@ -33,6 +33,20 @@ case "$1" in
   -I) c="$2"; n="$3"; shift 3; [ -f "$d/$c" ] || : > "$d/$c"; { echo "-A $c $*"; cat "$d/$c"; } > "$d/$c.tmp"; mv "$d/$c.tmp" "$d/$c" ;;
   -D) c="$2"; shift 2; grep -vxF -- "-A $c $*" "$d/$c" > "$d/$c.tmp" || true; mv "$d/$c.tmp" "$d/$c" ;;
 esac
+# ONEBEE_FW_KIEM_HO=1: sau MỖI lệnh, mỗi điểm lọc (INPUT tcp/udp, DOCKER-USER, mangle PREROUTING) phải còn ít nhất một bước nhảy
+# tới chuỗi ONEBEE-* đã dựng xong (dòng cuối là DROP/REJECT). Không còn = khoảng hở: kết nối mới lọt qua không bị lọc.
+if [ -n "${ONEBEE_FW_KIEM_HO:-}" ]; then
+  g="$ONEBEE_FW/$(basename "$0")"; lenh="$(basename "$0") $*"
+  kiem() {   # $1 = thư mục bảng, $2 = chuỗi gốc, $3 = mẫu lọc dòng (grep -E)
+    local dong c
+    while read -r dong; do
+      c="${dong##* -j }"
+      [ -f "$1/$c" ] && tail -n1 "$1/$c" | grep -Eq -- '-j (DROP|REJECT)' && return 0
+    done < <(grep -E -- "$3" "$1/$2" 2>/dev/null | grep -E -- '-j ONEBEE-[A-Z-]+$')
+    echo "HO $(basename "$1")/$2 [$3] sau: ${lenh}" >> "$ONEBEE_FW/ho.log"
+  }
+  kiem "$g" INPUT '-p tcp'; kiem "$g" INPUT '-p udp'; kiem "$g" DOCKER-USER '.'; kiem "$g/mangle" PREROUTING '.'
+fi
 '''
 IP_GIA = r'''#!/bin/bash
 case "$*" in
@@ -109,6 +123,28 @@ class TuongLua(unittest.TestCase):
         self.assertNotIn("-A ONEBEE-LAN-BOX -i enp3s0 -s 192.168.1.0/24 -j RETURN", truoc["ONEBEE-LAN-BOX"])
         self.chay(conf='LAN_CHO_PHEP="10.0.0.0/24,10.0.1.0/24"\n')
         self.assertEqual(truoc, {t: self.chuoi(t) for t in truoc})
+
+    def test_dung_lai_khong_co_khoang_ho(self):
+        """bat dựng lại khi đang chạy (mỗi lần duyệt/thu hồi máy công tác): không lúc nào INPUT, DOCKER-USER hay mangle PREROUTING
+        mất bước nhảy tới chuỗi lọc hoàn chỉnh — trước đây bat gỡ hết (tat) rồi mới dựng, kết nối mới lọt qua trong khoảng đó."""
+        conf = 'TAILSCALE_CHO_PHEP="100.64.1.2,fd7a:115c:a1e0::1"\n'
+        self.tep_tu_xa('TU_XA_CHO_PHEP="100.64.0.7"\n')
+        self.chay(conf=conf)
+        truoc = {(ipt, b, c): self.chuoi(c, ipt, b) for ipt in ("iptables", "ip6tables")
+                 for b, c in (("", "INPUT"), ("", "DOCKER-USER"), ("", "ONEBEE-LAN-BOX"), ("", "ONEBEE-LAN-DOCKER"),
+                              ("mangle", "PREROUTING"), ("mangle", "ONEBEE-TAILSCALE"))}
+        self.env["ONEBEE_FW_KIEM_HO"] = "1"
+        self.tep_tu_xa('TU_XA_CHO_PHEP=""\n')                    # thu hồi máy công tác
+        self.chay(conf=conf)
+        self.tep_tu_xa('TU_XA_CHO_PHEP="100.64.0.7"\n')          # duyệt lại
+        self.chay(conf=conf)
+        ho = f"{self.t}/fw/ho.log"
+        self.assertFalse(os.path.exists(ho), open(ho).read() if os.path.exists(ho) else "")
+        # kết quả cuối giống hệt lần dựng đầu, không sót chuỗi tạm
+        self.assertEqual(truoc, {k: self.chuoi(k[2], k[0], k[1]) for k in truoc})
+        for ipt in ("iptables", "ip6tables"):
+            self.assertFalse([f for f in os.listdir(f"{self.t}/fw/{ipt}") if f.endswith("-MOI")])
+            self.assertFalse([f for f in os.listdir(f"{self.t}/fw/{ipt}/mangle") if f.endswith("-MOI")])
 
     def test_tat_go_sach(self):
         self.chay(conf='TAILSCALE_CHO_PHEP="100.64.1.2"\n')

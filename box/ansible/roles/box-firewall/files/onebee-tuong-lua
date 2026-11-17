@@ -11,7 +11,7 @@
 # (util/linuxfw, bản 1.104) → lọc ở filter thì thứ tự khởi động quyết định. Nên kết nối MỚI từ tailscale0 bị lọc ở mangle/PREROUTING
 # (chạy trước mọi chuỗi filter; tailscaled chỉ thêm ở đó quy tắc CONNMARK không chặn/không nhận gói) — đúng bất kể ai khởi động trước.
 # IPv6: SSH/Samba ngoài mạng nội bộ bị REJECT (không DROP) để Windows lùi về IPv4 ngay, không treo chờ hết giờ.
-# Cách dùng: onebee-tuong-lua [bat|tat|xem]   (bat: dựng lại từ đầu, chạy nhiều lần không sao)
+# Cách dùng: onebee-tuong-lua [bat|tat|xem]   (bat: dựng lại toàn bộ, chạy nhiều lần không sao, không có lúc nào hở — xem doi_bo)
 set -euo pipefail
 
 CONF="${ONEBEE_TUONG_LUA_CONF:-/etc/onebee-box/tuong-lua.conf}"
@@ -34,35 +34,51 @@ C_TS=ONEBEE-TAILSCALE   # bảng mangle
 
 cong_mang() { ip -4 route show default | awk '{print $5; exit}'; }
 
-# Gỡ hết quy tắc OneBee (an toàn khi chưa có)
-tat() {
-  local ipt
-  for ipt in iptables ip6tables; do
-    command -v "${ipt}" >/dev/null || continue
-    "${ipt}" -S 2>/dev/null >/dev/null || continue   # máy tắt IPv6
-    while "${ipt}" -S DOCKER-USER 2>/dev/null | grep -q -- "-j ${C_DOCKER}"; do
-      "${ipt}" -S DOCKER-USER | grep -- "-j ${C_DOCKER}" | head -1 | sed 's/^-A/-D/' | xargs "${ipt}"
-    done
-    while "${ipt}" -S INPUT | grep -q -- "-j ${C_BOX}"; do
-      "${ipt}" -S INPUT | grep -- "-j ${C_BOX}" | head -1 | sed 's/^-A/-D/' | xargs "${ipt}"
-    done
-    while "${ipt}" -t mangle -S PREROUTING 2>/dev/null | grep -q -- "-j ${C_TS}"; do
-      "${ipt}" -t mangle -S PREROUTING | grep -- "-j ${C_TS}" | head -1 | sed 's/^-A/-t mangle -D/' | xargs "${ipt}"
-    done
-    for c in "${C_DOCKER}" "${C_BOX}"; do
-      "${ipt}" -F "${c}" 2>/dev/null || true
-      "${ipt}" -X "${c}" 2>/dev/null || true
-    done
-    "${ipt}" -t mangle -F "${C_TS}" 2>/dev/null || true
-    "${ipt}" -t mangle -X "${C_TS}" 2>/dev/null || true
+HAU_TAM="-MOI"          # hậu tố chuỗi tạm khi dựng lại (dựng mới xong mới gỡ cũ, không có khoảng hở)
+
+# Gỡ mọi bước nhảy tới đúng chuỗi $4 khỏi chuỗi gốc $3 của bảng $2 ($1 = iptables|ip6tables)
+go_buoc_nhay() {
+  local ipt="$1" bang="$2" goc="$3" c="$4" dong
+  while dong="$("${ipt}" -t "${bang}" -S "${goc}" 2>/dev/null | grep -E -- "-j ${c}\$" | head -1)" && [[ -n "${dong}" ]]; do
+    printf '%s\n' "${dong/#-A/-D}" | xargs "${ipt}" -t "${bang}"
   done
 }
 
-# $1 = iptables|ip6tables, $2 = cổng mạng chính, $3 = mạng LAN cho phép (cách nhau dấu phẩy), $4 = địa chỉ cho phép qua Tailscale (cùng họ địa chỉ),
-# $5 = IP máy công tác (IPv4, chỉ dùng khi $1 = iptables)
-dung() {
-  local ipt="$1" ifc="$2" mang="$3" ts="$4" tu="${5:-}" c net ip cong
-  for c in "${C_DOCKER}" "${C_BOX}"; do
+go_chuoi() {   # $1 = iptables|ip6tables, $2 = bảng, $3 = chuỗi
+  "$1" -t "$2" -F "$3" 2>/dev/null || true
+  "$1" -t "$2" -X "$3" 2>/dev/null || true
+}
+
+# Gỡ bộ chuỗi filter / mangle mang hậu tố $2 ("" = bộ chính, HAU_TAM = bộ tạm)
+go_filter() {
+  go_buoc_nhay "$1" filter DOCKER-USER "${C_DOCKER}$2"
+  go_buoc_nhay "$1" filter INPUT "${C_BOX}$2"
+  go_chuoi "$1" filter "${C_DOCKER}$2"
+  go_chuoi "$1" filter "${C_BOX}$2"
+}
+go_mangle() {
+  go_buoc_nhay "$1" mangle PREROUTING "${C_TS}$2"
+  go_chuoi "$1" mangle "${C_TS}$2"
+}
+
+# Họ địa chỉ có dùng được không (máy tắt IPv6 thì ip6tables -S lỗi)
+co_ho() { command -v "$1" >/dev/null && "$1" -S >/dev/null 2>&1; }
+
+# Gỡ hết quy tắc OneBee, cả bộ tạm còn sót (an toàn khi chưa có)
+tat() {
+  local ipt h
+  for ipt in iptables ip6tables; do
+    co_ho "${ipt}" || continue
+    for h in "" "${HAU_TAM}"; do go_filter "${ipt}" "${h}"; go_mangle "${ipt}" "${h}"; done
+  done
+}
+
+# Dựng bộ chuỗi filter hậu tố $2 và chèn bước nhảy tới nó lên ĐẦU DOCKER-USER/INPUT.
+# $1 = iptables|ip6tables, $3 = cổng mạng chính, $4 = mạng LAN cho phép (cách nhau dấu phẩy),
+# $5 = địa chỉ cho phép qua Tailscale (cùng họ địa chỉ), $6 = IP máy công tác (IPv4, chỉ dùng khi $1 = iptables)
+dung_filter() {
+  local ipt="$1" h="$2" ifc="$3" mang="$4" ts="$5" tu="${6:-}" c net ip cong
+  for c in "${C_DOCKER}${h}" "${C_BOX}${h}"; do
     "${ipt}" -N "${c}"
     # Giao diện nội bộ: loopback và mạng Docker (container gọi ra ngoài/gọi nhau) không bị lọc
     "${ipt}" -A "${c}" -i lo -j RETURN
@@ -73,7 +89,7 @@ dung() {
     # Máy công tác (chỉ IPv4): đúng cổng khai báo, đặt SAU dòng máy kỹ thuật để IP nằm trong cả hai danh sách thì quyền máy kỹ thuật thắng
     if [[ "${ipt}" == iptables && -n "${tu}" ]]; then
       for ip in ${tu//,/ }; do
-        if [[ "${c}" == "${C_DOCKER}" ]]; then
+        if [[ "${c}" == "${C_DOCKER}${h}" ]]; then
           # Sau DNAT cổng đích đã đổi: khớp theo cổng gốc (giả định U2 — trượt thì thay vòng lặp này bằng một dòng "-p tcp -j RETURN")
           for cong in ${CONG_TU_XA//,/ }; do
             "${ipt}" -A "${c}" -i tailscale0 -s "${ip}" -p tcp -m conntrack --ctorigdstport "${cong}" -j RETURN
@@ -83,7 +99,7 @@ dung() {
         fi
       done
     fi
-    if [[ "${ipt}" == ip6tables && "${c}" == "${C_BOX}" ]]; then
+    if [[ "${ipt}" == ip6tables && "${c}" == "${C_BOX}${h}" ]]; then
       "${ipt}" -A "${c}" -p tcp -j REJECT --reject-with tcp-reset
       "${ipt}" -A "${c}" -j REJECT --reject-with icmp6-port-unreachable
     else
@@ -92,21 +108,37 @@ dung() {
   done
   # Docker tạo DOCKER-USER khi khởi động; tạo trước cũng được (Docker dùng lại)
   "${ipt}" -N DOCKER-USER 2>/dev/null || true
-  "${ipt}" -I DOCKER-USER 1 -m conntrack --ctstate NEW -j "${C_DOCKER}"
-  "${ipt}" -I INPUT 1 -p tcp -m multiport --dports "${CONG_TREN_BOX}" -m conntrack --ctstate NEW -j "${C_BOX}"
-  "${ipt}" -I INPUT 1 -p udp -m multiport --dports "${CONG_UDP_TREN_BOX}" -m conntrack --ctstate NEW -j "${C_BOX}"
-  # Dựng SAU các bước nhảy trên: mangle lỗi (set -e dừng ở đây) thì LAN vẫn được lọc, không mở toang.
-  # Kết nối mới qua tailscale0: chỉ địa chỉ khai báo (máy kỹ thuật), mọi cổng — chặn trước cả ts-input/ts-forward của tailscaled
-  "${ipt}" -t mangle -N "${C_TS}"
-  for net in ${ts//,/ }; do "${ipt}" -t mangle -A "${C_TS}" -s "${net}" -j RETURN; done
+  "${ipt}" -I DOCKER-USER 1 -m conntrack --ctstate NEW -j "${C_DOCKER}${h}"
+  "${ipt}" -I INPUT 1 -p tcp -m multiport --dports "${CONG_TREN_BOX}" -m conntrack --ctstate NEW -j "${C_BOX}${h}"
+  "${ipt}" -I INPUT 1 -p udp -m multiport --dports "${CONG_UDP_TREN_BOX}" -m conntrack --ctstate NEW -j "${C_BOX}${h}"
+}
+
+# Dựng chuỗi mangle hậu tố $2 và chèn bước nhảy lên đầu PREROUTING. $3 = địa chỉ Tailscale máy kỹ thuật, $4 = IP máy công tác.
+# Kết nối mới qua tailscale0: chỉ địa chỉ khai báo (máy kỹ thuật), mọi cổng — chặn trước cả ts-input/ts-forward của tailscaled
+dung_mangle() {
+  local ipt="$1" h="$2" ts="$3" tu="${4:-}" net ip
+  "${ipt}" -t mangle -N "${C_TS}${h}"
+  for net in ${ts//,/ }; do "${ipt}" -t mangle -A "${C_TS}${h}" -s "${net}" -j RETURN; done
   # Máy công tác: lớp quyết định, cổng còn là cổng trước DNAT (đặt sau dòng máy kỹ thuật, trước DROP cuối)
   if [[ "${ipt}" == iptables && -n "${tu}" ]]; then
     for ip in ${tu//,/ }; do
-      "${ipt}" -t mangle -A "${C_TS}" -s "${ip}" -p tcp -m multiport --dports "${CONG_TU_XA}" -j RETURN
+      "${ipt}" -t mangle -A "${C_TS}${h}" -s "${ip}" -p tcp -m multiport --dports "${CONG_TU_XA}" -j RETURN
     done
   fi
-  "${ipt}" -t mangle -A "${C_TS}" -j DROP
-  "${ipt}" -t mangle -I PREROUTING 1 -i tailscale0 -m conntrack --ctstate NEW -j "${C_TS}"
+  "${ipt}" -t mangle -A "${C_TS}${h}" -j DROP
+  "${ipt}" -t mangle -I PREROUTING 1 -i tailscale0 -m conntrack --ctstate NEW -j "${C_TS}${h}"
+}
+
+# Thay bộ chuỗi đang chạy bằng bộ mới mà không lúc nào thiếu lọc ($1 = filter|mangle, $2 = iptables|ip6tables, còn lại = tham số dựng):
+# dựng bộ tạm và chèn bước nhảy lên đầu, gỡ bộ cũ, dựng lại bộ chính tên cũ, gỡ bộ tạm. Lúc hai bộ cùng có bước nhảy, gói phải
+# được CẢ HAI cho qua (bộ nào DROP là chặn) nên trong lúc đổi chỉ có thể chặt hơn, không bao giờ hở.
+doi_bo() {
+  local loai="$1" ipt="$2"; shift 2
+  "go_${loai}" "${ipt}" "${HAU_TAM}"          # bộ tạm sót lại từ lần chạy dở trước
+  "dung_${loai}" "${ipt}" "${HAU_TAM}" "$@"
+  "go_${loai}" "${ipt}" ""
+  "dung_${loai}" "${ipt}" "" "$@"
+  "go_${loai}" "${ipt}" "${HAU_TAM}"
 }
 
 # Tách danh sách địa chỉ theo họ: $1 = 4|6, $2 = danh sách (cách nhau dấu phẩy) → in lại, cách nhau dấu phẩy (v6 = có dấu ':')
@@ -142,13 +174,13 @@ bat() {
   fi
   [[ -n "${mang}" ]] || { echo "Không xác định được mạng LAN của ${ifc}" >&2; exit 1; }
   tu_xa="$(loc_ip_tu_xa)"
-  tat
-  dung iptables "${ifc}" "${mang}" "$(loc_ho 4 "${TAILSCALE_CHO_PHEP}")" "${tu_xa}"
   # IPv6: các cổng Docker chỉ mở IPv4 (docker-compose.yml) → chỉ cần giữ SSH/Samba trong mạng nội bộ (ngoài mạng nội bộ: REJECT)
-  if command -v ip6tables >/dev/null && ip6tables -S >/dev/null 2>&1; then
-    mang6="fe80::/10,fc00::/7"
-    dung ip6tables "${ifc}" "${mang6}" "$(loc_ho 6 "${TAILSCALE_CHO_PHEP}")"
-  fi
+  co_ho ip6tables && mang6="fe80::/10,fc00::/7"
+  # filter (cả hai họ) dựng TRƯỚC mangle: mangle lỗi (set -e dừng ở đây) thì LAN vẫn được lọc, không mở toang
+  doi_bo filter iptables "${ifc}" "${mang}" "$(loc_ho 4 "${TAILSCALE_CHO_PHEP}")" "${tu_xa}"
+  [[ -z "${mang6:-}" ]] || doi_bo filter ip6tables "${ifc}" "${mang6}" "$(loc_ho 6 "${TAILSCALE_CHO_PHEP}")"
+  doi_bo mangle iptables "$(loc_ho 4 "${TAILSCALE_CHO_PHEP}")" "${tu_xa}"
+  [[ -z "${mang6:-}" ]] || doi_bo mangle ip6tables "$(loc_ho 6 "${TAILSCALE_CHO_PHEP}")"
   echo "Tường lửa OneBee: mọi cổng mạng trừ lo/docker/br; ${ifc}: chỉ ${mang} (IPv6: ${mang6:-tắt}); tailscale0: ${TAILSCALE_CHO_PHEP:-chặn hết}; máy công tác: ${tu_xa:-không có}"
 }
 
