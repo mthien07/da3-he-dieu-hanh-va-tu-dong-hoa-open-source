@@ -1,5 +1,9 @@
 # Nhật ký thay đổi
 
+## [1.3.1] — 17/11/2026 — Sửa cảnh báo giả của Node-RED
+- Sửa: `onebee-box chan-doan` không còn báo `onebee-quy-trinh` "không khỏe (unhealthy)" khi dịch vụ vẫn chạy bình thường. Dịch vụ dùng kiểm tra mặc định của image (đọc `/data/settings.js`) trong khi cấu hình nằm ở `/cau-hinh`; nay có `healthcheck` riêng gọi đúng cổng 1880 của trình soạn luồng. Đã thử trên Box thật.
+- Tài liệu: hướng dẫn cài A đến Z gộp toàn bộ ảnh chụp thật (máy trạm sạch, Box trước và sau nâng cấp) vào một tệp.
+
 ## [1.3.0] — 17/11/2026 — Lõi DX-OS open-core
 Thay đổi của lõi DX-OS dự thi OLP 2026. Đã kiểm bằng CI `box=true` trên Docker lồng và một lượt trên máy ảo VMware; **chưa thử trên Box thật**.
 - Động cơ quy trình Node-RED 5.0.9 thay n8n: luồng duyệt đơn, email báo cáo, nhắc hạn; trình soạn luồng có mật khẩu riêng ở lớp hai.
