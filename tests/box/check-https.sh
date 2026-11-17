@@ -48,7 +48,7 @@ box "[ -e /etc/onebee-box/secrets/https-da-bat ] || { echo 'FAIL  Chưa có dấ
   echo 'PASS  Chỉ Caddy công bố cổng (80, 443, 3001, 8000); các dịch vụ backend không còn cổng nào'
   for port in 443 3001 8000; do
     openssl s_client -connect ${IP}:\${port} -noservername -verify_ip ${IP} -verify_return_error -CAfile ${CA} </dev/null 2>&1 \
-      | grep -q 'Verification: OK' || { echo \"FAIL  TLS cổng \$port không đạt (nối bằng IP, không SNI)\"; exit 1; }
+      | grep 'Verification: OK' >/dev/null || { echo \"FAIL  TLS cổng \$port không đạt (nối bằng IP, không SNI)\"; exit 1; }
   done
   echo 'PASS  TLS đúng ở mọi cổng khi nối bằng IP (không SNI), chuỗi tới CA riêng của Box'
   curl -sf http://${IP}/onebee-ca.crt | cmp - ${CA}
@@ -133,10 +133,17 @@ box "grep -Eq 'changed=0 .*failed=0' /root/cai-lan-2-https.log || { grep -B2 'ch
 echo "===== HTTPS: TẮT (HOÀN TÁC) ====="
 box "sed -i -E 's#^onebee_box_https: .*#onebee_box_https: false#' ${GV}"
 cai tat-https
+# Chạy với pipefail: không "curl | grep -q" (grep thoát sớm, curl nhận SIGPIPE, ống trượt tùy thời điểm).
+# Node-RED vừa được tạo lại khi đổi chế độ: chờ tới 60 giây (start_period của healthcheck) thay vì kiểm một lần.
 box "[ ! -e /etc/onebee-box/secrets/https-da-bat ] || { echo 'FAIL  Còn dấu HTTPS'; exit 1; }
+  for _ in \$(seq 30); do
+    docker exec onebee-quy-trinh node -e \"fetch('http://127.0.0.1:1880/webhook/suc-khoe').then(r => process.exit(r.status === 200 ? 0 : 1), () => process.exit(1))\" && break
+    sleep 2
+  done || true
   docker exec onebee-quy-trinh node -e \"fetch('http://127.0.0.1:1880/webhook/suc-khoe').then(r => process.exit(r.status === 200 ? 0 : 1), () => process.exit(1))\" \
-    && curl -sf -m 10 http://127.0.0.1/ | grep -q 'OneBee Box' \
-    || { echo 'FAIL  Dịch vụ không chạy lại ở HTTP'; exit 1; }
+    || { echo 'FAIL  Động cơ quy trình không trả lời ở HTTP sau 60 giây'; exit 1; }
+  curl -sf -m 10 http://127.0.0.1/ | grep 'OneBee Box' >/dev/null \
+    || { echo 'FAIL  Trang chủ không chạy lại ở HTTP'; exit 1; }
   echo 'PASS  Tắt HTTPS: dịch vụ chạy lại ở HTTP, dấu HTTPS bị xóa'"
 tram "grep -q '^BOX_HTTPS=0' /etc/onebee/may-tram.env && [ ! -e /var/lib/onebee/https-bat ] && grep -q '^RESTIC_REPOSITORY=rest:http://' /etc/onebee/may-tram.env \
     || { echo 'FAIL  Máy trạm không lùi về HTTP'; exit 1; }

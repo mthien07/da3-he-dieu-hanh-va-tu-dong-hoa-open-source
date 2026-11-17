@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Quản lý bởi OneBee OS
+[Unit]
+Description=OneBee Box — áp dụng lượt duyệt máy công tác (thu hồi hết hạn, tường lửa, Samba)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/onebee-box tu-xa-ap-dung
+Nice=10

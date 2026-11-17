@@ -4,9 +4,9 @@
 # Tường lửa: chỉ máy trong mạng LAN cho phép mới vào được dịch vụ của Box.
 # Docker đi vòng ufw nên chặn thẳng bằng iptables (DOCKER-USER + INPUT) — xem files/onebee-tuong-lua.
 
-- name: Cài iptables
+- name: Cài iptables và conntrack (thu hồi cắt kết nối đang mở của máy công tác)
   ansible.builtin.apt:
-    name: [iptables]
+    name: [iptables, conntrack]
     state: present
 
 - name: Ghi danh sách mạng được vào Box

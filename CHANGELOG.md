@@ -1,20 +1,6 @@
 # Nhật ký thay đổi
 
-## [1.3.1] — 17/11/2026 — Sửa cảnh báo giả của Node-RED
-- Sửa: `onebee-box chan-doan` không còn báo `onebee-quy-trinh` "không khỏe (unhealthy)" khi dịch vụ vẫn chạy bình thường. Dịch vụ dùng kiểm tra mặc định của image (đọc `/data/settings.js`) trong khi cấu hình nằm ở `/cau-hinh`; nay có `healthcheck` riêng gọi đúng cổng 1880 của trình soạn luồng. Đã thử trên Box thật.
-- Tài liệu: hướng dẫn cài A đến Z gộp toàn bộ ảnh chụp thật (máy trạm sạch, Box trước và sau nâng cấp) vào một tệp.
-
-## [1.3.0] — 17/11/2026 — Lõi DX-OS open-core
-Thay đổi của lõi DX-OS dự thi OLP 2026. Đã kiểm bằng CI `box=true` trên Docker lồng và một lượt trên máy ảo VMware; **chưa thử trên Box thật**.
-- Động cơ quy trình Node-RED 5.0.9 thay n8n: luồng duyệt đơn, email báo cáo, nhắc hạn; trình soạn luồng có mật khẩu riêng ở lớp hai.
-- Kho tệp SeaweedFS 4.53 và kiểm dịch ClamAV 1.5.4 (image dựng cục bộ bỏ `libclamunrar`): tải lên 10 MB, quét từng lượt, tệp nhiễm bị cách ly.
-- Trợ lý AI RAG trên lõi, gỡ Open WebUI: `/ai/hoi`, `/ai/tom-tat`, khóa riêng `obk-` cho từng người và từng máy trạm.
-- Ứng dụng Sổ điều hành H-P-D-I: gửi đơn kèm tệp, hàng đợi duyệt, bảng điều hành, tóm tắt tuần, chặn tự duyệt.
-- Bản chạy thử công khai: dữ liệu mẫu, tự đặt lại lúc 03:00, thanh thông báo.
-- Giấy phép từng tệp và đóng gói: mọi tệp mã có dòng `SPDX-License-Identifier: MIT` (`scripts/chen-giay-phep.py`, chạy lại không chèn trùng; CI chạy `--kiem` chặn tệp mã mới thiếu giấy phép); nhật ký thay đổi ra gốc repo (`CHANGELOG.md`); gói phát hành đóng kèm `LICENSE`, `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`; `scripts/dong-goi-ban-phat-hanh.sh X.Y.Z-dev` đóng gói thử từ mục `[Unreleased]`.
-- Tài liệu và hồ sơ nộp bài: kiến trúc ba tầng DX-OS, ROADMAP, đặc tả API, bảng tự chấm PoF, kịch bản trình diễn và thư nộp bài.
-- Giao diện tối giản: trang chủ Box, hình nền và màn hình khởi động Plymouth cho máy trạm.
-
+## [Unreleased]
 ### Kho và kế toán trên Box (lõi DX-OS)
 Đã chạy thử trên Box thật 192.168.100.127 (`check-kho-ke-toan.sh local` đạt toàn bộ) và kiểm giao diện bằng trình duyệt tự động 16/16 nút; cài lại `changed=0`.
 #### Thêm
@@ -65,6 +51,36 @@ bài khôi phục toàn bộ) chạy trên máy ảo VMware `onebee-kiem-box`. C
 - Caddy xóa `Remote-*`, `Authorization`, `Proxy-Authorization` do máy khách gửi trước mọi bước xác thực; cầu nối bỏ thêm `Cookie`.
 - Authelia và cầu nối không công bố cổng, bỏ mọi capability, chỉ nằm trong mạng Docker nội bộ `sso` cùng Caddy (không dịch vụ nào khác gọi thẳng được).
 - Sao lưu Box gồm `/srv/onebee/authelia`; `xoay-khoa --box` đổi khóa phiên và khóa ký JWT, giữ khóa mã hóa ghi danh hai lớp.
+
+### Sửa
+- `onebee-box chan-doan` không còn cảnh báo giả "Chứng chỉ HTTPS còn 0 ngày" khi bật HTTPS: chứng chỉ do Caddy cấp sống 12 giờ và tự gia hạn, nay chỉ cảnh báo khi còn dưới một phần ba thời hạn (tối đa 15 ngày).
+- `hoi` báo "Không kết nối được OneBee Box" trong khoảng 10 giây khi không tới được Box, thay vì im lặng tới 5 phút; câu trả lời dài của Trợ lý AI vẫn nhận đủ.
+- Kho tệp ghi thời gian từng chặng (đọc, quét, lưu, metadata) cho mỗi lượt tải lên và ghi một dòng gọn khi máy khách bỏ đi trước khi có trả lời, để chẩn đoán các lượt tải lên chậm.
+
+### Máy trạm đi công tác kết nối Box từ xa (ADR 0008)
+Đã kiểm bằng unit test, CI `box=true` (kịch bản C1 đến C11 với `tailscale0` giả) và trên Box thật, máy Mint thật, tailnet thật (T1 đến T12, `plans/reports/261117-kiem-thu-may-di-cong-tac.md`).
+- Box duyệt từng máy qua Tailscale, chỉ cổng 443, 445, 8000: `onebee-box duyet-tu-xa <máy> [--ngay N]`, `thu-hoi-tu-xa`, `tu-xa`, `tu-xa-ap-dung`. Lượt mặc định không hạn; có `--ngay` thì bộ hẹn giờ 15 phút tự thu hồi. `thu-hoi-may` thu hồi luôn quyền từ xa.
+- Thu hồi và hết hạn cắt cả kết nối đang mở (`conntrack -D` sau khi tường lửa đã đóng). Samba nhận đúng IP đã duyệt và IP máy kỹ thuật qua Tailscale.
+- Máy đã đi mà chưa chuẩn bị: `onebee-cong-tac bat --box-tu-xa <IP>` ghi địa chỉ VPN của Box và đổi kho sao lưu sang tên Box, sao lưu chạy được qua VPN.
+- Máy trạm tự chọn đường tới Box: thấy Box thật trong LAN (bắt tay TLS với CA đã ghim) thì dùng IP LAN, không thì IP VPN; tự chạy khi đổi mạng và mỗi 5 phút. Lệnh `onebee-cong-tac bat|tat|xem`.
+- `chan-doan` báo số máy đang được duyệt, cảnh báo lượt không hạn quá 30 ngày, Tailscale chưa nối, Tailscale SSH đang bật.
+- Sửa: `onebee-tuong-lua bat` dựng bộ luật mới trước rồi mới gỡ bộ cũ, không còn khoảng kết nối mới lọt qua không bị lọc trong lúc dựng lại.
+- Hướng dẫn mới `docs/huong-dan/may-tram-di-cong-tac.md`.
+
+## [1.3.1] — 17/11/2026 — Sửa cảnh báo giả của Node-RED
+- Sửa: `onebee-box chan-doan` không còn báo `onebee-quy-trinh` "không khỏe (unhealthy)" khi dịch vụ vẫn chạy bình thường. Dịch vụ dùng kiểm tra mặc định của image (đọc `/data/settings.js`) trong khi cấu hình nằm ở `/cau-hinh`; nay có `healthcheck` riêng gọi đúng cổng 1880 của trình soạn luồng. Đã thử trên Box thật.
+- Tài liệu: hướng dẫn cài A đến Z gộp toàn bộ ảnh chụp thật (máy trạm sạch, Box trước và sau nâng cấp) vào một tệp.
+
+## [1.3.0] — 17/11/2026 — Lõi DX-OS open-core
+Thay đổi của lõi DX-OS dự thi OLP 2026. Đã kiểm bằng CI `box=true` trên Docker lồng và một lượt trên máy ảo VMware; **chưa thử trên Box thật**.
+- Động cơ quy trình Node-RED 5.0.9 thay n8n: luồng duyệt đơn, email báo cáo, nhắc hạn; trình soạn luồng có mật khẩu riêng ở lớp hai.
+- Kho tệp SeaweedFS 4.53 và kiểm dịch ClamAV 1.5.4 (image dựng cục bộ bỏ `libclamunrar`): tải lên 10 MB, quét từng lượt, tệp nhiễm bị cách ly.
+- Trợ lý AI RAG trên lõi, gỡ Open WebUI: `/ai/hoi`, `/ai/tom-tat`, khóa riêng `obk-` cho từng người và từng máy trạm.
+- Ứng dụng Sổ điều hành H-P-D-I: gửi đơn kèm tệp, hàng đợi duyệt, bảng điều hành, tóm tắt tuần, chặn tự duyệt.
+- Bản chạy thử công khai: dữ liệu mẫu, tự đặt lại lúc 03:00, thanh thông báo.
+- Giấy phép từng tệp và đóng gói: mọi tệp mã có dòng `SPDX-License-Identifier: MIT` (`scripts/chen-giay-phep.py`, chạy lại không chèn trùng; CI chạy `--kiem` chặn tệp mã mới thiếu giấy phép); nhật ký thay đổi ra gốc repo (`CHANGELOG.md`); gói phát hành đóng kèm `LICENSE`, `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`; `scripts/dong-goi-ban-phat-hanh.sh X.Y.Z-dev` đóng gói thử từ mục `[Unreleased]`.
+- Tài liệu và hồ sơ nộp bài: kiến trúc ba tầng DX-OS, ROADMAP, đặc tả API, bảng tự chấm PoF, kịch bản trình diễn và thư nộp bài.
+- Giao diện tối giản: trang chủ Box, hình nền và màn hình khởi động Plymouth cho máy trạm.
 
 ## [1.2.0] — 14/11/2026 — Trải nghiệm người dùng: Trung tâm OneBee, tự phục vụ, Trợ lý AI dùng được ngay
 Đã chạy phiếu kiểm trải nghiệm tự động trên máy ảo Linux Mint 22.3 kèm một Box thử (`reports/trai-nghiem/261113-may-ao-vmware-mint-22-3.md`): các mục không đạt đã sửa hoặc ghi là giới hạn đã biết. Chưa có người xác nhận lại các mục về cảm nhận và chưa thử trên máy thật hay từ điện thoại.

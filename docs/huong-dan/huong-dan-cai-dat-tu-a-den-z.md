@@ -173,6 +173,12 @@ sudo ./box/onebee-box-install.sh
 - Nếu báo `LỖI: …`, đọc kỹ câu báo (thường chỉ đúng chỗ cần sửa, ví dụ "Chưa khai onebee_box_ma_don_vi"), sửa rồi **chạy lại đúng lệnh trên**.
   Chạy lại nhiều lần là an toàn. Vẫn lỗi: gửi file nhật ký trong `/var/log/onebee/` cho kỹ thuật.
 
+Mở `http://<ip-box>/` từ máy khác trong mạng, bạn thấy trang giới thiệu Box như sau (giao diện sáng hoặc tối tự theo cài đặt của máy bạn; trên điện thoại tự xếp thành một cột):
+
+![Trang giới thiệu OneBee Box 1.3.0 (chế độ sáng)](anh/01-trang-gioi-thieu-box.png)
+
+*Ảnh chụp từ một Box thử trên máy ảo, chưa gắn ổ sao lưu nên dòng **Sao lưu** hiện đỏ "Lỗi" và có dòng "Có mục cần chú ý". Gắn ổ ở Phần 4 là hết. Chế độ tối: [ảnh](anh/07-box-giao-dien-toi.png). Điện thoại: [ảnh](anh/08-box-giao-dien-dien-thoai.png).*
+
 ### 3.4. Lấy mật khẩu quản trị
 ```bash
 sudo onebee-box in-khoa
@@ -194,6 +200,26 @@ Từ một máy khác cùng mạng, mở trình duyệt vào `http://<ip-box>/`.
 | Sổ điều hành H-P-D-I | `https://box.<mã>.onebee.internal/so-dieu-hanh/` | Gửi đơn kèm tệp, duyệt đơn, bảng điều hành (cần HTTPS và đăng nhập một lần) |
 | Giám sát | `https://box.<mã>.onebee.internal/giam-sat/` | Xem dịch vụ nào đang ngừng (chỉ nhóm `ky_thuat`) |
 | Thư mục chung | `smb://<ip-box>/chung` | Chia sẻ file trong đơn vị (tài khoản `onebee`, mật khẩu: `sudo cat /etc/onebee-box/secrets/samba-onebee`) |
+
+### 3.5. Nâng cấp Box lên bản mới
+Box cài bằng `git clone` ở mục 3.1 thì nâng cấp như sau. Bước đầu cất bản đã khai ở mục 3.2 vì `git pull` không chạy được khi file đó đã bị sửa:
+```bash
+cd ~/onebee
+cp box/ansible/group_vars/all.yml ~/group_vars-sao-luu.yml    # cất bản đã khai 2 dòng ở mục 3.2
+git checkout -- box/ansible/group_vars/all.yml                 # trả về bản gốc để kéo bản mới
+git pull --ff-only
+nano box/ansible/group_vars/all.yml                            # khai lại ĐÚNG 2 dòng như cũ (xem trong ~/group_vars-sao-luu.yml)
+sudo ./box/onebee-box-install.sh
+```
+- **Trước khi nâng cấp:** Box chạy máy ảo thì chụp snapshot; Box máy thật thì chạy `sudo onebee-box sao-luu` (cần ổ sao lưu đã gắn, Phần 4).
+- Lần thử nâng cấp từ 1.2.0 lên 1.3.0 trên máy ảo mất khoảng **25 phút** (tải thêm các dịch vụ mới).
+- Xong, chân trang của trang giới thiệu Box ghi đúng số phiên bản mới (ví dụ `OneBee Box 1.3.0`). Chạy `sudo onebee-box chan-doan` để xem lại tình trạng.
+
+Trang giới thiệu Box của cùng một máy, trước và sau khi nâng cấp từ 1.2.0 lên 1.3.0 (chế độ sáng):
+
+| Trước (1.2.0) | Sau (1.3.0) |
+|---|---|
+| ![Box 1.2.0](anh/03-box-1-2-0-giao-dien-cu.png) | ![Box 1.3.0](anh/01-trang-gioi-thieu-box.png) |
 
 ---
 
@@ -318,12 +344,27 @@ rm ~/ketoan-01.env
 > rồi trên máy trạm `sudo nano /etc/onebee/may-tram.env`, dán vào, lưu lại.
 
 ### 6.3. Chạy bộ cài OneBee OS
+Máy trạm lúc này vẫn là Linux Mint nguyên bản, chưa có OneBee (ảnh chụp từ máy ảo Mint 22.3 vừa cài xong):
+
+![Linux Mint mới cài, trước khi chạy bộ cài OneBee](anh/09-mint-sach-truoc-khi-cai.png)
+
 ```bash
 cd ~/onebee
 sudo ./desktop/onebee-install.sh
 ```
-Mất từ vài phút đến vài chục phút tùy mạng. Thành công khi thấy `[OneBee] Hoàn tất. Hãy khởi động lại máy…` → **khởi động lại máy**.
+Mất từ vài phút đến vài chục phút tùy mạng. Thành công khi thấy `[OneBee] Hoàn tất. Giao diện OneBee đã áp cho phiên đang mở. Khởi động lại máy để áp dụng ngôn ngữ và bộ gõ tiếng Việt.` → **khởi động lại máy**.
 Lỗi: đọc câu báo, sửa, chạy lại. Nhật ký ở `/var/log/onebee/`.
+
+**Bộ cài dừng giữa chừng vì mạng?** Nếu thấy `fatal` kèm `Could not connect to archive.ubuntu.com … connection timed out`, đó là mạng chập chờn, không phải máy hỏng. Kiểm tra mạng rồi **chạy lại đúng lệnh trên**: bộ cài làm tiếp phần còn lại (lần thử trên máy sạch: lần chạy lại mất khoảng 1 phút và thành công).
+
+**Cách gọn hơn, không cần `git clone`:** máy chưa cần giữ thư mục `~/onebee`, dán nguyên khối này vào Terminal. Khối lệnh tải bản phát hành mới nhất, kiểm SHA256 (sai là dừng), giải nén rồi chạy bộ cài:
+```bash
+cd "$(mktemp -d)" && R=mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source \
+ && V=$(curl -fsSL "https://api.github.com/repos/$R/releases/latest" | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p') \
+ && curl -fsSLO "https://github.com/$R/releases/download/v$V/onebee-os-$V.tar.gz" -O "https://github.com/$R/releases/download/v$V/SHA256SUMS" \
+ && sha256sum -c SHA256SUMS && tar xzf "onebee-os-$V.tar.gz" && cd "onebee-os-$V" && sudo ./desktop/onebee-install.sh
+```
+Thư mục giải nén nằm trong thư mục tạm, thường bị xoá khi khởi động lại. Mục 6.5 dùng `~/onebee/tests/…`, nên nếu muốn chạy kiểm tra đó hãy dùng cách `git clone` ở trên.
 
 ### 6.4. Tạo tài khoản cho nhân viên (không có quyền quản trị)
 Mở **Menu → Cài đặt hệ thống → Người dùng và nhóm** → **Thêm**, chọn loại **Tiêu chuẩn**, đặt tên và mật khẩu cho nhân viên.
@@ -339,6 +380,34 @@ Mọi dòng phải là `PASS`, dòng cuối `KẾT QUẢ: tất cả mục đạ
 - Sao lưu ngay: `sudo onebee-sao-luu` → báo sao lưu xong.
 - Hỏi Trợ lý AI: `hoi cách xuất file PDF` → có câu trả lời tiếng Việt.
 - Đăng xuất, đăng nhập bằng tài khoản nhân viên vừa tạo ở 6.4: cửa sổ **Trung tâm OneBee** phải tự mở.
+
+**Sau khi khởi động lại, bạn sẽ thấy lần lượt** (ảnh chụp từ máy ảo Linux Mint 22.3 cài mới hoàn toàn rồi cài OneBee bằng đúng các lệnh ở trên):
+
+1. **Màn hình khởi động (Plymouth):** logo lục giác mật ong và thanh tiến trình, nền xanh tối. Chỉ hiện vài giây.
+
+   ![Màn hình khởi động OneBee](anh/10-man-hinh-khoi-dong-plymouth.png)
+
+2. **Màn hình đăng nhập:** nền xanh tối, chỉ có logo, tên máy ở góc trên bên trái.
+
+   ![Màn hình đăng nhập](anh/11-man-hinh-dang-nhap.png)
+
+   Nếu bạn xem màn hình đăng nhập **trước khi khởi động lại** (ví dụ đăng xuất ngay sau khi cài), nó vẫn là màn hình của Mint vì đã chạy từ trước. Khởi động lại máy là hết:
+
+   ![Màn hình đăng nhập của Mint, trước khi khởi động lại](anh/14-dang-nhap-cu-truoc-khi-khoi-dong-lai.png)
+
+3. **Lần đăng nhập đầu tiên:** cửa sổ **Trung tâm OneBee** tự mở với bốn thẻ Bắt đầu, Phím tắt, Kiểm tra máy, Cần giúp đỡ.
+
+   ![Trung tâm OneBee tự mở ở lần đăng nhập đầu](anh/12-trung-tam-onebee-lan-dau.png)
+
+4. **Màn hình làm việc:** hình nền chỉ có logo, nút **Bắt đầu** mang logo OneBee, thanh tác vụ có sẵn Thư mục, Trình duyệt, Soạn văn bản, Bảng tính.
+
+   ![Màn hình làm việc OneBee](anh/13-man-hinh-lam-viec.png)
+
+5. **Menu Bắt đầu:** bấm nút Bắt đầu ở góc dưới bên trái để mở danh sách ứng dụng.
+
+   ![Menu Bắt đầu](anh/15-menu-bat-dau.png)
+
+Xem cả quá trình từ lúc cài Mint đến lúc đăng nhập (ảnh động khoảng 20 giây): [may-sach-tu-dau-den-cuoi.gif](anh/may-sach-tu-dau-den-cuoi.gif).
 
 **Làm lại Phần 5–6 cho từng máy trạm.** Có nhiều máy giống hệt nhau: xem cách nhân bản ở [cai-hang-loat.md](cai-hang-loat.md).
 
@@ -421,10 +490,13 @@ Chưa có khóa nào thì Box giữ nguyên mật khẩu và in cảnh báo, đ�
 
 | Tình huống | Làm gì |
 |---|---|
-| Mất máy, nhân viên nghỉ việc | Trên Box: `sudo onebee-box thu-hoi-may <tên-máy>`. Máy đó mất quyền vào kho sao lưu và Trợ lý AI **ngay lập tức** |
+| Nhân viên mang laptop đi công tác ngoài văn phòng | Trước khi đi: chạy `sudo onebee-cong-tac bat` trên máy trạm và `sudo onebee-box duyet-tu-xa <tên-máy>` trên Box; khi về chạy `sudo onebee-box thu-hoi-tu-xa <tên-máy>`. Xem [may-tram-di-cong-tac.md](may-tram-di-cong-tac.md) |
+| Mất máy, nhân viên nghỉ việc | Trên Box: `sudo onebee-box thu-hoi-may <tên-máy>`. Máy đó mất quyền vào kho sao lưu, Trợ lý AI và kết nối từ xa qua VPN **ngay lập tức** |
 | Nghi lộ mật khẩu | `sudo onebee-box xoay-khoa --tat-ca --box`, gõ `xoay khoa` để xác nhận. Đổi toàn bộ mật khẩu/khóa, máy trạm đang bật tự nhận khóa mới (máy đang tắt: bật lên rồi `sudo onebee-box dong-bo-may --tat-ca`). Sau đó **in lại khóa** (`in-khoa`) cất két |
 | Nhân viên lỡ xóa file | Khôi phục từ bản sao lưu của máy trạm, xem [quan-ly-may-tram.md](quan-ly-may-tram.md) |
 | **Hỏng ổ Box** | Cài lại Ubuntu (Phần 2) và Box (Phần 3, **cùng mã đơn vị và IP**), gắn lại ổ sao lưu (Phần 4 bước 3, **không** chạy lại `mkfs`). Chép nội dung tờ `in-khoa` vào file `~/khoa.txt`, rồi chạy: `sudo onebee-box khoi-phuc-toan-bo ~/khoa.txt` → `sudo ./box/onebee-box-install.sh` → `sudo onebee-box khoi-phuc-thu`. Mật khẩu cũ dùng lại được, **máy trạm không phải làm gì** |
+| Bộ cài (Box hoặc máy trạm) dừng giữa chừng, báo `fatal` và `connection timed out` | Mạng chập chờn. Kiểm tra mạng rồi **chạy lại đúng lệnh cài**. Bộ cài làm tiếp phần còn lại, chạy lại nhiều lần là an toàn |
+| `onebee-box chan-doan` báo `onebee-quy-trinh` "không khỏe (unhealthy)" nhưng trình soạn luồng vẫn mở được | Chỉ có ở Box **1.3.0** (phép kiểm tra sức khỏe của dịch vụ này sai, không phải lỗi thật). Nâng cấp lên 1.3.1 trở lên theo mục 3.5 là hết |
 | Dịch vụ không vào được | `sudo onebee-box trang-thai` xem dịch vụ nào ngừng. Thử khởi động lại Box. Vẫn lỗi: gửi `/var/log/onebee/` và `journalctl -b > ~/nhat-ky.txt` cho kỹ thuật |
 | Box hết chỗ trống | `sudo onebee-box trang-thai` xem dung lượng. Box tự dọn bản sao lưu cũ theo lịch |
 
@@ -438,6 +510,8 @@ Chưa có khóa nào thì Box giữ nguyên mật khẩu và in cảnh báo, đ�
 | `sudo onebee-box may-tram` | Tình trạng các máy trạm |
 | `sudo onebee-box cap-nhat-may <tên>` / `--tat-ca` | Cập nhật phần mềm máy trạm từ Box |
 | `sudo onebee-box thu-hoi-may <tên>` | Thu hồi máy |
+| `sudo onebee-box duyet-tu-xa <tên>` / `thu-hoi-tu-xa <tên>` | Duyệt / thu hồi quyền kết nối từ xa cho máy đi công tác |
+| `sudo onebee-box tu-xa` | Xem danh sách máy đang được duyệt kết nối từ xa |
 | `sudo onebee-box sao-luu` | Sao lưu Box ra ổ ngoài ngay |
 | `sudo onebee-box khoi-phuc-thu` | Thử khôi phục (kiểm sao lưu còn dùng được) |
 | `sudo onebee-box in-khoa` | In khóa bí mật để cất két |

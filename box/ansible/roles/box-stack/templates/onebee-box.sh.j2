@@ -9,6 +9,10 @@
 #   onebee-box cap-nhat-may <ten-may>|--tat-ca   Cập nhật phần mềm máy trạm từ Box (qua SSH; máy phải chứng minh được là máy đã cấp)
 #   onebee-box dong-bo-may <ten-may>|--tat-ca    Đẩy lại cấu hình (may-tram.env) từ Box xuống máy trạm (qua SSH, như trên)
 #   onebee-box thu-hoi-may <ten-may> [--dong-y]  Thu hồi máy trạm (khóa Trợ lý AI, kho sao lưu HTTP, ghim SSH, chỗ báo tình trạng)
+#   onebee-box duyet-tu-xa <ten-may> [--ip <IPv4>] [--ngay 1-365] [--dong-y]  Cho máy đi công tác vào Box qua Tailscale (cổng 443, 445, 8000)
+#   onebee-box thu-hoi-tu-xa <ten-may>  Thu hồi quyền từ xa của máy công tác (cắt cả kết nối đang mở)
+#   onebee-box tu-xa                    Bảng các lượt duyệt máy công tác đang có
+#   onebee-box tu-xa-ap-dung            Áp dụng danh sách vào tường lửa + Samba, thu hồi lượt hết hạn (bộ hẹn giờ gọi)
 #   onebee-box ghim-lai-may <ten-may>            Máy cài lại hệ điều hành: bỏ khóa SSH đã ghim để ghim lại
 #   onebee-box bao-cao-tuan [YYYY-MM-DD]   Nhật ký tuần: yêu cầu hỗ trợ, khảo sát, tình trạng máy (Markdown) — đọc từ CSDL sau khi chuyển sổ cũ
 #   onebee-box chuyen-du-lieu      Chuyển sổ cũ (CSV đơn hàng, hỗ trợ, khảo sát; JSON tình trạng máy) vào CSDL — chạy lại chỉ nạp dòng mới
@@ -42,6 +46,8 @@ LIB=/usr/local/lib/onebee-box
 . "${LIB}/common.sh"
 # shellcheck source=/dev/null
 . "${LIB}/sao-luu.sh"
+# shellcheck source=/dev/null
+[[ ! -f "${LIB}/tu-xa.sh" ]] || . "${LIB}/tu-xa.sh"
 # shellcheck source=/dev/null
 . "${LIB}/chan-doan.sh"
 
@@ -105,7 +111,14 @@ in_cau_hinh_may() {
   # Tên Box (nằm trong ràng buộc tên của CA): máy trạm thêm dòng /etc/hosts "<BOX_IP> <BOX_TEN>" — đăng nhập một lần chỉ mở bằng tên
   echo "BOX_TEN=box.${BOX_MA_DON_VI}.onebee.internal"
   esq="$(giao_thuc_may)"
-  echo "RESTIC_REPOSITORY=rest:${esq}://${ten}:${http_pw}@${ip}:${REST_PORT}/${ten}/"
+  # Máy có lượt duyệt đi công tác còn hạn: kho sao lưu đi theo TÊN Box — một dòng /etc/hosts trên máy quyết định tên
+  # phân giải ra IP LAN hay IP VPN (ADR 0008). Máy không có lượt: dùng IP LAN như trước.
+  if https_bat && co_luot_tu_xa "${ten}"; then
+    echo "BOX_IP_TU_XA=$(box_ip_tu_xa)"
+    echo "RESTIC_REPOSITORY=rest:https://${ten}:${http_pw}@${TEN_BOX}:${REST_PORT}/${ten}/"
+  else
+    echo "RESTIC_REPOSITORY=rest:${esq}://${ten}:${http_pw}@${ip}:${REST_PORT}/${ten}/"
+  fi
   echo "RESTIC_PASSWORD=${repo_pw}"
   # Trợ lý AI chỉ phục vụ trên tên Box qua HTTPS (tuyến lõi); khóa của MÁY chỉ in ở giai đoạn chuyển tiếp
   echo "HOI_URL=${AI_URL}"
@@ -166,6 +179,7 @@ cmd_thu_hoi_may() {
     [[ "${tra_loi}" == "thu hoi" ]] || die "Đã hủy"
   fi
   (umask 077; mkdir -p "${SECRETS}/thu-hoi"; : >"${SECRETS}/thu-hoi/${ten}")   # đánh dấu TRƯỚC: lỡ dừng giữa chừng thì máy đã bị coi là thu hồi
+  thu_hoi_tu_xa_thuc "${ten}" || true   # máy đang có lượt duyệt từ xa: thu hồi luôn (tường lửa đóng lại, cắt kết nối đang mở)
   htpasswd -D "${DATA}/restic/.htpasswd" "${ten}" 2>/dev/null || true
   nap_lai_kho_http   # máy thu hồi mất quyền vào kho ngay, không chờ rest-server tự đọc lại
   hoi_khoa go may "${ten}" >/dev/null 2>&1 || true
@@ -645,6 +659,10 @@ case "${1:-}" in
   cap-nhat-may) shift; cmd_cap_nhat_may "$@" ;;
   dong-bo-may) shift; cmd_dong_bo_may "$@" ;;
   thu-hoi-may) shift; cmd_thu_hoi_may "$@" ;;
+  duyet-tu-xa) shift; cmd_duyet_tu_xa "$@" ;;
+  thu-hoi-tu-xa) shift; cmd_thu_hoi_tu_xa "$@" ;;
+  tu-xa) shift; cmd_tu_xa "$@" ;;
+  tu-xa-ap-dung) tu_xa_ap_dung ;;
   ghim-lai-may) shift; cmd_ghim_lai_may "$@" ;;
   dong-bo-ten-may) dong_bo_ten_may ;;
   # Không lấy khóa sao lưu/xoay khóa: bộ cài gọi lệnh này khi đang giữ khóa (tat-sso-tam, xoay-khoa --box);

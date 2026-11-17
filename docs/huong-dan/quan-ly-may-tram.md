@@ -77,7 +77,7 @@ riêng cho từng máy chưa nhận ("Máy trạm <tên> hiện đang tắt … 
 thiếu). File cũ trên máy giữ lại bản `.~`. Sau khi ghi file cấu hình, lệnh chạy lại trên máy đúng các task của bộ cài desktop (`ket-noi-box`: CA + trình duyệt;
 `cau-hinh-hoi`: `/etc/onebee-hoi.conf`; `muc-menu`) rồi kiểm báo cáo chạy được — **không cần** chạy lại bộ cài desktop bằng tay.
 
-`thu-hoi-may` gỡ: tài khoản kho sao lưu HTTP, tài khoản + khóa Trợ lý AI (`hoi`) của máy, khóa SSH đã ghim, chỗ nhận báo cáo tình trạng; máy
+`thu-hoi-may` gỡ: tài khoản kho sao lưu HTTP, tài khoản + khóa Trợ lý AI (`hoi`) của máy, khóa SSH đã ghim, chỗ nhận báo cáo tình trạng, và **quyền kết nối từ xa qua VPN** (nếu máy đang có lượt duyệt công tác, kèm cắt ngay kết nối đang mở); máy
 biến khỏi bảng tình trạng, báo cáo và danh sách cập nhật. **Giữ** kho sao lưu và mật khẩu kho của máy (khôi phục dữ liệu, dọn bản cũ).
 Thu hồi vẫn có hiệu lực sau `khoi-phuc-toan-bo` **nếu đã có bản sao lưu Box sau lúc thu hồi** — chạy ngay `sudo onebee-box sao-luu` (lệnh nhắc
 lúc thu hồi); ổ hỏng trước lần sao lưu kế tiếp thì khôi phục sẽ cấp lại máy. Cấp lại cùng tên: `them-may <tên>` — mật khẩu kho HTTP, khóa
@@ -87,8 +87,8 @@ Máy mới sao lưu từ đầu vào kho mới (kho cũ không tự dọn bản 
 này ở `/var/log/onebee-box/` (chỉ root đọc).
 
 ### Tên của Box trên máy trạm
-Cấu hình máy có dòng `BOX_TEN=box.<mã>.onebee.internal`; bộ cài máy trạm ghi dòng `/etc/hosts` `<BOX_IP> <BOX_TEN> # onebee-box`
-(đổi IP thì dòng được thay, cấu hình cũ không có `BOX_TEN` thì dòng bị gỡ). Đăng nhập một lần chỉ mở bằng tên này — tài khoản người dùng:
+Cấu hình máy có dòng `BOX_TEN=box.<mã>.onebee.internal`; công cụ `onebee-chon-duong-box` trên máy trạm tự ghi dòng `/etc/hosts` `<IP> <BOX_TEN> # onebee-box`
+(ở văn phòng trỏ IP LAN; khi máy được duyệt đi công tác qua VPN và ra ngoài mạng văn phòng thì tự chuyển sang IP Tailscale của Box — xem [may-tram-di-cong-tac.md](may-tram-di-cong-tac.md)). Đăng nhập một lần chỉ mở bằng tên này — tài khoản người dùng:
 [cai-dat-onebee-box.md](cai-dat-onebee-box.md) mục 3b. Box cũ chưa in `BOX_TEN`: chạy `sudo onebee-box dong-bo-may --tat-ca` sau khi nâng cấp Box.
 
 ## 3. Hỗ trợ từ xa (người dùng phải đồng ý)

@@ -72,6 +72,12 @@ class ChuKy(unittest.TestCase):
         self.assertEqual(bt.dong_goi(tt, None), tt)
         self.assertEqual(bt.dong_goi(tt, ""), tt)
 
+    def test_ip_toi_box_uu_tien_ten_box_va_lui_ve_ip_lan(self):
+        # BOX_TEN phân giải được (localhost -> 127.0.0.1) thì kết nối theo địa chỉ phân giải
+        self.assertEqual(bt.ip_toi_box("198.51.100.9", "localhost"), "127.0.0.1")
+        # BOX_TEN không phân giải được thì lùi về BOX_IP
+        self.assertEqual(bt.ip_toi_box("127.0.0.1", "khong-ton-tai.onebee.internal"), "127.0.0.1")
+
 
 if __name__ == "__main__":
     unittest.main()

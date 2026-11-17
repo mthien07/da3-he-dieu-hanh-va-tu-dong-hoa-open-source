@@ -9,9 +9,12 @@
 # Cần: bash 4+, python3 + jinja2 + pyyaml, openssl (Linux). Trên máy khác: chạy trong container Ubuntu 24.04 có các gói trên.
 # Cách dùng: tests/box/check-diagnosis.sh
 set -uo pipefail
+# Windows (Git-bash): không đổi tham số "-subj /O=..." thành đường dẫn; Linux: vô hại
+export MSYS2_ARG_CONV_EXCL="${MSYS2_ARG_CONV_EXCL:-/O}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "${HERE}/../.." && pwd)"
-T="$(mktemp -d)"
+# pwd -W: đường dẫn dạng Windows để python của Windows đọc được; Linux không có -W → dùng pwd thường
+ROOT="$(cd "${HERE}/../.." && { pwd -W 2>/dev/null || pwd; })"
+T="$(cd "$(mktemp -d)" && { pwd -W 2>/dev/null || pwd; })"
 trap 'rm -rf "${T}"' EXIT
 SIM="${T}/sim"
 fails=0
@@ -19,7 +22,7 @@ pass() { printf 'PASS  %s\n' "$1"; }
 fail() { printf 'FAIL  %s\n' "$1"; fails=$((fails + 1)); }
 
 python3 -c 'import jinja2, yaml' 2>/dev/null || { echo "Cần python3 với jinja2 + pyyaml (pip install jinja2 pyyaml)"; exit 2; }
-mkdir -p "${T}"/{lib,bin,secrets,ssh,box,proc,sim,log} "${T}/data/chung" "${T}/mnt/onebee-sao-luu/restic-box"
+mkdir -p "${T}"/{lib,bin,secrets,ssh,box,proc,sim,log,tu-xa} "${T}/data/chung" "${T}/mnt/onebee-sao-luu/restic-box"
 
 # ---- Dựng lệnh onebee-box từ mẫu (như bộ cài Ansible), đường dẫn máy thật → thư mục tạm, bỏ kiểm quyền root ----
 python3 - "${ROOT}" "${T}" <<'PY'
@@ -34,9 +37,14 @@ env = jinja2.Environment(keep_trailing_newline=True)
 env.filters.update(to_json=lambda x: json.dumps(x, ensure_ascii=False), quote=shlex.quote, bool=bool)
 def sua(s):
     return (s.replace("/usr/local/lib/onebee-box", f"{t}/lib").replace("/var/log/onebee-box", f"{t}/log")
-             .replace("/run/onebee-box.lock", f"{t}/onebee-box.lock").replace("[[ ${EUID} -eq 0 ]] ||", "[[ 1 -eq 1 ]] ||"))
+             .replace("/run/onebee-box-tu-xa.lock", f"{t}/onebee-box-tu-xa.lock").replace("/run/onebee-box.lock", f"{t}/onebee-box.lock")
+             .replace("/etc/onebee-box/tu-xa", f"{t}/tu-xa")
+             .replace("/etc/onebee-box/tuong-lua-tu-xa.conf", f"{t}/tuong-lua-tu-xa.conf")
+             .replace("/etc/onebee-box/samba-tu-xa.conf", f"{t}/samba-tu-xa.conf")
+             .replace("[[ ${EUID} -eq 0 ]] ||", "[[ 1 -eq 1 ]] ||"))
 for src, dst in (("onebee-box-common.sh.j2", "lib/common.sh"), ("onebee-box-sao-luu.sh.j2", "lib/sao-luu.sh"),
-                 ("onebee-box-chan-doan.sh.j2", "lib/chan-doan.sh"), ("onebee-box.sh.j2", "bin/onebee-box")):
+                 ("onebee-box-tu-xa.sh.j2", "lib/tu-xa.sh"), ("onebee-box-chan-doan.sh.j2", "lib/chan-doan.sh"),
+                 ("onebee-box.sh.j2", "bin/onebee-box")):
     with open(os.path.join(tpl, src), encoding="utf-8") as f:
         out = sua(env.from_string(f.read()).render(**v))
     with open(os.path.join(t, dst), "w", encoding="utf-8") as f:
@@ -53,7 +61,10 @@ gia() { printf '#!/usr/bin/env bash\n%s\n' "$2" >"${T}/bin/$1"; chmod +x "${T}/b
 gia ping 'd="${!#}"; [[ -s "${SIM}/ping-${d}" ]] || { echo "3 packets transmitted, 0 received, 100% packet loss"; exit 1; }
 a="$(cat "${SIM}/ping-${d}")"; echo "3 packets transmitted, 3 received, 0% packet loss"; echo "rtt min/avg/max/mdev = ${a}/${a}/${a}/0.000 ms"'
 gia ip '[[ -s "${SIM}/gateway" ]] && echo "default via $(cat "${SIM}/gateway") dev eth0 proto dhcp src 127.0.0.1 metric 100"; exit 0'
-gia tailscale '[[ "$1" == status ]] || exit 2; [[ ! -e "${SIM}/tailscale-dung" ]] || { echo "Tailscale is stopped."; exit 1; }; echo "100.64.0.1 box linux -"'
+gia tailscale 'case "$*" in
+  *"debug prefs"*) cat "${SIM}/ts-prefs.json" 2>/dev/null || echo "{\"RunSSH\": false}"; exit 0 ;;
+esac
+[[ "$1" == status ]] || exit 2; [[ ! -e "${SIM}/tailscale-dung" ]] || { echo "Tailscale is stopped."; exit 1; }; echo "100.64.0.1 box linux -"'
 # df -P <thư mục>: $SIM/df-<tên> chứa % đã dùng (mặc định 40)
 gia df 'd="${!#}"; k="${d//\//_}"; p=40; [[ ! -s "${SIM}/df${k}" ]] || p="$(cat "${SIM}/df${k}")"
 echo "Filesystem 1024-blocks Used Available Capacity Mounted on"; echo "/dev/sda1 100000000 $((p * 1000000)) $(((100 - p) * 1000000)) ${p}% ${d}"'
@@ -231,6 +242,26 @@ kich_ban "Không ping được 1.1.1.1 lẫn 8.8.8.8 → Internet CẢNH BÁO (B
 moi_thu_khoe; : >"${SIM}/tailscale-dung"
 kich_ban "Đã cài Tailscale nhưng chưa nối → CẢNH BÁO" 1 "mang/tailscale=canh_bao"
 
+# ===== Máy công tác (ADR 0008): lượt duyệt từ xa =====
+# luot <tên> <ip> <het_han|0> <duyet_luc> — đặt đúng MỘT lượt duyệt (xoá lượt cũ)
+luot() { rm -f "${T}"/tu-xa/*; printf 'IP=%s\nHET_HAN=%s\nDUYET_LUC=%s\nNGUOI_DUYET=kiem-thu\n' "$2" "$3" "$4" >"${T}/tu-xa/$1"; }
+
+moi_thu_khoe; luot ketoan-01 100.64.0.7 0 "$(( $(date +%s) - 31 * 86400 ))"
+kich_ban "Lượt duyệt không hạn đã mở quá 30 ngày → CẢNH BÁO" 1 "mang/tu_xa_khong_han=canh_bao"
+chay; if grep -q 'thu-hoi-tu-xa ketoan-01' <<<"${OUT}"; then pass "Gợi ý thu hồi kèm tên máy"; else fail "Thiếu gợi ý thu-hoi-tu-xa"; fi
+
+moi_thu_khoe; luot ketoan-01 100.64.0.7 0 "$(date +%s)"; : >"${SIM}/tailscale-dung"
+kich_ban "Còn lượt duyệt nhưng Tailscale chưa nối → CẢNH BÁO" 1 "mang/tailscale=canh_bao mang/tu_xa_tailscale=canh_bao"
+
+moi_thu_khoe; luot ketoan-01 100.64.0.7 0 "$(date +%s)"; echo '{"RunSSH": true}' >"${SIM}/ts-prefs.json"
+kich_ban "Tailscale SSH đang bật trong khi còn lượt duyệt → CẢNH BÁO" 1 "mang/tu_xa_ssh=canh_bao"
+
+moi_thu_khoe; luot ketoan-01 100.64.0.7 "$(( $(date +%s) + 10 * 3600 ))" "$(date +%s)"
+chay
+if [[ "${RC}" == 0 ]] && grep -q 'sắp hết hạn trong 24 giờ' <<<"${OUT}"; then
+  pass "Lượt sắp hết hạn trong 24 giờ được nêu trong mục máy công tác"
+else fail "Lượt sắp hết hạn trong 24 giờ không được nêu (mã ${RC})"; fi
+
 # ===== Tài nguyên =====
 moi_thu_khoe; echo 85 >"${SIM}/df_"
 kich_ban "Ổ hệ thống 85% → CẢNH BÁO" 1 "tai_nguyen/o_dia_he_thong=canh_bao"
@@ -291,12 +322,48 @@ kich_ban "Dịch vụ định danh dừng → chỉ container authelia LỖI" 2 
 # HTTPS đang bật: đọc chứng chỉ thật đang phục vụ ở cổng 443 (cần quyền root để mở cổng 443)
 if [[ ${EUID} -eq 0 ]] && command -v openssl >/dev/null; then
   moi_thu_khoe; : >"${T}/secrets/https-da-bat"
-  openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -keyout "${T}/la.key" -out "${T}/la.crt" -days 7 -subj /CN=127.0.0.1 2>/dev/null
-  openssl s_server -accept 443 -cert "${T}/la.crt" -key "${T}/la.key" -quiet -naccept 5 >/dev/null 2>&1 &
-  srv=$!
-  sleep 1
-  kich_ban "HTTPS bật, chứng chỉ cổng 443 còn 7 ngày → CẢNH BÁO" 1 "ssl/https=canh_bao"
-  kill "${srv}" 2>/dev/null; wait "${srv}" 2>/dev/null
+  # CA thử riêng + khóa lá; chứng chỉ lá có thời điểm bắt đầu trong QUÁ KHỨ phải ký bằng "openssl ca -startdate/-enddate"
+  # (OpenSSL 3.0 của Ubuntu 24.04 chưa có -not_before cho "req -x509")
+  mkdir -p "${T}/la-ca"; : >"${T}/la-ca/index.txt"; echo 01 >"${T}/la-ca/serial"
+  printf '[ca]\ndefault_ca=ca_thu\n[ca_thu]\ndatabase=%s/la-ca/index.txt\nnew_certs_dir=%s/la-ca\nserial=%s/la-ca/serial\ndefault_md=sha256\npolicy=chinh_sach\nunique_subject=no\n[chinh_sach]\ncommonName=supplied\n' \
+    "${T}" "${T}" "${T}" >"${T}/la-ca/ca.cnf"
+  openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -keyout "${T}/la-ca/ca.key" -out "${T}/la-ca/ca.crt" -days 30 -subj /CN=CA-thu 2>/dev/null
+  openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -keyout "${T}/la.key" -out "${T}/la.csr" -subj /CN=127.0.0.1 2>/dev/null
+  # chung_chi_la <bắt đầu> <kết thúc> — hai đối số dạng "date -d" (ví dụ "1 hour ago", "11 hours")
+  chung_chi_la() {
+    rm -f "${T}/la.crt"
+    openssl ca -batch -config "${T}/la-ca/ca.cnf" -cert "${T}/la-ca/ca.crt" -keyfile "${T}/la-ca/ca.key" -in "${T}/la.csr" -out "${T}/la.crt" -notext \
+      -startdate "$(date -u -d "$1" +%Y%m%d%H%M%SZ)" -enddate "$(date -u -d "$2" +%Y%m%d%H%M%SZ)" >/dev/null 2>&1
+  }
+  # phuc_vu_443 — mở cổng 443 trả chứng chỉ lá hiện tại (-naccept dư để đủ cho một lần chẩn đoán)
+  phuc_vu_443() {
+    openssl s_server -accept 443 -cert "${T}/la.crt" -key "${T}/la.key" -quiet -naccept 5 >/dev/null 2>&1 &
+    srv=$!
+    sleep 1
+  }
+  dung_443() { kill "${srv}" 2>/dev/null; wait "${srv}" 2>/dev/null; }
+
+  # Lá 12 giờ của Caddy (tls internal): cấp cách đây 1 giờ, còn 11 giờ, Caddy tự gia hạn → OK, báo bằng giờ
+  chung_chi_la "1 hour ago" "11 hours" && phuc_vu_443
+  kich_ban "HTTPS bật, lá 12 giờ cấp cách đây 1 giờ (còn 11 giờ) → OK" 0 ""
+  chay; if grep -q 'Chứng chỉ HTTPS (cổng 443): Còn 11 giờ (Caddy tự gia hạn)' <<<"${OUT}"; then pass "Lá 12 giờ: báo 'Còn 11 giờ (Caddy tự gia hạn)', không báo ngày"
+  else fail "Lá 12 giờ: dòng chứng chỉ không báo giờ: $(grep 'cổng 443' <<<"${OUT}")"; fi
+  dung_443
+  # Lá 12 giờ cấp cách đây 10 giờ: còn 2 giờ < T/3 = 4 giờ → Caddy đáng lẽ đã gia hạn, gia hạn đang hỏng → CẢNH BÁO
+  chung_chi_la "10 hours ago" "2 hours" && phuc_vu_443
+  kich_ban "HTTPS bật, lá 12 giờ cấp cách đây 10 giờ (còn 2 giờ < T/3) → CẢNH BÁO" 1 "ssl/https=canh_bao"
+  chay; if grep -q 'docker restart onebee-portal' <<<"${OUT}"; then pass "Lá sắp hết hạn: giữ gợi ý khởi động lại cổng web"; else fail "Lá sắp hết hạn: thiếu gợi ý khởi động lại cổng web"; fi
+  dung_443
+  # Lá sống dài 90 ngày còn 7 ngày: dưới min(15 ngày, T/3 = 30 ngày) → CẢNH BÁO
+  chung_chi_la "83 days ago" "7 days" && phuc_vu_443
+  kich_ban "HTTPS bật, lá 90 ngày còn 7 ngày (< 15 ngày) → CẢNH BÁO" 1 "ssl/https=canh_bao"
+  dung_443
+  # Lá 90 ngày còn 60 ngày: đủ xa → OK, báo bằng ngày
+  chung_chi_la "30 days ago" "60 days 1 hour" && phuc_vu_443
+  kich_ban "HTTPS bật, lá 90 ngày còn 60 ngày → OK" 0 ""
+  chay; if grep -q 'Chứng chỉ HTTPS (cổng 443): Còn 60 ngày' <<<"${OUT}"; then pass "Lá sống dài: báo 'Còn 60 ngày'"
+  else fail "Lá sống dài: dòng chứng chỉ không báo ngày: $(grep 'cổng 443' <<<"${OUT}")"; fi
+  dung_443
   kich_ban "HTTPS bật nhưng cổng 443 không trả chứng chỉ → LỖI" 2 "ssl/https=loi"
 else
   echo "BỎ QUA  Chứng chỉ HTTPS cổng 443 (cần chạy bằng root)"

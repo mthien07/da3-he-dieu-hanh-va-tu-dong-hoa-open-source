@@ -69,13 +69,51 @@ kiem_mang() {
     ghi_kq mang internet canh_bao "Internet" "Không ping được 1.1.1.1 và 8.8.8.8" \
       "Box vẫn phục vụ trong LAN, nhưng không cập nhật, không gửi được email và kỹ thuật không hỗ trợ từ xa được: kiểm tra modem/đường truyền nhà mạng"
   fi
+  local ts_duoc_cai=0 ts_da_noi=0
   if ! command -v tailscale >/dev/null; then
     ghi_kq mang tailscale ok "Tailscale (hỗ trợ từ xa)" "Không dùng (chưa cài Tailscale)"
   elif timeout 10 tailscale status >/dev/null 2>&1; then
     ghi_kq mang tailscale ok "Tailscale (hỗ trợ từ xa)" "Đã nối — kỹ thuật vào hỗ trợ từ xa được"
+    ts_da_noi=1
   else
     ghi_kq mang tailscale canh_bao "Tailscale (hỗ trợ từ xa)" "Đã cài nhưng chưa nối — kỹ thuật không vào hỗ trợ từ xa được" \
       "sudo systemctl restart tailscaled && sudo tailscale up"
+    ts_duoc_cai=1
+  fi
+  # ---- Lượt duyệt máy đi công tác (ADR 0008, chi tiết ở tu-xa.sh) ----
+  local f_l ten_l kq_l ip_l het_l luc_l nguoi_l dem_tu=0 sap_het=""
+  for f_l in "${TU_XA_DIR}"/*; do
+    [[ -f "${f_l}" ]] || continue
+    ten_l="$(basename "${f_l}")"
+    kq_l="$(doc_luot_tu_xa "${ten_l}" 2>/dev/null)" || {
+      ghi_kq mang tu_xa canh_bao "Lượt duyệt máy công tác" "Tệp lượt của ${ten_l} sai dạng — chưa áp dụng" \
+        "Xoá rồi duyệt lại: sudo onebee-box thu-hoi-tu-xa ${ten_l} && sudo onebee-box duyet-tu-xa ${ten_l}"
+      continue
+    }
+    read -r ip_l het_l luc_l nguoi_l <<<"${kq_l}"
+    dem_tu=$((dem_tu + 1))
+    if [[ "${het_l}" != 0 ]] && (( het_l - $(date +%s) < 86400 )); then
+      sap_het+="${sap_het:+, }${ten_l}"
+    fi
+    if [[ "${het_l}" == 0 ]] && (( $(date +%s) - luc_l > 30 * 86400 )); then
+      ghi_kq mang tu_xa_khong_han canh_bao "Lượt duyệt không hạn" \
+        "Máy ${ten_l} (${ip_l}) được duyệt từ ngày $(date -d "@${luc_l}" '+%d/%m/%Y') — đã quá 30 ngày" \
+        "Máy đã về LAN thì thu hồi: sudo onebee-box thu-hoi-tu-xa ${ten_l}"
+    fi
+  done
+  if (( dem_tu > 0 )); then
+    ghi_kq mang tu_xa ok "Máy công tác đang được duyệt" \
+      "${dem_tu} máy$([[ -n "${sap_het}" ]] && echo " — sắp hết hạn trong 24 giờ: ${sap_het}")"
+    if (( ts_duoc_cai == 1 )); then
+      ghi_kq mang tu_xa_tailscale canh_bao "Tailscale chưa nối" \
+        "Còn ${dem_tu} lượt duyệt từ xa nhưng Box chưa nối Tailscale — máy công tác không vào được Box" \
+        "sudo systemctl restart tailscaled && sudo tailscale up"
+    fi
+    if command -v tailscale >/dev/null && timeout 10 tailscale debug prefs 2>/dev/null | grep -q '"RunSSH": *true'; then
+      ghi_kq mang tu_xa_ssh canh_bao "Tailscale SSH đang bật" \
+        "Máy công tác SSH vào được Box đi vòng tường lửa (tailscaled nhận cổng 22 trước iptables)" \
+        "Tắt trên Box: sudo tailscale set --ssh=false (ACL mẫu trong docs/huong-dan/may-tram-di-cong-tac.md không có mục ssh)"
+    fi
   fi
 }
 
@@ -310,7 +348,6 @@ kiem_ngay_het() {
 }
 
 kiem_chung_chi() {
-  local het ngay
   kiem_ngay_het ca_goc "CA gốc của Box" "$(ca_con_ngay root)" \
     "Xoay CA: đặt onebee_box_xoay_ca: true trong group_vars, chạy lại bộ cài, rồi: sudo onebee-box dong-bo-may --tat-ca"
   kiem_ngay_het ca_trung_gian "CA trung gian (cấp chứng chỉ HTTPS)" "$(ca_con_ngay inter)" "Gia hạn ngay: sudo onebee-box gia-han-ca"
@@ -322,16 +359,46 @@ kiem_chung_chi() {
     ghi_kq ssl https ok "Chứng chỉ HTTPS (cổng 443)" "HTTPS chưa bật — Box dùng HTTP trong LAN"
     return 0
   fi
-  # Chứng chỉ Caddy đang thật sự phục vụ (Caddy tự cấp lại từ CA trung gian; còn ít ngày = tự gia hạn đang lỗi)
-  het="$(timeout 10 openssl s_client -connect "${BOX_ADDRESS}:443" -noservername </dev/null 2>/dev/null \
-         | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)" || het=""
-  ngay=-1
-  if [[ -n "${het}" ]]; then
-    ngay=$(( ($(date -d "${het}" +%s) - $(date +%s)) / 86400 ))
-    (( ngay >= 0 )) || ngay=-1
+  kiem_chung_chi_la
+}
+
+# Thời gian $1 giây in thành "N ngày" (từ 1 ngày trở lên, làm tròn xuống) hoặc "N giờ" (dưới 1 ngày, làm tròn gần nhất)
+in_thoi_gian() {
+  if (( $1 >= 86400 )); then printf '%d ngày' $(( $1 / 86400 ))
+  else printf '%d giờ' $(( ($1 + 1800) / 3600 )); fi
+}
+
+# Chứng chỉ lá Caddy đang thật sự phục vụ ở cổng 443. Caddy (tls internal) cấp lá sống ngắn (12 giờ) và tự gia hạn khi còn khoảng 1/3 thời hạn,
+# nên không so với số ngày cố định: thời hạn T = notAfter − notBefore, còn lại C = notAfter − bây giờ;
+# C ≤ 0 hoặc không đọc được = LỖI; C < min(NGUONG_CHUNG_CHI_NGAY ngày, T/3) = tự gia hạn đang hỏng = CẢNH BÁO.
+kiem_chung_chi_la() {
+  local ten="Chứng chỉ HTTPS (cổng 443)" goi_y tt dau het t_dau t_het con tong nguong
+  goi_y="Khởi động lại cổng web để Caddy cấp lại: sudo docker restart onebee-portal; xem lỗi: sudo docker logs --tail 50 onebee-portal"
+  tt="$(timeout 10 openssl s_client -connect "${BOX_ADDRESS}:443" -noservername </dev/null 2>/dev/null \
+        | openssl x509 -noout -startdate -enddate 2>/dev/null)" || tt=""
+  dau="$(sed -n 's/^notBefore=//p' <<<"${tt}")"
+  het="$(sed -n 's/^notAfter=//p' <<<"${tt}")"
+  t_dau="$(date -d "${dau}" +%s 2>/dev/null)" || t_dau=""
+  t_het="$(date -d "${het}" +%s 2>/dev/null)" || t_het=""
+  if [[ -z "${dau}" || -z "${het}" || ! "${t_dau}" =~ ^[0-9]+$ || ! "${t_het}" =~ ^[0-9]+$ ]]; then
+    ghi_kq ssl https loi "${ten}" "Không có hoặc đã hết hạn" "${goi_y}"
+    return 0
   fi
-  kiem_ngay_het https "Chứng chỉ HTTPS (cổng 443)" "${ngay}" \
-    "Khởi động lại cổng web để Caddy cấp lại: sudo docker restart onebee-portal; xem lỗi: sudo docker logs --tail 50 onebee-portal"
+  con=$(( t_het - $(date +%s) ))
+  tong=$(( t_het - t_dau ))
+  if (( con <= 0 )); then
+    ghi_kq ssl https loi "${ten}" "Không có hoặc đã hết hạn" "${goi_y}"
+    return 0
+  fi
+  nguong=$(( NGUONG_CHUNG_CHI_NGAY * 86400 ))
+  (( tong / 3 >= nguong )) || nguong=$(( tong / 3 ))
+  if (( con < nguong )); then
+    ghi_kq ssl https canh_bao "${ten}" "Còn $(in_thoi_gian "${con}") (dưới $(in_thoi_gian "${nguong}") — Caddy tự gia hạn có thể đang lỗi)" "${goi_y}"
+  elif (( con >= 86400 )); then
+    ghi_kq ssl https ok "${ten}" "Còn $(in_thoi_gian "${con}")"
+  else
+    ghi_kq ssl https ok "${ten}" "Còn $(in_thoi_gian "${con}") (Caddy tự gia hạn)"
+  fi
 }
 
 in_bang_chan_doan() {
