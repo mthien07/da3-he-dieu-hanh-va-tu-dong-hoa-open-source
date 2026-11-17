@@ -19,8 +19,14 @@ LAN_CHO_PHEP=""              # để trống: tự lấy mạng của cổng m�
 TAILSCALE_CHO_PHEP=""        # địa chỉ/dải được vào qua tailscale0 (cách nhau dấu phẩy); để trống: chặn hết kết nối qua Tailscale
 CONG_TREN_BOX="22,139,445"   # TCP: SSH, Samba
 CONG_UDP_TREN_BOX="137,138"  # UDP: Samba tìm máy trong mạng (NetBIOS)
+CONG_TU_XA="443,445,8000"    # TCP: cổng máy công tác qua tailscale0 được dùng (số cổng TRƯỚC DNAT)
+TU_XA_CHO_PHEP=""            # IP của máy công tác đã duyệt (cách nhau dấu phẩy) — trạng thái vận hành, nạp từ tuong-lua-tu-xa.conf
 # shellcheck source=/dev/null
 [[ -f "${CONF}" ]] && . "${CONF}"
+# shellcheck source=/dev/null
+CONF_TU_XA="${ONEBEE_TU_XA_CONF:-/etc/onebee-box/tuong-lua-tu-xa.conf}"
+# shellcheck source=/dev/null
+[[ -f "${CONF_TU_XA}" ]] && . "${CONF_TU_XA}"
 
 C_DOCKER=ONEBEE-LAN-DOCKER
 C_BOX=ONEBEE-LAN-BOX
@@ -52,9 +58,10 @@ tat() {
   done
 }
 
-# $1 = iptables|ip6tables, $2 = cổng mạng chính, $3 = mạng LAN cho phép (cách nhau dấu phẩy), $4 = địa chỉ cho phép qua Tailscale (cùng họ địa chỉ)
+# $1 = iptables|ip6tables, $2 = cổng mạng chính, $3 = mạng LAN cho phép (cách nhau dấu phẩy), $4 = địa chỉ cho phép qua Tailscale (cùng họ địa chỉ),
+# $5 = IP máy công tác (IPv4, chỉ dùng khi $1 = iptables)
 dung() {
-  local ipt="$1" ifc="$2" mang="$3" ts="$4" c net
+  local ipt="$1" ifc="$2" mang="$3" ts="$4" tu="${5:-}" c net ip cong
   for c in "${C_DOCKER}" "${C_BOX}"; do
     "${ipt}" -N "${c}"
     # Giao diện nội bộ: loopback và mạng Docker (container gọi ra ngoài/gọi nhau) không bị lọc
@@ -63,6 +70,19 @@ dung() {
     "${ipt}" -A "${c}" -i 'br-+' -j RETURN
     for net in ${mang//,/ }; do "${ipt}" -A "${c}" -i "${ifc}" -s "${net}" -j RETURN; done
     for net in ${ts//,/ }; do "${ipt}" -A "${c}" -i tailscale0 -s "${net}" -j RETURN; done
+    # Máy công tác (chỉ IPv4): đúng cổng khai báo, đặt SAU dòng máy kỹ thuật để IP nằm trong cả hai danh sách thì quyền máy kỹ thuật thắng
+    if [[ "${ipt}" == iptables && -n "${tu}" ]]; then
+      for ip in ${tu//,/ }; do
+        if [[ "${c}" == "${C_DOCKER}" ]]; then
+          # Sau DNAT cổng đích đã đổi: khớp theo cổng gốc (giả định U2 — trượt thì thay vòng lặp này bằng một dòng "-p tcp -j RETURN")
+          for cong in ${CONG_TU_XA//,/ }; do
+            "${ipt}" -A "${c}" -i tailscale0 -s "${ip}" -p tcp -m conntrack --ctorigdstport "${cong}" -j RETURN
+          done
+        else
+          "${ipt}" -A "${c}" -i tailscale0 -s "${ip}" -p tcp -m multiport --dports "${CONG_TU_XA}" -j RETURN
+        fi
+      done
+    fi
     if [[ "${ipt}" == ip6tables && "${c}" == "${C_BOX}" ]]; then
       "${ipt}" -A "${c}" -p tcp -j REJECT --reject-with tcp-reset
       "${ipt}" -A "${c}" -j REJECT --reject-with icmp6-port-unreachable
@@ -79,6 +99,12 @@ dung() {
   # Kết nối mới qua tailscale0: chỉ địa chỉ khai báo (máy kỹ thuật), mọi cổng — chặn trước cả ts-input/ts-forward của tailscaled
   "${ipt}" -t mangle -N "${C_TS}"
   for net in ${ts//,/ }; do "${ipt}" -t mangle -A "${C_TS}" -s "${net}" -j RETURN; done
+  # Máy công tác: lớp quyết định, cổng còn là cổng trước DNAT (đặt sau dòng máy kỹ thuật, trước DROP cuối)
+  if [[ "${ipt}" == iptables && -n "${tu}" ]]; then
+    for ip in ${tu//,/ }; do
+      "${ipt}" -t mangle -A "${C_TS}" -s "${ip}" -p tcp -m multiport --dports "${CONG_TU_XA}" -j RETURN
+    done
+  fi
   "${ipt}" -t mangle -A "${C_TS}" -j DROP
   "${ipt}" -t mangle -I PREROUTING 1 -i tailscale0 -m conntrack --ctstate NEW -j "${C_TS}"
 }
@@ -91,8 +117,23 @@ loc_ho() {
   done | paste -sd, -
 }
 
+# Lọc TU_XA_CHO_PHEP: chỉ giữ IPv4 đơn (không dải, không ký tự lạ); mục sai in cảnh báo rồi bỏ, dựng tường lửa không dừng
+loc_ip_tu_xa() {
+  local x n ok hop_le="" p
+  for x in ${TU_XA_CHO_PHEP//,/ }; do
+    ok=0
+    if [[ "${x}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+      IFS=. read -r -a p <<< "${x}"
+      ok=1
+      for n in "${p[@]}"; do (( n <= 255 )) || { ok=0; break; }; done
+    fi
+    if (( ok )); then hop_le="${hop_le:+${hop_le},}${x}"; else echo "Cảnh báo: bỏ IP máy công tác sai dạng trong TU_XA_CHO_PHEP: ${x}" >&2; fi
+  done
+  printf '%s' "${hop_le}"
+}
+
 bat() {
-  local ifc mang mang6
+  local ifc mang mang6 tu_xa
   ifc="${ONEBEE_CONG_MANG:-$(cong_mang)}"
   [[ -n "${ifc}" ]] || { echo "Không tìm thấy cổng mạng chính (chưa có đường ra mặc định)" >&2; exit 1; }
   mang="${LAN_CHO_PHEP}"
@@ -100,14 +141,15 @@ bat() {
     mang="$(ip -4 route show dev "${ifc}" scope link | awk '{print $1}' | paste -sd, -)"
   fi
   [[ -n "${mang}" ]] || { echo "Không xác định được mạng LAN của ${ifc}" >&2; exit 1; }
+  tu_xa="$(loc_ip_tu_xa)"
   tat
-  dung iptables "${ifc}" "${mang}" "$(loc_ho 4 "${TAILSCALE_CHO_PHEP}")"
+  dung iptables "${ifc}" "${mang}" "$(loc_ho 4 "${TAILSCALE_CHO_PHEP}")" "${tu_xa}"
   # IPv6: các cổng Docker chỉ mở IPv4 (docker-compose.yml) → chỉ cần giữ SSH/Samba trong mạng nội bộ (ngoài mạng nội bộ: REJECT)
   if command -v ip6tables >/dev/null && ip6tables -S >/dev/null 2>&1; then
     mang6="fe80::/10,fc00::/7"
     dung ip6tables "${ifc}" "${mang6}" "$(loc_ho 6 "${TAILSCALE_CHO_PHEP}")"
   fi
-  echo "Tường lửa OneBee: mọi cổng mạng trừ lo/docker/br; ${ifc}: chỉ ${mang} (IPv6: ${mang6:-tắt}); tailscale0: ${TAILSCALE_CHO_PHEP:-chặn hết}"
+  echo "Tường lửa OneBee: mọi cổng mạng trừ lo/docker/br; ${ifc}: chỉ ${mang} (IPv6: ${mang6:-tắt}); tailscale0: ${TAILSCALE_CHO_PHEP:-chặn hết}; máy công tác: ${tu_xa:-không có}"
 }
 
 xem() {
