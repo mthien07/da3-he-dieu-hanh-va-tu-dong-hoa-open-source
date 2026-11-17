@@ -322,12 +322,48 @@ kich_ban "Dịch vụ định danh dừng → chỉ container authelia LỖI" 2 
 # HTTPS đang bật: đọc chứng chỉ thật đang phục vụ ở cổng 443 (cần quyền root để mở cổng 443)
 if [[ ${EUID} -eq 0 ]] && command -v openssl >/dev/null; then
   moi_thu_khoe; : >"${T}/secrets/https-da-bat"
-  openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -keyout "${T}/la.key" -out "${T}/la.crt" -days 7 -subj /CN=127.0.0.1 2>/dev/null
-  openssl s_server -accept 443 -cert "${T}/la.crt" -key "${T}/la.key" -quiet -naccept 5 >/dev/null 2>&1 &
-  srv=$!
-  sleep 1
-  kich_ban "HTTPS bật, chứng chỉ cổng 443 còn 7 ngày → CẢNH BÁO" 1 "ssl/https=canh_bao"
-  kill "${srv}" 2>/dev/null; wait "${srv}" 2>/dev/null
+  # CA thử riêng + khóa lá; chứng chỉ lá có thời điểm bắt đầu trong QUÁ KHỨ phải ký bằng "openssl ca -startdate/-enddate"
+  # (OpenSSL 3.0 của Ubuntu 24.04 chưa có -not_before cho "req -x509")
+  mkdir -p "${T}/la-ca"; : >"${T}/la-ca/index.txt"; echo 01 >"${T}/la-ca/serial"
+  printf '[ca]\ndefault_ca=ca_thu\n[ca_thu]\ndatabase=%s/la-ca/index.txt\nnew_certs_dir=%s/la-ca\nserial=%s/la-ca/serial\ndefault_md=sha256\npolicy=chinh_sach\nunique_subject=no\n[chinh_sach]\ncommonName=supplied\n' \
+    "${T}" "${T}" "${T}" >"${T}/la-ca/ca.cnf"
+  openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -keyout "${T}/la-ca/ca.key" -out "${T}/la-ca/ca.crt" -days 30 -subj /CN=CA-thu 2>/dev/null
+  openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -keyout "${T}/la.key" -out "${T}/la.csr" -subj /CN=127.0.0.1 2>/dev/null
+  # chung_chi_la <bắt đầu> <kết thúc> — hai đối số dạng "date -d" (ví dụ "1 hour ago", "11 hours")
+  chung_chi_la() {
+    rm -f "${T}/la.crt"
+    openssl ca -batch -config "${T}/la-ca/ca.cnf" -cert "${T}/la-ca/ca.crt" -keyfile "${T}/la-ca/ca.key" -in "${T}/la.csr" -out "${T}/la.crt" -notext \
+      -startdate "$(date -u -d "$1" +%Y%m%d%H%M%SZ)" -enddate "$(date -u -d "$2" +%Y%m%d%H%M%SZ)" >/dev/null 2>&1
+  }
+  # phuc_vu_443 — mở cổng 443 trả chứng chỉ lá hiện tại (-naccept dư để đủ cho một lần chẩn đoán)
+  phuc_vu_443() {
+    openssl s_server -accept 443 -cert "${T}/la.crt" -key "${T}/la.key" -quiet -naccept 5 >/dev/null 2>&1 &
+    srv=$!
+    sleep 1
+  }
+  dung_443() { kill "${srv}" 2>/dev/null; wait "${srv}" 2>/dev/null; }
+
+  # Lá 12 giờ của Caddy (tls internal): cấp cách đây 1 giờ, còn 11 giờ, Caddy tự gia hạn → OK, báo bằng giờ
+  chung_chi_la "1 hour ago" "11 hours" && phuc_vu_443
+  kich_ban "HTTPS bật, lá 12 giờ cấp cách đây 1 giờ (còn 11 giờ) → OK" 0 ""
+  chay; if grep -q 'Chứng chỉ HTTPS (cổng 443): Còn 11 giờ (Caddy tự gia hạn)' <<<"${OUT}"; then pass "Lá 12 giờ: báo 'Còn 11 giờ (Caddy tự gia hạn)', không báo ngày"
+  else fail "Lá 12 giờ: dòng chứng chỉ không báo giờ: $(grep 'cổng 443' <<<"${OUT}")"; fi
+  dung_443
+  # Lá 12 giờ cấp cách đây 10 giờ: còn 2 giờ < T/3 = 4 giờ → Caddy đáng lẽ đã gia hạn, gia hạn đang hỏng → CẢNH BÁO
+  chung_chi_la "10 hours ago" "2 hours" && phuc_vu_443
+  kich_ban "HTTPS bật, lá 12 giờ cấp cách đây 10 giờ (còn 2 giờ < T/3) → CẢNH BÁO" 1 "ssl/https=canh_bao"
+  chay; if grep -q 'docker restart onebee-portal' <<<"${OUT}"; then pass "Lá sắp hết hạn: giữ gợi ý khởi động lại cổng web"; else fail "Lá sắp hết hạn: thiếu gợi ý khởi động lại cổng web"; fi
+  dung_443
+  # Lá sống dài 90 ngày còn 7 ngày: dưới min(15 ngày, T/3 = 30 ngày) → CẢNH BÁO
+  chung_chi_la "83 days ago" "7 days" && phuc_vu_443
+  kich_ban "HTTPS bật, lá 90 ngày còn 7 ngày (< 15 ngày) → CẢNH BÁO" 1 "ssl/https=canh_bao"
+  dung_443
+  # Lá 90 ngày còn 60 ngày: đủ xa → OK, báo bằng ngày
+  chung_chi_la "30 days ago" "60 days 1 hour" && phuc_vu_443
+  kich_ban "HTTPS bật, lá 90 ngày còn 60 ngày → OK" 0 ""
+  chay; if grep -q 'Chứng chỉ HTTPS (cổng 443): Còn 60 ngày' <<<"${OUT}"; then pass "Lá sống dài: báo 'Còn 60 ngày'"
+  else fail "Lá sống dài: dòng chứng chỉ không báo ngày: $(grep 'cổng 443' <<<"${OUT}")"; fi
+  dung_443
   kich_ban "HTTPS bật nhưng cổng 443 không trả chứng chỉ → LỖI" 2 "ssl/https=loi"
 else
   echo "BỎ QUA  Chứng chỉ HTTPS cổng 443 (cần chạy bằng root)"
