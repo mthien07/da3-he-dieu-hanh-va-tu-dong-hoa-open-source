@@ -86,7 +86,7 @@ class KiemCa(unittest.TestCase):
 
 
 class DocRangBuocNghiem(unittest.TestCase):
-    """openssl in tên DNS nguyên văn kể cả xuống dòng → chứng chỉ có thể GIẢ dòng "Excluded:" trong một tên để giấu "DNS:com" rộng (PoC của rà soát Opus)."""
+    """openssl in tên DNS nguyên văn kể cả xuống dòng → chứng chỉ có thể GIẢ dòng "Excluded:" trong một tên để giấu "DNS:com" rộng (PoC của rà soát bảo mật)."""
 
     @classmethod
     def setUpClass(cls):

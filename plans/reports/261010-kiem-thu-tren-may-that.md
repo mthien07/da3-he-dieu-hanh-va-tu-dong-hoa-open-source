@@ -1,6 +1,6 @@
 # Phiếu kiểm thử trên máy thật — Pha 1–5 rà soát bảo mật
 
-Dành cho chủ dự án sau khi clone nhánh `claude/confident-gauss-ntiwuc`. Nơi viết code **không** có Docker daemon, ansible-core 2.16, Box/Mint/Windows thật,
+Dành cho chủ dự án sau khi clone nhánh rà soát bảo mật (nay đã gộp vào `main` qua PR #3). Nơi viết code **không** có Docker daemon, ansible-core 2.16, Box/Mint/Windows thật,
 nên mọi mục dưới đây **chưa từng chạy**. Nguồn: các khối "Trạng thái triển khai" Pha 1–5 trong `docs/security-audit.md`, ADR 0005, `tests/README.md`.
 
 Cách dùng: làm theo thứ tự (rẻ, ít rủi ro trước). Mỗi mục: **(a)** môi trường · **(b)** lệnh · **(c)** mong đợi · **(d)** sai thì nghi ở đâu.
@@ -8,13 +8,12 @@ Cách dùng: làm theo thứ tự (rẻ, ít rủi ro trước). Mỗi mục: **
 
 ```bash
 git clone https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source.git onebee && cd onebee
-git checkout claude/confident-gauss-ntiwuc
 ```
 Windows 10: chạy trong **WSL2** (Ubuntu), clone vào `~` (không vào `/mnt/c`), trước đó `git config --global core.autocrlf false` — CRLF làm hỏng script bash.
 
 ## Kết quả lần chạy 10–11/10/2026 (nhóm A)
 Hai môi trường — ghi rõ để không lẫn:
-- **cloud**: máy làm việc của Claude, Docker 29.8.2 **cgroup v1**, 2 CPU, 7 GB RAM, proxy HTTPS tự ký (`ONEBEE_TEST_EXTRA_CA`).
+- **cloud**: máy chủ đám mây dùng để viết mã, Docker 29.8.2 **cgroup v1**, 2 CPU, 7 GB RAM, proxy HTTPS tự ký (`ONEBEE_TEST_EXTRA_CA`).
 - **Mac**: MacBook Pro Intel của chủ dự án, **Docker Desktop 29.3.1, cgroup v2, 16 CPU, 15 GiB** cho Docker, mạng gia đình 0,2–2 MB/s. Không proxy.
 
 | Mục | Nơi | Commit | Kết quả |
@@ -150,7 +149,7 @@ Chụp snapshot VM trước mỗi nhóm.
   hay gặp: mode thư mục `portal` (`ca.yml:69` vs `main.yml`), `Ghi đường dẫn bộ cài` (`main.yml:207`), ghi `ten-da-cap`.
 - [ ] **B3. Nâng cấp từ bản cũ** (Pha 1, 5.0 "test nâng cấp" — chưa làm):
   - (b) VM sạch: `git checkout 3061a08` (n8n 2.40.7, chưa vá) → cài Box, `them-may ketoan-01`, cài máy trạm, tạo dữ liệu (chat, 1 yêu cầu hỗ trợ, 1 đơn hàng, sao lưu).
-    Rồi `git checkout -- box/ansible/group_vars/all.yml && git checkout claude/confident-gauss-ntiwuc`, khai mã đơn vị, chạy bộ cài. Lặp lại từ `9ac8eee` (Box Pha 2, chưa có CA).
+    Rồi `git checkout -- box/ansible/group_vars/all.yml && git checkout main`, khai mã đơn vị, chạy bộ cài. Lặp lại từ `9ac8eee` (Box Pha 2, chưa có CA).
   - (c) có `/srv/onebee/n8n.truoc-*` (bản chép trước khi đổi image), n8n migration xong, 9 quy trình còn và chạy, dữ liệu giao diện Trợ lý AI (bản cũ) còn; CA sinh mới và **tự đẩy** xuống
     `ketoan-01` (`/var/lib/onebee/ket-noi-box` = vân tay); lần chạy kế `changed=0`; máy trạm bản desktop cũ vẫn sao lưu/báo tình trạng (ma trận lệch phiên bản).
   - (d) `box-stack/tasks/main.yml` khối chép n8n (`regex_findall` — [Inference] chưa thử trên 2.16), `box-fleet/tasks/main.yml:72-77`.
@@ -441,7 +440,7 @@ Ký hiệu: **XÁC NHẬN** = thấy rõ trong code (đã chạy thử nếu ghi
 - **N3:** role `ket-noi-box` cài `libnss3-tools` (có `certutil`).
 - **N10 (một phần):** hướng dẫn nói 12 dòng cấu hình và nhắc khai `onebee_box_ma_don_vi`/`onebee_box_dia_chi` trước khi cài. Phần còn lại (N2, N4–N9, lệnh `doi-ca`/`doi-khoa-quan-tri` chưa có) vẫn mở.
 
-**Đợt sửa 14/10/2026** (kế hoạch `plans/261014-1445-va-loi-va-hoan-thien-v1/`; mỗi lỗi có test hồi quy FAIL trước khi sửa, PASS sau khi sửa; test chạy trong container
+**Đợt sửa 14/10/2026** (theo kế hoạch vá lỗi trước bản 1.0; mỗi lỗi có test hồi quy FAIL trước khi sửa, PASS sau khi sửa; test chạy trong container
 `ubuntu:24.04` như CI). **Chưa** chạy lại runner Box đầy đủ / máy thật cho các bản sửa này.
 - **N13** (`16057f5`, `949f439`): `CORS_ALLOW_ORIGIN` đặt cả ở chế độ HTTP (`http://<IP>:3000` và `http://box.<mã>.onebee.internal:3000`); `check-https.sh` kiểm mã 200
   trước khi kiểm header; `verify-box-install.sh` thêm bước kiểm CORS ở chế độ HTTP.

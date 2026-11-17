@@ -62,9 +62,9 @@ fi
 
 # 3. Sao chép mã nguồn repo sang USB
 echo "--> Đang đồng bộ mã nguồn OneBee OS sang ${THU_MUC_DICH}/repo..."
-# Sao chép các tệp cần thiết, loại bỏ thư mục tạm/git thừa
+# Sao chép các tệp cần thiết, bỏ mọi tệp/thư mục ẩn ở gốc repo (kho git, worktree, cấu hình công cụ cá nhân)
 if command -v rsync >/dev/null 2>&1; then
-  rsync -a --exclude='.git' --exclude='.worktrees' --exclude='.claude' --exclude='reports' "${ROOT}/" "${THU_MUC_DICH}/repo/"
+  rsync -a --exclude='/.*' --exclude='reports' "${ROOT}/" "${THU_MUC_DICH}/repo/"
 else
   cp -R "${ROOT}/"* "${THU_MUC_DICH}/repo/" || true
 fi

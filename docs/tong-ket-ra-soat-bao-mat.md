@@ -1,6 +1,6 @@
 # Tổng kết rà soát bảo mật — đã làm, chưa làm, cách clone về test
 
-Nhánh: `claude/confident-gauss-ntiwuc` (chưa tạo PR). Kế hoạch gốc: `docs/security-audit.md`. Phiếu kiểm chi tiết: `docs/kiem-thu-tren-may-that.md`.
+Nhánh rà soát bảo mật (nay đã gộp vào `main` qua PR #3). Kế hoạch gốc: `docs/security-audit.md`. Phiếu kiểm chi tiết: `docs/kiem-thu-tren-may-that.md`.
 Quy ước: phần "chưa kiểm" là chưa chạy được trong môi trường làm việc (không có Docker daemon, ansible-core 2.16, Box/Mint/Windows thật). [Unverified] = chưa có bằng chứng.
 
 ## 1. Đã làm
@@ -8,7 +8,7 @@ Quy ước: phần "chưa kiểm" là chưa chạy được trong môi trường
 | Pha | Nội dung | Trạng thái kiểm |
 |---|---|---|
 | 1 | Thay động cơ quy trình fair-code bằng Node-RED 5.0.9 (Apache-2.0), ghim digest mọi image, gỡ giao diện Trợ lý AI cũ (thay bằng dịch vụ RAG trên lõi), cảnh báo tài khoản sudo | Chạy thử đã được kiểm và rà soát |
-| 2 | Báo cáo tình trạng có chữ ký; SSH máy trạm phải chứng minh biết mật khẩu kho rồi mới ghim khóa; `thu-hoi-may`, `dong-bo-may` | Chạy thử đã được kiểm và Opus rà soát |
+| 2 | Báo cáo tình trạng có chữ ký; SSH máy trạm phải chứng minh biết mật khẩu kho rồi mới ghim khóa; `thu-hoi-may`, `dong-bo-may` | Chạy thử đã được kiểm và rà soát chéo |
 | 3 | CA riêng mỗi Box, giới hạn chỉ cấp cho IP Box và `<mã>.onebee.internal`; role `ket-noi-box` cài CA lên máy trạm | Thử chuỗi CA thật bằng openssl, Python, curl |
 | 4 | HTTPS qua Caddy, bật bằng `onebee_box_https: true` (mặc định `false`) | Caddy 2.11.4 thật; Ansible 2.19 chạy được |
 | 4b | `onebee-box xoay-khoa [--may\|--tat-ca] [--box]` | Test giả lập, chưa chạy trên Box thật |
@@ -20,7 +20,7 @@ Chi tiết quan trọng:
 - Bật HTTPS có chốt chặn: còn máy chưa nhận CA thì bộ cài giữ HTTP và nêu tên máy. Hoàn tác bằng `onebee_box_https: false`.
 - Máy trạm (`hoi`, báo tình trạng, `onebee-sao-luu`) chỉ tin CA OneBee và từ chối `http://` khi đã bật HTTPS.
 - Chuyển tiếp: khóa `hoi` theo máy (`onebee_box_hoi_khoa_may`) và khóa gửi tình trạng dùng chung (`onebee_box_khoa_tinh_trang_chung`) vẫn bật mặc định.
-- Opus rà soát Pha 3–4 và tìm ra 2 lỗi nghiêm trọng, đã sửa: CA giả qua mặt bước kiểm tra tên bằng dòng `Excluded:` chèn vào tên DNS; gia hạn CA trung gian không tới được Caddy. Các lỗi vừa cũng đã sửa: bộ cài không idempotent, chuyển HTTP↔HTTPS kẹt, khôi phục còn chứng chỉ cũ của Caddy, máy mất liên lạc khi CA mới không đạt.
+- Rà soát chéo Pha 3–4 tìm ra 2 lỗi nghiêm trọng, đã sửa: CA giả qua mặt bước kiểm tra tên bằng dòng `Excluded:` chèn vào tên DNS; gia hạn CA trung gian không tới được Caddy. Các lỗi vừa cũng đã sửa: bộ cài không idempotent, chuyển HTTP↔HTTPS kẹt, khôi phục còn chứng chỉ cũ của Caddy, máy mất liên lạc khi CA mới không đạt.
 - Sau phiếu kiểm đã sửa thêm: N1 (xoay CA khi mã/IP không đổi), N3 (cài `certutil`), một phần N10 (tài liệu).
 
 ## 2. Chưa làm
@@ -47,7 +47,7 @@ Chi tiết quan trọng:
 
 ```bash
 git clone https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source.git onebee
-cd onebee && git checkout claude/confident-gauss-ntiwuc
+cd onebee   # nhánh rà soát đã gộp vào main
 ```
 
 1. **Khai biến bắt buộc** trong `box/ansible/group_vars/all.yml`: `onebee_box_ma_don_vi` (viết tắt tên khách, thiếu thì bộ cài dừng) và `onebee_box_dia_chi` (IP tĩnh). Biến cũ `onebee_box_address` đã đổi tên.
