@@ -3,7 +3,7 @@
 # Mẫu thư nộp hồ sơ Vòng Sơ khảo (PoF) — OLP 2026
 
 > **Thời hạn nộp (theo kế hoạch đội thi):** Gửi email tới **`olpvietnam@vaip.vn`** và **`thuky@vfossa.vn`** **trước 17:00 Chủ nhật ngày 06/12/2026**.  
-> **Lưu ý kiểm tra trước khi gửi:** Điền đầy đủ các mục `[ĐIỀN ...]` bên dưới, gắn link bản phát hành GitHub Release `v1.3.0` (chỉ gồm mã nguồn `.tar.gz` + `SHA256SUMS`, tuyệt đối **không** đính kèm gói USB offline có Docker image/`.deb` bên thứ ba).
+> **Lưu ý kiểm tra trước khi gửi:** Điền đầy đủ các mục `[ĐIỀN ...]` bên dưới, gắn link bản phát hành GitHub Release `v2.0.0` (chỉ gồm mã nguồn `.tar.gz` + `SHA256SUMS`, tuyệt đối **không** đính kèm gói USB offline có Docker image/`.deb` bên thứ ba).
 
 ---
 
@@ -31,7 +31,7 @@ Kính gửi Ban Tổ chức và Hội đồng Giám khảo Hội thi Olympic Tin
 - Kho mã nguồn công khai (GitHub):
   https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source
 - Bản phát hành chính thức (.tar.gz + SHA256SUMS):
-  https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source/releases/tag/v1.3.0
+  https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source/releases/tag/v2.0.0
 - Giấy phép mã nguồn: MIT (toàn văn trong tệp LICENSE; 100% thành phần cài đặt sử dụng giấy phép chuẩn OSI, xem LICENSES.md)
 
 3. TÀI LIỆU KIẾN TRÚC, CÀI ĐẶT & TỰ ĐÁNH GIÁ POF

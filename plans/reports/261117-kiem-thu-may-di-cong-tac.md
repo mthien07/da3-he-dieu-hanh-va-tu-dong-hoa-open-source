@@ -15,7 +15,7 @@ Mọi số liệu dưới đây lấy từ đầu ra thật trong lượt thử,
 
 **Cách giả lập "máy rời văn phòng":** VM Mint chạy NAT nên vẫn tới được IP LAN của Box qua máy Mac. Em chặn mọi gói từ Mint tới `192.168.100.127` (`iptables -I OUTPUT -d 192.168.100.127 -j DROP`), giống hệt khi máy ở mạng khác. Khi đó Tailscale không nối thẳng được và đi qua máy chuyển tiếp DERP ở Singapore (ping 85 ms, khoảng 450 KB/s). Đây là đường chậm nhất có thể có; ngoài thực tế Tailscale thường nối thẳng được.
 
-**Box dùng chung:** trong lúc thử, một phiên khác (DeepSeek, nhánh `feat/box-kho-ke-toan`) chạy bộ cài từ `/root/onebee-test` chồng lên hai lần (15:52 và 16:15), ghi đè lệnh `onebee-box` và `onebee-tuong-lua` bằng bản không có tính năng này. Kết quả trước 16:20 vì vậy bị bỏ; mọi dòng dưới đây đo sau lần cài lại lúc 16:20. Sau khi thử xong, Box đã được cài lại bản sổ kho và kế toán từ `/root/onebee-test` như trước.
+**Box dùng chung:** trong lúc thử, một phiên làm việc khác (nhánh `feat/box-kho-ke-toan`) chạy bộ cài từ `/root/onebee-test` chồng lên hai lần (15:52 và 16:15), ghi đè lệnh `onebee-box` và `onebee-tuong-lua` bằng bản không có tính năng này. Kết quả trước 16:20 vì vậy bị bỏ; mọi dòng dưới đây đo sau lần cài lại lúc 16:20. Sau khi thử xong, Box đã được cài lại bản sổ kho và kế toán từ `/root/onebee-test` như trước.
 
 ## Kịch bản trên máy thật (T1 đến T12)
 

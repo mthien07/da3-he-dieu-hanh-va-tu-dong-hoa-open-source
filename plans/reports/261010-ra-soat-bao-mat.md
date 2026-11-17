@@ -3,9 +3,9 @@
 - **Bản 1 — 10/10/2026:** đọc tĩnh mã nguồn tại commit `3061a08`, lịch sử git (39 commit), tra advisory của các image đã ghim.
 - **Bản 2 — 10/10/2026:**
   - Đưa vào 4 quyết định của chủ dự án (mục 0).
-  - Tra cứu sâu hơn bằng 9 agent chạy song song, chỉ đọc: mở từng advisory, đọc mã nguồn n8n/giao diện Trợ lý AI (bản cũ)/Caddy, lập danh sách mọi chỗ trong repo phải sửa.
+  - Tra cứu sâu hơn theo 9 hướng song song, chỉ đọc: mở từng advisory, đọc mã nguồn n8n/giao diện Trợ lý AI (bản cũ)/Caddy, lập danh sách mọi chỗ trong repo phải sửa.
   - 2 vòng phản biện kế hoạch: một soi chỗ làm hỏng hoặc bỏ sót, một soi lỗ hổng trong chính thiết kế.
-  - Người viết đã tự kiểm lại 4 khẳng định có ảnh hưởng lớn nhất trên mã nguồn gốc (đánh dấu ✔). Các khẳng định khác ghi "(agent)": agent đã đọc nguồn gốc, người viết chưa tự kiểm lại.
+  - Người viết đã tự kiểm lại 4 khẳng định có ảnh hưởng lớn nhất trên mã nguồn gốc (đánh dấu ✔). Các khẳng định khác ghi "(chưa tự kiểm)": đã đọc nguồn gốc khi tra cứu, người viết chưa tự kiểm lại.
 - **Bản 2.1 — 10/10/2026:** thêm QĐ5–QĐ16 (mã đơn vị, Tailscale qua Box, IP tĩnh, máy in tự ký, tài khoản Trợ lý AI cho từng nhân viên, không đọc/chia sẻ chat, 2 cách đăng nhập `hoi`, phiên 1 tháng, khóa CA trên Box, Samba chỉ Win 10 + Linux, giữ pyodide); sửa Pha 1, 3, 4, 5, thêm Pha 4c, sửa mục 6.
 
 Chế độ **chỉ đọc**: chưa sửa code.
@@ -42,7 +42,7 @@ Quy ước:
 **Trạng thái (14/10/2026):** Pha 1–5 đã triển khai và gộp vào `main` (PR #1); lỗi tìm thấy khi kiểm thử thật và bản sửa ghi ở `docs/kiem-thu-tren-may-that.md`.
 Lệnh **đã có** trong `onebee-box` liệt kê ở đầu `box/ansible/roles/box-stack/templates/onebee-box.sh.j2` (gồm `xoay-khoa`, `gia-han-ca`, `in-ca`, `may-chua-nhan-ca`, `go-khoa-hoi-may`).
 **Chưa có** (chỉ là kế hoạch): `doi-khoa-quan-tri` (xoay khóa SSH quản trị). **Không làm**: lệnh `doi-ca` — xoay CA bằng biến `onebee_box_xoay_ca: true` rồi chạy bộ cài.
-(Trạng thái ngày 10/10/2026 dưới đây giữ nguyên để đối chiếu: khi đó mới duyệt Pha 1, code trên nhánh `claude/confident-gauss-ntiwuc`.)
+(Trạng thái ngày 10/10/2026 dưới đây giữ nguyên để đối chiếu: khi đó mới duyệt Pha 1, code trên nhánh rà soát bảo mật, nay đã gộp vào `main`.)
 
 ## 1. Tóm tắt (bản 2)
 
@@ -53,25 +53,25 @@ Lệnh **đã có** trong `onebee-box` liệt kê ở đầu `box/ansible/roles/
 | F3 | Trung | XÁC NHẬN, đang vá (QĐ3) | HTTP không TLS cho mọi dịch vụ; cookie n8n không Secure | `docker-compose.yml.j2:38,68,74,116` | 3–4, 4b |
 | F4 | Trung | **CHẤP NHẬN** (QĐ4) | Chiếm Box = root mọi máy trạm + đọc mọi bản sao lưu máy trạm | `quan-ly-tap-trung/tasks/main.yml:136` | kiểm soát bù 5.8 |
 | F5 | Thấp (Trung nếu chung tailnet) → **Thấp** | XÁC NHẬN | Tường lửa chỉ lọc cổng mạng chính; `tailscale0` và card phụ không lọc | `onebee-tuong-lua:50-52` | 5 |
-| F6 | Thấp | XÁC NHẬN | Image ghim theo tag; tag `caddy:2.11.4` đã bị đẩy lại ngày 23/9 (agent) | `group_vars/all.yml:13-19` | 1, 5 |
+| F6 | Thấp | XÁC NHẬN | Image ghim theo tag; tag `caddy:2.11.4` đã bị đẩy lại ngày 23/9 (chưa tự kiểm) | `group_vars/all.yml:13-19` | 1, 5 |
 | F7 | Thấp | XÁC NHẬN | `onebee-sao-luu` nạp cấu hình bằng `source` | `backup-client/files/onebee-sao-luu:12` | 4 |
 | F8 | Thấp | XÁC NHẬN | Samba: 1 tài khoản chung, không bắt buộc mã hóa | `samba/tasks/main.yml:52-65` | 5 |
 | F9 | Thấp | XÁC NHẬN | Biểu mẫu n8n: 1 tài khoản Basic chung `nhanvien` (cũng là đường tải file của GHSA-29xw) | `credentials.json.j2:28-32` | 5 |
 | F10 | Thấp | XÁC NHẬN | Khóa `hoi` theo máy để file 0644 — ai dùng máy cũng dùng được, không biết ai hỏi. Theo QĐ9 sẽ thay bằng khóa riêng từng nhân viên (file 0600 trong thư mục nhà) | `ai-cli/tasks/main.yml:19-31` | 4c |
 | F11 | Thấp | XÁC NHẬN | Container chạy root, không `no-new-privileges`/`cap_drop` | `docker-compose.yml.j2` | 4 (Caddy), 5 |
-| F12 | Thấp | XÁC NHẬN | `ENABLE_COMMUNITY_SHARING` bật; cài đặt lưu trong CSDL → biến môi trường không đổi được Box đã cài (agent) | `onebee-webui.py:25-26` | 1 |
+| F12 | Thấp | XÁC NHẬN | `ENABLE_COMMUNITY_SHARING` bật; cài đặt lưu trong CSDL → biến môi trường không đổi được Box đã cài (chưa tự kiểm) | `onebee-webui.py:25-26` | 1 |
 | F13 | Thấp | XÁC NHẬN | Bộ cài không ký; GitHub Actions ghim theo tag | `README.md`, `.github/workflows/*.yml` | 5 |
 | F14 | Thấp → **Thấp, chấp nhận** | XÁC NHẬN | VNC không mã hóa; dải 100.64/10 giờ chỉ còn tailnet của khách đó (QĐ2) | `onebee-ho-tro:32,41` | 5 (ACL) |
 | S1 | Trung nếu đúng → **Thấp** | **XÁC NHẬN ✔, bị sandbox chặn** | Trang "Tóm tắt PDF" in HTML thô do AI sinh; CSP `sandbox` không có `allow-same-origin` → không lấy được phiên chủ n8n | `03-tom-tat-van-ban.json.j2:37-38` | 1 |
-| S2 | Thấp–Trung → **ĐÓNG** | Không dính (agent) | Cả 26 advisory giao diện Trợ lý AI (bản cũ) tháng 9 đều đã vá ở ≤ 0.11.4 | `group_vars/all.yml:16` | theo dõi |
+| S2 | Thấp–Trung → **ĐÓNG** | Không dính (chưa tự kiểm) | Cả 26 advisory giao diện Trợ lý AI (bản cũ) tháng 9 đều đã vá ở ≤ 0.11.4 | `group_vars/all.yml:16` | theo dõi |
 | S3 | Thấp | NGHI NGỜ | Lọc công thức CSV chưa đủ | `_csv-js.j2:2`, `04-nhap-don-hang.json.j2:9` | 5 |
 | S4 | Thấp | NGHI NGỜ | `\r` trong tiêu đề email | `07-yeu-cau-ho-tro.json.j2:12` | 5 |
-| S5 | Thấp | **XÁC NHẬN** (agent) | Phiên giao diện Trợ lý AI (bản cũ) sống 4 tuần (`JWT_EXPIRES_IN=4w`); không thu hồi được vì không có Redis | `docker-compose.yml.j2:39-59` | 1 |
-| N1 | Thấp (khuếch đại F3) | XÁC NHẬN (agent) | giao diện Trợ lý AI (bản cũ) bật sẵn `ENABLE_PLUGINS` → lấy được phiên quản trị = chạy Python trong container (root) | `docker-compose.yml.j2:39-59` | 1 |
-| N2 | Thấp | XÁC NHẬN (agent) | n8n từ 2.41.1 bật sẵn mô-đun Agents (Box không dùng) — phát sinh khi nâng cấp | — | 1 |
+| S5 | Thấp | **XÁC NHẬN** (chưa tự kiểm) | Phiên giao diện Trợ lý AI (bản cũ) sống 4 tuần (`JWT_EXPIRES_IN=4w`); không thu hồi được vì không có Redis | `docker-compose.yml.j2:39-59` | 1 |
+| N1 | Thấp (khuếch đại F3) | XÁC NHẬN (chưa tự kiểm) | giao diện Trợ lý AI (bản cũ) bật sẵn `ENABLE_PLUGINS` → lấy được phiên quản trị = chạy Python trong container (root) | `docker-compose.yml.j2:39-59` | 1 |
+| N2 | Thấp | XÁC NHẬN (chưa tự kiểm) | n8n từ 2.41.1 bật sẵn mô-đun Agents (Box không dùng) — phát sinh khi nâng cấp | — | 1 |
 | N3 | Thấp | XÁC NHẬN | IP Box tính 2 cách có thể lệch (Ansible `ansible_default_ipv4` vs shell `ip route get`) — quan trọng khi IP nằm trong chứng chỉ | `docker-compose.yml.j2:85`, `onebee-box-common.sh.j2:28-31` | 3 |
 | N4 | Thấp | XÁC NHẬN ✔ | Tài liệu sai: khi "HOST IDENTIFICATION HAS CHANGED" bảo chạy lại `them-may`, nhưng lệnh này không đụng `known_hosts` | `docs/huong-dan/quan-ly-may-tram.md:39-40` | 1 |
-| N5 | Thấp | XÁC NHẬN (agent) | Caddyfile gắn vào container kiểu từng file → `caddy reload` không thấy bản mới (Ansible ghi bằng đổi tên file) | `docker-compose.yml.j2:20` | 3 |
+| N5 | Thấp | XÁC NHẬN (chưa tự kiểm) | Caddyfile gắn vào container kiểu từng file → `caddy reload` không thấy bản mới (Ansible ghi bằng đổi tên file) | `docker-compose.yml.j2:20` | 3 |
 | N6 | Thấp | XÁC NHẬN | `onebee-kuma.js` chỉ thêm theo dõi khi chưa có tên đó → đổi URL theo dõi không có hiệu lực trên Box đã cài | `onebee-kuma.js:41-42` | 4 |
 | N7 | **Trung** (vì F2/F7/F10 dựa vào QĐ1) | XÁC NHẬN ✔ | QĐ1 chưa được bảo đảm: tài liệu bảo giao tài khoản mẫu (tài khoản tạo lúc cài Mint, [Inference] có sudo) cho nhân viên; code không kiểm nhóm sudo | `docs/huong-dan/cai-hang-loat.md:51`, `desktop/` (không có kiểm tra) | 1 |
 
@@ -85,10 +85,10 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
   - [GHSA-3qcw-p65v-c7vq](https://github.com/n8n-io/n8n/security/advisories/GHSA-3qcw-p65v-c7vq) (DoS không cần đăng nhập, High 8.2): ✔ mã nguồn 2.40.7 chỉ ghi bản ghi OAuth khi tài nguyên là "first-party". Form Trigger chỉ là first-party khi `authentication === 'n8nUserAuth'` (`form-trigger-resource.resolver.ts`, `oauth-server.service.ts`).
     - Mọi biểu mẫu của Box dùng `basicAuth` (`03:20, 04:24, 07:24, 08:19, 09:21`) → **hiện không khai thác được**.
     - Bản 1 ghi "Cao, không cần đăng nhập" là đánh giá quá cao.
-  - Đợt 30/9 có **14** advisory (không phải 10). Agent đã mở từng trang: chỉ [GHSA-29xw-66fq-4xc3](https://github.com/n8n-io/n8n/security/advisories/GHSA-29xw-66fq-4xc3) có thể xảy ra.
+  - Đợt 30/9 có **14** advisory (không phải 10). Đã mở từng trang: chỉ [GHSA-29xw-66fq-4xc3](https://github.com/n8n-io/n8n/security/advisories/GHSA-29xw-66fq-4xc3) có thể xảy ra.
     - Cơ chế: XSS qua xem trước file nhị phân, High 7.2.
     - Đường đi [Inference]: ai giữ mật khẩu chung `nhanvien` tải file lên biểu mẫu tóm tắt PDF, sau đó chủ n8n mở xem trước file nhị phân trong lịch sử chạy.
-  - Dòng 2.40.x dừng ở 2.40.7; bản vá chỉ ra cho 2.41.4+, 2.42.1+, 1.123.83 (agent). Từ 6/10 chỉ 2.42.x và 2.43.x còn nhận bản vá.
+  - Dòng 2.40.x dừng ở 2.40.7; bản vá chỉ ra cho 2.41.4+, 2.42.1+, 1.123.83 (chưa tự kiểm). Từ 6/10 chỉ 2.42.x và 2.43.x còn nhận bản vá.
 - **Tác động:** hiện thấp. Lý do vẫn để Trung: chạy dòng đã ngừng vá, và chỉ cần thêm 1 biểu mẫu `n8nUserAuth` là lỗi DoS khai thác được ngay.
 
 ### F2 — Khóa báo tình trạng dùng chung → giả mạo máy trạm · Trung · XÁC NHẬN
@@ -112,7 +112,7 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
 ### F3 — HTTP không TLS · Trung · XÁC NHẬN (đang vá theo QĐ3)
 - **Bằng chứng:** giao diện Trợ lý AI (bản cũ) `:3000`, n8n `:5678`, Uptime Kuma `:3001`, rest-server `:8000` đều HTTP (`docker-compose.yml.j2:38,68,105,116`); `N8N_SECURE_COOKIE: "false"` (`:74`); mật khẩu kho trong URL `rest:http://…` (`onebee-box.sh.j2:48`).
 - **Khai thác:** giả mạo ARP trong LAN → đọc mật khẩu và phiên của quản trị giao diện Trợ lý AI (bản cũ), chủ n8n, Uptime Kuma, tài khoản biểu mẫu, mật khẩu HTTP kho sao lưu, khóa `hoi`, khóa tình trạng.
-- **Bản 2 (agent, đọc mã giao diện Trợ lý AI (bản cũ) v0.11.4):**
+- **Bản 2 (chưa tự kiểm, đọc mã giao diện Trợ lý AI (bản cũ) v0.11.4):**
   - `ENABLE_PLUGINS` mặc định True (N1) → phiên quản trị bị lộ = tạo được Function = Python chạy phía máy chủ trong container (root). Bản 1 ghi [Unverified]; nay xác nhận.
   - JWT sống 4 tuần, không thu hồi được (S5).
 - Restic vẫn mã hóa phía máy trạm → lộ mật khẩu HTTP chỉ cho đọc bản mã hóa hoặc đẩy rác làm đầy ổ.
@@ -128,14 +128,14 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
 
 ### F6 — Image ghim theo tag · Thấp · XÁC NHẬN
 - `group_vars/all.yml:13-19` không có `@sha256:`; không có Renovate hay lịch kiểm advisory.
-- (agent) Docker Hub cho thấy `caddy:2.11.4` được đẩy lại ngày 23/9/2026 → tag không cố định.
+- (chưa tự kiểm) Docker Hub cho thấy `caddy:2.11.4` được đẩy lại ngày 23/9/2026 → tag không cố định.
 
 ### F7 — `onebee-sao-luu` nạp cấu hình bằng shell · Thấp · XÁC NHẬN
 - `backup-client/files/onebee-sao-luu:12`: `. <(grep …)` → giá trị chứa `$(…)` sẽ được thực thi bằng root. Chỉ root ghi được file (QĐ1) → không leo quyền được; sửa cho sạch ở Pha 4.
 
 ### F8 — Samba · Thấp · XÁC NHẬN
 - `samba/tasks/main.yml:14-20,52-65`: 1 tài khoản `onebee`; không đặt `smb encrypt`/`server min protocol`.
-- (agent) Trên Samba 4.19, `server min protocol = SMB3` nghĩa là **chỉ** 3.1.1. Theo QĐ15 (chỉ Windows 10 + Linux) dùng được mức này.
+- (chưa tự kiểm) Trên Samba 4.19, `server min protocol = SMB3` nghĩa là **chỉ** 3.1.1. Theo QĐ15 (chỉ Windows 10 + Linux) dùng được mức này.
 
 ### F9 — Biểu mẫu n8n dùng 1 tài khoản chung · Thấp · XÁC NHẬN
 - `credentials.json.j2:28-32`. Không phân biệt người nhập. Đây cũng là đường tải file của GHSA-29xw (F1).
@@ -150,7 +150,7 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
 
 ### F12 — `ENABLE_COMMUNITY_SHARING` · Thấp · XÁC NHẬN
 - Advisory GHSA-vpq8-f445-hcq7 (High 8.1) của giao diện cũ đã vá ở 0.11.4.
-- (agent) Cài đặt này lưu trong CSDL: phải đặt qua `ADMIN_CONFIG` trong `onebee-webui.py`, biến môi trường chỉ có tác dụng với bản cài mới.
+- (chưa tự kiểm) Cài đặt này lưu trong CSDL: phải đặt qua `ADMIN_CONFIG` trong `onebee-webui.py`, biến môi trường chỉ có tác dụng với bản cài mới.
 
 ### F13 — Chuỗi cung ứng bộ cài · Thấp · XÁC NHẬN
 - `git clone` + `sudo`; `SHA256SUMS` cùng nơi với file, không chữ ký; Actions ghim `@v4`/`@v5`.
@@ -161,22 +161,22 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
 ### S1 — HTML thô ở trang "Tóm tắt PDF" · Thấp · XÁC NHẬN ✔ (bị sandbox chặn)
 - ✔ `formCompletionUtils.ts` (n8n 2.40.7): `responseText` **không** qua `sanitizeHtml`; template in `{{{responseText}}}` (triple-stash = HTML thô). `completionMessage` (kiểu `text`) thì có `sanitizeHtml`.
 - ✔ Cùng file: đặt `Content-Security-Policy: getHtmlSandboxCSP()` khi `respondWith !== 'redirect'`.
-  - (agent) Giá trị CSP là `sandbox allow-scripts …`, **không** có `allow-same-origin` → script chạy ở origin rỗng.
-  - (agent) Cookie `n8n-auth` là httpOnly; CORS không cho kèm credentials.
+  - (chưa tự kiểm) Giá trị CSP là `sandbox allow-scripts …`, **không** có `allow-same-origin` → script chạy ở origin rỗng.
+  - (chưa tự kiểm) Cookie `n8n-auth` là httpOnly; CORS không cho kèm credentials.
   - → **Không** lấy được phiên chủ n8n. Giả thuyết của bản 1 bị bác.
 - Còn lại: PDF có lệnh giấu khiến AI sinh HTML → lừa đảo, giả nội dung trên một URL người dùng tin, gửi nội dung trang ra ngoài. Cần cả PDF độc lẫn model làm theo.
 - Mã này giống hệt từ 2.40.7 tới 2.43.0 → nâng n8n không sửa được S1.
 
-### S5 — Thời hạn phiên giao diện Trợ lý AI (bản cũ) · Thấp · XÁC NHẬN (agent)
+### S5 — Thời hạn phiên giao diện Trợ lý AI (bản cũ) · Thấp · XÁC NHẬN (chưa tự kiểm)
 - `JWT_EXPIRES_IN` mặc định `4w`; không có Redis → đăng xuất hay đổi mật khẩu không thu hồi được token.
 - Cài đặt lưu trong CSDL (đặt qua `ADMIN_CONFIG`).
 
 ### N1–N7 — phát hiện mới ở bản 2
 - **N1:** xem F3. Box không dùng Functions/Tools: Trợ lý đặt `builtin_tools: False` (`onebee-webui.py:113-118`).
-- **N2:** (agent) PR #39328, có từ 2.41.1. Tắt bằng `N8N_DISABLED_MODULES=agents`.
+- **N2:** (chưa tự kiểm) PR #39328, có từ 2.41.1. Tắt bằng `N8N_DISABLED_MODULES=agents`.
 - **N3:** `WEBHOOK_URL` và link email quy trình 07 dùng `ansible_default_ipv4`; `them-may` dùng `ip -4 route get 1.1.1.1`. Hai cách có thể ra 2 IP khác nhau (nhiều card mạng).
 - **N4:** ✔ `quan-ly-may-tram.md:39-40` hướng dẫn sai; cách đúng nằm ở thông báo của `cap-nhat-may` (`onebee-box.sh.j2:104-105`: `ssh-keygen -R`).
-- **N5:** (agent) Ansible ghi file mới bằng đổi tên → container vẫn thấy inode cũ.
+- **N5:** (chưa tự kiểm) Ansible ghi file mới bằng đổi tên → container vẫn thấy inode cũ.
 - **N6:** `coSan.includes(m.name)` → giữ theo dõi cũ khi đổi URL.
 - **N7:** ✔ `cai-hang-loat.md:51` "máy mẫu có sẵn tài khoản → đổi mật khẩu từng máy (`passwd`) hoặc tạo tài khoản riêng".
   - Không có bước nào tách tài khoản quản trị khỏi tài khoản nhân viên.
@@ -187,7 +187,7 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
 - **S3 — CSV:** `_csv-js.j2:2`, `04-nhap-don-hang.json.j2:9` bỏ sót `\r` đầu chuỗi; quy trình 04 không `trim()`. [Unverified] Calc/Excel có hiểu `" =…"` là công thức không.
 - **S4 — `\r` trong tiêu đề email:** `07-yeu-cau-ho-tro.json.j2:12`; `loai` đã giới hạn theo danh sách (`:7`). [Unverified] nodemailer nhiều khả năng tự lọc.
 
-### Phụ thuộc đã tra (bản 2, agent, trang advisory gốc)
+### Phụ thuộc đã tra (bản 2, trang advisory gốc)
 | Thành phần | Đang ghim | Mới nhất | Kết luận |
 |---|---|---|---|
 | n8n | 2.40.7 | 2.42.6 (stable), 2.43.x (beta) | Dòng 2.40 ngừng vá → nâng (F1) |
@@ -202,7 +202,7 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
 - **Injection:** tên máy kiểm regex (`onebee-box.sh.j2:34,79` và n8n); IP kiểm bằng `ipaddress`; `htpasswd -i` qua stdin; biến shell trong ngoặc kép; không có SQL tự viết.
   - n8n tắt nút chạy lệnh/SSH, chặn đọc env, giới hạn thư mục file.
 - **Xác thực:** tài khoản quản trị tạo sẵn, tắt đăng ký; Ollama không mở cổng; khóa API giới hạn endpoint; rest-server `--private-repos --append-only`; SSH chỉ khóa, không root.
-- **Biểu mẫu kiểu `text`** (quy trình 04/07/08/09): (agent) đi qua sanitize-html, không còn đường script.
+- **Biểu mẫu kiểu `text`** (quy trình 04/07/08/09): (chưa tự kiểm) đi qua sanitize-html, không còn đường script.
 - **XSS trang tĩnh:** `index.html.j2` chỉ dùng `textContent`/`href`; `demo/index.html` thoát ký tự lệnh.
 - **PPA ibus-bamboo:** khóa ký lưu sẵn, ghim ưu tiên chỉ cho gói `ibus-bamboo`.
 
@@ -215,7 +215,7 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
   - Test nâng cấp: cài commit cũ → cấp máy, tạo dữ liệu → cài bản mới → dữ liệu còn, biểu mẫu chạy, `changed=0`.
   - Ma trận lệch phiên bản: desktop cũ × Box mới, desktop mới × Box cũ.
   - Test khôi phục từ bản sao lưu chụp trước HTTPS.
-- **Lint theo đúng bản ansible-core trên máy:** Ubuntu 24.04 có ansible-core 2.16 (agent), CI đang lint bằng 2.19 → ghim lint về 2.16 hoặc thêm kiểm phiên bản. Ví dụ: `meta: end_role` chỉ có từ 2.18.
+- **Lint theo đúng bản ansible-core trên máy:** Ubuntu 24.04 có ansible-core 2.16 (chưa tự kiểm), CI đang lint bằng 2.19 → ghim lint về 2.16 hoặc thêm kiểm phiên bản. Ví dụ: `meta: end_role` chỉ có từ 2.18.
 
 ### 5.1 Lộ trình
 
@@ -232,11 +232,11 @@ Vẫn không thấy lỗi injection lệnh hay SQL, không có secret thật tro
 Box cài mới chưa có máy trạm: Pha 3 + 4 có hiệu lực ngay trong một lần cài.
 
 ### 5.2 Pha 1 — n8n 2.42.6 + tăng cứng nhanh
-**Bản đích n8n:** `docker.io/n8nio/n8n:2.42.6@sha256:526daa38b68e923cc00c5280d18b4da5d489f115a73bdbf3b8e452b184197a9a` (agent).
+**Bản đích n8n:** `docker.io/n8nio/n8n:2.42.6@sha256:526daa38b68e923cc00c5280d18b4da5d489f115a73bdbf3b8e452b184197a9a` (chưa tự kiểm).
 - Bản này đã vá cả 14 advisory. Ngày làm: nếu có 2.42.x mới hơn thì lấy bản mới nhất và kiểm lại digest.
 - Dự phòng ít thay đổi nhất: `2.41.7@sha256:bcef56dd…` — nhưng dòng 2.41 nhiều khả năng không còn được vá.
 
-**Kiểm tương thích 2.40.7 → 2.42.6** (agent đối chiếu mã nguồn; vẫn phải chạy test trên Box):
+**Kiểm tương thích 2.40.7 → 2.42.6** (đối chiếu mã nguồn; vẫn phải chạy test trên Box):
 - Không đổi: CLI `import:credentials`/`import:workflow`/`publish:workflow --id`; biến `N8N_INSTANCE_OWNER_*`; typeVersion mọi nút trong mẫu.
 - 2.42.x: lúc nhập có kiểm chính sách, mục bị chặn chỉ in "Skipped … blocked by policy", [Inference] vẫn thoát mã 0 → thêm `failed_when: (stdout + stderr) is search('Skipped|blocked by policy')`.
 - 2.41.0: biểu mẫu trả 415 cho POST không phải multipart (test đã dùng `curl -F`).
@@ -284,8 +284,8 @@ Box cài mới chưa có máy trạm: Pha 3 + 4 có hiệu lực ngay trong mộ
 
 #### Trạng thái triển khai Pha 1 (10/10/2026)
 Đã làm (và khác/bổ sung so với kế hoạch ở trên):
-- Digest: **cả 6 image** đã ghim tag + digest index đa kiến trúc (tự lấy từ registry; n8n khớp với kết quả agent).
-- Tự chép dữ liệu n8n trước khi đổi image (`box-stack/tasks/main.yml`), đã sửa sau rà soát Opus: kiểm chỗ trống TRƯỚC khi dừng n8n; chép vào
+- Digest: **cả 6 image** đã ghim tag + digest index đa kiến trúc (tự lấy từ registry; n8n khớp với kết quả tra cứu).
+- Tự chép dữ liệu n8n trước khi đổi image (`box-stack/tasks/main.yml`), đã sửa sau rà soát: kiểm chỗ trống TRƯỚC khi dừng n8n; chép vào
   `.tmp` rồi đổi tên (chép dở không bị coi là bản hoàn chỉnh); `rescue`: lỗi giữa chừng thì xóa bản dở, bật lại n8n, dừng bộ cài (image chưa đổi);
   xác nhận n8n đã dừng trước khi chép (SQLite có WAL); tên bản chép có dấu thời gian. Đã chạy khối này bằng ansible-core thật (docker/cp giả):
   nhánh thành công và nhánh chép lỗi đều đúng. Biểu thức nhận diện image thử với 4 trường hợp. Dùng `regex_findall` và lớp ký tự không có dấu `\`
@@ -396,7 +396,7 @@ Bản thiết kế đầu bị phản biện chỉ ra 1 điểm chặn: dùng kh
 - **Không gửi `hostkey` trong báo cáo**; bước chứng minh (đọc mật khẩu kho qua SSH rồi so) thay thế, và thực hiện bằng shell (`chung_minh_may`) chứ
   không bằng playbook riêng (`--ghim-lan-dau` không còn). Bước chứng minh chạy lại mỗi lần vào máy, nên cũng xác minh các khóa ghim cũ do bản trước tạo.
 - Quy tắc IP của `kho`: máy chưa ghim = báo cáo ký hợp lệ ≤ 2 giờ; máy đã ghim = tới 30 ngày, loại báo cáo sai chữ ký.
-- Sửa sau rà soát Opus (commit tiếp theo Pha 2): `ssh` trong vòng lặp nuốt danh sách (`--tat-ca` chỉ làm máy đầu → `ssh -n`); cấp lại máy đã thu
+- Sửa sau rà soát (commit tiếp theo Pha 2): `ssh` trong vòng lặp nuốt danh sách (`--tat-ca` chỉ làm máy đầu → `ssh -n`); cấp lại máy đã thu
   hồi giữ mật khẩu kho cũ (là khóa ký + bằng chứng danh tính; máy mất cắp tiếp tục chứng minh được) → nay đổi mật khẩu kho, cất kho cũ; `dong-bo-may`
   vẫn đẩy cấu hình thiếu mật khẩu (die trong `$(…)` không dừng hàm) → kiểm đủ bí mật trước khi in + assert trong playbook; dấu thu hồi `may-<tên>-thu-hoi`
   trùng tên khóa `hoi` của máy `<tên>-thu` → chuyển sang `secrets/thu-hoi/<tên>`; file tạm chứa bí mật còn lại khi `die` → trap EXIT; `kho` mở
@@ -428,7 +428,7 @@ Ansible thật, `thu-hoi-may` kèm giao diện Trợ lý AI (bản cũ) thật.
   - SSH vào Box qua Tailscale giữ như hiện nay (chỉ khóa, không root). SSH máy trạm vẫn đi qua Box (`from=` = IP LAN của Box).
 - **Root nằm ngoài container:**
   - Ansible dùng openssl sinh root (pathlen:1, ràng buộc như trên, 10 năm) + intermediate (pathlen:0, cùng ràng buộc, 1 năm).
-  - Caddy chỉ nhận root cert + **intermediate cert/key**. (agent) Caddy 2.11.4 cho phép bỏ khóa root; Caddy không tự gia hạn intermediate được cấp → bộ cài gia hạn khi còn < 60 ngày.
+  - Caddy chỉ nhận root cert + **intermediate cert/key**. (chưa tự kiểm) Caddy 2.11.4 cho phép bỏ khóa root; Caddy không tự gia hạn intermediate được cấp → bộ cài gia hạn khi còn < 60 ngày.
   - Cảnh báo "CA trung gian/gốc còn N ngày" trong `trang-thai` và email sao lưu (thêm vào payload quy trình 01).
   - Khóa root ở `secrets/ca/` (QĐ14; 0700, chỉ root trên máy chủ), **không** gắn vào container nào. Nằm trong bản sao lưu Box (đã mã hóa bằng khóa `restic-box`).
 - **Dữ liệu Caddy:** gắn `${DATA}/caddy:/data` và `/config`; gắn **cả thư mục** Caddyfile (sửa N5).
@@ -443,7 +443,7 @@ Ansible thật, `thu-hoi-may` kèm giao diện Trợ lý AI (bản cũ) thật.
   - Vân tay cùng kênh với chứng chỉ chỉ bắt lỗi chép, không chứng minh nguồn.
 - Cài vào kho hệ thống → Python (`hoi`, `onebee-bao-tinh-trang`), curl, restic tin CA.
 - **Firefox, cần thu hồi được:**
-  - (agent) `Certificates.Install` ghi vào cert9.db của từng hồ sơ và **không gỡ** khi bỏ policy.
+  - (chưa tự kiểm) `Certificates.Install` ghi vào cert9.db của từng hồ sơ và **không gỡ** khi bỏ policy.
   - Ưu tiên: policy `SecurityDevices` nạp `p11-kit-trust.so` → Firefox đọc thẳng kho hệ thống, gỡ file là hết tin. [Unverified] đường dẫn module trên Mint 22 và việc NSS vẫn áp ràng buộc.
   - Dự phòng: `Certificates.Install` + `certutil -D` trên từng hồ sơ khi gỡ hoặc xoay CA.
   - Trộn với `/usr/lib/firefox/distribution/policies.json` (file ở `/etc` *thay thế* file kia); trộn danh sách bằng `list_merge='append_rp'`; xóa file `/etc` khi không còn mục OneBee.
@@ -487,9 +487,9 @@ Firefox/Chromium thật có đọc chính sách và áp ràng buộc không; `ce
 - Một đường duy nhất, giống người dùng; không còn cổng backend nào mở.
 - `N8N_PROXY_HOPS=1` an toàn vì n8n không còn tự mở cổng.
 - Phương án lùi A: cổng `127.0.0.1` riêng — nếu thử thấy hairpin hoặc SNI có vấn đề.
-- Kiểm tra sức khỏe phải kiểm nội dung trả về: Host không khớp site nào thì Caddy trả 200 rỗng (agent).
+- Kiểm tra sức khỏe phải kiểm nội dung trả về: Host không khớp site nào thì Caddy trả 200 rỗng (chưa tự kiểm).
 
-**Caddyfile** (agent tra mã Caddy 2.11.4):
+**Caddyfile** (tra mã Caddy 2.11.4):
 - `default_sni <IP>` — **bắt buộc**: client nối bằng IP không gửi SNI, Caddy trong mạng bridge chỉ thấy IP container. [Unverified] trên máy thật.
 - `servers :<cổng> { listener_wrappers { http_redirect, tls } protocols h1 h2 }` khai riêng từng cổng TLS. Không tắt h3 thì Chrome không tin CA tự thêm qua HTTP/3.
 - `reverse_proxy … { stream_close_delay 5m }`; rest-server thêm `request_body { max_size 256MB }`.
@@ -609,7 +609,7 @@ mẫu n8n hai chế độ; playbook `dong-bo-may-tram.yml` bằng ansible-core 2
 | Mục | Việc |
 |---|---|
 | F5 | Sửa code tường lửa: áp chuỗi lọc cho mọi cổng mạng trừ `lo`/`docker*`/`br-*`. Riêng `tailscale0`: biến `onebee_box_tailscale_cho_phep` (IP 100.x hoặc dải của máy kỹ thuật) → chỉ máy kỹ thuật vào được web/SSH của Box (QĐ6). Tài liệu ACL Tailscale mẫu theo QĐ2/QĐ6: `tag:kythuat` → Box tcp 22, 80, 443, 3000, 5678, 3001; → máy trạm tcp 5900 (VNC, vẫn cần người dùng đồng ý); thiết bị khác trong tailnet không vào được Box |
-| F8 | QĐ15 (chỉ Windows 10 + Linux): `server min protocol = SMB3` (= chỉ SMB 3.1.1, có kiểm toàn vẹn chống hạ cấp) + `server smb encrypt = required`. Windows 10 hỗ trợ SMB 3.1.1 và mã hóa; Linux Mint (GVFS/libsmbclient) mặc định thương lượng tới 3.1.1 (agent). Thử trên 1 máy Windows 10 + 1 máy Mint trước khi áp cho cả đơn vị; kiểm cột mã hóa bằng `smbstatus` |
+| F8 | QĐ15 (chỉ Windows 10 + Linux): `server min protocol = SMB3` (= chỉ SMB 3.1.1, có kiểm toàn vẹn chống hạ cấp) + `server smb encrypt = required`. Windows 10 hỗ trợ SMB 3.1.1 và mã hóa; Linux Mint (GVFS/libsmbclient) mặc định thương lượng tới 3.1.1 (chưa tự kiểm). Thử trên 1 máy Windows 10 + 1 máy Mint trước khi áp cho cả đơn vị; kiểm cột mã hóa bằng `smbstatus` |
 | F9 | Tài khoản biểu mẫu theo phòng/người, ghi người đăng nhập vào CSV; siết `N8N_CONTENT_SECURITY_POLICY` (giảm GHSA-29xw) |
 | F11 | `no-new-privileges` mọi container; rest-server `cap_drop: [ALL]` + `read_only`; cân nhắc image Uptime Kuma `-rootless` |
 | F13, F6 | Ký tag/bản phát hành (minisign/cosign); ghim GitHub Actions theo SHA; Renovate (regex manager cho `group_vars/all.yml`); lịch ghim lại n8n mỗi 1–2 tuần |
@@ -662,5 +662,5 @@ Mọi câu hỏi thiết kế đã được chủ dự án trả lời (QĐ1–Q
 - n8n: [advisory list](https://github.com/n8n-io/n8n/security/advisories), [GHSA-3qcw-p65v-c7vq](https://github.com/n8n-io/n8n/security/advisories/GHSA-3qcw-p65v-c7vq), [GHSA-29xw-66fq-4xc3](https://github.com/n8n-io/n8n/security/advisories/GHSA-29xw-66fq-4xc3), mã nguồn tag `n8n@2.40.7`: `packages/cli/src/modules/oauth-server/`, `packages/nodes-base/nodes/Form/utils/formCompletionUtils.ts`, `packages/cli/templates/form-trigger-completion.handlebars`.
 - Giao diện Trợ lý AI cũ (đã gỡ): advisory GHSA-vpq8-f445-hcq7, GHSA-f9xp-mfmq-x6cg.
 - Uptime Kuma: [GHSA-wf2j-5mc7-5c4w](https://github.com/louislam/uptime-kuma/security/advisories/GHSA-wf2j-5mc7-5c4w).
-- Caddy (agent): mã nguồn tag `v2.11.4` — `modules/caddypki/`, `modules/caddyhttp/httpredirectlistener.go`; [releases](https://github.com/caddyserver/caddy/releases).
-- Firefox policy (agent): [mozilla/policy-templates](https://github.com/mozilla/policy-templates); Chromium: `docs/linux/cert_management.md`.
+- Caddy (chưa tự kiểm): mã nguồn tag `v2.11.4` — `modules/caddypki/`, `modules/caddyhttp/httpredirectlistener.go`; [releases](https://github.com/caddyserver/caddy/releases).
+- Firefox policy (chưa tự kiểm): [mozilla/policy-templates](https://github.com/mozilla/policy-templates); Chromium: `docs/linux/cert_management.md`.
