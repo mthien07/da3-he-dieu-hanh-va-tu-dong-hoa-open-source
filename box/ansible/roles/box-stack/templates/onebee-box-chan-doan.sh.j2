@@ -69,13 +69,51 @@ kiem_mang() {
     ghi_kq mang internet canh_bao "Internet" "Không ping được 1.1.1.1 và 8.8.8.8" \
       "Box vẫn phục vụ trong LAN, nhưng không cập nhật, không gửi được email và kỹ thuật không hỗ trợ từ xa được: kiểm tra modem/đường truyền nhà mạng"
   fi
+  local ts_duoc_cai=0 ts_da_noi=0
   if ! command -v tailscale >/dev/null; then
     ghi_kq mang tailscale ok "Tailscale (hỗ trợ từ xa)" "Không dùng (chưa cài Tailscale)"
   elif timeout 10 tailscale status >/dev/null 2>&1; then
     ghi_kq mang tailscale ok "Tailscale (hỗ trợ từ xa)" "Đã nối — kỹ thuật vào hỗ trợ từ xa được"
+    ts_da_noi=1
   else
     ghi_kq mang tailscale canh_bao "Tailscale (hỗ trợ từ xa)" "Đã cài nhưng chưa nối — kỹ thuật không vào hỗ trợ từ xa được" \
       "sudo systemctl restart tailscaled && sudo tailscale up"
+    ts_duoc_cai=1
+  fi
+  # ---- Lượt duyệt máy đi công tác (ADR 0008, chi tiết ở tu-xa.sh) ----
+  local f_l ten_l kq_l ip_l het_l luc_l nguoi_l dem_tu=0 sap_het=""
+  for f_l in "${TU_XA_DIR}"/*; do
+    [[ -f "${f_l}" ]] || continue
+    ten_l="$(basename "${f_l}")"
+    kq_l="$(doc_luot_tu_xa "${ten_l}" 2>/dev/null)" || {
+      ghi_kq mang tu_xa canh_bao "Lượt duyệt máy công tác" "Tệp lượt của ${ten_l} sai dạng — chưa áp dụng" \
+        "Xoá rồi duyệt lại: sudo onebee-box thu-hoi-tu-xa ${ten_l} && sudo onebee-box duyet-tu-xa ${ten_l}"
+      continue
+    }
+    read -r ip_l het_l luc_l nguoi_l <<<"${kq_l}"
+    dem_tu=$((dem_tu + 1))
+    if [[ "${het_l}" != 0 ]] && (( het_l - $(date +%s) < 86400 )); then
+      sap_het+="${sap_het:+, }${ten_l}"
+    fi
+    if [[ "${het_l}" == 0 ]] && (( $(date +%s) - luc_l > 30 * 86400 )); then
+      ghi_kq mang tu_xa_khong_han canh_bao "Lượt duyệt không hạn" \
+        "Máy ${ten_l} (${ip_l}) được duyệt từ ngày $(date -d "@${luc_l}" '+%d/%m/%Y') — đã quá 30 ngày" \
+        "Máy đã về LAN thì thu hồi: sudo onebee-box thu-hoi-tu-xa ${ten_l}"
+    fi
+  done
+  if (( dem_tu > 0 )); then
+    ghi_kq mang tu_xa ok "Máy công tác đang được duyệt" \
+      "${dem_tu} máy$([[ -n "${sap_het}" ]] && echo " — sắp hết hạn trong 24 giờ: ${sap_het}")"
+    if (( ts_duoc_cai == 1 )); then
+      ghi_kq mang tu_xa_tailscale canh_bao "Tailscale chưa nối" \
+        "Còn ${dem_tu} lượt duyệt từ xa nhưng Box chưa nối Tailscale — máy công tác không vào được Box" \
+        "sudo systemctl restart tailscaled && sudo tailscale up"
+    fi
+    if command -v tailscale >/dev/null && timeout 10 tailscale debug prefs 2>/dev/null | grep -q '"RunSSH": *true'; then
+      ghi_kq mang tu_xa_ssh canh_bao "Tailscale SSH đang bật" \
+        "Máy công tác SSH vào được Box đi vòng tường lửa (tailscaled nhận cổng 22 trước iptables)" \
+        "Tắt trên Box: sudo tailscale set --ssh=false (ACL mẫu trong docs/huong-dan/may-tram-di-cong-tac.md không có mục ssh)"
+    fi
   fi
 }
 

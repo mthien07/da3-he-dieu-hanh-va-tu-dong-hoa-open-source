@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Phase 1: Quyết định kiến trúc và xác minh giả định"
-status: todo
+status: completed
 priority: P1
 effort: "0,5 ngày"
 dependencies: []

@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+"""onebee-chon-duong-box — tự chọn đường tới OneBee Box (IP LAN hoặc IP VPN Tailscale) trên máy trạm (ADR 0008).
+
+Đọc MAY_TRAM, BOX_IP, BOX_TEN, BOX_IP_TU_XA từ /etc/onebee/may-tram.env (tách dòng + kiểm dạng, không source).
+Quy tắc quyết định dòng `<IP> <BOX_TEN> # onebee-box` trong /etc/hosts:
+1. BOX_TEN hoặc BOX_IP thiếu hay sai dạng -> gỡ dòng # onebee-box.
+2. Không có BOX_IP_TU_XA hợp lệ (trong 100.64.0.0/10) -> <BOX_IP> <BOX_TEN> # onebee-box (như bản 1.3.1).
+3. Có BOX_IP_TU_XA, bắt tay TLS tới BOX_IP:443 với CA đã ghim (server_hostname=BOX_TEN) đạt -> <BOX_IP> <BOX_TEN> # onebee-box.
+4. Có BOX_IP_TU_XA, bắt tay TLS tới BOX_IP không đạt -> <BOX_IP_TU_XA> <BOX_TEN> # onebee-box.
+
+Chế độ `onebee-chon-duong-box --xem` (không cần root): đọc /etc/hosts và in "mạng văn phòng", "từ xa qua VPN" hoặc "chưa nối Box".
+"""
+import ipaddress
+import os
+import re
+import socket
+import ssl
+import sys
+import tempfile
+
+CONF_MAC_DINH = "/etc/onebee/may-tram.env"
+HOSTS_MAC_DINH = "/etc/hosts"
+CA_MAC_DINH = "/usr/local/share/ca-certificates/onebee-box-ca.crt"
+DAU_HOSTS = "# onebee-box"
+RX_BOX_TEN = re.compile(r"^box\.[a-z0-9-]+\.onebee\.internal$")
+RX_IPV4 = re.compile(r"^([0-9]{1,3}\.){3}[0-9]{1,3}$")
+DAI_TAILSCALE = ipaddress.IPv4Network("100.64.0.0/10")
+
+
+def la_ipv4(chuoi):
+    if not chuoi or not RX_IPV4.match(chuoi):
+        return False
+    try:
+        ipaddress.IPv4Address(chuoi)
+        return True
+    except ValueError:
+        return False
+
+
+def la_ip_tailscale(chuoi):
+    if not la_ipv4(chuoi):
+        return False
+    return ipaddress.IPv4Address(chuoi) in DAI_TAILSCALE
+
+
+def doc_conf(duong_dan):
+    kq = {}
+    try:
+        with open(duong_dan, encoding="utf-8") as f:
+            for dong in f:
+                d = dong.strip()
+                if not d or d.startswith("#") or "=" not in d:
+                    continue
+                k, v = d.split("=", 1)
+                kq[k.strip()] = v.strip().strip('"')
+    except OSError:
+        pass
+    return kq
+
+
+def bat_tay_tls(ip, cong, ten_box, ca_file):
+    if not os.path.isfile(ca_file):
+        return False
+    try:
+        ctx = ssl.create_default_context(cafile=ca_file)
+        with socket.create_connection((ip, cong), timeout=3) as sock:
+            with ctx.wrap_socket(sock, server_hostname=ten_box):
+                return True
+    except (OSError, ssl.SSLError, ValueError):
+        return False
+
+
+def doc_hosts(duong_dan):
+    try:
+        with open(duong_dan, encoding="utf-8") as f:
+            return f.read().splitlines()
+    except OSError:
+        return []
+
+
+def xem_duong(hosts_path):
+    for dong in reversed(doc_hosts(hosts_path)):
+        if dong.rstrip().endswith(DAU_HOSTS):
+            phan = dong.split()
+            if len(phan) >= 2 and la_ipv4(phan[0]) and RX_BOX_TEN.match(phan[1]):
+                return "từ xa qua VPN" if la_ip_tailscale(phan[0]) else "mạng văn phòng"
+    return "chưa nối Box"
+
+
+def ghi_hosts(hosts_path, cac_dong_moi):
+    noi_dung = "\n".join(cac_dong_moi) + ("\n" if cac_dong_moi else "")
+    thu_muc = os.path.dirname(os.path.abspath(hosts_path)) or "."
+    fd, tam = tempfile.mkstemp(prefix=".hosts.onebee.", dir=thu_muc)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(noi_dung)
+        os.chmod(tam, 0o644)
+        os.replace(tam, hosts_path)
+    except OSError:
+        try:
+            os.unlink(tam)
+        except OSError:
+            pass
+        with open(hosts_path, "w", encoding="utf-8") as f:
+            f.write(noi_dung)
+
+
+def main(argv):
+    hosts_path = os.environ.get("ONEBEE_HOSTS", HOSTS_MAC_DINH)
+    if argv == ["--xem"]:
+        print(xem_duong(hosts_path))
+        return 0
+    if argv:
+        print("Cách dùng: onebee-chon-duong-box [--xem]", file=sys.stderr)
+        return 64
+
+    conf = doc_conf(os.environ.get("ONEBEE_CONF", CONF_MAC_DINH))
+    box_ip = conf.get("BOX_IP", "")
+    box_ten = conf.get("BOX_TEN", "")
+    box_ip_tu_xa = conf.get("BOX_IP_TU_XA", "")
+    ca_file = os.environ.get("ONEBEE_CA", CA_MAC_DINH)
+    try:
+        cong = int(os.environ.get("ONEBEE_PORT", "443"))
+    except ValueError:
+        cong = 443
+
+    if not (la_ipv4(box_ip) and RX_BOX_TEN.match(box_ten)):
+        dong_dich = None
+    elif not la_ip_tailscale(box_ip_tu_xa):
+        dong_dich = f"{box_ip} {box_ten} {DAU_HOSTS}"
+    elif bat_tay_tls(box_ip, cong, box_ten, ca_file):
+        dong_dich = f"{box_ip} {box_ten} {DAU_HOSTS}"
+    else:
+        dong_dich = f"{box_ip_tu_xa} {box_ten} {DAU_HOSTS}"
+
+    cu_list = doc_hosts(hosts_path)
+    vi_tri = [i for i, d in enumerate(cu_list) if d.rstrip().endswith(DAU_HOSTS)]
+    dong_cu = cu_list[vi_tri[-1]] if vi_tri else None
+
+    if dong_dich is None:
+        moi_list = [d for d in cu_list if not d.rstrip().endswith(DAU_HOSTS)]
+    else:
+        if vi_tri:
+            idx = vi_tri[-1]
+            moi_list = [d for i, d in enumerate(cu_list) if i == idx or not d.rstrip().endswith(DAU_HOSTS)]
+            moi_list[moi_list.index(cu_list[idx])] = dong_dich
+        else:
+            moi_list = [*cu_list, dong_dich]
+
+    if moi_list == cu_list:
+        return 0
+
+    ghi_hosts(hosts_path, moi_list)
+    print(f"đã đổi: {dong_cu or '(không có)'} -> {dong_dich or '(đã gỡ)'}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

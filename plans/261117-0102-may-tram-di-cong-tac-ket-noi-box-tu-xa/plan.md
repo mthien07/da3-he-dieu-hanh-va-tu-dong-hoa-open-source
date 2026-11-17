@@ -1,7 +1,7 @@
 ---
 title: "Máy trạm đi công tác kết nối OneBee Box từ xa (duyệt và thu hồi theo từng máy)"
 description: "Cho một máy trạm ngoài LAN dùng thư mục chung, kho tệp, Trợ lý AI và sao lưu của Box qua VPN, Box duyệt theo từng máy, có hạn, thu hồi ngay."
-status: pending
+status: in-progress
 priority: P1
 effort: 6d
 branch: feat/may-tram-di-cong-tac
@@ -97,11 +97,11 @@ Giới hạn cần biết: Caddy chạy trong Docker không thấy IP nguồn th
 
 | # | Phase | Ưu tiên | Công | Phụ thuộc | Status |
 |---|-------|---------|------|-----------|--------|
-| 1 | [Quyết định kiến trúc và xác minh giả định](./phase-01-quyet-dinh-kien-truc-va-xac-minh-gia-dinh.md) | P1 | 0,5 ngày | — | Pending |
-| 2 | [Box: tường lửa theo cổng và Samba cho máy từ xa](./phase-02-box-tuong-lua-va-samba-cho-may-tu-xa.md) | P1 | 1 ngày | 1 | Pending |
-| 3 | [Box: lệnh duyệt, thu hồi, hết hạn](./phase-03-box-lenh-duyet-thu-hoi-het-han.md) | P1 | 1,5 ngày | 2 | Pending |
-| 4 | [Máy trạm: tự chọn đường và lệnh công tác](./phase-04-may-tram-tu-chon-duong-va-lenh-cong-tac.md) | P1 | 1,5 ngày | 1 (song song được với 2, 3) | Pending |
-| 5 | [Kiểm thử tích hợp và tài liệu](./phase-05-kiem-thu-tich-hop-va-tai-lieu.md) | P1 | 1,5 ngày | 2, 3, 4 | Pending |
+| 1 | [Quyết định kiến trúc và xác minh giả định](./phase-01-quyet-dinh-kien-truc-va-xac-minh-gia-dinh.md) | P1 | 0,5 ngày | — | Completed |
+| 2 | [Box: tường lửa theo cổng và Samba cho máy từ xa](./phase-02-box-tuong-lua-va-samba-cho-may-tu-xa.md) | P1 | 1 ngày | 1 | Completed |
+| 3 | [Box: lệnh duyệt, thu hồi, hết hạn](./phase-03-box-lenh-duyet-thu-hoi-het-han.md) | P1 | 1,5 ngày | 2 | Completed |
+| 4 | [Máy trạm: tự chọn đường và lệnh công tác](./phase-04-may-tram-tu-chon-duong-va-lenh-cong-tac.md) | P1 | 1,5 ngày | 1 (song song được với 2, 3) | Completed |
+| 5 | [Kiểm thử tích hợp và tài liệu](./phase-05-kiem-thu-tich-hop-va-tai-lieu.md) | P1 | 1,5 ngày | 2, 3, 4 | In progress |
 
 Giai đoạn 4 chỉ sửa trong `desktop/` và `tests/desktop/`; Giai đoạn 2 và 3 chỉ sửa trong `box/` và `tests/box/`. Hai nhánh này không đụng chung tệp nào.
 
@@ -131,13 +131,13 @@ Giai đoạn 4 chỉ sửa trong `desktop/` và `tests/desktop/`; Giai đoạn 2
 
 ## Success Criteria
 
-- [ ] Máy đã duyệt, ở ngoài LAN: `hoi`, thư mục chung, kho tệp, sao lưu và báo tình trạng đều chạy; cổng 22, 80, 3001 của Box không tới được.
-- [ ] Máy chưa duyệt trong cùng tailnet không tới được cổng nào của Box.
-- [ ] Sau `thu-hoi-tu-xa`, kết nối SMB và HTTPS đang mở của máy đó đứt trong 5 giây; kết nối mới bị chặn.
+- [ ] Máy đã duyệt, ở ngoài LAN: `hoi`, thư mục chung, kho tệp, sao lưu và báo tình trạng đều chạy; cổng 22, 80, 3001 của Box không tới được. *(17/11: đạt trên máy thật trừ tải lên kho tệp — treo cả qua LAN trên Box thử, lỗi riêng của kho tệp; xem `plans/reports/261117-kiem-thu-may-di-cong-tac.md`)*
+- [x] Máy chưa duyệt trong cùng tailnet không tới được cổng nào của Box.
+- [ ] Sau `thu-hoi-tu-xa`, kết nối SMB và HTTPS đang mở của máy đó đứt trong 5 giây; kết nối mới bị chặn. *(17/11: SMB đạt trên máy thật; HTTPS kiểm ở C6 của CI)*
 - [ ] Lượt duyệt có `--ngay N` hết hạn thì tự thu hồi trong 15 phút; lượt không hạn giữ nguyên tới khi thu hồi tay.
-- [ ] Máy về LAN tự dùng lại IP LAN trong 5 phút, người dùng không gõ lệnh nào.
+- [x] Máy về LAN tự dùng lại IP LAN trong 5 phút, người dùng không gõ lệnh nào.
 - [ ] Máy không được duyệt từ xa hành xử y như 1.3.1 (không đổi URL, không đổi lối tắt).
-- [ ] Bộ cài Box và máy trạm chạy lần hai đạt `changed=0 failed=0`; `shellcheck`, `yamllint`, `ansible-lint` sạch; CI `box=true` xanh.
+- [x] Bộ cài Box và máy trạm chạy lần hai đạt `changed=0 failed=0`; `shellcheck`, `yamllint`, `ansible-lint` sạch; CI `box=true` xanh. *(17/11: máy thật và CI run 44075503025)*
 
 ## Validation Log
 

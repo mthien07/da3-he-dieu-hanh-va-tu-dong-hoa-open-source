@@ -1,5 +1,16 @@
 # Nhật ký thay đổi
 
+## [Unreleased]
+### Máy trạm đi công tác kết nối Box từ xa (ADR 0008)
+Đã kiểm bằng unit test, CI `box=true` (kịch bản C1 đến C11 với `tailscale0` giả) và trên Box thật, máy Mint thật, tailnet thật (T1 đến T12, `plans/reports/261117-kiem-thu-may-di-cong-tac.md`).
+- Box duyệt từng máy qua Tailscale, chỉ cổng 443, 445, 8000: `onebee-box duyet-tu-xa <máy> [--ngay N]`, `thu-hoi-tu-xa`, `tu-xa`, `tu-xa-ap-dung`. Lượt mặc định không hạn; có `--ngay` thì bộ hẹn giờ 15 phút tự thu hồi. `thu-hoi-may` thu hồi luôn quyền từ xa.
+- Thu hồi và hết hạn cắt cả kết nối đang mở (`conntrack -D` sau khi tường lửa đã đóng). Samba nhận đúng IP đã duyệt và IP máy kỹ thuật qua Tailscale.
+- Máy đã đi mà chưa chuẩn bị: `onebee-cong-tac bat --box-tu-xa <IP>` ghi địa chỉ VPN của Box và đổi kho sao lưu sang tên Box, sao lưu chạy được qua VPN.
+- Máy trạm tự chọn đường tới Box: thấy Box thật trong LAN (bắt tay TLS với CA đã ghim) thì dùng IP LAN, không thì IP VPN; tự chạy khi đổi mạng và mỗi 5 phút. Lệnh `onebee-cong-tac bat|tat|xem`.
+- `chan-doan` báo số máy đang được duyệt, cảnh báo lượt không hạn quá 30 ngày, Tailscale chưa nối, Tailscale SSH đang bật.
+- Sửa: `onebee-tuong-lua bat` dựng bộ luật mới trước rồi mới gỡ bộ cũ, không còn khoảng kết nối mới lọt qua không bị lọc trong lúc dựng lại.
+- Hướng dẫn mới `docs/huong-dan/may-tram-di-cong-tac.md`.
+
 ## [1.3.1] — 17/11/2026 — Sửa cảnh báo giả của Node-RED
 - Sửa: `onebee-box chan-doan` không còn báo `onebee-quy-trinh` "không khỏe (unhealthy)" khi dịch vụ vẫn chạy bình thường. Dịch vụ dùng kiểm tra mặc định của image (đọc `/data/settings.js`) trong khi cấu hình nằm ở `/cau-hinh`; nay có `healthcheck` riêng gọi đúng cổng 1880 của trình soạn luồng. Đã thử trên Box thật.
 - Tài liệu: hướng dẫn cài A đến Z gộp toàn bộ ảnh chụp thật (máy trạm sạch, Box trước và sau nâng cấp) vào một tệp.

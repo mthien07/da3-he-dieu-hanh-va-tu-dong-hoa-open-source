@@ -268,4 +268,283 @@ box 'ONEBEE_HTTPS=0 /root/onebee-test/tests/box/kiem-bat-bien.sh'
 echo "===== BẢN CHẠY THỬ CÔNG KHAI (DEMO) ====="
 "${REPO_ROOT}/tests/box/check-ban-demo.sh" "${BOX}"
 
+echo "===== MÁY TRẠM ĐI CÔNG TÁC (C1–C11: TƯỜNG LỬA + SAMBA + DUYỆT / THU HỒI / HẾT HẠN) ====="
+docker exec -i "${BOX}" bash -euo pipefail <<'EOF'
+set -euo pipefail
+GV=/root/onebee-test/box/ansible/group_vars/all.yml
+MA_DON_VI="$(sed -n 's/^onebee_box_ma_don_vi: *//p' "${GV}" | tr -d '"')"
+TEN_BOX="box.${MA_DON_VI}.onebee.internal"
+CA=/etc/onebee-box/secrets/ca/root.crt
+PW_SMB="$(cat /etc/onebee-box/secrets/samba-onebee)"
+
+# Bật HTTPS cho Box (duyet-tu-xa đòi HTTPS đã bật)
+cp /etc/onebee-box/secrets/ca/root.sha256 /etc/onebee-box/secrets/ca-da-dong-bo/ketoan-01
+sed -i -E 's#^onebee_box_https: .*#onebee_box_https: true#' "${GV}"
+/root/onebee-test/box/onebee-box-install.sh > /root/cai-cong-tac-https.log 2>&1 || { tail -40 /root/cai-cong-tac-https.log; exit 1; }
+
+# Khối này chạy với pipefail: KHÔNG dùng "lệnh | grep -q" — grep -q thoát ngay khi khớp, lệnh trước ghi tiếp vào ống đã đóng,
+# nhận SIGPIPE/EPIPE (curl thoát 23) và cả ống bị coi là trượt tùy thời điểm. Dùng "grep … >/dev/null" (đọc hết đầu vào).
+# Cặp veth giả lập tailscale0 (100.64.0.1 phía Box) <-> ts-xa (100.64.0.7 trong không gian mạng may-xa)
+ip netns del may-xa 2>/dev/null || true
+ip link del tailscale0 2>/dev/null || true
+ip netns add may-xa
+ip link add tailscale0 type veth peer name ts-xa
+ip link set ts-xa netns may-xa
+ip addr add 100.64.0.1/10 dev tailscale0
+ip link set tailscale0 up
+ip netns exec may-xa ip addr add 100.64.0.7/10 dev ts-xa
+ip netns exec may-xa ip link set ts-xa up
+ip netns exec may-xa ip link set lo up
+sysctl -w net.ipv4.ip_forward=1 >/dev/null
+
+# Lệnh tailscale giả trên Box
+cat > /usr/local/bin/tailscale <<'TS'
+#!/usr/bin/env bash
+case "$*" in
+  "ip -4") echo "100.64.0.1" ;;
+  "status --json")
+    cat <<'JSON'
+{"Self":{"TailscaleIPs":["100.64.0.1"]},"Peer":{"m1":{"HostName":"may-thu","TailscaleIPs":["100.64.0.7"],"OS":"linux","LastSeen":"2026-11-17T01:00:00Z"}}}
+JSON
+    ;;
+  "debug prefs") echo '{"RunSSH": false}' ;;
+  status*) echo "100.64.0.1 onebee-box linux -" ;;
+  *) exit 0 ;;
+esac
+TS
+chmod +x /usr/local/bin/tailscale
+
+onebee-box them-may may-thu >/dev/null
+cp /etc/onebee-box/secrets/ca/root.sha256 /etc/onebee-box/secrets/ca-da-dong-bo/may-thu
+systemctl restart onebee-tuong-lua
+
+kiem_c3_c4() {
+  ip netns exec may-xa curl -sf -m 5 --cacert "${CA}" \
+    --resolve "${TEN_BOX}:443:100.64.0.1" "https://${TEN_BOX}/" | grep "OneBee Box" >/dev/null \
+    || { echo "FAIL  $1: curl 443 qua tên Box lỗi"; exit 1; }
+  local c8000
+  c8000="$(ip netns exec may-xa curl -s -o /dev/null -m 5 -w '%{http_code}' --cacert "${CA}" \
+    --resolve "${TEN_BOX}:8000:100.64.0.1" "https://${TEN_BOX}:8000/")"
+  [[ "${c8000}" == "401" ]] || { echo "FAIL  $1: cổng 8000 không trả 401 (mã ${c8000})"; exit 1; }
+  ip netns exec may-xa smbclient -L //100.64.0.1 -U "onebee%${PW_SMB}" -m SMB3 2>/dev/null | grep "chung" >/dev/null \
+    || { echo "FAIL  $1: smbclient tới 445 không thấy share chung"; exit 1; }
+  for p in 22 3001 80 139; do
+    if ip netns exec may-xa timeout 2 bash -c "exec 3<>/dev/tcp/100.64.0.1/${p}" 2>/dev/null; then
+      echo "FAIL  $1: máy công tác vào được cổng cấm ${p}"; exit 1
+    fi
+  done
+}
+
+# C1: Chưa duyệt — thử cổng 443, 445, 8000, 22, 3001 đều hết giờ
+for p in 443 445 8000 22 3001; do
+  if ip netns exec may-xa timeout 2 bash -c "exec 3<>/dev/tcp/100.64.0.1/${p}" 2>/dev/null; then
+    echo "FAIL  C1: chưa duyệt mà vào được cổng ${p}"; exit 1
+  fi
+done
+echo "PASS  C1: Chưa duyệt — từ may-xa thử cổng 443, 445, 8000, 22, 3001 đều hết giờ"
+
+# C2: Duyệt máy may-thu
+onebee-box duyet-tu-xa may-thu --ip 100.64.0.7 --ngay 1 --dong-y >/dev/null
+onebee-box tu-xa | grep "may-thu.*100.64.0.7" >/dev/null || { echo "FAIL  C2: tu-xa không liệt kê may-thu"; exit 1; }
+echo "PASS  C2: duyet-tu-xa may-thu --ip 100.64.0.7 --ngay 1 --dong-y thoát 0, tu-xa liệt kê máy"
+
+# C3 & C4: Ba cổng 443, 445, 8000 tới được; cổng 22, 3001, 80, 139 hết giờ
+kiem_c3_c4 "C3/C4"
+echo "PASS  C3: Từ may-xa vào được HTTPS 443 (tên Box), kho sao lưu 8000 và thư mục chung Samba 445"
+echo "PASS  C4: Từ may-xa các cổng 22, 3001, 80, 139 đều hết giờ"
+
+# C5: IP thứ hai 100.64.0.8 chưa duyệt bị chặn
+ip netns exec may-xa ip addr add 100.64.0.8/10 dev ts-xa
+if ip netns exec may-xa curl -sf -m 3 --interface 100.64.0.8 --cacert "${CA}" \
+   --resolve "${TEN_BOX}:443:100.64.0.1" "https://${TEN_BOX}/" >/dev/null 2>&1; then
+  echo "FAIL  C5: IP chưa duyệt 100.64.0.8 vẫn vào được 443"; exit 1
+fi
+ip netns exec may-xa ip addr del 100.64.0.8/10 dev ts-xa
+echo "PASS  C5: IP thứ hai 100.64.0.8 trong may-xa thử cổng 443 bị chặn (hết giờ)"
+
+# Công cụ giữ MỘT kết nối HTTPS (keep-alive) từ may-xa: in MO sau lượt yêu cầu đầu, SONG0 sau lượt thứ hai (Caddy giữ kết nối),
+# rồi chờ tệp tín hiệu và thử lượt thứ ba trên CHÍNH kết nối đó: có phản hồi trong 5 giây -> SONG, không -> DUT.
+# Tường lửa DROP (không RST) nên "đứt" nghĩa là không còn phản hồi, không phải tiến trình tự thoát.
+cat > /root/giu-ket-noi-https.py <<'PY'
+import socket, ssl, sys, os, time
+ip, cong, ten, ca, tin_hieu = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4], sys.argv[5]
+yc = f"GET / HTTP/1.1\r\nHost: {ten}\r\nConnection: keep-alive\r\n\r\n".encode()
+
+def doc_phan_hoi(s):
+    du = b""
+    while b"\r\n\r\n" not in du:
+        k = s.recv(65536)
+        if not k:
+            raise ConnectionError("đóng")
+        du += k
+    dau, than = du.split(b"\r\n\r\n", 1)
+    dong = dau.decode("latin-1").lower().split("\r\n")
+    if not dong[0].startswith("http/1.1 "):
+        raise ConnectionError(dong[0])
+    dai = next((int(x.split(":", 1)[1]) for x in dong if x.startswith("content-length:")), None)
+    if dai is not None:
+        while len(than) < dai:
+            k = s.recv(65536)
+            if not k:
+                raise ConnectionError("đóng")
+            than += k
+    elif any(x.startswith("transfer-encoding:") and "chunked" in x for x in dong):
+        while not than.endswith(b"0\r\n\r\n"):
+            k = s.recv(65536)
+            if not k:
+                raise ConnectionError("đóng")
+            than += k
+
+def in_ra(x):
+    print(x, flush=True)
+
+ctx = ssl.create_default_context(cafile=ca)
+s = ctx.wrap_socket(socket.create_connection((ip, cong), timeout=5), server_hostname=ten)
+s.sendall(yc); doc_phan_hoi(s); in_ra("MO")
+s.sendall(yc); doc_phan_hoi(s); in_ra("SONG0")
+han = time.time() + 120
+while not os.path.exists(tin_hieu):
+    if time.time() > han:
+        in_ra("HET_GIO_CHO_TIN_HIEU"); sys.exit(1)
+    time.sleep(0.1)
+s.settimeout(5)
+try:
+    s.sendall(yc); doc_phan_hoi(s); in_ra("SONG")
+except (OSError, ssl.SSLError, ConnectionError):
+    in_ra("DUT")
+PY
+
+# Chờ tệp $1 có dòng khớp $2 (grep -E), tối đa $3 giây
+cho_dong() {
+  local i
+  for i in $(seq $(( $3 * 10 ))); do
+    grep -Eq -- "$2" "$1" 2>/dev/null && return 0
+    sleep 0.1
+  done
+  return 1
+}
+
+# Mở kết nối HTTPS giữ lâu từ may-xa ở nền: $1 = tệp kết quả, $2 = tệp tín hiệu; in PID; chờ tới SONG0
+mo_https_giu() {
+  rm -f "$1" "$2"
+  ip netns exec may-xa python3 -I /root/giu-ket-noi-https.py 100.64.0.1 443 "${TEN_BOX}" "${CA}" "$2" >"$1" 2>&1 &
+  echo $!
+}
+
+# C6: Kết nối HTTPS và phiên Samba ĐANG MỞ (đã trao đổi được) không còn phản hồi trong 5 giây khi thu-hoi-tu-xa; kết nối mới hết giờ
+C6_HTTPS=/root/c6-https.out C6_TIN=/root/c6-da-thu-hoi C6_SMB_IN=/root/c6-smb.in C6_SMB_OUT=/root/c6-smb.out
+pid_https="" pid_smb=""
+don_c6() {
+  exec 7>&- 2>/dev/null || true
+  [[ -z "${pid_https}" ]] || kill "${pid_https}" 2>/dev/null || true
+  [[ -z "${pid_smb}" ]] || kill "${pid_smb}" 2>/dev/null || true
+  wait "${pid_https}" "${pid_smb}" 2>/dev/null || true
+  rm -f "${C6_HTTPS}" "${C6_TIN}" "${C6_SMB_IN}" "${C6_SMB_OUT}"
+}
+pid_https="$(mo_https_giu "${C6_HTTPS}" "${C6_TIN}")"
+rm -f "${C6_SMB_IN}" "${C6_SMB_OUT}"
+mkfifo "${C6_SMB_IN}"
+# stdbuf: stdout là tệp thì smbclient đệm cả khối, kết quả "ls" chỉ ra tệp lúc thoát — ép ghi từng dòng
+ip netns exec may-xa stdbuf -oL -eL smbclient //100.64.0.1/chung -U "onebee%${PW_SMB}" -m SMB3 -t 3 <"${C6_SMB_IN}" >"${C6_SMB_OUT}" 2>&1 &
+pid_smb=$!
+exec 7>"${C6_SMB_IN}"
+echo ls >&7
+if ! cho_dong "${C6_HTTPS}" '^SONG0$' 10 || ! cho_dong "${C6_SMB_OUT}" 'blocks available' 10; then
+  echo "FAIL  C6: chưa giữ được kết nối HTTPS hoặc phiên Samba trước khi thu hồi"
+  cat "${C6_HTTPS}" "${C6_SMB_OUT}" 2>/dev/null || true
+  don_c6; exit 1
+fi
+[[ "$(grep -c 'blocks available' "${C6_SMB_OUT}")" == 1 ]] || { echo "FAIL  C6: phiên Samba trả lời lạ trước khi thu hồi"; don_c6; exit 1; }
+t0="$(date +%s)"
+onebee-box thu-hoi-tu-xa may-thu >/dev/null
+touch "${C6_TIN}"
+echo ls >&7
+if ! cho_dong "${C6_HTTPS}" '^(DUT|SONG)$' 8; then
+  echo "FAIL  C6: công cụ giữ kết nối không báo kết quả"; cat "${C6_HTTPS}"; don_c6; exit 1
+fi
+dt=$(( $(date +%s) - t0 ))
+if grep -qx SONG "${C6_HTTPS}" || (( dt > 8 )); then
+  echo "FAIL  C6: kết nối HTTPS đang mở vẫn được phục vụ sau thu-hoi-tu-xa (${dt}s)"; don_c6; exit 1
+fi
+sleep 5   # smbclient -t 3: đủ thời gian để lượt ls thứ hai có phản hồi nếu phiên còn sống
+if [[ "$(grep -c 'blocks available' "${C6_SMB_OUT}")" != 1 ]]; then
+  echo "FAIL  C6: phiên Samba đang mở vẫn được phục vụ sau thu-hoi-tu-xa"; cat "${C6_SMB_OUT}"; don_c6; exit 1
+fi
+if conntrack -L -s 100.64.0.7 2>/dev/null | grep ESTABLISHED >/dev/null; then
+  echo "FAIL  C6: conntrack còn kết nối ESTABLISHED của 100.64.0.7"; conntrack -L -s 100.64.0.7 2>/dev/null || true; don_c6; exit 1
+fi
+if ip netns exec may-xa timeout 2 bash -c "exec 3<>/dev/tcp/100.64.0.1/443" 2>/dev/null; then
+  echo "FAIL  C6: sau thu hồi vẫn mở được kết nối mới tới 443"; don_c6; exit 1
+fi
+don_c6
+echo "PASS  C6: Sau thu-hoi-tu-xa, kết nối HTTPS và phiên Samba đang mở không còn phản hồi (HTTPS: ${dt}s); kết nối mới hết giờ"
+
+# C7: Duyệt lại, mở kết nối HTTPS giữ lâu, sửa HET_HAN về quá khứ, chạy tu-xa-ap-dung -> lượt bị xoá, kết nối đang mở đứt, 443 hết giờ
+onebee-box duyet-tu-xa may-thu --ip 100.64.0.7 --ngay 1 --dong-y >/dev/null
+C7_HTTPS=/root/c7-https.out C7_TIN=/root/c7-het-han
+pid_c7="$(mo_https_giu "${C7_HTTPS}" "${C7_TIN}")"
+cho_dong "${C7_HTTPS}" '^SONG0$' 10 \
+  || { echo "FAIL  C7: chưa giữ được kết nối HTTPS trước khi hết hạn"; cat "${C7_HTTPS}"; kill "${pid_c7}" 2>/dev/null || true; exit 1; }
+sed -i 's/^HET_HAN=.*/HET_HAN=1000/' /etc/onebee-box/tu-xa/may-thu
+onebee-box tu-xa-ap-dung >/dev/null
+touch "${C7_TIN}"
+cho_dong "${C7_HTTPS}" '^(DUT|SONG)$' 8 || { echo "FAIL  C7: công cụ giữ kết nối không báo kết quả"; cat "${C7_HTTPS}"; kill "${pid_c7}" 2>/dev/null || true; exit 1; }
+kq_c7="$(grep -Ex 'DUT|SONG' "${C7_HTTPS}")"
+wait "${pid_c7}" 2>/dev/null || true
+rm -f "${C7_HTTPS}" "${C7_TIN}"
+[[ "${kq_c7}" == DUT ]] || { echo "FAIL  C7: kết nối đang mở vẫn sống sau khi lượt hết hạn"; exit 1; }
+[[ ! -f /etc/onebee-box/tu-xa/may-thu ]] || { echo "FAIL  C7: lượt hết hạn chưa bị xoá"; exit 1; }
+if ip netns exec may-xa timeout 2 bash -c "exec 3<>/dev/tcp/100.64.0.1/443" 2>/dev/null; then
+  echo "FAIL  C7: lượt hết hạn đã xoá mà 443 vẫn vào được"; exit 1
+fi
+echo "PASS  C7: Lượt hết hạn bị tu-xa-ap-dung tự thu hồi, kết nối HTTPS đang mở đứt, cổng 443 hết giờ"
+
+# C8: Duyệt lại, khởi động lại Docker rồi khởi động lại dịch vụ tường lửa -> sau mỗi lần C3 và C4 vẫn đúng
+onebee-box duyet-tu-xa may-thu --ip 100.64.0.7 --ngay 1 --dong-y >/dev/null
+systemctl restart docker
+for _ in $(seq 60); do
+  ip netns exec may-xa curl -sf -m 3 --cacert "${CA}" --resolve "${TEN_BOX}:443:100.64.0.1" "https://${TEN_BOX}/" >/dev/null 2>&1 && break
+  sleep 2
+done
+kiem_c3_c4 "C8-sau-restart-docker"
+systemctl restart onebee-tuong-lua
+kiem_c3_c4 "C8-sau-restart-tuong-lua"
+echo "PASS  C8: Khởi động lại Docker và khởi động lại onebee-tuong-lua đều giữ nguyên C3 và C4"
+
+# C9: thu-hoi-may thu hồi luôn quyền từ xa
+onebee-box thu-hoi-may may-thu --dong-y >/dev/null
+[[ ! -f /etc/onebee-box/tu-xa/may-thu ]] || { echo "FAIL  C9: thu-hoi-may không xoá lượt duyệt từ xa"; exit 1; }
+if ip netns exec may-xa timeout 2 bash -c "exec 3<>/dev/tcp/100.64.0.1/443" 2>/dev/null; then
+  echo "FAIL  C9: sau thu-hoi-may vẫn vào được 443"; exit 1
+fi
+echo "PASS  C9: thu-hoi-may thu hồi luôn quyền từ xa cùng lúc"
+
+# C10: Chạy lại bộ cài Box khi đang có một lượt duyệt -> changed=0 failed=0; lượt duyệt còn nguyên
+onebee-box them-may may-thu >/dev/null
+cp /etc/onebee-box/secrets/ca/root.sha256 /etc/onebee-box/secrets/ca-da-dong-bo/may-thu
+onebee-box duyet-tu-xa may-thu --ip 100.64.0.7 --ngay 1 --dong-y >/dev/null
+/root/onebee-test/box/onebee-box-install.sh > /root/cai-c10.log 2>&1 || { tail -40 /root/cai-c10.log; exit 1; }
+grep -Eq 'changed=0 .*failed=0' /root/cai-c10.log \
+  || { grep -B2 'changed:' /root/cai-c10.log | head -30; echo "FAIL  C10: chạy lại bộ cài Box khi đang có lượt duyệt còn thay đổi"; exit 1; }
+[[ -f /etc/onebee-box/tu-xa/may-thu ]] || { echo "FAIL  C10: mất lượt duyệt sau khi chạy bộ cài"; exit 1; }
+kiem_c3_c4 "C10"
+echo "PASS  C10: Chạy lại bộ cài Box khi đang có lượt duyệt đạt changed=0 failed=0, lượt duyệt còn nguyên"
+
+# C11: Duyệt không có --ngay (không hạn), chạy tu-xa-ap-dung; lùi DUYET_LUC 31 ngày -> chan-doan cảnh báo quá 30 ngày
+onebee-box duyet-tu-xa may-thu --ip 100.64.0.7 --dong-y >/dev/null
+onebee-box tu-xa-ap-dung >/dev/null
+[[ -f /etc/onebee-box/tu-xa/may-thu ]] || { echo "FAIL  C11: lượt không hạn bị tu-xa-ap-dung xoá"; exit 1; }
+sed -i "s/^DUYET_LUC=.*/DUYET_LUC=$(( $(date +%s) - 31 * 86400 ))/" /etc/onebee-box/tu-xa/may-thu
+out_cd="$(onebee-box chan-doan 2>&1 || true)"
+grep -q "quá 30 ngày" <<<"${out_cd}" && grep -q "thu-hoi-tu-xa may-thu" <<<"${out_cd}" \
+  || { echo "FAIL  C11: chan-doan không cảnh báo lượt không hạn quá 30 ngày"; echo "${out_cd}"; exit 1; }
+echo "PASS  C11: Lượt không hạn giữ nguyên qua tu-xa-ap-dung; quá 30 ngày được chan-doan cảnh báo kèm lệnh thu hồi"
+
+# Dọn sạch sau khi thử
+onebee-box thu-hoi-may may-thu --dong-y >/dev/null
+rm -f /usr/local/bin/tailscale
+ip netns del may-xa 2>/dev/null || true
+ip link del tailscale0 2>/dev/null || true
+EOF
+
 echo "TẤT CẢ BƯỚC KIỂM THỬ BOX ĐẠT"

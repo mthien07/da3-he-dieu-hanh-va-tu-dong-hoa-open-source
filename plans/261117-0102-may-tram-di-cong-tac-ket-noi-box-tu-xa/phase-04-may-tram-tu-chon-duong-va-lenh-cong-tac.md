@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Phase 4: Máy trạm — tự chọn đường và lệnh công tác"
-status: todo
+status: completed
 priority: P1
 effort: "1,5 ngày"
 dependencies: [1]

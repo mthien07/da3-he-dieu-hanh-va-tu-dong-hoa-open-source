@@ -9,9 +9,12 @@
 # Cần: bash 4+, python3 + jinja2 + pyyaml, openssl (Linux). Trên máy khác: chạy trong container Ubuntu 24.04 có các gói trên.
 # Cách dùng: tests/box/check-diagnosis.sh
 set -uo pipefail
+# Windows (Git-bash): không đổi tham số "-subj /O=..." thành đường dẫn; Linux: vô hại
+export MSYS2_ARG_CONV_EXCL="${MSYS2_ARG_CONV_EXCL:-/O}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "${HERE}/../.." && pwd)"
-T="$(mktemp -d)"
+# pwd -W: đường dẫn dạng Windows để python của Windows đọc được; Linux không có -W → dùng pwd thường
+ROOT="$(cd "${HERE}/../.." && { pwd -W 2>/dev/null || pwd; })"
+T="$(cd "$(mktemp -d)" && { pwd -W 2>/dev/null || pwd; })"
 trap 'rm -rf "${T}"' EXIT
 SIM="${T}/sim"
 fails=0
@@ -19,7 +22,7 @@ pass() { printf 'PASS  %s\n' "$1"; }
 fail() { printf 'FAIL  %s\n' "$1"; fails=$((fails + 1)); }
 
 python3 -c 'import jinja2, yaml' 2>/dev/null || { echo "Cần python3 với jinja2 + pyyaml (pip install jinja2 pyyaml)"; exit 2; }
-mkdir -p "${T}"/{lib,bin,secrets,ssh,box,proc,sim,log} "${T}/data/chung" "${T}/mnt/onebee-sao-luu/restic-box"
+mkdir -p "${T}"/{lib,bin,secrets,ssh,box,proc,sim,log,tu-xa} "${T}/data/chung" "${T}/mnt/onebee-sao-luu/restic-box"
 
 # ---- Dựng lệnh onebee-box từ mẫu (như bộ cài Ansible), đường dẫn máy thật → thư mục tạm, bỏ kiểm quyền root ----
 python3 - "${ROOT}" "${T}" <<'PY'
@@ -34,9 +37,14 @@ env = jinja2.Environment(keep_trailing_newline=True)
 env.filters.update(to_json=lambda x: json.dumps(x, ensure_ascii=False), quote=shlex.quote, bool=bool)
 def sua(s):
     return (s.replace("/usr/local/lib/onebee-box", f"{t}/lib").replace("/var/log/onebee-box", f"{t}/log")
-             .replace("/run/onebee-box.lock", f"{t}/onebee-box.lock").replace("[[ ${EUID} -eq 0 ]] ||", "[[ 1 -eq 1 ]] ||"))
+             .replace("/run/onebee-box-tu-xa.lock", f"{t}/onebee-box-tu-xa.lock").replace("/run/onebee-box.lock", f"{t}/onebee-box.lock")
+             .replace("/etc/onebee-box/tu-xa", f"{t}/tu-xa")
+             .replace("/etc/onebee-box/tuong-lua-tu-xa.conf", f"{t}/tuong-lua-tu-xa.conf")
+             .replace("/etc/onebee-box/samba-tu-xa.conf", f"{t}/samba-tu-xa.conf")
+             .replace("[[ ${EUID} -eq 0 ]] ||", "[[ 1 -eq 1 ]] ||"))
 for src, dst in (("onebee-box-common.sh.j2", "lib/common.sh"), ("onebee-box-sao-luu.sh.j2", "lib/sao-luu.sh"),
-                 ("onebee-box-chan-doan.sh.j2", "lib/chan-doan.sh"), ("onebee-box.sh.j2", "bin/onebee-box")):
+                 ("onebee-box-tu-xa.sh.j2", "lib/tu-xa.sh"), ("onebee-box-chan-doan.sh.j2", "lib/chan-doan.sh"),
+                 ("onebee-box.sh.j2", "bin/onebee-box")):
     with open(os.path.join(tpl, src), encoding="utf-8") as f:
         out = sua(env.from_string(f.read()).render(**v))
     with open(os.path.join(t, dst), "w", encoding="utf-8") as f:
@@ -53,7 +61,10 @@ gia() { printf '#!/usr/bin/env bash\n%s\n' "$2" >"${T}/bin/$1"; chmod +x "${T}/b
 gia ping 'd="${!#}"; [[ -s "${SIM}/ping-${d}" ]] || { echo "3 packets transmitted, 0 received, 100% packet loss"; exit 1; }
 a="$(cat "${SIM}/ping-${d}")"; echo "3 packets transmitted, 3 received, 0% packet loss"; echo "rtt min/avg/max/mdev = ${a}/${a}/${a}/0.000 ms"'
 gia ip '[[ -s "${SIM}/gateway" ]] && echo "default via $(cat "${SIM}/gateway") dev eth0 proto dhcp src 127.0.0.1 metric 100"; exit 0'
-gia tailscale '[[ "$1" == status ]] || exit 2; [[ ! -e "${SIM}/tailscale-dung" ]] || { echo "Tailscale is stopped."; exit 1; }; echo "100.64.0.1 box linux -"'
+gia tailscale 'case "$*" in
+  *"debug prefs"*) cat "${SIM}/ts-prefs.json" 2>/dev/null || echo "{\"RunSSH\": false}"; exit 0 ;;
+esac
+[[ "$1" == status ]] || exit 2; [[ ! -e "${SIM}/tailscale-dung" ]] || { echo "Tailscale is stopped."; exit 1; }; echo "100.64.0.1 box linux -"'
 # df -P <thư mục>: $SIM/df-<tên> chứa % đã dùng (mặc định 40)
 gia df 'd="${!#}"; k="${d//\//_}"; p=40; [[ ! -s "${SIM}/df${k}" ]] || p="$(cat "${SIM}/df${k}")"
 echo "Filesystem 1024-blocks Used Available Capacity Mounted on"; echo "/dev/sda1 100000000 $((p * 1000000)) $(((100 - p) * 1000000)) ${p}% ${d}"'
@@ -230,6 +241,26 @@ rm -f "${SIM}/ping-8.8.8.8"
 kich_ban "Không ping được 1.1.1.1 lẫn 8.8.8.8 → Internet CẢNH BÁO (Box vẫn phục vụ LAN)" 1 "mang/internet=canh_bao"
 moi_thu_khoe; : >"${SIM}/tailscale-dung"
 kich_ban "Đã cài Tailscale nhưng chưa nối → CẢNH BÁO" 1 "mang/tailscale=canh_bao"
+
+# ===== Máy công tác (ADR 0008): lượt duyệt từ xa =====
+# luot <tên> <ip> <het_han|0> <duyet_luc> — đặt đúng MỘT lượt duyệt (xoá lượt cũ)
+luot() { rm -f "${T}"/tu-xa/*; printf 'IP=%s\nHET_HAN=%s\nDUYET_LUC=%s\nNGUOI_DUYET=kiem-thu\n' "$2" "$3" "$4" >"${T}/tu-xa/$1"; }
+
+moi_thu_khoe; luot ketoan-01 100.64.0.7 0 "$(( $(date +%s) - 31 * 86400 ))"
+kich_ban "Lượt duyệt không hạn đã mở quá 30 ngày → CẢNH BÁO" 1 "mang/tu_xa_khong_han=canh_bao"
+chay; if grep -q 'thu-hoi-tu-xa ketoan-01' <<<"${OUT}"; then pass "Gợi ý thu hồi kèm tên máy"; else fail "Thiếu gợi ý thu-hoi-tu-xa"; fi
+
+moi_thu_khoe; luot ketoan-01 100.64.0.7 0 "$(date +%s)"; : >"${SIM}/tailscale-dung"
+kich_ban "Còn lượt duyệt nhưng Tailscale chưa nối → CẢNH BÁO" 1 "mang/tailscale=canh_bao mang/tu_xa_tailscale=canh_bao"
+
+moi_thu_khoe; luot ketoan-01 100.64.0.7 0 "$(date +%s)"; echo '{"RunSSH": true}' >"${SIM}/ts-prefs.json"
+kich_ban "Tailscale SSH đang bật trong khi còn lượt duyệt → CẢNH BÁO" 1 "mang/tu_xa_ssh=canh_bao"
+
+moi_thu_khoe; luot ketoan-01 100.64.0.7 "$(( $(date +%s) + 10 * 3600 ))" "$(date +%s)"
+chay
+if [[ "${RC}" == 0 ]] && grep -q 'sắp hết hạn trong 24 giờ' <<<"${OUT}"; then
+  pass "Lượt sắp hết hạn trong 24 giờ được nêu trong mục máy công tác"
+else fail "Lượt sắp hết hạn trong 24 giờ không được nêu (mã ${RC})"; fi
 
 # ===== Tài nguyên =====
 moi_thu_khoe; echo 85 >"${SIM}/df_"
