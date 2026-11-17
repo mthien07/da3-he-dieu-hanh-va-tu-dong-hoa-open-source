@@ -114,3 +114,27 @@ người sau thấy tồn đã trừ của người trước.
 - Giá vốn bình quân gia quyền, chưa có giá vốn theo lô/FIFO, chưa theo hạn dùng.
 - Chưa có khóa sổ cuối kỳ, chưa có tờ khai thuế và kết chuyển.
 - Chưa tự động ghi phiếu thu tiền (111/112/131) khi khách trả tiền.
+
+## 6. Ảnh chụp giao diện
+
+Ảnh chụp từ Box test ngày 17/11/2026 (dữ liệu kiểm thử, tài khoản `ui-*`).
+
+| Thủ kho: tồn kho, nhập kho, thẻ kho | Thêm mặt hàng |
+|---|---|
+| ![Khu Kho](anh/kho-ke-toan/10-khu-kho.png) | ![Thêm mặt hàng](anh/kho-ke-toan/11-them-mat-hang.png) |
+
+| Đã nhập 50 kg | Xuất CSV |
+|---|---|
+| ![Nhập kho](anh/kho-ke-toan/12-nhap-kho-va-ton.png) | ![Xuất CSV](anh/kho-ke-toan/13-xuat-csv.png) |
+
+| Nhân viên gửi đơn | Quản lý duyệt đơn |
+|---|---|
+| ![Gửi đơn](anh/kho-ke-toan/20-gui-don.png) | ![Duyệt đơn](anh/kho-ke-toan/30-duyet-don.png) |
+
+| Tồn còn 40 kg sau khi duyệt | Sổ nhật ký kế toán |
+|---|---|
+| ![Tồn sau duyệt](anh/kho-ke-toan/31-kho-sau-duyet.png) | ![Sổ nhật ký](anh/kho-ke-toan/32-ke-toan-nhat-ky.png) |
+
+| Bảng cân đối tài khoản | Kế toán đăng nhập (chỉ thấy khu Kế toán) |
+|---|---|
+| ![Bảng cân đối](anh/kho-ke-toan/33-ke-toan-can-doi.png) | ![Kế toán](anh/kho-ke-toan/40-ke-toan-vai-tro.png) |
