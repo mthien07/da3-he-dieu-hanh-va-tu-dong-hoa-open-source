@@ -1,6 +1,15 @@
 # Nhật ký thay đổi
 
 ## [Unreleased]
+
+## [2.0.0] — 18/11/2026 — Sổ kho, kế toán và máy trạm đi công tác
+Bản lớn: lược đồ CSDL mới cho kho và kế toán, hai nhóm người dùng mới, luật duyệt đơn đổi.
+
+### Lưu ý khi nâng cấp từ 1.3.x
+- Duyệt đơn hàng nay trừ tồn kho và ghi bút toán, nên mặt hàng trong đơn phải có trong danh mục kho. Đơn đang chờ duyệt ghi mặt hàng chưa có trong danh mục sẽ bị chặn khi duyệt (`mat_hang_chua_co`): thủ kho thêm mặt hàng và nhập tồn trước, rồi quản lý duyệt lại.
+- Thêm hai nhóm `thu_kho` và `ke_toan` (đăng nhập hai lớp, cần mã TOTP). Tạo tài khoản bằng `sudo onebee-box them-nguoi <tên> thu_kho|ke_toan`.
+- Bộ cài kết xuất CSDL ra `postgres-ket-xuat/truoc-luoc-do-<tệp>.dump` trước khi áp từng tệp lược đồ mới; chạy lại bộ cài lần 2 vẫn `changed=0`.
+
 ### Kho và kế toán trên Box (lõi DX-OS)
 Đã chạy thử trên Box thật 192.168.100.127 (`check-kho-ke-toan.sh local` đạt toàn bộ) và kiểm giao diện bằng trình duyệt tự động 16/16 nút; cài lại `changed=0`.
 #### Thêm
