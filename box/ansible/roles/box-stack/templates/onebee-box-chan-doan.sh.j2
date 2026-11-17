@@ -112,7 +112,7 @@ kiem_mang() {
     if command -v tailscale >/dev/null && timeout 10 tailscale debug prefs 2>/dev/null | grep -q '"RunSSH": *true'; then
       ghi_kq mang tu_xa_ssh canh_bao "Tailscale SSH đang bật" \
         "Máy công tác SSH vào được Box đi vòng tường lửa (tailscaled nhận cổng 22 trước iptables)" \
-        "Giới hạn bằng ACL tailnet (mục ssh chỉ cho tag:ky-thuat), hoặc tắt: sudo tailscale set --ssh=false"
+        "Tắt trên Box: sudo tailscale set --ssh=false (ACL mẫu trong docs/huong-dan/may-tram-di-cong-tac.md không có mục ssh)"
     fi
   fi
 }
