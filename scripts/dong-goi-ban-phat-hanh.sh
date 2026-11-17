@@ -37,5 +37,21 @@ git archive --format=tar.gz --prefix="${ten}/" -o "dist/${ten}.tar.gz" HEAD \
 # Ghi chú phát hành = mục của phiên bản này trong changelog
 awk -v v="${muc_ghi_chu}" 'index($0, v) == 1 {p = 1; print; next} p && /^## \[/ {exit} p' CHANGELOG.md \
   > dist/ghi-chu-phat-hanh.md
+# Lệnh cài một dòng, ghim đúng phiên bản này (bản -dev chưa có Release nên bỏ qua)
+if [[ "${ver}" != *-dev ]]; then
+  kho="mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source"
+  cat >> dist/ghi-chu-phat-hanh.md <<GHI_CHU
+
+### Cài nhanh
+
+Máy trạm (Linux Mint 22.x, có Internet). Dán nguyên khối vào terminal: tải gói, kiểm SHA256 (sai là dừng), giải nén, chạy bộ cài. Box dùng \`./box/onebee-box-install.sh\` ở lệnh cuối.
+
+\`\`\`bash
+cd "\$(mktemp -d)" && B=https://github.com/${kho}/releases/download/v${ver} \\
+ && curl -fsSLO "\$B/${ten}.tar.gz" -O "\$B/SHA256SUMS" \\
+ && sha256sum -c SHA256SUMS && tar xzf ${ten}.tar.gz && cd ${ten} && sudo ./desktop/onebee-install.sh
+\`\`\`
+GHI_CHU
+fi
 echo "Đã tạo:"; ls -la dist; cat dist/SHA256SUMS
 echo "Kiểm tra trên máy tải về: sha256sum -c SHA256SUMS"
