@@ -35,6 +35,11 @@ KHOA_QUET = threading.Lock()   # QĐ5: chỉ một tác vụ clamscan tại mộ
 RANH_GIOI = "----onebee-kho-tep"
 
 
+def ghi_log(dong: str) -> None:
+    """Một dòng nhật ký ra stderr (docker logs onebee-kho-tep)."""
+    print(dong, file=sys.stderr, flush=True)
+
+
 def lam_sach_ten_tep(ten: str) -> str:
     """Bỏ đường dẫn và ký tự lạ khỏi tên tệp (tên hiển thị và khóa đối tượng chỉ dùng ASCII an toàn)."""
     goc = os.path.basename(ten.strip().replace("\\", "/")) or "tep.bin"
@@ -178,7 +183,18 @@ class KhoTepStore:
             return False
 
     # ---- Luồng tệp ----
-    def luu_va_quet(self, nguoi: str, nhom: list[str], ten_goc: str, du_lieu: bytes) -> tuple[int, dict]:
+    def luu_va_quet(self, nguoi: str, nhom: list[str], ten_goc: str, du_lieu: bytes,
+                    thoi_gian: dict | None = None) -> tuple[int, dict]:
+        """thoi_gian (nếu có) nhận số giây của từng chặng: quet, luu, metadata — để nhật ký chỉ ra chặng nào chậm."""
+        tg = thoi_gian if thoi_gian is not None else {}
+        moc = time.monotonic()
+
+        def bam(chang: str) -> None:
+            nonlocal moc
+            bay_gio = time.monotonic()
+            tg[chang] = tg.get(chang, 0.0) + (bay_gio - moc)
+            moc = bay_gio
+
         if len(du_lieu) > MAX_UPLOAD_BYTES:
             return 413, {"loi": "Tệp vượt quá giới hạn 10 MB"}
         ten_sach = lam_sach_ten_tep(ten_goc)
@@ -192,11 +208,14 @@ class KhoTepStore:
             f.write(du_lieu)
         os.chmod(tam, 0o600)
 
+        moc = time.monotonic()
         try:
             trang_thai, chi_tiet = quet_noi_dung(tam, self.clamscan_cmd, self.clamav_dir)
         except Exception as e:  # noqa: BLE001 — lỗi công cụ quét thì chưa được coi là sạch
             os.unlink(tam)
             return 503, {"loi": f"Chưa quét được tệp: {e}"}
+        finally:
+            bam("quet")
 
         ban_ghi = {
             "ten_tep": ten_sach,
@@ -209,6 +228,7 @@ class KhoTepStore:
         if trang_thai == "INFECTED":
             os.replace(tam, os.path.join(self.cach_ly_dir, f"{ma_tep}_{ten_sach}"))
             ma, kq = self._ghi_metadata(ban_ghi, nguoi, nhom)
+            bam("metadata")
             if ma not in (200, 201):
                 return 503, {"loi": "Tệp đã bị cách ly nhưng chưa ghi được metadata", "chi_tiet": kq}
             return 422, {"loi": "Tệp bị chặn do phát hiện mã độc", "tep": kq[0] if isinstance(kq, list) and kq else kq}
@@ -219,10 +239,13 @@ class KhoTepStore:
         except (urllib.error.URLError, OSError, RuntimeError) as e:
             os.unlink(tam)
             return 503, {"loi": f"Kho tệp chưa sẵn sàng: {e}"}
+        finally:
+            bam("luu")
         os.unlink(tam)
 
         ban_ghi["khoa_luu_tru"] = khoa_luu_tru
         ma, kq = self._ghi_metadata(ban_ghi, nguoi, nhom)
+        bam("metadata")
         if ma not in (200, 201):
             self._filer_xoa(khoa_luu_tru)
             return 503, {"loi": "Chưa ghi được metadata tệp — tệp chưa vào kho", "chi_tiet": kq}
@@ -266,13 +289,18 @@ class KhoTepHandler(BaseHTTPRequestHandler):
 
     def _tra_json(self, ma: int, du_lieu: dict) -> None:
         raw = json.dumps(du_lieu, ensure_ascii=False).encode("utf-8")
-        self.send_response(ma)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(raw)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        if self.command != "HEAD":
-            self.wfile.write(raw)
+        try:
+            self.send_response(ma)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(raw)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(raw)
+        except (BrokenPipeError, ConnectionResetError):
+            # Máy khách (hoặc Caddy) đã bỏ đi trước khi có trả lời — thường do hết thời gian chờ phía máy khách
+            self.close_connection = True
+            ghi_log(f"{self.command} {self.path}: máy khách đã ngắt trước khi nhận trả lời (mã {ma})")
 
     def _nguoi_dung(self) -> tuple[str, list[str]]:
         nguoi = (self.headers.get("Remote-User") or "").strip()
@@ -344,10 +372,15 @@ class KhoTepHandler(BaseHTTPRequestHandler):
         ten = self._duong_dan().lstrip("/")
         if not ten:
             return self._tra_json(400, {"loi": "Thiếu tên tệp trên đường dẫn"})
+        bat_dau = time.monotonic()
         du_lieu = self._doc_than()
         if du_lieu is None:
             return self._tra_json(413, {"loi": "Tệp vượt quá giới hạn 10 MB"})
-        ma, kq = self.store.luu_va_quet(nguoi, nhom, ten, du_lieu)
+        tg = {"doc": time.monotonic() - bat_dau}
+        ma, kq = self.store.luu_va_quet(nguoi, nhom, ten, du_lieu, thoi_gian=tg)
+        tg["tong"] = time.monotonic() - bat_dau
+        ghi_log(f"{self.command} {self.path} nguoi={nguoi} ma={ma} "
+                + " ".join(f"{k}={tg[k]:.1f}s" for k in ("doc", "quet", "luu", "metadata", "tong") if k in tg))
         self._tra_json(ma, kq)
 
     def do_POST(self):  # noqa: N802

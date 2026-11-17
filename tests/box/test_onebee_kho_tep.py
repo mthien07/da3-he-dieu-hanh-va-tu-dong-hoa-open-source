@@ -327,6 +327,44 @@ class KhoTepStoreTest(unittest.TestCase):
         self.assertEqual(self.store.danh_sach("chi", ["nhan_vien"]), (200, []))
         self.assertEqual(self.store.doc_tep("binh", ["quan_ly"], id_an)[0], 200)   # quản lý đọc để điều tra
 
+    def test_nhat_ky_tung_chang_va_may_khach_ngat_giua_chung(self):
+        """Mỗi lượt tải lên ghi một dòng thời gian từng chặng (đọc thân, quét, lưu, metadata) để biết chặng nào chậm.
+        Máy khách bỏ đi trước khi có trả lời (hết thời gian chờ) thì ghi một dòng, không đổ traceback BrokenPipeError."""
+        import socket
+        import time
+        with open(self.clamscan, "w", encoding="utf-8") as f:
+            f.write('#!/bin/sh\nsleep 1\necho "${3:-}: OK"\nexit 0\n')
+        nhat_ky = []
+        self.mod.ghi_log = nhat_ky.append
+        loi_xu_ly = []
+        handler = type("H", (self.mod.KhoTepHandler,), {"store": self.store})
+        sv = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        sv.handle_error = lambda *a: loi_xu_ly.append(a)
+        threading.Thread(target=sv.serve_forever, daemon=True).start()
+        self.addCleanup(sv.server_close)
+        self.addCleanup(sv.shutdown)
+        than = b"Bien ban giao nhan hang\n"
+        tieu_de = (f"PUT /bien-ban.txt HTTP/1.1\r\nHost: kho\r\nRemote-User: an\r\nRemote-Groups: nhan_vien\r\n"
+                   f"Content-Type: text/plain\r\nContent-Length: {len(than)}\r\nConnection: close\r\n\r\n").encode()
+        # Lượt 1: đọc hết trả lời → dòng nhật ký có đủ các chặng và mã 201
+        with socket.create_connection(("127.0.0.1", sv.server_port), timeout=10) as s:
+            s.sendall(tieu_de + than)
+            self.assertIn(b" 201 ", s.recv(4096))
+        dong = [x for x in nhat_ky if x.startswith("PUT /bien-ban.txt")]
+        self.assertEqual(len(dong), 1, nhat_ky)
+        for chang in ("doc=", "quet=", "luu=", "metadata=", "tong=", "ma=201", "nguoi=an"):
+            self.assertIn(chang, dong[0])
+        # Lượt 2: máy khách đóng kết nối ngay sau khi gửi (như curl hết -m) → không traceback, có dòng báo ngắt
+        s = socket.create_connection(("127.0.0.1", sv.server_port), timeout=10)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, b"\x01\x00\x00\x00\x00\x00\x00\x00")
+        s.sendall(tieu_de + than)
+        s.close()
+        han = time.time() + 10
+        while time.time() < han and not any("ngắt" in x for x in nhat_ky):
+            time.sleep(0.1)
+        self.assertTrue(any("ngắt" in x and "PUT /bien-ban.txt" in x for x in nhat_ky), nhat_ky)
+        self.assertEqual(loi_xu_ly, [])
+
     def test_cap_nhat_chu_ky_clamav_ngoai_tuyen(self):
         nguon = os.path.join(self.tmp.name, "usb")
         dich = os.path.join(self.tmp.name, "clamav")
