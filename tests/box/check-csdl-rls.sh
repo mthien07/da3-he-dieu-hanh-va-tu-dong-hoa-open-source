@@ -62,8 +62,8 @@ so_bang="$(chu -c "SELECT count(*) FROM pg_tables WHERE schemaname = 'onebee'")"
 # ===== Phân quyền tới cấp dòng (khẳng định của bài kiểm) =====
 # Duyệt đơn nay tự sinh phiếu xuất kho (chặn khi thiếu tồn) → cấp thẻ kho và tồn đầu cho đơn mẫu.
 chu <<'SQL' || fail "Không cấp được thẻ kho và tồn đầu cho đơn mẫu"
-INSERT INTO onebee.mat_hang (ma, ten, don_vi, gia_von, gia_ban)
-VALUES ('RLS-MATONG', 'Mật ong mẫu', 'kg', 70000, 100000) ON CONFLICT (ma) DO NOTHING;
+INSERT INTO onebee.mat_hang (ma, ten, don_vi, gia_von, gia_ban, nguoi_tao)
+VALUES ('RLS-MATONG', 'Mật ong mẫu', 'kg', 70000, 100000, 'kiem-thu') ON CONFLICT (ma) DO NOTHING;
 INSERT INTO onebee.phieu_kho (so_phieu, loai, ngay, dien_gia, nguoi_tao)
 VALUES ('PN-RLS-0001', 'NHAP', current_date, 'Kiểm thử RLS: tồn cho đơn mẫu', 'kiem-thu')
 ON CONFLICT (so_phieu) DO NOTHING;
