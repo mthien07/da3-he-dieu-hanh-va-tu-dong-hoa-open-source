@@ -11,6 +11,24 @@ Thay đổi của lõi DX-OS dự thi OLP 2026. Đã kiểm bằng CI `box=true`
 - Tài liệu và hồ sơ nộp bài: kiến trúc ba tầng DX-OS, ROADMAP, đặc tả API, bảng tự chấm PoF, kịch bản trình diễn và thư nộp bài.
 - Giao diện tối giản: trang chủ Box, hình nền và màn hình khởi động Plymouth cho máy trạm.
 
+### Kho và kế toán trên Box (lõi DX-OS)
+Mới, chưa chạy trên Box thật: mới kiểm bằng unit test tĩnh và PostgreSQL thật trong Docker cục bộ.
+#### Thêm
+- Lược đồ `006-kho-va-ke-toan.sql`: danh mục mặt hàng (thẻ kho), phiếu nhập/xuất kho, hệ thống tài khoản, nhật ký kép
+  (`but_toan`, `but_toan_dong`), khung nhìn `ton_kho`, `so_kho`, `so_nhat_ky`, `bang_can_doi`.
+- Duyệt đơn hàng tự sinh phiếu xuất kho và bút toán doanh thu (Nợ 131 / Có 511) + giá vốn (Nợ 632 / Có 156)
+  trong cùng giao dịch; tồn không đủ thì chặn duyệt kèm lời báo tiếng Việt (khoá dòng thẻ kho khi xuất).
+- Hàm `them_nhap_kho`: một giao dịch gồm phiếu nhập, giá vốn bình quân gia quyền và bút toán Nợ 156 / Có 111.
+- Vai trò `thu_kho`, `ke_toan` (hai lớp TOTP) trong Authelia, cầu nối danh tính và PostgreSQL; `onebee-box them-nguoi`
+  nhận thêm hai nhóm.
+- Sổ điều hành thêm khu **Kho** (tồn, nhập kho, thẻ kho, sổ kho) và khu **Kế toán** (nhật ký, bảng cân đối);
+  biểu mẫu đơn hàng chọn mặt hàng từ danh mục; mỗi sổ có nút xuất CSV (UTF-8 BOM, phân cách `;`) lọc theo ngày.
+- Dữ liệu mẫu của bản chạy thử có mặt hàng, tồn đầu kỳ và bút toán mở kho cân.
+- Tài liệu `docs/huong-dan/dung-so-kho-va-ke-toan.md`; bài kiểm Box `tests/box/check-kho-ke-toan.sh`.
+#### Bảo mật
+- RLS bật và ép trên mọi bảng mới; chứng từ kho và bút toán chỉ sinh qua hàm nội bộ/trigger, không cấp INSERT bảng thô.
+- Hàm ghi bút toán và trigger không cấp EXECUTE cho vai trò nào; nhân viên và thủ kho không đọc được sổ kế toán (403).
+
 ### Dữ liệu cấu trúc: PostgreSQL và API tự sinh (lõi DX-OS, ADR 0006)
 Đã kiểm bằng unit test và `check-csdl-rls.sh` (PostgreSQL thật từ image đã ghim, chạy trong CI); bộ kiểm Box (`check-du-lieu-qua-cong.sh`,
 bài khôi phục toàn bộ) chạy trên máy ảo VMware `onebee-kiem-box`. Chưa thử trên Box thật.

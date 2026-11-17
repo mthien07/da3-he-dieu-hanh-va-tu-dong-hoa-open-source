@@ -24,7 +24,7 @@ import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VAI_TRO = ("quan_ly", "ky_thuat", "nhan_vien")   # thứ tự ưu tiên: cao → thấp
+VAI_TRO = ("quan_ly", "ke_toan", "thu_kho", "ky_thuat", "nhan_vien")   # thứ tự ưu tiên: cao → thấp
 KHAN_GIA = "onebee-api"
 SONG_GIAY = 60
 TOI_DA = 1024 * 1024

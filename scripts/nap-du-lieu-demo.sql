@@ -19,6 +19,16 @@ DELETE FROM onebee.don_hang WHERE nguon IS NULL OR (nguon = 'nap-du-lieu-demo' A
 DELETE FROM onebee.khao_sat WHERE nguon IS NULL OR (nguon = 'nap-du-lieu-demo' AND dong > 3);
 DELETE FROM onebee.tinh_trang_may WHERE ten LIKE 'demo-%';
 
+-- Kho và kế toán mẫu: chế độ demo chỉ có dữ liệu giả nên dọn sạch chứng từ, mặt hàng rồi nạp lại
+-- (đơn mẫu không gắn mat_hang_id; đơn người dùng vừa bị xóa ở trên nên không vướng khóa ngoại).
+-- Trigger bị tắt trong giao dịch này (session_replication_role = replica) nên số phiếu, người tạo và bút toán
+-- phải ghi thẳng, không chờ trigger sinh; khoá ngoại cũng không tự xoá dây chuyền → xoá tường minh từ bảng con.
+DELETE FROM onebee.but_toan_dong;
+DELETE FROM onebee.but_toan;
+DELETE FROM onebee.phieu_kho_dong;
+DELETE FROM onebee.phieu_kho;
+DELETE FROM onebee.mat_hang;
+
 -- Đơn hàng mẫu: đủ ba trạng thái duyệt để trình diễn hàng đợi và lịch sử
 INSERT INTO onebee.don_hang
   (thoi_gian, khach_hang, mat_hang, so_luong_kg, don_gia, thanh_tien, ngay_giao, ghi_chu,
@@ -115,5 +125,35 @@ VALUES
 ON CONFLICT (ten) DO UPDATE SET
   bao_bi = EXCLUDED.bao_bi,
   nhan_luc = EXCLUDED.nhan_luc;
+
+-- Mặt hàng và tồn đầu kỳ mẫu để luồng bán hàng → xuất kho → bút toán chạy được ngay khi trình diễn
+INSERT INTO onebee.mat_hang (ma, ten, don_vi, gia_von, gia_ban, ton_toi_thieu, nguoi_tao)
+VALUES
+  ('GAO-ST25', 'Gạo ST25 vụ Đông Xuân', 'kg', 32000, 37000, 100, 'demo'),
+  ('HAT-DIEU', 'Hạt điều rang muối đóng hộp 500g', 'hộp', 48000, 62000, 20, 'demo'),
+  ('MAT-ONG', 'Mật ong hoa nhãn đóng chai 500ml', 'chai', 62000, 79000, 10, 'demo'),
+  ('XOAI', 'Xoài cát chu đóng thùng 10kg', 'thùng', 18000, 23000, 20, 'demo'),
+  ('PHAN-BON', 'Phân bón hữu cơ vi sinh bao 25kg', 'bao', 25000, 30500, 10, 'demo');
+
+INSERT INTO onebee.phieu_kho (so_phieu, loai, ngay, dien_gia, nguoi_tao)
+VALUES ('PN-DEMO-0001', 'NHAP', current_date, 'Nhập kho đầu kỳ (dữ liệu mẫu)', 'demo');
+
+INSERT INTO onebee.phieu_kho_dong (phieu_id, mat_hang_id, so_luong, don_gia)
+SELECT p.id, m.id, 1000, m.gia_von
+  FROM onebee.phieu_kho p, onebee.mat_hang m
+ WHERE p.so_phieu = 'PN-DEMO-0001';
+
+INSERT INTO onebee.but_toan (so_hieu, ngay, dien_gia, chung_tu, nguoi_tao)
+VALUES ('BT-DEMO-0001', current_date, 'Nhập kho đầu kỳ (dữ liệu mẫu)',
+        'phieu_kho:' || (SELECT id FROM onebee.phieu_kho WHERE so_phieu = 'PN-DEMO-0001'), 'demo');
+
+INSERT INTO onebee.but_toan_dong (but_toan_id, tai_khoan, no, co)
+SELECT (SELECT id FROM onebee.but_toan WHERE so_hieu = 'BT-DEMO-0001'), '156',
+       (SELECT sum(thanh_tien) FROM onebee.phieu_kho_dong d
+          JOIN onebee.phieu_kho p ON p.id = d.phieu_id WHERE p.so_phieu = 'PN-DEMO-0001'), 0
+UNION ALL
+SELECT (SELECT id FROM onebee.but_toan WHERE so_hieu = 'BT-DEMO-0001'), '111', 0,
+       (SELECT sum(thanh_tien) FROM onebee.phieu_kho_dong d
+          JOIN onebee.phieu_kho p ON p.id = d.phieu_id WHERE p.so_phieu = 'PN-DEMO-0001');
 
 COMMIT;

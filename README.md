@@ -37,7 +37,7 @@
 | Thành phần | Làm gì |
 |---|---|
 | **OneBee OS Desktop** | Bộ cài biến Linux Mint 22 thành máy văn phòng tiếng Việt: gõ Telex (IBus + Bamboo), LibreOffice lưu mặc định .docx/.xlsx, font thay thế giữ bố cục file Word, tự cập nhật, tự sao lưu lên Box, lệnh `hoi` hỏi Trợ lý AI, báo cần hỗ trợ, hỗ trợ từ xa có đồng ý |
-| **OneBee Box** | Bộ cài máy chủ nội bộ (Ubuntu Server 24.04) theo kiến trúc **DX-OS Open-Core**: đăng nhập một lần (Authelia), cơ sở dữ liệu PostgreSQL có API tự sinh và phân quyền tới từng dòng, kho tệp có kiểm dịch mã độc, động cơ quy trình Node-RED (duyệt đơn, email báo cáo, nhắc hạn thuế/BHXH), Trợ lý AI tiếng Việt chạy tại chỗ (Gemma 4 qua Ollama), ứng dụng **Sổ điều hành** H-P-D-I, thư mục chung, sao lưu 2 tầng chống mã độc tống tiền, quản lý và cập nhật máy trạm từ 1 lệnh |
+| **OneBee Box** | Bộ cài máy chủ nội bộ (Ubuntu Server 24.04) theo kiến trúc **DX-OS Open-Core**: đăng nhập một lần (Authelia), cơ sở dữ liệu PostgreSQL có API tự sinh và phân quyền tới từng dòng, kho tệp có kiểm dịch mã độc, động cơ quy trình Node-RED (duyệt đơn, email báo cáo, nhắc hạn thuế/BHXH), Trợ lý AI tiếng Việt chạy tại chỗ (Gemma 4 qua Ollama), ứng dụng **Sổ điều hành** H-P-D-I kèm **sổ kho và sổ kế toán nhật ký kép** (duyệt đơn tự xuất kho và sinh bút toán, xuất CSV), thư mục chung, sao lưu 2 tầng chống mã độc tống tiền, quản lý và cập nhật máy trạm từ 1 lệnh |
 | **Dịch vụ** | Khảo sát → sao lưu nguyên ổ Windows → cài → đào tạo 3 buổi → bảo trì (theo dõi báo cáo hằng ngày, xử lý yêu cầu hỗ trợ có đo thời gian) |
 
 ```
