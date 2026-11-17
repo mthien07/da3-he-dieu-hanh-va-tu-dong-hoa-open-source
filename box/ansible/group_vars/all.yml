@@ -58,10 +58,10 @@ onebee_box_https_bo_qua_chot_chan: false
 
 # Đăng nhập một lần (Authelia) cho /api/, /files/, /ai/ và trang giám sát — chỉ khi HTTPS có hiệu lực, chỉ trên tên
 # https://box.<mã đơn vị>.onebee.internal/ (máy trạm OneBee tự có dòng /etc/hosts; điện thoại/máy ngoài: bản ghi DNS trên router).
-# Ba nhóm CỐ ĐỊNH (luật truy cập dựa vào tên nhóm, không đổi ở đây): nhan_vien (một lớp: mật khẩu),
-# ky_thuat và quan_ly (hai lớp: mật khẩu + mã TOTP).
+# Năm nhóm CỐ ĐỊNH (luật truy cập dựa vào tên nhóm, không đổi ở đây): nhan_vien (một lớp: mật khẩu),
+# ky_thuat, quan_ly, thu_kho và ke_toan (hai lớp: mật khẩu + mã TOTP — xem roles/box-dinh-danh/templates/configuration.yml.j2).
 # Quản lý người dùng: sudo onebee-box them-nguoi <tên> <nhóm> | xoa-nguoi <tên> | danh-sach-nguoi
-onebee_box_nhom_nguoi_dung: [nhan_vien, ky_thuat, quan_ly]
+onebee_box_nhom_nguoi_dung: [nhan_vien, ky_thuat, quan_ly, thu_kho, ke_toan]
 
 # Cổng trong mạng LAN (KHÔNG mở các cổng này ra Internet trên router)
 onebee_box_ports:

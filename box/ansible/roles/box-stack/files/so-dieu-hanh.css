@@ -28,7 +28,10 @@ input[type="file"] { padding: 6px; }
 .nut.phu-nut { background: var(--tot); }
 .nut.tu-choi { background: var(--loi); color: #fff; margin-left: 6px; }
 .nut:disabled { opacity: .45; cursor: not-allowed; }
-.hang-nut { display: flex; flex-wrap: wrap; gap: 10px; }
+.hang-nut { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.hang-nut label { margin: 0; }
+.hang-nut input { width: auto; min-width: 150px; }
+.duoi-ton td { color: var(--loi); }
 .thong-bao { margin-top: 10px; padding: 8px 12px; border-left: 4px solid var(--tot); border-radius: 6px; background: #0b1522; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .thong-bao.loi { border-left-color: var(--loi); }
 .cuon { overflow-x: auto; }

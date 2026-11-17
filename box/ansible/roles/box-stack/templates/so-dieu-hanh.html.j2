@@ -29,11 +29,13 @@
   </header>
   <div id="thong-bao-chung" class="thong-bao" hidden></div>
 
-  <nav class="the" role="tablist" aria-label="Bốn khu làm việc H, P, D, I">
+  <nav class="the" role="tablist" aria-label="Các khu làm việc H, P, D, I, Kho, Kế toán">
     <button type="button" role="tab" aria-selected="true" data-khu="khu-h">[H] Bàn làm việc</button>
     <button type="button" role="tab" aria-selected="false" data-khu="khu-p">[P] Quy trình và duyệt</button>
     <button type="button" role="tab" aria-selected="false" data-khu="khu-d">[D] Bảng điều hành</button>
     <button type="button" role="tab" aria-selected="false" data-khu="khu-i">[I] Trợ lý AI</button>
+    <button type="button" role="tab" aria-selected="false" data-khu="khu-k" id="nut-khu-k" hidden>Kho</button>
+    <button type="button" role="tab" aria-selected="false" data-khu="khu-t" id="nut-khu-t" hidden>Kế toán</button>
   </nav>
 
   <section id="khu-h" class="khu hien" role="tabpanel">
@@ -69,7 +71,8 @@
           <label for="don-khach">Khách hàng</label>
           <input id="don-khach" name="khach_hang" maxlength="200" autocomplete="off">
           <label for="don-mat-hang">Mặt hàng</label>
-          <input id="don-mat-hang" name="mat_hang" maxlength="200" autocomplete="off">
+          <select id="don-mat-hang" name="mat_hang"></select>
+          <p class="phu" id="don-mat-hang-trong" hidden>Chưa có mặt hàng trong danh mục kho — báo thủ kho thêm mặt hàng trước khi gửi đơn.</p>
           <label for="don-so-luong">Số lượng (kg)</label>
           <input id="don-so-luong" name="so_luong_kg" type="number" min="0" step="any" inputmode="decimal">
           <label for="don-gia">Đơn giá (đồng)</label>
@@ -188,7 +191,117 @@
       <p id="luu-y-ai" class="phu">Lưu ý: AI có thể sai. Người ký duyệt cần kiểm tra lại số liệu và căn cứ trước khi dùng chính thức.</p>
     </div>
   </section>
+
+  <section id="khu-k" class="khu" role="tabpanel">
+    <div id="k-chan-quyen" class="thong-bao" hidden>Khu Kho dành cho thủ kho và quản lý. Cơ sở dữ liệu không cho tài khoản này đọc hoặc ghi kho.</div>
+    <div id="k-than" hidden>
+      <div class="luoi">
+        <div class="the-noi-dung">
+          <h2>Tồn kho</h2>
+          <p class="phu">Tồn = tổng nhập − tổng xuất của mọi phiếu đã ghi. Duyệt đơn tự xuất kho và tự chặn khi không đủ tồn.</p>
+          <div class="hang-nut">
+            <button type="button" class="nut phu-nut" id="k-xuat-ton">Xuất CSV tồn kho</button>
+          </div>
+          <div class="cuon">
+            <table>
+              <thead><tr><th>Mã</th><th>Mặt hàng</th><th>Đơn vị</th><th>Tồn</th><th>Giá vốn</th><th>Giá bán</th><th>Tồn tối thiểu</th></tr></thead>
+              <tbody id="bang-ton-kho"><tr><td colspan="7">Đang tải…</td></tr></tbody>
+            </table>
+          </div>
+          <div id="kq-ton" class="thong-bao" hidden></div>
+        </div>
+        <div class="the-noi-dung">
+          <h2>Nhập kho</h2>
+          <form id="form-nhap-kho" novalidate>
+            <label for="nk-mat-hang">Mặt hàng</label>
+            <select id="nk-mat-hang"></select>
+            <label for="nk-so-luong">Số lượng</label>
+            <input id="nk-so-luong" type="number" min="0" step="any" inputmode="decimal">
+            <label for="nk-don-gia">Đơn giá nhập (đồng)</label>
+            <input id="nk-don-gia" type="number" min="0" step="any" inputmode="decimal">
+            <label for="nk-ngay">Ngày nhập</label>
+            <input id="nk-ngay" type="date">
+            <label for="nk-dien-gia">Diễn giải</label>
+            <input id="nk-dien-gia" maxlength="200" autocomplete="off">
+            <p class="phu">Ghi phiếu nhập sẽ cập nhật giá vốn bình quân và sinh bút toán Nợ 156 / Có 111.</p>
+            <button type="submit" class="nut">Ghi phiếu nhập</button>
+          </form>
+          <div id="kq-nhap-kho" class="thong-bao" hidden></div>
+        </div>
+        <div class="the-noi-dung">
+          <h2>Thêm mặt hàng</h2>
+          <form id="form-mat-hang" novalidate>
+            <label for="mh-ma">Mã (chữ in hoa, số, gạch dưới; vd MATONG)</label>
+            <input id="mh-ma" maxlength="32" autocomplete="off">
+            <label for="mh-ten">Tên mặt hàng</label>
+            <input id="mh-ten" maxlength="200" autocomplete="off">
+            <label for="mh-don-vi">Đơn vị tính</label>
+            <input id="mh-don-vi" maxlength="16" value="kg" autocomplete="off">
+            <label for="mh-gia-ban">Giá bán (đồng)</label>
+            <input id="mh-gia-ban" type="number" min="0" step="any" inputmode="decimal">
+            <button type="submit" class="nut">Thêm mặt hàng</button>
+          </form>
+          <div id="kq-mat-hang" class="thong-bao" hidden></div>
+        </div>
+      </div>
+      <div class="the-noi-dung">
+        <h2>Sổ kho</h2>
+        <div class="hang-nut">
+          <label for="k-tu-ngay">Từ ngày</label>
+          <input id="k-tu-ngay" type="date">
+          <label for="k-den-ngay">Đến ngày</label>
+          <input id="k-den-ngay" type="date">
+          <button type="button" class="nut" id="k-loc">Xem</button>
+          <button type="button" class="nut phu-nut" id="k-xuat-so">Xuất CSV sổ kho</button>
+        </div>
+        <div id="kq-so-kho" class="thong-bao" hidden></div>
+        <div class="cuon">
+          <table>
+            <thead><tr><th>Số phiếu</th><th>Ngày</th><th>Loại</th><th>Mặt hàng</th><th>Số lượng</th><th>Đơn giá</th><th>Thành tiền</th><th>Diễn giải</th></tr></thead>
+            <tbody id="bang-so-kho"><tr><td colspan="8">Đang tải…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="khu-t" class="khu" role="tabpanel">
+    <div id="t-chan-quyen" class="thong-bao" hidden>Khu Kế toán dành cho kế toán và quản lý. Cơ sở dữ liệu không cho tài khoản này đọc sổ.</div>
+    <div id="t-than" hidden>
+      <div class="the-noi-dung">
+        <h2>Sổ nhật ký</h2>
+        <div class="hang-nut">
+          <label for="t-tu-ngay">Từ ngày</label>
+          <input id="t-tu-ngay" type="date">
+          <label for="t-den-ngay">Đến ngày</label>
+          <input id="t-den-ngay" type="date">
+          <button type="button" class="nut" id="t-loc">Xem</button>
+          <button type="button" class="nut phu-nut" id="t-xuat-nhat-ky">Xuất CSV nhật ký</button>
+        </div>
+        <div id="tq-nhat-ky" class="thong-bao" hidden></div>
+        <div class="cuon">
+          <table>
+            <thead><tr><th>Số hiệu</th><th>Ngày</th><th>Diễn giải</th><th>Chứng từ</th><th>Tài khoản</th><th>Tên tài khoản</th><th>Nợ</th><th>Có</th></tr></thead>
+            <tbody id="bang-nhat-ky"><tr><td colspan="8">Đang tải…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="the-noi-dung">
+        <h2>Bảng cân đối tài khoản</h2>
+        <div class="hang-nut">
+          <button type="button" class="nut phu-nut" id="t-xuat-can-doi">Xuất CSV bảng cân đối</button>
+        </div>
+        <div class="cuon">
+          <table>
+            <thead><tr><th>Tài khoản</th><th>Tên tài khoản</th><th>Tổng Nợ</th><th>Tổng Có</th><th>Dư Nợ</th><th>Dư Có</th></tr></thead>
+            <tbody id="bang-can-doi"><tr><td colspan="6">Đang tải…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
 </main>
 <script src="/so-dieu-hanh/so-dieu-hanh.js"></script>
+<script src="/so-dieu-hanh/so-dieu-hanh-kho.js"></script>
 </body>
 </html>

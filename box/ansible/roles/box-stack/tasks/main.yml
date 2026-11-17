@@ -154,7 +154,7 @@
     owner: root
     group: root
     mode: "0644"
-  loop: [so-dieu-hanh.css, so-dieu-hanh.js]
+  loop: [so-dieu-hanh.css, so-dieu-hanh.js, so-dieu-hanh-kho.js]
 
 - name: Sinh cấu hình cổng Caddy
   ansible.builtin.template:

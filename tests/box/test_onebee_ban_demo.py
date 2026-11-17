@@ -88,13 +88,14 @@ class DuLieuDemo(unittest.TestCase):
     def test_nap_lai_idempotent(self):
         self.assertGreaterEqual(len(re.findall(r"ON CONFLICT \(nguon, dong\) DO UPDATE", self.sql)), 4)
         self.assertIn("ON CONFLICT (ten) DO UPDATE", self.sql)
-        self.assertEqual(len(re.findall(r"DELETE FROM onebee\.", self.sql)), 5)   # xóa dòng phát sinh + dòng thừa trước khi nạp
+        # 5 bảng dữ liệu mẫu + 5 bảng kho/kế toán (xoá tường minh từ bảng con vì trigger và khoá ngoại bị tắt trong giao dịch)
+        self.assertEqual(len(re.findall(r"DELETE FROM onebee\.", self.sql)), 10)
         self.assertIn("nguon = 'nap-du-lieu-demo'", self.sql)
         self.assertIn("nguon IS NULL", self.sql)             # dòng người dùng tạo qua API trở về trạng thái mẫu
         self.assertIn("SET LOCAL session_replication_role = replica", self.sql)   # trigger duyệt không ghi đè dữ liệu mẫu
 
     def test_trang_thai_va_danh_muc_dung_giao_keo(self):
-        self.assertNotIn("'NHAP'", self.sql)
+        self.assertIn("'NHAP'", self.sql)          # phiếu nhập tồn đầu kỳ mẫu cho khu Kho
         self.assertNotIn("'KHAN'", self.sql)
         self.assertNotIn("'BINH_THUONG'", self.sql)
         self.assertIn("'CHO_DUYET'", self.sql)
