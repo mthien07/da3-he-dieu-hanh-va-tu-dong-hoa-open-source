@@ -58,11 +58,14 @@ class TuXa(unittest.TestCase):
                          '  "debug prefs") cat "${SIM}/ts-prefs.json" 2>/dev/null || echo \'{"RunSSH": false}\' ;;\n'
                          '  "status") [[ -e "${SIM}/ts-dung" ]] && exit 1; exit 0 ;;\n'
                          '  *) exit 2 ;;\nesac')
-        gia("conntrack", 'echo "$*" >> "${SIM}/conntrack.log"; echo "conntrack v1.4.7: 1 flow entries have been deleted."')
+        # conntrack giả: ${SIM}/conntrack-rong = không có mục nào khớp (bản thật in ra stderr và thoát 1)
+        gia("conntrack", 'echo "$*" >> "${SIM}/conntrack.log"; echo "conntrack $*" >> "${SIM}/thu-tu.log"\n'
+                         'if [[ -e "${SIM}/conntrack-rong" ]]; then echo "conntrack v1.4.8 (conntrack-tools): 0 flow entries have been deleted." >&2; exit 1; fi\n'
+                         'echo "conntrack v1.4.8 (conntrack-tools): 1 flow entries have been deleted." >&2')
         gia("smbcontrol", 'exit 0')
         gia("logger", 'echo "$*" >> "${SIM}/logger.log"')
         gia("systemctl", 'u="${!#}"; [[ -e "${SIM}/dung-${u}" ]] && exit 3; exit 0')
-        gia("onebee-tuong-lua", 'echo "$*" >> "${SIM}/tuong-lua.log"')
+        gia("onebee-tuong-lua", 'echo "$*" >> "${SIM}/tuong-lua.log"; echo "tuong-lua $*" >> "${SIM}/thu-tu.log"')
         gia("htpasswd", 'echo "$*" >> "${SIM}/htpasswd.log"')
         gia("flock", 'exit 0')
         gia("docker", 'exit 0')
@@ -150,6 +153,14 @@ class TuXa(unittest.TestCase):
         os.makedirs(self.tep("tu-xa"), exist_ok=True)
         duyet_luc = int(time.time()) if duyet_luc is None else duyet_luc
         open(self.tep("tu-xa", ten), "w").write(f"IP={ip}\nHET_HAN={het_han}\nDUYET_LUC={duyet_luc}\nNGUOI_DUYET={nguoi}\n")
+
+    def dung_truoc_cat(self):
+        """Lần dựng lại tường lửa đầu tiên đứng trước lần cắt kết nối đầu tiên (thu-tu.log ghi cả hai theo thứ tự gọi)."""
+        tt = self.log("thu-tu")
+        dung = [i for i, x in enumerate(tt) if x == "tuong-lua bat"]
+        cat = [i for i, x in enumerate(tt) if x.startswith("conntrack -D")]
+        self.assertTrue(dung and cat, tt)
+        return dung[0] < cat[0]
 
     def log(self, ten):
         duong = self.tep("sim", f"{ten}.log")
@@ -246,7 +257,9 @@ class TuXa(unittest.TestCase):
         self.assertFalse(os.path.exists(self.tep("tu-xa/ketoan-01")))
         self.assertIn(f"-D -s {IP_MAY}", " ".join(self.log("conntrack")))
         self.assertEqual(self.log("tuong-lua"), ["bat"])
+        self.assertTrue(self.dung_truoc_cat())
         self.assertIn("Đã thu hồi quyền từ xa", r.stdout)
+        self.assertNotIn("Không chạy được conntrack", r.stderr + r.stdout)
         # thu hồi lần nữa: không có gì, thoát 0
         r = self.chay("thu-hoi-tu-xa", "ketoan-01")
         self.assertEqual(r.returncode, 0, r.stderr)
@@ -268,6 +281,28 @@ class TuXa(unittest.TestCase):
         self.assertIn("đã đổi", r.stdout)
         self.assertFalse(os.path.exists(self.tep("tu-xa/ketoan-01")))
         self.assertIn(f"-D -s {IP_MAY}", " ".join(self.log("conntrack")))
+        # Cắt kết nối TRƯỚC khi dựng lại tường lửa thì gói kế tiếp tạo lại mục conntrack mà luật cũ (còn IP) vẫn cho qua
+        self.assertTrue(self.dung_truoc_cat())
+
+    def test_thu_hoi_khi_khong_co_ket_noi_khong_bao_loi_conntrack(self):
+        """conntrack -D không tìm thấy mục nào thì thoát 1 — đó không phải lỗi, không được in cảnh báo."""
+        self.tao_may()
+        self.dat_luot(het_han=int(time.time()) + 3600)
+        open(self.tep("sim/conntrack-rong"), "w").write("")
+        r = self.chay("thu-hoi-tu-xa", "ketoan-01")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("Không chạy được conntrack", r.stderr + r.stdout)
+
+    def test_thu_hoi_bao_khi_thieu_lenh_conntrack(self):
+        self.tao_may()
+        self.dat_luot(het_han=int(time.time()) + 3600)
+        os.rename(self.tep("bin/conntrack"), self.tep("bin/conntrack.tat"))
+        self.addCleanup(os.rename, self.tep("bin/conntrack.tat"), self.tep("bin/conntrack"))
+        env = dict(self.env, PATH=f"{self.t}/bin:/usr/bin:/bin")   # conntrack thật của máy chạy kiểm (nếu có) không được lọt vào
+        r = subprocess.run([BASH, self.tep("bin/onebee-box"), "thu-hoi-tu-xa", "ketoan-01"], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", env=env, cwd=self.t, timeout=180)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("Không chạy được conntrack", r.stderr + r.stdout)
 
     def test_ap_dung_hai_lan_khong_doi(self):
         self.tao_may()
