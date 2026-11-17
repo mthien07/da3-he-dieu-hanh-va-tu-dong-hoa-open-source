@@ -103,6 +103,30 @@ class CongTac(unittest.TestCase):
         # File cấu hình vẫn giữ giá trị hợp lệ trước đó
         self.assertIn("BOX_IP_TU_XA=100.100.5.9", open(self.conf, encoding="utf-8").read())
 
+    def test_box_tu_xa_doi_kho_sao_luu_sang_ten_box(self):
+        """Máy đã đi mà chưa chuẩn bị (Box không SSH tới để đẩy cấu hình): URL kho sao lưu đang theo IP LAN thì qua VPN
+        không tới được. Ghi --box-tu-xa phải đổi luôn máy chủ trong RESTIC_REPOSITORY sang tên Box, đúng dạng Box đẩy khi duyệt."""
+        with open(self.conf, "a", encoding="utf-8") as f:
+            f.write("RESTIC_REPOSITORY=rest:https://ketoan-01:mk.Ab-9@192.168.1.10:8000/ketoan-01/\nRESTIC_PASSWORD=bi-mat\n")
+        r = self.chay("bat", "--box-tu-xa", "100.64.0.1")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        nd = open(self.conf, encoding="utf-8").read().splitlines()
+        self.assertIn("RESTIC_REPOSITORY=rest:https://ketoan-01:mk.Ab-9@box.kiem-thu.onebee.internal:8000/ketoan-01/", nd)
+        self.assertIn("RESTIC_PASSWORD=bi-mat", nd)
+        # Chạy lại: không đổi gì thêm
+        self.chay("bat", "--box-tu-xa", "100.64.0.1")
+        self.assertEqual(nd, open(self.conf, encoding="utf-8").read().splitlines())
+
+    def test_box_tu_xa_khong_dung_kho_http_hoac_ip_khac(self):
+        """Kho http:// (Box chưa bật HTTPS) hoặc máy chủ không phải BOX_IP thì giữ nguyên: tên Box chỉ có chứng chỉ khi HTTPS bật."""
+        for dong in ("RESTIC_REPOSITORY=rest:http://ketoan-01:mk@192.168.1.10:8000/ketoan-01/",
+                     "RESTIC_REPOSITORY=rest:https://ketoan-01:mk@10.9.9.9:8000/ketoan-01/"):
+            with open(self.conf, "w", encoding="utf-8") as f:
+                f.write("MAY_TRAM=ketoan-01\nBOX_IP=192.168.1.10\nBOX_TEN=box.kiem-thu.onebee.internal\n" + dong + "\n")
+            r = self.chay("bat", "--box-tu-xa", "100.64.0.1")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn(dong, open(self.conf, encoding="utf-8").read().splitlines())
+
     def test_tat_goi_logout_va_giu_nguyen_box_ip_tu_xa(self):
         self.chay("bat", "--box-tu-xa", "100.64.0.1")
         r = self.chay("tat")
