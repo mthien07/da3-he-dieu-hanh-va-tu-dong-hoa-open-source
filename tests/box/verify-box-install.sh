@@ -83,6 +83,7 @@ check "Thư mục chung: đăng nhập bằng mật khẩu thấy share 'chung'"
 check "Thư mục chung: KHÔNG cho khách vào" bash -c "! smbclient //127.0.0.1/chung -N -c ls"
 check "Thư mục chung: máy từ xa nối qua tệp hosts allow riêng (include)" bash -c \
   "grep -q 'include = /etc/onebee-box/samba-tu-xa.conf' /etc/samba/smb.conf && [ -f /etc/onebee-box/samba-tu-xa.conf ]"
+check "Bộ hẹn giờ thu hồi lượt duyệt máy công tác hết hạn đã bật" systemctl is-enabled onebee-tu-xa-het-han.timer
 check "Thư mục chung: ghi được file qua mạng" bash -c \
   "echo 'Hợp tác xã' > /tmp/smb-test.txt && smbclient //127.0.0.1/chung -U 'onebee%${pw}' -c 'put /tmp/smb-test.txt thu-nghiem.txt' && grep -q 'Hợp tác xã' /srv/onebee/chung/thu-nghiem.txt"
 check "Lịch sao lưu Box đã bật" systemctl is-enabled onebee-box-sao-luu.timer

@@ -47,7 +47,7 @@ LIB=/usr/local/lib/onebee-box
 # shellcheck source=/dev/null
 . "${LIB}/sao-luu.sh"
 # shellcheck source=/dev/null
-. "${LIB}/tu-xa.sh"
+[[ ! -f "${LIB}/tu-xa.sh" ]] || . "${LIB}/tu-xa.sh"
 # shellcheck source=/dev/null
 . "${LIB}/chan-doan.sh"
 

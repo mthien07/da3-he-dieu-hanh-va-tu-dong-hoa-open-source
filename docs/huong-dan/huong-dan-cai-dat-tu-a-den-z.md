@@ -490,7 +490,8 @@ Chưa có khóa nào thì Box giữ nguyên mật khẩu và in cảnh báo, đ�
 
 | Tình huống | Làm gì |
 |---|---|
-| Mất máy, nhân viên nghỉ việc | Trên Box: `sudo onebee-box thu-hoi-may <tên-máy>`. Máy đó mất quyền vào kho sao lưu và Trợ lý AI **ngay lập tức** |
+| Nhân viên mang laptop đi công tác ngoài văn phòng | Trước khi đi: chạy `sudo onebee-cong-tac bat` trên máy trạm và `sudo onebee-box duyet-tu-xa <tên-máy>` trên Box; khi về chạy `sudo onebee-box thu-hoi-tu-xa <tên-máy>`. Xem [may-tram-di-cong-tac.md](may-tram-di-cong-tac.md) |
+| Mất máy, nhân viên nghỉ việc | Trên Box: `sudo onebee-box thu-hoi-may <tên-máy>`. Máy đó mất quyền vào kho sao lưu, Trợ lý AI và kết nối từ xa qua VPN **ngay lập tức** |
 | Nghi lộ mật khẩu | `sudo onebee-box xoay-khoa --tat-ca --box`, gõ `xoay khoa` để xác nhận. Đổi toàn bộ mật khẩu/khóa, máy trạm đang bật tự nhận khóa mới (máy đang tắt: bật lên rồi `sudo onebee-box dong-bo-may --tat-ca`). Sau đó **in lại khóa** (`in-khoa`) cất két |
 | Nhân viên lỡ xóa file | Khôi phục từ bản sao lưu của máy trạm, xem [quan-ly-may-tram.md](quan-ly-may-tram.md) |
 | **Hỏng ổ Box** | Cài lại Ubuntu (Phần 2) và Box (Phần 3, **cùng mã đơn vị và IP**), gắn lại ổ sao lưu (Phần 4 bước 3, **không** chạy lại `mkfs`). Chép nội dung tờ `in-khoa` vào file `~/khoa.txt`, rồi chạy: `sudo onebee-box khoi-phuc-toan-bo ~/khoa.txt` → `sudo ./box/onebee-box-install.sh` → `sudo onebee-box khoi-phuc-thu`. Mật khẩu cũ dùng lại được, **máy trạm không phải làm gì** |
@@ -509,6 +510,8 @@ Chưa có khóa nào thì Box giữ nguyên mật khẩu và in cảnh báo, đ�
 | `sudo onebee-box may-tram` | Tình trạng các máy trạm |
 | `sudo onebee-box cap-nhat-may <tên>` / `--tat-ca` | Cập nhật phần mềm máy trạm từ Box |
 | `sudo onebee-box thu-hoi-may <tên>` | Thu hồi máy |
+| `sudo onebee-box duyet-tu-xa <tên>` / `thu-hoi-tu-xa <tên>` | Duyệt / thu hồi quyền kết nối từ xa cho máy đi công tác |
+| `sudo onebee-box tu-xa` | Xem danh sách máy đang được duyệt kết nối từ xa |
 | `sudo onebee-box sao-luu` | Sao lưu Box ra ổ ngoài ngay |
 | `sudo onebee-box khoi-phuc-thu` | Thử khôi phục (kiểm sao lưu còn dùng được) |
 | `sudo onebee-box in-khoa` | In khóa bí mật để cất két |
