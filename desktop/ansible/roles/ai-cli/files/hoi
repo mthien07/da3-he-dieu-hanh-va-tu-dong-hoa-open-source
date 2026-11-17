@@ -70,7 +70,6 @@ def mo(req, timeout):
             sys.exit("Máy chưa có chứng chỉ CA của OneBee Box. Báo người quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>")
     elif os.path.exists(HTTPS_BAT):
         sys.exit("Máy này đã bật HTTPS nhưng cấu hình còn địa chỉ http:// — KHÔNG gửi. Báo người quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>")
-    thu_noi(req.full_url)
     try:
         return urllib.request.build_opener(KhongTuChuyenHuong, urllib.request.HTTPSHandler(context=ngu_canh)).open(req, timeout=timeout)
     except urllib.error.HTTPError as e:
@@ -142,6 +141,7 @@ def goi_api(conf, duong_dan, khoa=None, noi_dung=None, timeout=300):
         tieu_de["X-OneBee-Khoa"] = khoa
     req = urllib.request.Request(conf["HOI_URL"].rstrip("/") + duong_dan, method="POST", headers=tieu_de,
                                  data=json.dumps(noi_dung, ensure_ascii=False).encode("utf-8") if noi_dung is not None else None)
+    thu_noi(req.full_url)   # ngoài mo(): mo() phải giống hệt bản trong onebee-bao-tinh-trang
     try:
         with mo(req, timeout) as r:
             raw = r.read()
