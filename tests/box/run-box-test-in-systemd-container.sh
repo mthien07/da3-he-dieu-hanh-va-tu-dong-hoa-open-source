@@ -268,4 +268,183 @@ box 'ONEBEE_HTTPS=0 /root/onebee-test/tests/box/kiem-bat-bien.sh'
 echo "===== BẢN CHẠY THỬ CÔNG KHAI (DEMO) ====="
 "${REPO_ROOT}/tests/box/check-ban-demo.sh" "${BOX}"
 
+echo "===== MÁY TRẠM ĐI CÔNG TÁC (C1–C11: TƯỜNG LỬA + SAMBA + DUYỆT / THU HỒI / HẾT HẠN) ====="
+docker exec -i "${BOX}" bash -euo pipefail <<'EOF'
+set -euo pipefail
+GV=/root/onebee-test/box/ansible/group_vars/all.yml
+MA_DON_VI="$(sed -n 's/^onebee_box_ma_don_vi: *//p' "${GV}" | tr -d '"')"
+TEN_BOX="box.${MA_DON_VI}.onebee.internal"
+CA=/etc/onebee-box/secrets/ca/root.crt
+PW_SMB="$(cat /etc/onebee-box/secrets/samba-onebee)"
+
+# Bật HTTPS cho Box (duyet-tu-xa đòi HTTPS đã bật)
+cp /etc/onebee-box/secrets/ca/root.sha256 /etc/onebee-box/secrets/ca-da-dong-bo/ketoan-01
+sed -i -E 's#^onebee_box_https: .*#onebee_box_https: true#' "${GV}"
+/root/onebee-test/box/onebee-box-install.sh > /root/cai-cong-tac-https.log 2>&1 || { tail -40 /root/cai-cong-tac-https.log; exit 1; }
+
+# Cặp veth giả lập tailscale0 (100.64.0.1 phía Box) <-> ts-xa (100.64.0.7 trong không gian mạng may-xa)
+ip netns del may-xa 2>/dev/null || true
+ip link del tailscale0 2>/dev/null || true
+ip netns add may-xa
+ip link add tailscale0 type veth peer name ts-xa
+ip link set ts-xa netns may-xa
+ip addr add 100.64.0.1/10 dev tailscale0
+ip link set tailscale0 up
+ip netns exec may-xa ip addr add 100.64.0.7/10 dev ts-xa
+ip netns exec may-xa ip link set ts-xa up
+ip netns exec may-xa ip link set lo up
+sysctl -w net.ipv4.ip_forward=1 >/dev/null
+
+# Lệnh tailscale giả trên Box
+cat > /usr/local/bin/tailscale <<'TS'
+#!/usr/bin/env bash
+case "$*" in
+  "ip -4") echo "100.64.0.1" ;;
+  "status --json")
+    cat <<'JSON'
+{"Self":{"TailscaleIPs":["100.64.0.1"]},"Peer":{"m1":{"HostName":"may-thu","TailscaleIPs":["100.64.0.7"],"OS":"linux","LastSeen":"2026-11-17T01:00:00Z"}}}
+JSON
+    ;;
+  "debug prefs") echo '{"RunSSH": false}' ;;
+  status*) echo "100.64.0.1 onebee-box linux -" ;;
+  *) exit 0 ;;
+esac
+TS
+chmod +x /usr/local/bin/tailscale
+
+onebee-box them-may may-thu >/dev/null
+cp /etc/onebee-box/secrets/ca/root.sha256 /etc/onebee-box/secrets/ca-da-dong-bo/may-thu
+systemctl restart onebee-tuong-lua
+
+kiem_c3_c4() {
+  ip netns exec may-xa curl -sf -m 5 --cacert "${CA}" \
+    --resolve "${TEN_BOX}:443:100.64.0.1" "https://${TEN_BOX}/" | grep -q "OneBee Box" \
+    || { echo "FAIL  $1: curl 443 qua tên Box lỗi"; exit 1; }
+  local c8000
+  c8000="$(ip netns exec may-xa curl -s -o /dev/null -m 5 -w '%{http_code}' --cacert "${CA}" \
+    --resolve "${TEN_BOX}:8000:100.64.0.1" "https://${TEN_BOX}:8000/")"
+  [[ "${c8000}" == "401" ]] || { echo "FAIL  $1: cổng 8000 không trả 401 (mã ${c8000})"; exit 1; }
+  ip netns exec may-xa smbclient -L //100.64.0.1 -U "onebee%${PW_SMB}" -m SMB3 2>/dev/null | grep -q "chung" \
+    || { echo "FAIL  $1: smbclient tới 445 không thấy share chung"; exit 1; }
+  for p in 22 3001 80 139; do
+    if ip netns exec may-xa timeout 2 bash -c "exec 3<>/dev/tcp/100.64.0.1/${p}" 2>/dev/null; then
+      echo "FAIL  $1: máy công tác vào được cổng cấm ${p}"; exit 1
+    fi
+  done
+}
+
+# C1: Chưa duyệt — thử cổng 443, 445, 8000, 22, 3001 đều hết giờ
+for p in 443 445 8000 22 3001; do
+  if ip netns exec may-xa timeout 2 bash -c "exec 3<>/dev/tcp/100.64.0.1/${p}" 2>/dev/null; then
+    echo "FAIL  C1: chưa duyệt mà vào được cổng ${p}"; exit 1
+  fi
+done
+echo "PASS  C1: Chưa duyệt — từ may-xa thử cổng 443, 445, 8000, 22, 3001 đều hết giờ"
+
+# C2: Duyệt máy may-thu
+onebee-box duyet-tu-xa may-thu --ip 100.64.0.7 --ngay 1 --dong-y >/dev/null
+onebee-box tu-xa | grep -q "may-thu.*100.64.0.7" || { echo "FAIL  C2: tu-xa không liệt kê may-thu"; exit 1; }
+echo "PASS  C2: duyet-tu-xa may-thu --ip 100.64.0.7 --ngay 1 --dong-y thoát 0, tu-xa liệt kê máy"
+
+# C3 & C4: Ba cổng 443, 445, 8000 tới được; cổng 22, 3001, 80, 139 hết giờ
+kiem_c3_c4 "C3/C4"
+echo "PASS  C3: Từ may-xa vào được HTTPS 443 (tên Box), kho sao lưu 8000 và thư mục chung Samba 445"
+echo "PASS  C4: Từ may-xa các cổng 22, 3001, 80, 139 đều hết giờ"
+
+# C5: IP thứ hai 100.64.0.8 chưa duyệt bị chặn
+ip netns exec may-xa ip addr add 100.64.0.8/10 dev ts-xa
+if ip netns exec may-xa curl -sf -m 3 --interface 100.64.0.8 --cacert "${CA}" \
+   --resolve "${TEN_BOX}:443:100.64.0.1" "https://${TEN_BOX}/" >/dev/null 2>&1; then
+  echo "FAIL  C5: IP chưa duyệt 100.64.0.8 vẫn vào được 443"; exit 1
+fi
+ip netns exec may-xa ip addr del 100.64.0.8/10 dev ts-xa
+echo "PASS  C5: IP thứ hai 100.64.0.8 trong may-xa thử cổng 443 bị chặn (hết giờ)"
+
+# C6: Kết nối curl giữ lâu và phiên smbclient đang mở đứt trong 5 giây khi thu-hoi-tu-xa; kết nối mới hết giờ
+ip netns exec may-xa bash -c "
+  exec 3< <(while true; do echo 'https://${TEN_BOX}/'; sleep 0.4; done)
+  curl -sf --cacert '${CA}' --resolve '${TEN_BOX}:443:100.64.0.1' --max-time 2 --config - <&3 >/dev/null 2>&1
+" &
+pid_curl=$!
+ip netns exec may-xa bash -c "
+  while true; do echo ls; sleep 0.4; done | smbclient //100.64.0.1/chung -U 'onebee%${PW_SMB}' -m SMB3 -t 2 >/dev/null 2>&1
+" &
+pid_smb=$!
+sleep 1
+kill -0 "${pid_curl}" 2>/dev/null && kill -0 "${pid_smb}" 2>/dev/null \
+  || { echo "FAIL  C6: phiên curl hoặc smbclient chưa giữ mở được trước khi thu hồi"; exit 1; }
+t0="$(date +%s)"
+onebee-box thu-hoi-tu-xa may-thu >/dev/null
+for _ in $(seq 50); do
+  if ! kill -0 "${pid_curl}" 2>/dev/null && ! kill -0 "${pid_smb}" 2>/dev/null; then break; fi
+  sleep 0.1
+done
+dt=$(( $(date +%s) - t0 ))
+if kill -0 "${pid_curl}" 2>/dev/null || kill -0 "${pid_smb}" 2>/dev/null || (( dt > 5 )); then
+  kill -9 "${pid_curl}" "${pid_smb}" 2>/dev/null || true
+  echo "FAIL  C6: kết nối đang mở không đứt trong 5 giây (${dt}s)"; exit 1
+fi
+if ip netns exec may-xa timeout 2 bash -c "exec 3<>/dev/tcp/100.64.0.1/443" 2>/dev/null; then
+  echo "FAIL  C6: sau thu hồi vẫn mở được kết nối mới tới 443"; exit 1
+fi
+echo "PASS  C6: Sau thu-hoi-tu-xa, kết nối curl và smbclient đang mở đứt trong ${dt}s (<= 5s); kết nối mới hết giờ"
+
+# C7: Duyệt lại, sửa HET_HAN về quá khứ, chạy tu-xa-ap-dung -> lượt bị xoá, 443 hết giờ
+onebee-box duyet-tu-xa may-thu --ip 100.64.0.7 --ngay 1 --dong-y >/dev/null
+sed -i 's/^HET_HAN=.*/HET_HAN=1000/' /etc/onebee-box/tu-xa/may-thu
+onebee-box tu-xa-ap-dung >/dev/null
+[[ ! -f /etc/onebee-box/tu-xa/may-thu ]] || { echo "FAIL  C7: lượt hết hạn chưa bị xoá"; exit 1; }
+if ip netns exec may-xa timeout 2 bash -c "exec 3<>/dev/tcp/100.64.0.1/443" 2>/dev/null; then
+  echo "FAIL  C7: lượt hết hạn đã xoá mà 443 vẫn vào được"; exit 1
+fi
+echo "PASS  C7: Lượt hết hạn bị tu-xa-ap-dung tự thu hồi, cổng 443 hết giờ"
+
+# C8: Duyệt lại, khởi động lại Docker rồi khởi động lại dịch vụ tường lửa -> sau mỗi lần C3 và C4 vẫn đúng
+onebee-box duyet-tu-xa may-thu --ip 100.64.0.7 --ngay 1 --dong-y >/dev/null
+systemctl restart docker
+for _ in $(seq 60); do
+  ip netns exec may-xa curl -sf -m 3 --cacert "${CA}" --resolve "${TEN_BOX}:443:100.64.0.1" "https://${TEN_BOX}/" >/dev/null 2>&1 && break
+  sleep 2
+done
+kiem_c3_c4 "C8-sau-restart-docker"
+systemctl restart onebee-tuong-lua
+kiem_c3_c4 "C8-sau-restart-tuong-lua"
+echo "PASS  C8: Khởi động lại Docker và khởi động lại onebee-tuong-lua đều giữ nguyên C3 và C4"
+
+# C9: thu-hoi-may thu hồi luôn quyền từ xa
+onebee-box thu-hoi-may may-thu --dong-y >/dev/null
+[[ ! -f /etc/onebee-box/tu-xa/may-thu ]] || { echo "FAIL  C9: thu-hoi-may không xoá lượt duyệt từ xa"; exit 1; }
+if ip netns exec may-xa timeout 2 bash -c "exec 3<>/dev/tcp/100.64.0.1/443" 2>/dev/null; then
+  echo "FAIL  C9: sau thu-hoi-may vẫn vào được 443"; exit 1
+fi
+echo "PASS  C9: thu-hoi-may thu hồi luôn quyền từ xa cùng lúc"
+
+# C10: Chạy lại bộ cài Box khi đang có một lượt duyệt -> changed=0 failed=0; lượt duyệt còn nguyên
+onebee-box them-may may-thu >/dev/null
+cp /etc/onebee-box/secrets/ca/root.sha256 /etc/onebee-box/secrets/ca-da-dong-bo/may-thu
+onebee-box duyet-tu-xa may-thu --ip 100.64.0.7 --ngay 1 --dong-y >/dev/null
+/root/onebee-test/box/onebee-box-install.sh > /root/cai-c10.log 2>&1 || { tail -40 /root/cai-c10.log; exit 1; }
+grep -Eq 'changed=0 .*failed=0' /root/cai-c10.log \
+  || { grep -B2 'changed:' /root/cai-c10.log | head -30; echo "FAIL  C10: chạy lại bộ cài Box khi đang có lượt duyệt còn thay đổi"; exit 1; }
+[[ -f /etc/onebee-box/tu-xa/may-thu ]] || { echo "FAIL  C10: mất lượt duyệt sau khi chạy bộ cài"; exit 1; }
+kiem_c3_c4 "C10"
+echo "PASS  C10: Chạy lại bộ cài Box khi đang có lượt duyệt đạt changed=0 failed=0, lượt duyệt còn nguyên"
+
+# C11: Duyệt không có --ngay (không hạn), chạy tu-xa-ap-dung; lùi DUYET_LUC 31 ngày -> chan-doan cảnh báo quá 30 ngày
+onebee-box duyet-tu-xa may-thu --ip 100.64.0.7 --dong-y >/dev/null
+onebee-box tu-xa-ap-dung >/dev/null
+[[ -f /etc/onebee-box/tu-xa/may-thu ]] || { echo "FAIL  C11: lượt không hạn bị tu-xa-ap-dung xoá"; exit 1; }
+sed -i "s/^DUYET_LUC=.*/DUYET_LUC=$(( $(date +%s) - 31 * 86400 ))/" /etc/onebee-box/tu-xa/may-thu
+out_cd="$(onebee-box chan-doan 2>&1 || true)"
+grep -q "quá 30 ngày" <<<"${out_cd}" && grep -q "thu-hoi-tu-xa may-thu" <<<"${out_cd}" \
+  || { echo "FAIL  C11: chan-doan không cảnh báo lượt không hạn quá 30 ngày"; echo "${out_cd}"; exit 1; }
+echo "PASS  C11: Lượt không hạn giữ nguyên qua tu-xa-ap-dung; quá 30 ngày được chan-doan cảnh báo kèm lệnh thu hồi"
+
+# Dọn sạch sau khi thử
+onebee-box thu-hoi-may may-thu --dong-y >/dev/null
+rm -f /usr/local/bin/tailscale
+ip netns del may-xa 2>/dev/null || true
+ip link del tailscale0 2>/dev/null || true
+EOF
+
 echo "TẤT CẢ BƯỚC KIỂM THỬ BOX ĐẠT"

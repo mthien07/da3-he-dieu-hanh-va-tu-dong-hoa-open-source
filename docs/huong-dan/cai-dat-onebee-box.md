@@ -32,9 +32,10 @@ Không còn cổng 3000 hay giao diện web riêng; bật HTTPS xong mới dùng
   rồi chạy lại bộ cài. Xem quy tắc: `sudo onebee-tuong-lua xem`. Lưu ý: Wi-Fi khách **cùng mạng** với máy văn phòng thì
   tường lửa không phân biệt được — nên tách Wi-Fi khách ra mạng riêng trên router.
   Tường lửa lọc **mọi cổng mạng** trừ `lo` và mạng Docker: qua cổng mạng chính chỉ mạng LAN cho phép; card mạng phụ, `wg0`, `tun0` bị chặn hết;
-  qua **Tailscale** chỉ máy kỹ thuật khai trong `onebee_box_tailscale_cho_phep` (vd `["100.64.1.2"]`) vào được web/SSH/thư mục chung — để trống là chặn hết kết nối Tailscale
-  (bộ cài cảnh báo nếu Box đang nối Tailscale mà chưa khai). Kết nối mới qua Tailscale bị lọc ở bảng `mangle` (trước các quy tắc tailscaled tự chèn), nên vẫn đúng khi
-  tailscaled khởi động lại. Nên đặt thêm ACL phía Tailscale làm lớp thứ hai: `tag:kythuat` → Box tcp 22, 80, 443, 3001; thiết bị khác trong tailnet không vào được Box.
+  qua **Tailscale** chỉ máy kỹ thuật khai trong `onebee_box_tailscale_cho_phep` (vd `["100.64.1.2"]`) vào được mọi cổng (web/SSH/thư mục chung, nhờ `/etc/onebee-box/samba-tu-xa.conf`)
+  và các **máy trạm đi công tác** được duyệt bằng `sudo onebee-box duyet-tu-xa <tên-máy>` chỉ vào được 3 cổng TCP `443, 445, 8000` (xem [may-tram-di-cong-tac.md](may-tram-di-cong-tac.md)) —
+  để trống cả hai là chặn hết kết nối Tailscale (bộ cài cảnh báo nếu Box đang nối Tailscale mà chưa khai). Kết nối mới qua Tailscale bị lọc ở bảng `mangle` (trước các quy tắc tailscaled tự chèn), nên vẫn đúng khi
+  tailscaled khởi động lại. Nên đặt thêm ACL phía Tailscale làm lớp thứ hai: `tag:kythuat` → Box tcp 22, 80, 443, 445, 3001, 8000; `tag:congtac` → Box tcp 443, 445, 8000; thiết bị khác trong tailnet không vào được Box.
   IPv6: SSH/thư mục chung chỉ nhận mạng nội bộ IPv6 (`fe80::/10`, `fc00::/7`); địa chỉ IPv6 toàn cầu bị **từ chối ngay** (không im lặng) để máy khách lùi về IPv4 ngay thay vì chờ hết giờ (chưa kiểm trên Windows thật — phiếu B15).
   Đổi dải IP của mạng LAN (thay router): khởi động lại Box hoặc chạy `sudo systemctl restart onebee-tuong-lua` để tường lửa nhận dải mới.
 
@@ -176,6 +177,10 @@ Máy trạm cài bản v0.1 (file `sao-luu.env`) được bộ cài tự đổi 
 | `sudo onebee-box cap-nhat-may <tên>` / `--tat-ca` | Cập nhật phần mềm máy trạm từ Box (lần đầu máy phải chứng minh rồi mới ghim khóa SSH) |
 | `sudo onebee-box dong-bo-may <tên>` / `--tat-ca` | Đẩy lại cấu hình (`may-tram.env`) từ Box xuống máy trạm |
 | `sudo onebee-box thu-hoi-may <tên>` | Thu hồi máy (mất máy, nghỉ việc, nghi giả mạo); giữ kho sao lưu |
+| `sudo onebee-box duyet-tu-xa <tên> [--ip <IPv4>] [--ngay 1-365] [--dong-y]` | Cho máy trạm đi công tác kết nối Box qua Tailscale (cổng 443, 445, 8000) — xem [may-tram-di-cong-tac.md](may-tram-di-cong-tac.md) |
+| `sudo onebee-box thu-hoi-tu-xa <tên>` | Thu hồi quyền kết nối từ xa của máy công tác (đóng tường lửa và cắt ngay kết nối đang mở) |
+| `sudo onebee-box tu-xa` | Bảng các lượt duyệt máy công tác đang có |
+| `sudo onebee-box tu-xa-ap-dung` | Áp dụng danh sách lượt duyệt vào tường lửa + Samba, tự thu hồi lượt hết hạn (bộ hẹn giờ gọi) |
 | `sudo onebee-box ghim-lai-may <tên>` | Máy cài lại hệ điều hành: bỏ khóa SSH đã ghim để ghim lại |
 | `sudo onebee-box bao-cao-tuan [YYYY-MM-DD]` | Nhật ký tuần: yêu cầu hỗ trợ, khảo sát, tình trạng máy (ẩn tên) |
 | `sudo onebee-box nap-tri-thuc` | Nạp kho tri thức (NĐ 30, mẫu soạn văn bản, tài liệu đơn vị) vào CSDL |

@@ -47,6 +47,7 @@ lệnh `onebee-box nap-tri-thuc` nạp không trùng, role chép đúng thư m�
 `tests/box/check-alerts.sh`: kiểm tra tính năng cảnh báo chủ động qua Telegram Bot và webhook động cơ quy trình (Node-RED).
 `tests/box/check-offline-bundle.sh`: kiểm tra kịch bản đóng gói và cài đặt OneBee Box offline từ USB.
 `tests/desktop/test_onebee_giao_dien_windows.py` (lớp `PhienLamViecMint`): kiểm tra các mặc định phiên làm việc trên Linux Mint 22.x (nguồn bộ gõ Cinnamon 6.6 và IBus, đồng hồ ngày/tháng/năm Việt Nam, nút Bắt đầu logo OneBee, chuyển hướng file gói Mint bằng `dpkg-divert` có điều kiện, tắt cửa sổ tự bật của trình cập nhật, chỉ bật timer dọn gói thừa khi có, hình nền màn hình đăng nhập LightDM).
+Máy trạm đi công tác qua VPN (ADR 0008): `tests/box/test_onebee_tu_xa.py` (lệnh `duyet-tu-xa`, `thu-hoi-tu-xa`, `tu-xa`, `tu-xa-ap-dung`, tự thu hồi khi `thu-hoi-may` và khi quá hạn, cảnh báo trong `chan-doan`), `tests/desktop/test_onebee_chon_duong_box.py` (bắt tay TLS với CA ghim để chọn IP LAN hoặc IP VPN trong `/etc/hosts`), `tests/desktop/test_onebee_cong_tac.py` (lệnh `onebee-cong-tac bat/tat/xem`), và kịch bản C1–C11 trong `tests/box/run-box-test-in-systemd-container.sh` (tường lửa + Samba + `conntrack -D` thật qua cặp `veth` `tailscale0`).
 
 ## Chưa kiểm được bằng container (phải thử máy ảo / máy thật)
 - Phiên đăng nhập Cinnamon thật: thanh bộ gõ, hình nền hiển thị, phím tắt đổi bộ gõ (Super + Space) có đụng phím của Cinnamon không.
