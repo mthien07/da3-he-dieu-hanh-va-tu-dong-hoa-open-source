@@ -56,11 +56,21 @@ cai_tailscale_neu_chua_co() {
   apt-get "${apt_opts[@]}" install -y tailscale >/dev/null
 }
 
+# Ghi BOX_IP_TU_XA. Kho sao lưu https đang theo IP LAN của Box thì đổi sang tên Box (dạng Box đẩy xuống khi duyệt):
+# qua VPN chỉ tên Box tới được Box; tên trỏ IP nào là do onebee-chon-duong-box quyết, nên về LAN vẫn chạy.
+# Cần cho máy đã đi mà chưa chuẩn bị — Box không SSH tới được để đẩy cấu hình mới.
 ghi_box_tu_xa() {
-  local ip="$1" tmp
+  local ip="$1" tmp box_ip box_ten
+  box_ip="$(doc_khoa "${CONF}" BOX_IP)"
+  box_ten="$(doc_khoa "${CONF}" BOX_TEN)"
   tmp="$(mktemp)"
   if [[ -f "${CONF}" ]]; then
-    grep -v '^BOX_IP_TU_XA=' "${CONF}" >"${tmp}" || true
+    if [[ "${box_ip}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ && "${box_ten}" =~ ^box\.[a-z0-9-]+\.onebee\.internal$ ]]; then
+      grep -v '^BOX_IP_TU_XA=' "${CONF}" \
+        | sed -E "s#^(RESTIC_REPOSITORY=rest:https://[^@/]+@)${box_ip//./\\.}(:[0-9]+/)#\\1${box_ten}\\2#" >"${tmp}" || true
+    else
+      grep -v '^BOX_IP_TU_XA=' "${CONF}" >"${tmp}" || true
+    fi
   fi
   printf 'BOX_IP_TU_XA=%s\n' "${ip}" >>"${tmp}"
   chmod 0600 "${tmp}" 2>/dev/null || true
