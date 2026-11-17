@@ -26,6 +26,7 @@ gia "${T}/bin/systemctl" '[[ ! -e "${SIM}/dung-${!#}" ]]'
 gia "${T}/bin/df" 'p=40; [[ ! -s "${SIM}/df-home" ]] || p="$(cat "${SIM}/df-home")"
 echo "Filesystem 1024-blocks Used Available Capacity Mounted on"; echo "/dev/sda2 100 ${p} $((100 - p)) ${p}% /home"'
 gia "${T}/bin-restic/restic" 'exit 0'
+gia "${T}/bin/onebee-chon-duong-box" '[[ -s "${SIM}/duong-box" ]] && cat "${SIM}/duong-box" || echo "mạng văn phòng"'
 export SIM NO_COLOR=1 ONEBEE_CONF="${T}/etc/may-tram.env" ONEBEE_HOI_CONF="${T}/etc/onebee-hoi.conf" ONEBEE_VAR="${T}/var"
 PATH_CO_RESTIC="${T}/bin:${T}/bin-restic:${PATH}"
 
@@ -68,10 +69,14 @@ kich_ban() {
 mo_cong 445 18000
 moi_thu_khoe
 kich_ban "Mọi thứ khỏe → toàn [OK], mã thoát 0" 0 ""
-if [[ "$(grep -c '^  \[OK\]' <<<"${OUT}")" == 8 && "$(grep -c '^[1-4]\. ' <<<"${OUT}")" == 4 ]] && grep -q '^KẾT LUẬN: máy và kết nối tới Box bình thường' <<<"${OUT}" \
-   && grep -q 'Nhận sao lưu: Box mở cổng 18000' <<<"${OUT}"; then
-  pass "Đủ 4 hạng mục, 8 mục OK; cổng sao lưu lấy từ cấu hình (file có \\r kiểu Windows)"
+if [[ "$(grep -c '^  \[OK\]' <<<"${OUT}")" == 9 && "$(grep -c '^[1-4]\. ' <<<"${OUT}")" == 4 ]] && grep -q '^KẾT LUẬN: máy và kết nối tới Box bình thường' <<<"${OUT}" \
+   && grep -q 'Nhận sao lưu: Box mở cổng 18000' <<<"${OUT}" && grep -q 'Đường tới Box: mạng văn phòng' <<<"${OUT}"; then
+  pass "Đủ 4 hạng mục, 9 mục OK (gồm Đường tới Box); cổng sao lưu lấy từ cấu hình (file có \\r kiểu Windows)"
 else fail "Bảng chữ khi mọi thứ khỏe sai"; echo "${OUT}"; fi
+
+moi_thu_khoe; echo "BOX_TEN=127.0.0.1" >>"${ONEBEE_CONF}"; echo "từ xa qua VPN" >"${SIM}/duong-box"
+kich_ban "Máy đi công tác: kiểm theo BOX_TEN và hiện Đường tới Box" 0 ""
+if grep -q 'Đường tới Box: từ xa qua VPN' <<<"${OUT}"; then pass "Hiện đúng Đường tới Box: từ xa qua VPN"; else fail "Không hiện đúng Đường tới Box"; fi
 
 moi_thu_khoe; rm -f "${SIM}/ping-192.168.1.1"
 kich_ban "Router không trả lời → LỖI router (Box vẫn kiểm)" 2 "LỖI:Cổng mạng (router)"
@@ -112,10 +117,10 @@ if [[ "${RC}" == 0 ]] && ! grep -q $'\x1b' <<<"${OUT}" && python3 -c 'import jso
 d = json.load(sys.stdin)
 assert d["phien_ban"] == 1, d["phien_ban"]
 assert d["ket_luan"] == "ok", d["ket_luan"]
-assert len(d["muc"]) == 8, len(d["muc"])
+assert len(d["muc"]) == 9, d["muc"]
 khoa = {"nhom", "ten", "trang_thai", "chi_tiet", "goi_y"}
 assert all(khoa <= set(m) for m in d["muc"]), d["muc"]' <<<"${OUT}" 2>"${T}/json.err"; then
-  pass "--json khi mọi thứ khỏe: ket_luan ok, 8 mục đủ khóa, mã thoát 0, không có mã màu"
+  pass "--json khi mọi thứ khỏe: ket_luan ok, 9 mục đủ khóa, mã thoát 0, không có mã màu"
 else fail "--json khi mọi thứ khỏe sai — mã thoát ${RC}: $(cat "${T}/json.err")"; echo "${OUT}"; fi
 moi_thu_khoe; : >"${SIM}/dung-onebee-sao-luu.timer"; chay_json
 if [[ "${RC}" == 2 ]] && python3 -c 'import json, sys
