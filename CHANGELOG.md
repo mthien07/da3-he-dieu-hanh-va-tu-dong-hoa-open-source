@@ -12,6 +12,10 @@
 - Bài kiểm lược đồ CSDL: thỉnh thoảng báo không đạt dù kết quả đúng, vì `pg_restore -l | grep -q` dưới `pipefail`
   làm `pg_restore` nhận SIGPIPE khi `grep` thoát sớm; nay đọc trọn mục lục rồi mới so.
 
+### Tài liệu
+- Hướng dẫn từ A đến Z (Phần 9) và hướng dẫn cài Box: thêm cách xử lý khi **thay router hoặc Box đổi IP**. Sửa chỗ ghi sai
+  "CA mới tự đẩy xuống máy trạm": sau khi xoay CA phải chạy `sudo onebee-box dong-bo-may --tat-ca` để máy trạm nhận IP và CA mới.
+
 ## [2.0.2] — 18/11/2026 — Cài lại Box không còn thay đổi
 
 ### Sửa
