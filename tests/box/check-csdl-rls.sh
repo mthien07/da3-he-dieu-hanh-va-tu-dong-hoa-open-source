@@ -161,7 +161,9 @@ out3="$(python3 "${ROLE}/onebee-chuyen-du-lieu.py" "${T}/du-lieu" 2>&1)" && rc=0
 printf 'CREATE TABLE onebee.thu_them (id bigserial PRIMARY KEY);\nALTER TABLE onebee.thu_them ENABLE ROW LEVEL SECURITY;\n' >"${T}/luoc-do/999-thu-them.sql"
 out="$("${ROLE}/onebee-luoc-do.sh" "${T}/luoc-do" "${T}/ket-xuat" 2>&1)" && rc=0 || rc=$?
 kx="${T}/ket-xuat/truoc-luoc-do-999-thu-them.dump"
-[[ ${rc} -eq 0 && "${out}" == "đã áp dụng 999-thu-them.sql" && -s "${kx}" ]] && "${DOCKER}" exec -i "${CT}" pg_restore -l <"${kx}" | grep -q 'TABLE DATA onebee don_hang' \
+# Đọc trọn mục lục rồi mới so: `pg_restore -l | grep -q` dưới pipefail hỏng ngẫu nhiên vì grep thoát sớm làm pg_restore nhận SIGPIPE
+muc_luc="$([[ -s "${kx}" ]] && "${DOCKER}" exec -i "${CT}" pg_restore -l <"${kx}" 2>&1)" || true
+[[ ${rc} -eq 0 && "${out}" == "đã áp dụng 999-thu-them.sql" && "${muc_luc}" == *"TABLE DATA onebee don_hang"* ]] \
   && pass "Lược đồ: tệp mới trên CSDL đã có dữ liệu → kết xuất truoc-luoc-do-999-thu-them.dump (có dữ liệu đơn hàng) rồi mới áp dụng" \
   || fail "Lược đồ tệp mới: mã ${rc} ${out}"
 echo '-- sửa sau khi đã áp dụng' >>"${T}/luoc-do/001-khoi-tao.sql"

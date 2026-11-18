@@ -37,7 +37,9 @@ Không còn cổng 3000 hay giao diện web riêng; bật HTTPS xong mới dùng
   để trống cả hai là chặn hết kết nối Tailscale (bộ cài cảnh báo nếu Box đang nối Tailscale mà chưa khai). Kết nối mới qua Tailscale bị lọc ở bảng `mangle` (trước các quy tắc tailscaled tự chèn), nên vẫn đúng khi
   tailscaled khởi động lại. Nên đặt thêm ACL phía Tailscale làm lớp thứ hai: `tag:kythuat` → Box tcp 22, 80, 443, 445, 3001, 8000; `tag:congtac` → Box tcp 443, 445, 8000; thiết bị khác trong tailnet không vào được Box.
   IPv6: SSH/thư mục chung chỉ nhận mạng nội bộ IPv6 (`fe80::/10`, `fc00::/7`); địa chỉ IPv6 toàn cầu bị **từ chối ngay** (không im lặng) để máy khách lùi về IPv4 ngay thay vì chờ hết giờ (chưa kiểm trên Windows thật — phiếu B15).
-  Đổi dải IP của mạng LAN (thay router): khởi động lại Box hoặc chạy `sudo systemctl restart onebee-tuong-lua` để tường lửa nhận dải mới.
+  Đổi dải IP của mạng LAN (thay router, DHCP sang dải khác): từ 2.0.3 bộ hẹn giờ `onebee-tuong-lua-kiem-mang.timer` kiểm mỗi phút và tự dựng lại
+  tường lửa theo dải mới (không có lúc hở); Box mất mạng thì giữ quy tắc cũ. Đã khai `onebee_box_lan_cho_phep` thì Box không tự đổi — sửa danh sách rồi chạy lại bộ cài.
+  Box đổi IP (IP nằm trong CA): đặt `onebee_box_dia_chi` mới và `onebee_box_xoay_ca: true` một lần, chạy lại bộ cài, rồi đặt lại `false`; sau đó `sudo onebee-box dong-bo-may --tat-ca` để đẩy IP và CA mới xuống máy trạm (máy đang tắt: chạy lại cho máy đó khi bật).
 
 ## 2. Cài đặt
 **Trước khi chạy bộ cài**, mở `box/ansible/group_vars/all.yml` và khai 2 giá trị (thiếu **mã đơn vị** thì bộ cài dừng và báo rõ; thiếu IP thì bộ cài lấy IP hiện có và cảnh báo):

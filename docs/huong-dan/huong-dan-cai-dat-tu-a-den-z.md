@@ -134,6 +134,7 @@ hostname -I
 ```
 Số đầu tiên (ví dụ `192.168.1.50`) là IP của Box. Vào trang quản trị của **router/modem**, tìm mục **"DHCP Reservation"**, **"Gán IP tĩnh"**
 hoặc **"Address Reservation"**, rồi gán IP này cho máy Box. Nếu không vào được router, nhờ bên lắp mạng làm giúp.
+Về sau có **thay router** hoặc Box lỡ nhận IP khác: xem dòng "Thay router, Box đổi IP" ở [Phần 9](#phần-9-khi-có-sự-cố).
 
 ---
 
@@ -157,7 +158,8 @@ onebee_box_dia_chi: "192.168.1.50"       # IP cố định của Box ở mục 2
 ```
 Lưu (**Ctrl + O**, Enter) và thoát (**Ctrl + X**).
 
-> **Chốt 2 giá trị này trước khi cài máy trạm.** Đổi mã đơn vị hoặc IP về sau thì mọi máy trạm phải nhận lại chứng chỉ bảo mật mới.
+> **Chốt 2 giá trị này trước khi cài máy trạm.** Đổi mã đơn vị hoặc IP về sau thì mọi máy trạm phải nhận lại chứng chỉ bảo mật mới
+> (cách làm: dòng "Thay router, Box đổi IP" ở [Phần 9](#phần-9-khi-có-sự-cố)).
 
 Đơn vị có **nhiều mạng** (ví dụ phòng kế toán ở `192.168.2.x`)? Trong cùng file, sửa
 `onebee_box_lan_cho_phep: ["192.168.1.0/24", "192.168.2.0/24"]`. Mặc định Box chỉ cho máy **cùng mạng** với nó truy cập.
@@ -495,6 +497,7 @@ Chưa có khóa nào thì Box giữ nguyên mật khẩu và in cảnh báo, đ�
 | Nghi lộ mật khẩu | `sudo onebee-box xoay-khoa --tat-ca --box`, gõ `xoay khoa` để xác nhận. Đổi toàn bộ mật khẩu/khóa, máy trạm đang bật tự nhận khóa mới (máy đang tắt: bật lên rồi `sudo onebee-box dong-bo-may --tat-ca`). Sau đó **in lại khóa** (`in-khoa`) cất két |
 | Nhân viên lỡ xóa file | Khôi phục từ bản sao lưu của máy trạm, xem [quan-ly-may-tram.md](quan-ly-may-tram.md) |
 | **Hỏng ổ Box** | Cài lại Ubuntu (Phần 2) và Box (Phần 3, **cùng mã đơn vị và IP**), gắn lại ổ sao lưu (Phần 4 bước 3, **không** chạy lại `mkfs`). Chép nội dung tờ `in-khoa` vào file `~/khoa.txt`, rồi chạy: `sudo onebee-box khoi-phuc-toan-bo ~/khoa.txt` → `sudo ./box/onebee-box-install.sh` → `sudo onebee-box khoi-phuc-thu`. Mật khẩu cũ dùng lại được, **máy trạm không phải làm gì** |
+| **Thay router, Box đổi IP** (máy trạm, SSH không vào được Box) | Từ bản **2.0.3**, Box tự nhận dải mạng mới trong khoảng **1 phút** (bản cũ hơn: khởi động lại Box). Sau đó: (1) gán lại IP cố định cho Box trên router mới (mục 2.1); (2) nếu IP Box đã khác, sửa `onebee_box_dia_chi` thành IP mới **và** đặt `onebee_box_xoay_ca: true` trong `box/ansible/group_vars/all.yml`, chạy `sudo ./box/onebee-box-install.sh`, rồi đặt lại `onebee_box_xoay_ca: false`. Cuối cùng chạy `sudo onebee-box dong-bo-may --tat-ca` để đẩy IP mới và chứng chỉ mới xuống máy trạm (máy đang tắt: bật lên rồi `sudo onebee-box dong-bo-may <tên-máy>`). Đơn vị đã khai `onebee_box_lan_cho_phep` thì sửa danh sách đó theo dải mới rồi chạy lại bộ cài |
 | Bộ cài (Box hoặc máy trạm) dừng giữa chừng, báo `fatal` và `connection timed out` | Mạng chập chờn. Kiểm tra mạng rồi **chạy lại đúng lệnh cài**. Bộ cài làm tiếp phần còn lại, chạy lại nhiều lần là an toàn |
 | `onebee-box chan-doan` báo `onebee-quy-trinh` "không khỏe (unhealthy)" nhưng trình soạn luồng vẫn mở được | Chỉ có ở Box **1.3.0** (phép kiểm tra sức khỏe của dịch vụ này sai, không phải lỗi thật). Nâng cấp lên 1.3.1 trở lên theo mục 3.5 là hết |
 | Dịch vụ không vào được | `sudo onebee-box trang-thai` xem dịch vụ nào ngừng. Thử khởi động lại Box. Vẫn lỗi: gửi `/var/log/onebee/` và `journalctl -b > ~/nhat-ky.txt` cho kỹ thuật |
