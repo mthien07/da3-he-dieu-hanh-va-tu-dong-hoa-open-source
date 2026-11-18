@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [2.0.2] — 18/11/2026 — Cài lại Box không còn thay đổi
+
+### Sửa
+- Bộ cài Box: tác vụ tạo thư mục dữ liệu và tác vụ giữ quyền thư mục chữ ký ClamAV đặt quyền qua lại
+  (`root:root` ↔ UID 1000), nên **lần cài thứ hai luôn báo changed** và bài kiểm Box dừng ở mục idempotent.
+  Nay cả hai dùng cùng một nguồn giá trị (UID 1000, user `clamav` trong image); chạy lại bộ cài báo `changed=0`.
+
 ## [2.0.1] — 18/11/2026 — Sửa quyền cập nhật chữ ký ClamAV
 Bản vá nhỏ sau khi kiểm thử 2.0.0 trên máy ảo Linux.
 
