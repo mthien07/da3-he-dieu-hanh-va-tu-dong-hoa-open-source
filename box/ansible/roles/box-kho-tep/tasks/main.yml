@@ -9,11 +9,13 @@
   ansible.builtin.file:
     path: "{{ item.path }}"
     state: directory
-    owner: root
-    group: root
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
     mode: "{{ item.mode }}"
   loop:
-    - {path: "{{ onebee_box_data }}/clamav", mode: "0755"}   # clamscan đọc chữ ký qua mount chỉ đọc trong container
+    # freshclam trong image tự hạ xuống user clamav (UID 1000) nên thư mục chữ ký thuộc UID đó;
+    # clamscan của kho tệp đọc chữ ký qua mount chỉ đọc trong container
+    - {path: "{{ onebee_box_data }}/clamav", mode: "0755", owner: "1000", group: "1000"}
     - {path: "{{ onebee_box_data }}/kho-tep", mode: "0700"}
     - {path: "{{ onebee_box_data }}/kho-tep/cho-quet", mode: "0700"}
     - {path: "{{ onebee_box_data }}/kho-tep/cach-ly", mode: "0700"}
