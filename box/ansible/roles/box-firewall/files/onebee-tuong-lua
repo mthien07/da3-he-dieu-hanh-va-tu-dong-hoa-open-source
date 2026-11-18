@@ -11,7 +11,7 @@
 # (util/linuxfw, bản 1.104) → lọc ở filter thì thứ tự khởi động quyết định. Nên kết nối MỚI từ tailscale0 bị lọc ở mangle/PREROUTING
 # (chạy trước mọi chuỗi filter; tailscaled chỉ thêm ở đó quy tắc CONNMARK không chặn/không nhận gói) — đúng bất kể ai khởi động trước.
 # IPv6: SSH/Samba ngoài mạng nội bộ bị REJECT (không DROP) để Windows lùi về IPv4 ngay, không treo chờ hết giờ.
-# Cách dùng: onebee-tuong-lua [bat|tat|xem]   (bat: dựng lại toàn bộ, chạy nhiều lần không sao, không có lúc nào hở — xem doi_bo)
+# Cách dùng: onebee-tuong-lua [bat|tat|xem|kiem-mang]   (bat: dựng lại toàn bộ, chạy nhiều lần không sao, không có lúc nào hở — xem doi_bo)
 set -euo pipefail
 
 CONF="${ONEBEE_TUONG_LUA_CONF:-/etc/onebee-box/tuong-lua.conf}"
@@ -164,15 +164,22 @@ loc_ip_tu_xa() {
   printf '%s' "${hop_le}"
 }
 
+# Cổng mạng chính (IFC) và mạng LAN cho phép (MANG): LAN_CHO_PHEP nếu khai, không thì các mạng nối thẳng của cổng mạng chính.
+# Trả 1 (kèm lý do) khi chưa xác định được — vd đang đổi mạng, chưa có đường ra mặc định.
+xac_dinh_mang() {
+  IFC="${ONEBEE_CONG_MANG:-$(cong_mang)}"
+  [[ -n "${IFC}" ]] || { echo "Không tìm thấy cổng mạng chính (chưa có đường ra mặc định)" >&2; return 1; }
+  MANG="${LAN_CHO_PHEP}"
+  if [[ -z "${MANG}" ]]; then
+    MANG="$(ip -4 route show dev "${IFC}" scope link | awk '{print $1}' | paste -sd, -)"
+  fi
+  [[ -n "${MANG}" ]] || { echo "Không xác định được mạng LAN của ${IFC}" >&2; return 1; }
+}
+
 bat() {
   local ifc mang mang6 tu_xa
-  ifc="${ONEBEE_CONG_MANG:-$(cong_mang)}"
-  [[ -n "${ifc}" ]] || { echo "Không tìm thấy cổng mạng chính (chưa có đường ra mặc định)" >&2; exit 1; }
-  mang="${LAN_CHO_PHEP}"
-  if [[ -z "${mang}" ]]; then
-    mang="$(ip -4 route show dev "${ifc}" scope link | awk '{print $1}' | paste -sd, -)"
-  fi
-  [[ -n "${mang}" ]] || { echo "Không xác định được mạng LAN của ${ifc}" >&2; exit 1; }
+  xac_dinh_mang || exit 1
+  ifc="${IFC}"; mang="${MANG}"
   tu_xa="$(loc_ip_tu_xa)"
   # IPv6: các cổng Docker chỉ mở IPv4 (docker-compose.yml) → chỉ cần giữ SSH/Samba trong mạng nội bộ (ngoài mạng nội bộ: REJECT)
   co_ho ip6tables && mang6="fe80::/10,fc00::/7"
@@ -184,13 +191,42 @@ bat() {
   echo "Tường lửa OneBee: mọi cổng mạng trừ lo/docker/br; ${ifc}: chỉ ${mang} (IPv6: ${mang6:-tắt}); tailscale0: ${TAILSCALE_CHO_PHEP:-chặn hết}; máy công tác: ${tu_xa:-không có}"
 }
 
+# Box đổi mạng khi đang chạy (đổi router, DHCP sang dải khác, chuyển VM sang mạng khác) mà không khởi động lại: quy tắc vẫn giữ
+# mạng LAN cũ nên mọi máy trong mạng mới bị chặn (kể cả SSH). Bộ hẹn giờ onebee-tuong-lua-kiem-mang gọi lệnh này mỗi phút:
+# mạng đang áp khác mạng hiện tại thì dựng lại (bat, không có lúc hở). Không làm gì khi: tường lửa đang tắt, đã khai LAN_CHO_PHEP
+# (danh sách cố định, bộ cài áp khi đổi), hoặc chưa xác định được mạng (đang đổi mạng — giữ quy tắc cũ, chặt hơn chứ không hở).
+# iptables -S in lại quy tắc theo thứ tự riêng ("-s <mạng> -i <cổng>", ngược lúc thêm) và in IP đơn kèm "/32" còn route thì không
+# (vd đường tới gateway DHCP) → đọc -i/-s theo tên cờ, không theo vị trí, và bỏ "/32" ở cả hai bên trước khi so.
+kiem_mang() {
+  local dang_ap can_co net
+  [[ -z "${LAN_CHO_PHEP}" ]] || return 0
+  iptables -S "${C_BOX}" >/dev/null 2>&1 || return 0
+  xac_dinh_mang 2>/dev/null || return 0
+  dang_ap="$(iptables -S "${C_BOX}" | awk '$NF == "RETURN" {
+      i = ""; s = ""
+      for (k = 3; k < NF; k++) { if ($k == "-i") i = $(k + 1); if ($k == "-s") s = $(k + 1) }
+      if (i != "" && i != "tailscale0" && s != "") { sub(/\/32$/, "", s); print i, s }
+    }' | sort -u)"
+  can_co="$(for net in ${MANG//,/ }; do echo "${IFC} ${net%/32}"; done | sort -u)"
+  [[ "${dang_ap}" == "${can_co}" ]] && return 0
+  echo "Tường lửa OneBee: mạng LAN đổi ($(echo "${dang_ap}" | paste -sd, -) → $(echo "${can_co}" | paste -sd, -)), dựng lại"
+  bat
+}
+
 xem() {
   iptables -S "${C_DOCKER}" 2>/dev/null && iptables -S "${C_BOX}" && iptables -t mangle -S "${C_TS}" || echo "Tường lửa OneBee đang tắt"
 }
 
+# Một lần chạy tại một thời điểm: bộ hẹn giờ kiem-mang, tu-xa-ap-dung và bộ cài đều có thể gọi bat cùng lúc
+if command -v flock >/dev/null; then
+  exec 9>>"${ONEBEE_TUONG_LUA_KHOA:-/run/onebee-tuong-lua.lock}"
+  flock 9
+fi
+
 case "${1:-bat}" in
   bat) bat ;;
+  kiem-mang) kiem_mang ;;
   tat) tat; echo "Đã tắt tường lửa OneBee" ;;
   xem) xem ;;
-  *) echo "Cách dùng: $0 [bat|tat|xem]" >&2; exit 2 ;;
+  *) echo "Cách dùng: $0 [bat|tat|xem|kiem-mang]" >&2; exit 2 ;;
 esac

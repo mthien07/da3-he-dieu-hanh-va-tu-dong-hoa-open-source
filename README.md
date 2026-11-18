@@ -107,7 +107,7 @@ cd onebee && sudo ./desktop/onebee-install.sh
 | **Hồ sơ dự thi OLP 2026**: tự chấm có lệnh kiểm, kịch bản trình diễn 15 phút, thư nộp bài | [olp-2026-tu-cham-pof.md](docs/olp-2026-tu-cham-pof.md) · [kịch bản](docs/hoi-thi/olp-2026-kich-ban-trinh-dien.md) · [thư nộp bài](docs/hoi-thi/olp-2026-thu-nop-bai.md) |
 | Quyết định kiến trúc | [docs/adr/](docs/adr/) · Lõi DX-OS open-core (SSO, cổng API, dữ liệu, kho tệp, quy trình): [ADR 0006](docs/adr/0006-loi-dx-os-open-core.md) · Thay đổi: [CHANGELOG.md](CHANGELOG.md) |
 
-## 📌 Trạng thái (2.0.0)
+## 📌 Trạng thái (2.0.3)
 - ✅ **Đủ tính năng cho một đơn vị**: máy trạm, Box, Trợ lý AI chạy tại chỗ, quy trình email, quản lý máy trạm, hỗ trợ từ xa, sổ hỗ trợ + khảo sát,
   giám sát, HTTPS nội bộ (CA riêng của Box), xoay khóa, **khôi phục toàn bộ Box khi hỏng ổ**; giao diện quen thuộc như Windows
   (thanh tác vụ ghim sẵn ứng dụng, Win+E/D/L, LibreOffice dạng Ribbon).
@@ -118,13 +118,17 @@ cd onebee && sudo ./desktop/onebee-install.sh
   ([hướng dẫn](docs/huong-dan/may-tram-di-cong-tac.md), [ADR 0008](docs/adr/0008-may-tram-di-cong-tac-qua-vpn.md));
   **sổ kho và sổ kế toán nhật ký kép** trong Sổ điều hành — duyệt đơn tự trừ tồn và ghi bút toán, thủ kho nhập kho, xuất CSV
   ([hướng dẫn](docs/huong-dan/dung-so-kho-va-ke-toan.md)); sửa các lỗi tìm ra khi thử trên Box thật ([CHANGELOG.md](CHANGELOG.md)).
+- 🔧 **Bản vá 2.0.1–2.0.3** (lỗi tìm ra khi thử trên máy ảo Linux): tải chữ ký ClamAV lần đầu không còn hỏng; cài lại Box báo `changed=0`;
+  **Box đổi mạng khi đang chạy** (thay router, đổi dải DHCP) tường lửa tự nhận dải LAN mới trong vòng 1 phút, không còn chặn SSH và trang chủ
+  ([CHANGELOG.md](CHANGELOG.md)).
 - ✅ **Đã kiểm tự động** ở mỗi thay đổi ([CI](https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source/actions/workflows/ci.yml)):
   Box cài thật trong Docker lồng (đăng nhập một lần, API, kho tệp, AI, sao lưu/khôi phục, tường lửa, máy công tác C1–C11),
   máy trạm cài thật trong container Linux Mint 22.3; cả hai bộ cài chạy lần 2 `changed=0 failed=0`; lint sạch. Cách chạy: [tests/README.md](tests/README.md).
 - ✅ **Đã thử trên máy ảo VMware** (chưa phải máy vật lý): máy Mint sạch cài từ đầu bằng đúng lệnh ở mục Cài đặt và Box nâng cấp 1.2.0 → 1.3.1
   ([báo cáo](plans/reports/261117-kiem-thu-may-sach-va-nang-cap-box.md)); máy công tác T1–T12 trên Box, máy Mint và mạng Tailscale thật
   ([báo cáo](plans/reports/261117-kiem-thu-may-di-cong-tac.md)); sổ kho và kế toán đầu-cuối với 4 vai trò trên Box
-  ([báo cáo](plans/reports/kiem-thu-261117-1608-kho-ke-toan-box.md)).
+  ([báo cáo](plans/reports/kiem-thu-261117-1608-kho-ke-toan-box.md)); bài kiểm Box đầy đủ (bản 2.0.2, máy ảo Linux) đạt **251/251 mục**,
+  Box thật nâng sạch lên 2.0.2 kèm xoay CA sang IP mới, cài lại `changed=0` ([báo cáo](plans/reports/kiem-thu-261118-0445-da3-2.0.0-may-linux.md)).
 - ✅ Model AI chọn bằng bộ chấm 40 câu tiếng Việt (98%): [ADR 0003](docs/adr/0003-chon-model-ai-gemma.md), [reports/ai/](reports/ai/).
 - ⏳ **Chưa cài trên máy vật lý tại đơn vị nào**; chưa thử khôi phục từ ổ sao lưu ngoài trên Box thật →
   [phiếu kiểm thử máy thật](plans/reports/261010-kiem-thu-tren-may-that.md), [danh sách thử](docs/huong-dan/thu-nghiem-tren-may-ao.md).

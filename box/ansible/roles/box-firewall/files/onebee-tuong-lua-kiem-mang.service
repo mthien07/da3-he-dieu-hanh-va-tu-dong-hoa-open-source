@@ -1,0 +1,10 @@
+# Quản lý bởi OneBee OS (box/ansible/roles/box-firewall)
+[Unit]
+Description=Tường lửa OneBee Box — dựng lại khi mạng LAN của Box đổi
+# Tường lửa đang tắt (chưa có chuỗi lọc) thì kiem-mang tự bỏ qua; onebee_box_tuong_lua_bat: false thì bộ hẹn giờ cũng tắt
+After=onebee-tuong-lua.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/onebee-tuong-lua kiem-mang
+Nice=10

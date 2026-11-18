@@ -5,6 +5,7 @@
 Kiểm cấu trúc quy tắc (rà soát bảo mật F5): lọc MỌI cổng mạng trừ lo/docker*/br-*; LAN chỉ qua cổng mạng chính; Tailscale chỉ địa chỉ khai báo;
 chạy lại không nhân đôi quy tắc. Chạy: python3 -m unittest"""
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -48,10 +49,13 @@ if [ -n "${ONEBEE_FW_KIEM_HO:-}" ]; then
   kiem "$g" INPUT '-p tcp'; kiem "$g" INPUT '-p udp'; kiem "$g" DOCKER-USER '.'; kiem "$g/mangle" PREROUTING '.'
 fi
 '''
+# Mạng hiện tại đọc từ $ONEBEE_FW/mang (mỗi dòng một đường nối thẳng) để giả lập Box đổi mạng; có $ONEBEE_FW/mat-mang = chưa có đường ra
 IP_GIA = r'''#!/bin/bash
+[ -f "$ONEBEE_FW/mat-mang" ] && exit 0
 case "$*" in
   "-4 route show default") echo "default via 192.168.1.1 dev enp3s0 proto dhcp" ;;
-  "-4 route show dev enp3s0 scope link") echo "192.168.1.0/24 proto kernel src 192.168.1.10" ;;
+  "-4 route show dev enp3s0 scope link")
+    if [ -f "$ONEBEE_FW/mang" ]; then cat "$ONEBEE_FW/mang"; else echo "192.168.1.0/24 proto kernel src 192.168.1.10"; fi ;;
 esac
 '''
 
@@ -66,7 +70,7 @@ class TuongLua(unittest.TestCase):
             open(f"{t}/bin/{ten}", "w").write(nd)
             os.chmod(f"{t}/bin/{ten}", 0o755)
         self.env = dict(os.environ, PATH=f"{t}/bin:{os.environ['PATH']}", ONEBEE_FW=f"{t}/fw", ONEBEE_TUONG_LUA_CONF=f"{t}/tuong-lua.conf",
-                        ONEBEE_TU_XA_CONF=f"{t}/tuong-lua-tu-xa.conf")
+                        ONEBEE_TU_XA_CONF=f"{t}/tuong-lua-tu-xa.conf", ONEBEE_TUONG_LUA_KHOA=f"{t}/tuong-lua.lock")
         os.makedirs(f"{t}/fw")
 
     def tep_tu_xa(self, nd):
@@ -266,6 +270,81 @@ class TuongLua(unittest.TestCase):
         self.assertEqual(self.chuoi("ONEBEE-LAN-BOX")[-1], "-A ONEBEE-LAN-BOX -j DROP")          # IPv4 giữ DROP
         self.assertEqual(self.chuoi("ONEBEE-LAN-DOCKER", "ip6tables")[-1], "-A ONEBEE-LAN-DOCKER -j DROP")
 
+
+
+    def lan(self):
+        return [x for x in self.chuoi("ONEBEE-LAN-BOX") if " -i enp3s0 -s " in x]
+
+    def so_lenh(self):
+        p = f"{self.t}/fw/lenh.log"
+        return len(open(p).read().splitlines()) if os.path.exists(p) else 0
+
+    def test_kiem_mang_khi_tuong_lua_tat_khong_bat_len(self):
+        """Tường lửa đang tắt (quản trị tắt để dò lỗi, hoặc onebee_box_tuong_lua_bat: false): kiem-mang không tự dựng lại."""
+        self.chay("kiem-mang")
+        self.assertIsNone(self.chuoi("ONEBEE-LAN-BOX"))
+        self.assertFalse([l for l in open(f"{self.t}/fw/lenh.log").read().splitlines() if " -N " in l])
+
+    def test_kiem_mang_khong_doi_thi_khong_dung_lai(self):
+        """Gọi mỗi phút: mạng không đổi thì chỉ đọc (-S), không thêm/gỡ quy tắc nào. iptables thật in lại quy tắc khác lúc thêm:
+        "-s <mạng> -i <cổng>" (ngược thứ tự) và IP đơn kèm "/32" (đường tới gateway DHCP) — trên Box thật, bản đầu so theo vị trí
+        nên đọc ra rỗng và dựng lại mỗi phút."""
+        open(f"{self.t}/fw/mang", "w").write("192.168.1.0/24 proto kernel src 192.168.1.10\n192.168.1.1 proto dhcp src 192.168.1.10\n")
+        self.chay()
+        # in lại chuỗi đúng như iptables thật: -s trước -i, IP đơn kèm /32
+        p = f"{self.t}/fw/iptables/ONEBEE-LAN-BOX"
+        nd = open(p).read()
+        self.assertIn("-i enp3s0 -s 192.168.1.1 ", nd)
+        nd = re.sub(r"-i (\S+) -s (\S+) ", lambda m: f"-s {m[2] if '/' in m[2] else m[2] + '/32'} -i {m[1]} ", nd)
+        self.assertIn("-A ONEBEE-LAN-BOX -s 192.168.1.1/32 -i enp3s0 -j RETURN", nd)
+        open(p, "w").write(nd)
+        truoc = self.so_lenh()
+        r = self.chay("kiem-mang")
+        lenh = open(f"{self.t}/fw/lenh.log").read().splitlines()[truoc:]
+        self.assertTrue(lenh and all(" -S " in l for l in lenh), lenh)
+        self.assertEqual(r.stdout, "")
+
+    def test_kiem_mang_doi_mang_thi_dung_lai_khong_co_khoang_ho(self):
+        """Box chuyển từ 192.168.1.0/24 sang 192.168.100.0/24 khi đang chạy: trước đây quy tắc giữ mạng cũ, máy trong mạng mới
+        bị chặn cả SSH tới khi khởi động lại. kiem-mang dựng lại theo mạng mới, không lúc nào hở."""
+        self.chay()
+        self.assertEqual(self.lan(), ["-A ONEBEE-LAN-BOX -i enp3s0 -s 192.168.1.0/24 -j RETURN"])
+        open(f"{self.t}/fw/mang", "w").write("192.168.100.0/24 proto kernel src 192.168.100.26\n")
+        self.env["ONEBEE_FW_KIEM_HO"] = "1"
+        r = self.chay("kiem-mang")
+        self.assertIn("192.168.1.0/24 → enp3s0 192.168.100.0/24", r.stdout)
+        self.assertEqual(self.lan(), ["-A ONEBEE-LAN-BOX -i enp3s0 -s 192.168.100.0/24 -j RETURN"])
+        self.assertIn("-A ONEBEE-LAN-DOCKER -i enp3s0 -s 192.168.100.0/24 -j RETURN", self.chuoi("ONEBEE-LAN-DOCKER"))
+        ho = f"{self.t}/fw/ho.log"
+        self.assertFalse(os.path.exists(ho), open(ho).read() if os.path.exists(ho) else "")
+        self.assertEqual(len([x for x in self.chuoi("INPUT") if "ONEBEE-LAN-BOX" in x]), 2)     # không nhân đôi bước nhảy
+
+    def test_kiem_mang_mat_mang_giu_quy_tac_cu(self):
+        """Đang đổi mạng (chưa có đường ra mặc định): giữ nguyên quy tắc cũ, thoát 0 — chặt hơn chứ không mở."""
+        self.chay()
+        truoc = self.chuoi("ONEBEE-LAN-BOX")
+        open(f"{self.t}/fw/mat-mang", "w").close()
+        self.chay("kiem-mang")
+        self.assertEqual(self.chuoi("ONEBEE-LAN-BOX"), truoc)
+
+    def test_kiem_mang_bo_qua_khi_khai_lan_cho_phep(self):
+        """Đã khai LAN_CHO_PHEP: danh sách cố định (bộ cài áp khi đổi), đổi mạng không tự thay."""
+        conf = 'LAN_CHO_PHEP="10.0.0.0/24"\n'
+        self.chay(conf=conf)
+        open(f"{self.t}/fw/mang", "w").write("192.168.100.0/24 proto kernel src 192.168.100.26\n")
+        truoc = self.so_lenh()
+        self.chay("kiem-mang", conf=conf)
+        self.assertEqual(self.so_lenh(), truoc)
+
+    def test_bo_hen_gio_kiem_mang_moi_phut_theo_cong_tac_tuong_lua(self):
+        d = os.path.dirname(SCRIPT)
+        timer = open(os.path.join(d, "onebee-tuong-lua-kiem-mang.timer"), encoding="utf-8").read()
+        self.assertIn("OnCalendar=minutely", timer)
+        unit = open(os.path.join(d, "onebee-tuong-lua-kiem-mang.service"), encoding="utf-8").read()
+        self.assertIn("ExecStart=/usr/local/sbin/onebee-tuong-lua kiem-mang", unit)
+        role = open(os.path.join(d, "../tasks/main.yml"), encoding="utf-8").read()
+        self.assertIn("name: onebee-tuong-lua-kiem-mang.timer", role)
+        self.assertIn("dest: /etc/systemd/system/onebee-tuong-lua-kiem-mang.timer", role)
 
 if __name__ == "__main__":
     unittest.main()
