@@ -150,7 +150,7 @@ assert float(x["ton"]) == 100 and float(x["gia_von"]) == 70000, x
 PY
 id_phieu="$(cat "${D}/id-phieu")"
 so="$(docker exec onebee-postgres psql -X -q -At -U postgres -d onebee -c \
-  "SELECT tai_khoan || ' ' || no || ' ' || co FROM onebee.but_toan_dong d JOIN onebee.but_toan b ON b.id = d.but_toan_id WHERE b.chung_tu = 'phieu_kho:${id_phieu}' ORDER BY d.id")"
+  "SELECT tai_khoan || ' ' || round(no, 2) || ' ' || round(co, 2) FROM onebee.but_toan_dong d JOIN onebee.but_toan b ON b.id = d.but_toan_id WHERE b.chung_tu = 'phieu_kho:${id_phieu}' ORDER BY d.id")"
 [ "${so}" = $'156 7000000.00 0.00\n111 0.00 7000000.00' ] || { echo "FAIL  bút toán nhập kho sai: ${so}"; exit 1; }
 # Kế toán vẫn đọc được sổ qua API (kiểm quyền, không kiểm toàn bộ nội dung)
 [ "$(ma -b "${D}/jar-kkt-ke-toan" "https://${TEN}/api/so_nhat_ky?select=so_hieu&limit=1")" = 200 ] \
@@ -187,7 +187,7 @@ phieu="$(docker exec onebee-postgres psql -X -q -At -U postgres -d onebee -c \
   "SELECT loai || ':' || so_luong FROM onebee.phieu_kho p JOIN onebee.phieu_kho_dong d ON d.phieu_id = p.id WHERE p.don_hang_id = ${id_don}")"
 [ "${phieu}" = 'XUAT:30' ] || { echo "FAIL  phiếu xuất của đơn sai: ${phieu}"; exit 1; }
 so="$(docker exec onebee-postgres psql -X -q -At -U postgres -d onebee -c \
-  "SELECT tai_khoan || ' ' || no || ' ' || co FROM onebee.but_toan_dong d JOIN onebee.but_toan b ON b.id = d.but_toan_id WHERE b.chung_tu = 'don_hang:${id_don}' ORDER BY d.id")"
+  "SELECT tai_khoan || ' ' || round(no, 2) || ' ' || round(co, 2) FROM onebee.but_toan_dong d JOIN onebee.but_toan b ON b.id = d.but_toan_id WHERE b.chung_tu = 'don_hang:${id_don}' ORDER BY d.id")"
 [ "${so}" = $'131 3000000.00 0.00\n511 0.00 3000000.00\n632 2100000.00 0.00\n156 0.00 2100000.00' ] \
   || { echo "FAIL  bút toán duyệt đơn sai: ${so}"; exit 1; }
 can="$(docker exec onebee-postgres psql -X -q -At -U postgres -d onebee -c \
