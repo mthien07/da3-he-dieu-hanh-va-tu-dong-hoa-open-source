@@ -28,6 +28,8 @@
   loop:
     - {src: onebee-tuong-lua, dest: /usr/local/sbin/onebee-tuong-lua, mode: "0750"}
     - {src: onebee-tuong-lua.service, dest: /etc/systemd/system/onebee-tuong-lua.service, mode: "0644"}
+    - {src: onebee-tuong-lua-kiem-mang.service, dest: /etc/systemd/system/onebee-tuong-lua-kiem-mang.service, mode: "0644"}
+    - {src: onebee-tuong-lua-kiem-mang.timer, dest: /etc/systemd/system/onebee-tuong-lua-kiem-mang.timer, mode: "0644"}
   register: onebee_tuong_lua_files
 
 # Bản cũ bật kèm Docker (WantedBy=docker.service); systemctl enable không tự gỡ liên kết cũ khi đổi [Install]
@@ -56,4 +58,12 @@
     state: >-
       {{ 'stopped' if not onebee_box_tuong_lua_bat
          else ('restarted' if (onebee_tuong_lua_conf.changed or onebee_tuong_lua_files.changed) else 'started') }}
+    daemon_reload: true
+
+# Box đổi mạng khi đang chạy (không khởi động lại) thì quy tắc vẫn giữ mạng LAN cũ, chặn mọi máy trong mạng mới → kiểm mỗi phút
+- name: Bật bộ hẹn giờ dựng lại tường lửa khi mạng LAN đổi
+  ansible.builtin.systemd_service:
+    name: onebee-tuong-lua-kiem-mang.timer
+    enabled: "{{ onebee_box_tuong_lua_bat }}"
+    state: "{{ 'started' if onebee_box_tuong_lua_bat else 'stopped' }}"
     daemon_reload: true
