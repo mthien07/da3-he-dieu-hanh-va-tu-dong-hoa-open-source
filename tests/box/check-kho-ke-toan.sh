@@ -41,6 +41,16 @@ SQL
 DON
 chmod +x /root/kkt/don.sh
 
+# Authelia giữ bộ đếm giới hạn số lần nâng phiên trong bộ nhớ: chạy bài kiểm nhiều lần liền sẽ bị 429 ở lớp hai.
+# Khởi động lại để bộ đếm về 0 (đăng nhập đang mở bị ngắt khoảng 10 giây). Đặt ONEBEE_TEST_GIU_AUTHELIA=1 để bỏ qua.
+if [[ "${ONEBEE_TEST_GIU_AUTHELIA:-0}" != 1 ]]; then
+  docker restart onebee-authelia >/dev/null 2>&1 || true
+  for _ in $(seq 30); do
+    docker exec onebee-authelia authelia --version >/dev/null 2>&1 && break
+    sleep 2
+  done
+fi
+
 cat >/root/kkt/chung.sh <<'CHUNG'
 IP="$(ip -4 route get 1.1.1.1 | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}')"
 TEN="box.$(sed -n 's/^onebee_box_ma_don_vi: *//p' /root/onebee-test/box/ansible/group_vars/all.yml | tr -d '"')".onebee.internal
@@ -150,7 +160,7 @@ assert float(x["ton"]) == 100 and float(x["gia_von"]) == 70000, x
 PY
 id_phieu="$(cat "${D}/id-phieu")"
 so="$(docker exec onebee-postgres psql -X -q -At -U postgres -d onebee -c \
-  "SELECT tai_khoan || ' ' || no || ' ' || co FROM onebee.but_toan_dong d JOIN onebee.but_toan b ON b.id = d.but_toan_id WHERE b.chung_tu = 'phieu_kho:${id_phieu}' ORDER BY d.id")"
+  "SELECT tai_khoan || ' ' || round(no, 2) || ' ' || round(co, 2) FROM onebee.but_toan_dong d JOIN onebee.but_toan b ON b.id = d.but_toan_id WHERE b.chung_tu = 'phieu_kho:${id_phieu}' ORDER BY d.id")"
 [ "${so}" = $'156 7000000.00 0.00\n111 0.00 7000000.00' ] || { echo "FAIL  bút toán nhập kho sai: ${so}"; exit 1; }
 # Kế toán vẫn đọc được sổ qua API (kiểm quyền, không kiểm toàn bộ nội dung)
 [ "$(ma -b "${D}/jar-kkt-ke-toan" "https://${TEN}/api/so_nhat_ky?select=so_hieu&limit=1")" = 200 ] \
@@ -187,7 +197,7 @@ phieu="$(docker exec onebee-postgres psql -X -q -At -U postgres -d onebee -c \
   "SELECT loai || ':' || so_luong FROM onebee.phieu_kho p JOIN onebee.phieu_kho_dong d ON d.phieu_id = p.id WHERE p.don_hang_id = ${id_don}")"
 [ "${phieu}" = 'XUAT:30' ] || { echo "FAIL  phiếu xuất của đơn sai: ${phieu}"; exit 1; }
 so="$(docker exec onebee-postgres psql -X -q -At -U postgres -d onebee -c \
-  "SELECT tai_khoan || ' ' || no || ' ' || co FROM onebee.but_toan_dong d JOIN onebee.but_toan b ON b.id = d.but_toan_id WHERE b.chung_tu = 'don_hang:${id_don}' ORDER BY d.id")"
+  "SELECT tai_khoan || ' ' || round(no, 2) || ' ' || round(co, 2) FROM onebee.but_toan_dong d JOIN onebee.but_toan b ON b.id = d.but_toan_id WHERE b.chung_tu = 'don_hang:${id_don}' ORDER BY d.id")"
 [ "${so}" = $'131 3000000.00 0.00\n511 0.00 3000000.00\n632 2100000.00 0.00\n156 0.00 2100000.00' ] \
   || { echo "FAIL  bút toán duyệt đơn sai: ${so}"; exit 1; }
 can="$(docker exec onebee-postgres psql -X -q -At -U postgres -d onebee -c \

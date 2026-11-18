@@ -98,6 +98,17 @@
 
 # Box có Internet: tải lần đầu. Không có mạng: không làm hỏng bộ cài; nộp ngoại tuyến bằng lệnh bên dưới.
 # Thiếu chữ ký thì dịch vụ từ chối quét (503) — không bao giờ coi tệp chưa quét được là sạch.
+# freshclam trong image tự hạ xuống user clamav (UID 1000) nên thư mục chữ ký phải do UID đó ghi được;
+# thiếu bước này thì "Tải chữ ký ClamAV lần đầu" luôn thất bại với "Can't create freshclam.dat".
+- name: Cho freshclam ghi được thư mục chữ ký (user clamav trong image là UID 1000)
+  ansible.builtin.file:
+    path: "{{ onebee_box_data }}/clamav"
+    state: directory
+    owner: "1000"
+    group: "1000"
+    mode: "0755"
+  when: onebee_clamav_chu_ky_sau.matched == 0
+
 - name: Tải chữ ký ClamAV lần đầu (khi Box có Internet)
   ansible.builtin.command: >-
     docker run --rm -v {{ onebee_box_data }}/clamav:/var/lib/clamav
@@ -116,13 +127,14 @@
     - onebee_clamav_chu_ky_sau.matched == 0
     - onebee_clamav_tai.rc | default(0) != 0
 
-# freshclam tạo tệp trong thư mục chữ ký và có thể đổi quyền thư mục — đặt lại sau khi tải/chép để lần cài sau không đổi gì
+# freshclam tạo tệp trong thư mục chữ ký và có thể đổi quyền thư mục — đặt lại sau khi tải/chép để lần cài sau không đổi gì.
+# Giữ owner là UID 1000 (user clamav trong image) để cập nhật chữ ký về sau chạy được; kho tệp chỉ đọc thư mục này.
 - name: Giữ quyền thư mục chữ ký ClamAV ổn định
   ansible.builtin.file:
     path: "{{ onebee_box_data }}/clamav"
     state: directory
-    owner: root
-    group: root
+    owner: "1000"
+    group: "1000"
     mode: "0755"
 
 - name: Khởi chạy / cập nhật SeaweedFS
