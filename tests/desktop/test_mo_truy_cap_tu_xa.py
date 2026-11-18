@@ -124,8 +124,9 @@ ID_LIKE=debian
         else:
             env.pop("SUDO_USER", None)
 
-        if self.dbus_socket_path:
-            env["ONEBEE_TEST_BUS_SOCKET"] = self.dbus_socket_path
+        # Luôn chỉ định socket D-Bus: không có socket thì trỏ vào đường dẫn không tồn tại trong thư mục tạm,
+        # để máy đang chạy thật sự có /run/user/<uid>/bus không làm kịch bản "không có GNOME" bị nhiễu
+        env["ONEBEE_TEST_BUS_SOCKET"] = self.dbus_socket_path or os.path.join(self.temp_dir, "khong-co-bus")
 
         if env_extra:
             env.update(env_extra)

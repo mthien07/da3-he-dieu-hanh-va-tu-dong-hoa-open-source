@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [2.0.1] — 18/11/2026 — Sửa quyền cập nhật chữ ký ClamAV
+Bản vá nhỏ sau khi kiểm thử 2.0.0 trên máy ảo Linux.
+
+### Sửa
+- Bộ cài: bước tải chữ ký ClamAV lần đầu luôn thất bại với `Can't create freshclam.dat in /var/lib/clamav`
+  vì thư mục `/srv/onebee/clamav` thuộc `root:root` còn `freshclam` trong image tự hạ xuống user `clamav` (UID 1000).
+  Thư mục chữ ký nay thuộc UID 1000 để tải và cập nhật về sau chạy được; kho tệp vẫn chỉ đọc thư mục này.
+- Bài kiểm kho–kế toán: so sánh số tiền theo hai chữ số thập phân (`round(no, 2)`/`round(co, 2)`), trước đây
+  bên không phát sinh in `0` thay vì `0.00` làm bài kiểm dừng giữa chừng dù số liệu đúng.
+- Bài kiểm kho–kế toán: khởi động lại Authelia trước khi tạo tài khoản kiểm, tránh lỗi lớp hai TOTP (429) khi chạy
+  liên tiếp; đặt `ONEBEE_TEST_GIU_AUTHELIA=1` để bỏ qua.
+- Bài kiểm hỗ trợ từ xa: luôn đặt `ONEBEE_TEST_BUS_SOCKET` nên kịch bản "không có GNOME" không còn phụ thuộc máy
+  đang chạy có sẵn socket D-Bus hay không.
+
 ## [2.0.0] — 18/11/2026 — Sổ kho, kế toán và máy trạm đi công tác
 Bản lớn: lược đồ CSDL mới cho kho và kế toán, hai nhóm người dùng mới, luật duyệt đơn đổi.
 
