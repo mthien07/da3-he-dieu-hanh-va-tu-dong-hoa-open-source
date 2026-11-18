@@ -41,6 +41,16 @@ SQL
 DON
 chmod +x /root/kkt/don.sh
 
+# Authelia giữ bộ đếm giới hạn số lần nâng phiên trong bộ nhớ: chạy bài kiểm nhiều lần liền sẽ bị 429 ở lớp hai.
+# Khởi động lại để bộ đếm về 0 (đăng nhập đang mở bị ngắt khoảng 10 giây). Đặt ONEBEE_TEST_GIU_AUTHELIA=1 để bỏ qua.
+if [[ "${ONEBEE_TEST_GIU_AUTHELIA:-0}" != 1 ]]; then
+  docker restart onebee-authelia >/dev/null 2>&1 || true
+  for _ in $(seq 30); do
+    docker exec onebee-authelia authelia --version >/dev/null 2>&1 && break
+    sleep 2
+  done
+fi
+
 cat >/root/kkt/chung.sh <<'CHUNG'
 IP="$(ip -4 route get 1.1.1.1 | awk '{for (i = 1; i < NF; i++) if ($i == "src") {print $(i + 1); exit}}')"
 TEN="box.$(sed -n 's/^onebee_box_ma_don_vi: *//p' /root/onebee-test/box/ansible/group_vars/all.yml | tr -d '"')".onebee.internal
