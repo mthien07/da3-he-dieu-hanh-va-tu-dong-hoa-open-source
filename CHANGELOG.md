@@ -2,11 +2,15 @@
 
 ## [Unreleased]
 
+## [2.0.3] — 18/11/2026 — Tường lửa Box theo kịp khi đổi mạng
+
 ### Sửa
 - Tường lửa Box: Box đổi mạng khi đang chạy (đổi router, DHCP sang dải khác, chuyển máy ảo sang mạng khác) mà không
   khởi động lại thì quy tắc vẫn giữ mạng LAN cũ, **mọi máy trong mạng mới bị chặn, kể cả SSH**, tới khi khởi động lại.
   Bộ hẹn giờ mới `onebee-tuong-lua-kiem-mang.timer` kiểm mỗi phút và dựng lại tường lửa theo mạng mới (không có lúc hở).
   Không áp dụng khi đã khai `onebee_box_lan_cho_phep` (danh sách cố định).
+- Bài kiểm lược đồ CSDL: thỉnh thoảng báo không đạt dù kết quả đúng, vì `pg_restore -l | grep -q` dưới `pipefail`
+  làm `pg_restore` nhận SIGPIPE khi `grep` thoát sớm; nay đọc trọn mục lục rồi mới so.
 
 ## [2.0.2] — 18/11/2026 — Cài lại Box không còn thay đổi
 
