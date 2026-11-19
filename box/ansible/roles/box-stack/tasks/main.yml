@@ -88,6 +88,7 @@
     - {src: onebee-box-common.sh.j2, dest: /usr/local/lib/onebee-box/common.sh, mode: "0640"}
     - {src: onebee-box-sao-luu.sh.j2, dest: /usr/local/lib/onebee-box/sao-luu.sh, mode: "0640"}
     - {src: onebee-box-tu-xa.sh.j2, dest: /usr/local/lib/onebee-box/tu-xa.sh, mode: "0640"}
+    - {src: onebee-box-phong-ban.sh.j2, dest: /usr/local/lib/onebee-box/phong-ban.sh, mode: "0640"}
     - {src: onebee-box-chan-doan.sh.j2, dest: /usr/local/lib/onebee-box/chan-doan.sh, mode: "0640"}
     - {src: onebee-canh-bao.sh.j2, dest: /usr/local/bin/onebee-canh-bao, mode: "0755"}
     - {src: onebee-box.sh.j2, dest: /usr/local/sbin/onebee-box, mode: "0750"}

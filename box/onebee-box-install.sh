@@ -45,7 +45,7 @@ set -e
 
 if [[ ${status} -eq 0 ]]; then
   log "Hoàn tất. Mở trình duyệt vào http://$(hostname -I | awk '{print $1}')/ để xem các dịch vụ."
-  log "Việc tiếp theo: gắn ổ sao lưu rồi chạy 'sudo onebee-box khoi-phuc-thu'; cấp sao lưu cho máy trạm: 'sudo onebee-box them-may <tên>'."
+  log "Việc tiếp theo: in khóa sao lưu ra giấy 'sudo onebee-box in-khoa', thử khôi phục 'sudo onebee-box khoi-phuc-thu'; cấp sao lưu cho máy trạm: 'sudo onebee-box them-may <tên>'."
 else
   die "Cài đặt chưa xong (mã lỗi ${status}). Gửi file ${LOG_FILE} cho kỹ thuật OneBee."
 fi

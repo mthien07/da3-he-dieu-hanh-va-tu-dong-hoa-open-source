@@ -7,8 +7,11 @@ BOX_DIR="{{ onebee_box_dir }}"
 DATA="{{ onebee_box_data }}"
 SECRETS="{{ onebee_box_secrets }}"
 SSH_DIR="{{ onebee_box_ssh_dir }}"
-BACKUP_REPO="{{ onebee_box_backup_repo }}"
+# Kho sao lưu Box: ổ ngoài (onebee_box_backup_o_ngoai: true) hoặc ngay trong ổ dữ liệu của Box (mặc định)
+BACKUP_O_NGOAI="{{ 'true' if onebee_box_backup_o_ngoai | bool else 'false' }}"
+BACKUP_REPO="{{ onebee_box_backup_repo if onebee_box_backup_o_ngoai | bool else onebee_box_data ~ '/sao-luu/restic-box' }}"
 BACKUP_MOUNT="$(dirname "${BACKUP_REPO}")"
+NGUONG_O_DAY=90   # % ổ dữ liệu đã dùng: TRÊN mức này sao lưu vào ổ Box dừng (tránh làm đầy ổ khiến CSDL ngừng); khớp ngưỡng lỗi ổ của chan-doan
 SHARE="${DATA}/{{ onebee_box_samba_share }}"
 REST_PORT="{{ onebee_box_ports.rest_server }}"
 BOX_ADDRESS="{{ onebee_box_ip }}"   # tính MỘT lần trong Ansible (tasks/ca.yml) — shell và compose dùng cùng giá trị
@@ -26,10 +29,10 @@ warn() { printf 'CẢNH BÁO: %s\n' "$*" >&2; }
 # Chuỗi ngẫu nhiên $1 ký tự chữ-số. Nguồn hữu hạn (không đọc /dev/urandom vô tận) để không có SIGPIPE làm pipeline báo lỗi 141 dưới "set -o pipefail"
 ngau_nhien() { head -c 2048 /dev/urandom | tr -dc 'A-Za-z0-9' | head -c "$1"; }
 
-# Sinh (một lần) và đọc mật khẩu ngẫu nhiên lưu trong thư mục bí mật
+# Sinh (một lần) và đọc mật khẩu ngẫu nhiên lưu trong thư mục bí mật; $2 = độ dài (mặc định 32 ký tự)
 secret() {
   local f="${SECRETS}/$1"
-  [[ -s "${f}" ]] || (umask 077; ngau_nhien 32 >"${f}")
+  [[ -s "${f}" ]] || (umask 077; ngau_nhien "${2:-32}" >"${f}")
   cat "${f}"
 }
 
@@ -80,6 +83,21 @@ dong_bo_ten_may() {
     trong_mang "${ten}" "${ds[@]}" || { rm -f "${f}"; doi=1; }
   done
   [[ ${doi} -eq 0 ]] || echo "đã đổi"
+}
+
+# ---- Phòng ban (lệnh ở phong-ban.sh) ----
+PHONG_DIR="${DATA}/phong-ban"       # thư mục riêng từng phòng: <mã>/ root:pb-<mã> 2770, chia sẻ Samba [pb-<mã>]
+PHONG_SO="${DATA}/phong-ban-so"     # sổ phòng ban: <mã>.json + may/<tên-máy> (một dòng: mã phòng); root ghi, động cơ quy trình chỉ đọc
+XIN_VAO_DIR="${DATA}/xin-vao"       # yêu cầu máy trạm xin vào: động cơ quy trình ghi, root xử lý (KHÔNG tin nội dung)
+MA_PHONG_RE='^[a-z][a-z0-9-]{1,19}$'
+# Mã các phòng có trong sổ (theo thứ tự tên) — sao lưu theo phòng, khôi phục, dong-bo-phong đều đọc từ đây
+ds_ma_phong() {
+  local f ma
+  for f in "${PHONG_SO}"/*.json; do
+    [[ -f "${f}" ]] || continue
+    ma="$(basename "${f}" .json)"
+    if [[ "${ma}" =~ ${MA_PHONG_RE} ]]; then printf '%s\n' "${ma}"; fi
+  done
 }
 
 # Địa chỉ IPv4 của Box trong LAN: Ansible đã chốt (onebee_box_dia_chi hoặc IP cổng ra mạng chính); dự phòng khi trống thì tự dò

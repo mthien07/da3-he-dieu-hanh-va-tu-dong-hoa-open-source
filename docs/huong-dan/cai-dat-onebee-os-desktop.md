@@ -22,6 +22,10 @@ sudo ./desktop/onebee-install.sh
 Kết thúc thấy dòng `[OneBee] Hoàn tất.` → **khởi động lại máy**.
 Nhật ký cài đặt nằm ở `/var/log/onebee/`.
 
+**Đơn vị có OneBee Box:** thay lệnh cuối bằng lệnh xin vào Box, ví dụ `sudo ./desktop/onebee-xin-vao --ten ketoan-01 --phong ke-toan`.
+Máy hiện mã 6 số. Quản trị so mã rồi duyệt trên Box; sau đó máy tự nhận cấu hình và tự chạy bộ cài như trên.
+Xem [phong-ban-va-may-xin-vao.md](phong-ban-va-may-xin-vao.md).
+
 ## 4. Sau khi cài, máy có gì
 | Hạng mục | Kết quả |
 |---|---|
@@ -31,7 +35,8 @@ Nhật ký cài đặt nằm ở `/var/log/onebee/`.
 | LibreOffice | Lưu mặc định .docx / .xlsx / .pptx, không hỏi lại mỗi lần lưu. Thanh công cụ dạng tab (Ribbon) như Word/Excel/PowerPoint; đổi lại ở Xem → Giao diện người dùng. Bộ biểu tượng Colibre (kiểu giống Microsoft Office); đổi ở Công cụ → Tùy chọn → LibreOffice → Xem |
 | Giao diện | Hình nền OneBee (Cinnamon và màn hình đăng nhập LightDM). Thanh tác vụ ở đáy màn hình: nút **Bắt đầu** có logo OneBee bên trái (phím Super), ghim sẵn Nemo, Firefox, Writer, Calc, Impress, Trợ lý AI; khay hệ thống, đồng hồ hiện giờ và ngày/tháng/năm (`%H:%M  %d/%m/%Y`) + nút hiện màn hình nền bên phải. Nút thu nhỏ/phóng to/đóng ở góc phải cửa sổ. Rê chuột lên ứng dụng trên thanh tác vụ thấy ảnh thu nhỏ cửa sổ. Màn hình nền có Máy tính, Thùng rác, Thư mục cá nhân và (khi đã nối Box) lối tắt **Chia sẻ nội bộ (OneBee Box)** tới `smb://<IP Box>/chung`. Thư mục màu vàng (bộ biểu tượng Mint-Y-Sand). Nemo ẩn file ẩn, nhấp đúp để mở. Phím Win+E / D / L / R, Win+Shift+S (chụp vùng vào clipboard), Ctrl+Shift+Esc (Quản lý tác vụ) — xem [to-phim-tat.md](to-phim-tat.md) |
 | Cập nhật | Tự động nâng cấp và dọn gói thừa (mintupdate) |
-| Sao lưu | Khi có `/etc/onebee/may-tram.env` (từ OneBee Box): tự sao lưu `/home` lên Box 12:00 hằng ngày — xem hướng dẫn cài Box |
+| Sao lưu | Khi có `/etc/onebee/may-tram.env` (nhận khi xin vào Box, hoặc chép từ `them-may`): tự sao lưu `/home` lên Box 12:00 hằng ngày — xem hướng dẫn cài Box |
+| Thư mục và phần mềm của phòng | Máy thuộc một phòng ban: thư mục riêng của phòng ở `/mnt/phongban` (lối tắt "Thư mục phòng" trong menu), phần mềm của phòng cài sẵn |
 | Múi giờ | Asia/Ho_Chi_Minh |
 | Trợ lý AI | Lệnh `hoi <câu hỏi>` (cần khóa do quản trị Box cấp: `hoi --dan-khoa`) |
 | Quản lý từ Box | Báo tình trạng mỗi giờ; Box cập nhật máy qua SSH — xem [quan-ly-may-tram.md](quan-ly-may-tram.md) |

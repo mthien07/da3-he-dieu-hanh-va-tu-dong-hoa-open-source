@@ -266,7 +266,7 @@ else fail "Lượt sắp hết hạn trong 24 giờ không được nêu (mã ${
 moi_thu_khoe; echo 85 >"${SIM}/df_"
 kich_ban "Ổ hệ thống 85% → CẢNH BÁO" 1 "tai_nguyen/o_dia_he_thong=canh_bao"
 moi_thu_khoe; echo 95 >"${SIM}/df${T//\//_}_data"
-kich_ban "Ổ dữ liệu 95% → LỖI" 2 "tai_nguyen/o_dia_du_lieu=loi"
+kich_ban "Ổ dữ liệu 95% → LỖI (cả nơi lưu sao lưu: kho nằm trong ổ dữ liệu, sao lưu đêm dừng)" 2 "tai_nguyen/o_dia_du_lieu=loi sao_luu/o_sao_luu=loi"
 moi_thu_khoe; echo 80 >"${SIM}/df_"
 kich_ban "Ổ đúng 80% → vẫn OK (ngưỡng là > 80%)" 0 ""
 moi_thu_khoe; printf 'MemTotal:        8000000 kB\nMemAvailable:    1200000 kB\n' >"${T}/proc/meminfo"
@@ -300,7 +300,16 @@ moi_thu_khoe; : >"${SIM}/restic-chua-tao"
 kich_ban "Chưa tạo kho sao lưu → LỖI" 2 "sao_luu/ban_moi_nhat=loi"
 chay; if grep -q 'onebee-box khoi-tao' <<<"${OUT}"; then pass "Gợi ý chạy khoi-tao khi chưa có kho"; else fail "Thiếu gợi ý khoi-tao"; fi
 moi_thu_khoe; : >"${SIM}/o-sao-luu-chua-gan"
-kich_ban "Chưa gắn ổ sao lưu → LỖI (không đọc kho); kết xuất CSDL trên ổ dữ liệu vẫn kiểm" 2 "sao_luu/o_sao_luu=loi sao_luu/ban_moi_nhat=loi"
+kich_ban "Mặc định (kho trong ổ dữ liệu Box): không cần gắn ổ → OK" 0 ""
+chay; if grep -q "${T}/data/sao-luu/restic-box" <<<"${OUT}"; then pass "Chẩn đoán nêu nơi lưu là ổ dữ liệu Box"; else fail "Chẩn đoán không nêu nơi lưu trong ổ Box"; fi
+# Phương án phụ: ổ ngoài (onebee_box_backup_o_ngoai: true) — bật tạm trong lệnh đã dựng
+cp "${T}/lib/common.sh" "${T}/common.sh.goc"
+sed -i.bak -E "s#^BACKUP_O_NGOAI=.*#BACKUP_O_NGOAI=\"true\"#; s#^BACKUP_REPO=.*#BACKUP_REPO=\"${T}/mnt/onebee-sao-luu/restic-box\"#" "${T}/lib/common.sh"
+moi_thu_khoe
+kich_ban "Ổ ngoài đã gắn → OK" 0 ""
+moi_thu_khoe; : >"${SIM}/o-sao-luu-chua-gan"
+kich_ban "Ổ ngoài chưa gắn → LỖI (không đọc kho); kết xuất CSDL trên ổ dữ liệu vẫn kiểm" 2 "sao_luu/o_sao_luu=loi sao_luu/ban_moi_nhat=loi"
+cp "${T}/common.sh.goc" "${T}/lib/common.sh"
 
 # ===== Chứng chỉ =====
 # CA trung gian còn 10 ngày (ký lại bằng khóa CA gốc thật, giữ nguyên khóa trung gian)

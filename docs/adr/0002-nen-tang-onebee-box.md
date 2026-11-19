@@ -29,6 +29,9 @@
 ## Hệ quả / giới hạn
 - Chưa có TLS nội bộ; n8n phải chạy `N8N_SECURE_COOKIE=false`.
 - Chỉ 1 ổ dữ liệu + 1 ổ sao lưu (chưa đủ 3-2-1: chưa có bản sao ngoài đơn vị).
+- Cập nhật 19/11/2026: sao lưu đêm của Box **mặc định vào ổ dữ liệu của Box** (`/srv/onebee/sao-luu`, bộ cài tự tạo kho) để Box chạy được
+  ngay không cần ổ ngoài; ổ ngoài thành phương án phụ (`onebee_box_backup_o_ngoai: true`). Cái giá: ở mặc định, hỏng ổ Box là mất cả
+  bản sao lưu Box — chỉ chống xóa nhầm, lỗi phần mềm, mã độc trên máy trạm. Ổ dữ liệu dùng trên 90% thì dừng sao lưu để CSDL không bị đầy ổ.
 - Docker bỏ qua tường lửa ufw với cổng đã publish → dựa vào router không mở cổng.
 - Open WebUI / n8n / Uptime Kuma lấy người mở đầu tiên làm quản trị → kỹ thuật viên tạo tài khoản ngay sau khi cài.
 - Máy đã có Docker CE thì dùng luôn (không cài đè `docker.io`).

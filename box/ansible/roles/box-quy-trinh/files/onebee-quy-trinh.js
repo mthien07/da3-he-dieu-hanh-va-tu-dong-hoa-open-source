@@ -386,6 +386,220 @@ async function pheDuyet(msg) {
   return { id: r.id, trang_thai_duyet: r.trang_thai_duyet, nguoi_duyet: r.nguoi_duyet, ly_do_duyet: r.ly_do_duyet, thoi_gian_duyet: r.thoi_gian_duyet };
 }
 
+// ---------- Máy trạm xin vào Box ----------
+// Giao thức cam kết + mã đối chiếu (plan phong-ban-may-xin-vao): máy trạm gửi chứng chỉ, Box cam kết n_b trước khi biết n_w của máy,
+// cả hai tính cùng mã 6 số từ (id, khóa máy, CA, n_w, n_b) để người duyệt so bằng mắt. Ba điểm đầu mở cho máy trạm, KHÔNG đăng nhập;
+// hai điểm duyệt chỉ tin /api/toi qua cookie phiên (cổng 80 không qua forward_auth nên Remote-* không đáng tin).
+const RE_ID = /^[0-9a-f]{32}$/;
+const RE_PHONG = /^[a-z][a-z0-9-]{1,19}$/;
+const TOI_DA_YEU_CAU_CHO = 20;
+const CERT_TOI_DA = 8192;
+const RSA_TOI_THIEU = 3072;
+const CHO_MA_TOI_DA_GIAY = 600;   // máy phải gửi n_w (bước 3) trong 10 phút, quá thì yêu cầu hết hạn
+const TIEN_TO_XIN_VAO = 'onebee-xin-vao-v1|';
+const bam = chu => crypto.createHash('sha256').update(chu, 'utf8').digest('hex');
+const tepXinVao = (id, duoi) => path.join(CH.xin_vao, `${id}.${duoi}`);
+const coTep = duongDan => { try { return fs.statSync(duongDan).isFile(); } catch (e) { return false; } };
+function docJsonTep(duongDan) {
+  try {
+    if (fs.statSync(duongDan).size > 65536) return null;
+    const v = JSON.parse(fs.readFileSync(duongDan, 'utf8'));
+    return v && typeof v === 'object' && !Array.isArray(v) ? v : null;
+  } catch (e) { return null; }
+}
+const tenHienThiDung = t => typeof t === 'string' && t.length >= 1 && t.length <= 60 && !/[\u0000-\u001f\u007f"\\]/.test(t);
+function docPhongBan(ma) {
+  if (!RE_PHONG.test(ma)) return null;
+  const v = docJsonTep(path.join(CH.phong_ban, `${ma}.json`));
+  return v && v.ma === ma && tenHienThiDung(v.ten) ? { ma, ten: v.ten } : null;
+}
+function dsPhongBan() {
+  let tep = [];
+  try { tep = fs.readdirSync(CH.phong_ban); } catch (e) { return []; }
+  return tep.filter(f => f.endsWith('.json')).map(f => docPhongBan(f.slice(0, -5))).filter(Boolean)
+    .sort((a, b) => (a.ma < b.ma ? -1 : 1));
+}
+// Địa chỉ máy do Caddy gắn (Caddy ghi đè X-Forwarded-For bằng địa chỉ kết nối thật); không phải IPv4 hợp lệ thì để rỗng
+function ipMay(msg) {
+  const ip = tieuDe(msg, 'x-forwarded-for').split(',').pop().trim().replace(/^::ffff:/i, '');
+  return net.isIPv4(ip) ? ip : '';
+}
+function doiChieu(id, yc, nw, nb) {
+  const h = bam(`${TIEN_TO_XIN_VAO}ma-so|${id}|${yc.khoa_bam}|${yc.ca_van_tay}|${nw}|${nb}`);
+  return String(parseInt(h.slice(0, 8), 16) % 1000000).padStart(6, '0');
+}
+const hetHanChoMa = yc => !yc.n_w && Math.floor(Date.now() / 1000) - (Number(yc.luc) || 0) > CHO_MA_TOI_DA_GIAY;
+// Trạng thái một yêu cầu theo các tệp <id>.*: kết quả của root > từ chối > đã duyệt (chờ root cấp) > chờ duyệt > chờ máy gửi n_w
+function xemYeuCau(id) {
+  const yc = docJsonTep(tepXinVao(id, 'json'));
+  let ketQua = null;
+  if (coTep(tepXinVao(id, 'ket-qua'))) {
+    ketQua = docJsonTep(tepXinVao(id, 'ket-qua')) || { trang_thai: 'LOI', loi: 'Tệp kết quả không đọc được' };
+    return { yc, ketQua, trang_thai: ketQua.trang_thai === 'DA_CAP' && typeof ketQua.cms === 'string' ? 'DA_CAP' : 'LOI' };
+  }
+  if (coTep(tepXinVao(id, 'tu-choi.json'))) return { yc, ketQua, trang_thai: 'TU_CHOI' };
+  if (!yc) return { yc, ketQua, trang_thai: 'KHONG_CO' };
+  if (coTep(tepXinVao(id, 'duyet.json'))) return { yc, ketQua, trang_thai: 'DANG_CAP' };
+  if (!yc.n_w) return { yc, ketQua, trang_thai: hetHanChoMa(yc) ? 'HET_HAN' : 'CHO_MA' };
+  return { yc, ketQua, trang_thai: 'CHO_DUYET' };
+}
+function dsYeuCau() {
+  let tep = [];
+  try { tep = fs.readdirSync(CH.xin_vao); } catch (e) { return []; }
+  const kq = [];
+  for (const f of tep) {
+    if (!/^[0-9a-f]{32}\.json$/.test(f)) continue;
+    const id = f.slice(0, -5);
+    const x = xemYeuCau(id);
+    if (x.trang_thai === 'HET_HAN') { xoaYeuCau(id); continue; }   // quét đến đâu dọn đến đó: không tính vào giới hạn, không hiện trên web
+    if (x.yc && x.yc.id === id) kq.push({ id, yc: x.yc, trang_thai: x.trang_thai, ketQua: x.ketQua });
+  }
+  return kq;
+}
+function xoaYeuCau(id) {
+  for (const duoi of ['json', 'duyet.json', 'tu-choi.json', 'ket-qua']) {
+    try { fs.unlinkSync(tepXinVao(id, duoi)); } catch (e) { if (e.code !== 'ENOENT') console.warn(`[onebee] Không xóa được ${id}.${duoi}: ${e.message}`); }
+  }
+}
+function layId(b) {
+  const id = String(b.id || '');
+  if (!RE_ID.test(id)) throw new LoiHttp(400, 'Mã yêu cầu (id) phải là 32 ký tự hex');
+  return id;
+}
+
+// Bước 1+2: máy gửi chứng chỉ, Box cam kết (cam_ket) mà chưa lộ n_b
+async function xinVao(msg) {
+  const b = than(msg);
+  const ten = String(b.ten || '');
+  if (!TEN_MAY.test(ten)) throw new LoiHttp(400, 'Tên máy trạm không hợp lệ (chữ thường, số, gạch ngang; tối đa 32 ký tự)');
+  const phong = b.phong === undefined || b.phong === null ? '' : String(b.phong);
+  if (phong && !docPhongBan(phong)) throw new LoiHttp(400, `Phòng ban "${motDong(phong, 30)}" chưa có trên Box`);
+  const pem = typeof b.cert === 'string' ? b.cert : '';
+  if (!pem) throw new LoiHttp(400, 'Thiếu chứng chỉ máy trạm (cert)');
+  if (pem.length > CERT_TOI_DA) throw new LoiHttp(413, 'Chứng chỉ máy trạm quá lớn (tối đa 8 KB)');
+  let cert;
+  try { cert = new crypto.X509Certificate(pem); } catch (e) { throw new LoiHttp(400, 'Chứng chỉ máy trạm không đọc được (cần PEM X.509)'); }
+  const khoa = cert.publicKey;
+  if (khoa.asymmetricKeyType !== 'rsa' || !khoa.asymmetricKeyDetails || khoa.asymmetricKeyDetails.modulusLength < RSA_TOI_THIEU) {
+    throw new LoiHttp(400, `Khóa máy trạm phải là RSA từ ${RSA_TOI_THIEU} bit trở lên`);
+  }
+  let caVanTay;
+  try { caVanTay = crypto.createHash('sha256').update(new crypto.X509Certificate(fs.readFileSync(CH.ca)).raw).digest('hex'); } catch (e) {
+    throw new LoiHttp(503, 'Box chưa có chứng chỉ gốc CA để đối chiếu — chạy lại bộ cài rồi thử lại');
+  }
+  if (coTep(path.join(CH.may_da_cap, ten))) throw new LoiHttp(409, `Máy "${ten}" đã được cấp — dùng tên khác hoặc nhờ quản trị thu hồi trước`);
+  const cho = dsYeuCau().filter(x => ['CHO_MA', 'CHO_DUYET', 'DANG_CAP'].includes(x.trang_thai));
+  if (cho.some(x => x.yc.ten === ten)) throw new LoiHttp(409, `Máy "${ten}" đã có yêu cầu đang chờ duyệt`);
+  if (cho.length >= TOI_DA_YEU_CAU_CHO) throw new LoiHttp(429, 'Box đang có quá nhiều yêu cầu chờ duyệt — thử lại sau');
+  const id = crypto.randomBytes(16).toString('hex');
+  const nb = crypto.randomBytes(16).toString('hex');
+  const khoaBam = bam(khoa.export({ type: 'spki', format: 'der' }));   // sha256 hex của SPKI DER
+  const camKet = bam(`${TIEN_TO_XIN_VAO}cam-ket|${id}|${khoaBam}|${caVanTay}|${nb}`);
+  ghiTep(tepXinVao(id, 'json'), JSON.stringify({
+    id, ten, phong_xin: phong, hostname: motDong(b.hostname, 64), ip: ipMay(msg), cert: cert.toString(), khoa_bam: khoaBam,
+    ca_van_tay: caVanTay, n_b: nb, cam_ket: camKet, n_w: null, ma_so: null, luc: Math.floor(Date.now() / 1000),
+  }));
+  return { id, cam_ket: camKet, ca_van_tay: caVanTay };
+}
+// Bước 3: máy mở cam kết bằng n_w, Box lộ n_b; một lần duy nhất
+async function xinVaoMo(msg) {
+  const b = than(msg);
+  const id = layId(b);
+  const nw = String(b.n_w || '');
+  if (!RE_ID.test(nw)) throw new LoiHttp(400, 'n_w phải là 32 ký tự hex');
+  const yc = docJsonTep(tepXinVao(id, 'json'));
+  if (!yc) throw new LoiHttp(404, 'Không có yêu cầu này (hết hạn hoặc sai mã)');
+  if (yc.n_w) throw new LoiHttp(409, 'Yêu cầu này đã mở rồi');
+  if (hetHanChoMa(yc)) {
+    xoaYeuCau(id);
+    throw new LoiHttp(410, 'Yêu cầu đã hết hạn (quá 10 phút chưa gửi bước tiếp theo) — chạy lại onebee-xin-vao');
+  }
+  yc.n_w = nw;
+  yc.ma_so = doiChieu(id, yc, nw, yc.n_b);
+  ghiTep(tepXinVao(id, 'json'), JSON.stringify(yc));
+  return { n_b: yc.n_b };
+}
+// Bước 4: máy hỏi kết quả; DA_CAP trả được nhiều lần (tệp giữ tới khi root dọn), TU_CHOI trả xong thì xóa mọi tệp của yêu cầu
+async function xinVaoKetQua(msg) {
+  const id = layId(than(msg));
+  const x = xemYeuCau(id);
+  if (x.trang_thai === 'DA_CAP') return { trang_thai: 'DA_CAP', cms: x.ketQua.cms };   // giữ tệp để máy hỏi lại được; root dọn sau 24 giờ
+  if (x.trang_thai === 'HET_HAN') {
+    xoaYeuCau(id);
+    return { trang_thai: 'KHONG_CO' };
+  }
+  if (x.trang_thai === 'TU_CHOI') {
+    const tc = docJsonTep(tepXinVao(id, 'tu-choi.json')) || {};
+    xoaYeuCau(id);
+    return { trang_thai: 'TU_CHOI', ly_do: motDong(tc.ly_do, 300) };
+  }
+  if (x.trang_thai === 'LOI') return { trang_thai: 'LOI', loi: motDong(x.ketQua.loi, 300) || 'Box không cấp được máy này' };
+  return { trang_thai: x.trang_thai === 'CHO_MA' ? 'CHO_DUYET' : x.trang_thai };
+}
+// Người duyệt: chỉ tin /api/toi trả về cho cookie phiên (Authelia → cầu nối), không tin Remote-User/Remote-Groups
+async function nguoiDuyetMay(msg) {
+  const cookie = cookiePhien(msg);
+  if (!cookie) throw new LoiHttp(401, 'Cần đăng nhập');
+  const r = await goiApi('GET', '/api/toi', cookie);
+  if (r.ma === 401 || r.ma === 403) throw new LoiHttp(401, 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn');
+  if (r.ma !== 200 || !r.than || typeof r.than !== 'object') throw new LoiHttp(502, `API dữ liệu trả mã ${r.ma}`);
+  if (!['quan_ly', 'ky_thuat'].includes(r.than.vai_tro)) throw new LoiHttp(403, 'Chỉ quản lý hoặc kỹ thuật được duyệt máy trạm');
+  const ten = motDong(r.than.ten, 64);
+  if (!ten) throw new LoiHttp(403, 'Phiên đăng nhập không có tên người dùng');
+  return ten;
+}
+// Chống CSRF: hai điểm duyệt chỉ nhận từ chính trang Sổ điều hành (cookie phiên tự đi kèm yêu cầu từ trang khác, nên cookie không đủ).
+// GHI: Content-Type JSON (biểu mẫu thường không gửi được) VÀ Origin đúng gốc Box hoặc Sec-Fetch-Site same-origin. ĐỌC: Sec-Fetch-Site
+// phải là same-origin hoặc vắng (trình duyệt cũ không gửi), cross-site/same-site bị từ chối.
+function kiemNguonGoc(msg, ghi) {
+  const site = tieuDe(msg, 'sec-fetch-site').trim().toLowerCase();
+  const tuChoi = () => new LoiHttp(403, 'Yêu cầu không đến từ trang Sổ điều hành của Box');
+  if (!ghi) {
+    if (site && site !== 'same-origin') throw tuChoi();
+    return;
+  }
+  if (!/^application\/json\s*(;|$)/i.test(tieuDe(msg, 'content-type').trim())) throw tuChoi();
+  if (tieuDe(msg, 'origin') !== new URL(CH.api_goc).origin && site !== 'same-origin') throw tuChoi();
+}
+async function mayXinVao(msg) {
+  kiemNguonGoc(msg, false);
+  await nguoiDuyetMay(msg);
+  const yeuCau = dsYeuCau().map(({ id, yc, trang_thai: tt, ketQua }) => ({
+    id, ten: motDong(yc.ten, 32), phong_xin: motDong(yc.phong_xin, 20), hostname: motDong(yc.hostname, 64), ip: motDong(yc.ip, 15),
+    ma_so: yc.ma_so || null, luc: Number(yc.luc) || 0, trang_thai: tt, ...(tt === 'LOI' ? { loi: motDong(ketQua && ketQua.loi, 300) } : {}),
+  })).sort((a, b) => b.luc - a.luc);
+  return { yeu_cau: yeuCau, phong_ban: dsPhongBan() };
+}
+async function duyetMay(msg) {
+  kiemNguonGoc(msg, true);
+  const nguoi = await nguoiDuyetMay(msg);
+  const b = than(msg);
+  const id = layId(b);
+  if (!['DUYET', 'TU_CHOI'].includes(b.quyet_dinh)) throw new LoiHttp(400, 'quyet_dinh phải là DUYET hoặc TU_CHOI');
+  const lyDo = motDong(b.ly_do, 300);
+  if (b.quyet_dinh === 'TU_CHOI' && !lyDo) throw new LoiHttp(400, 'Từ chối phải ghi lý do (ly_do)');
+  const phong = b.quyet_dinh === 'DUYET' ? String(b.phong || '') : '';
+  if (b.quyet_dinh === 'DUYET' && !docPhongBan(phong)) throw new LoiHttp(400, 'Phải chọn một phòng ban có trên Box');
+  // Từ đây không có await: kiểm trạng thái rồi ghi quyết định là một bước liền, hai người bấm cùng lúc thì chỉ một người được ghi
+  const x = xemYeuCau(id);
+  if (x.trang_thai === 'HET_HAN') {
+    xoaYeuCau(id);
+    throw new LoiHttp(410, 'Yêu cầu đã hết hạn — máy trạm cần chạy lại onebee-xin-vao');
+  }
+  if (!x.yc) throw new LoiHttp(404, 'Không có yêu cầu này (hết hạn hoặc đã xử lý)');
+  if (!['CHO_MA', 'CHO_DUYET'].includes(x.trang_thai)) throw new LoiHttp(409, 'Yêu cầu này đã được xử lý');
+  const luc = Math.floor(Date.now() / 1000);
+  if (b.quyet_dinh === 'TU_CHOI') {
+    ghiTep(tepXinVao(id, 'tu-choi.json'), JSON.stringify({ id, nguoi_duyet: nguoi, ly_do: lyDo, luc }));
+    return { ok: true, id, trang_thai: 'TU_CHOI' };
+  }
+  if (x.trang_thai !== 'CHO_DUYET' || !x.yc.ma_so) throw new LoiHttp(409, 'Máy trạm chưa hiện mã đối chiếu — chờ máy gửi bước tiếp theo rồi duyệt');
+  // Người duyệt phải gõ lại mã 6 số đọc từ màn hình máy trạm: bấm Duyệt mà không nhìn mã thì không qua được
+  if (String(b.ma_so === undefined || b.ma_so === null ? '' : b.ma_so).trim() !== x.yc.ma_so) throw new LoiHttp(409, 'Mã không khớp — KHÔNG duyệt');
+  ghiTep(tepXinVao(id, 'duyet.json'), JSON.stringify({ id, phong, nguoi_duyet: nguoi, luc }));
+  return { ok: true, id, trang_thai: 'DANG_CAP' };
+}
+
 // ---------- Điểm nhận ----------
 const DIEM_NHAN = {
   'suc-khoe': async () => ({ ok: true }),
@@ -422,6 +636,11 @@ const DIEM_NHAN = {
     return { ok: true, tieu_de: t.tieu_de };
   },
   'phe-duyet': pheDuyet,
+  'xin-vao': xinVao,
+  'xin-vao-mo': xinVaoMo,
+  'xin-vao-ket-qua': xinVaoKetQua,
+  'may-xin-vao': mayXinVao,
+  'duyet-may': duyetMay,
 };
 
 async function xuLy(ten, msg) {

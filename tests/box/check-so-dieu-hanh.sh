@@ -300,7 +300,7 @@ box <<'EOF'
 . /root/sdlh/chung.sh
 code="$(c -b "${D}/jar-sdlh-nv-a" -o "${D}/trang.html" -w '%{http_code}' "https://${TEN}/so-dieu-hanh/")"
 [ "${code}" = 200 ] || { echo "FAIL  nhân viên mở /so-dieu-hanh/ không nhận 200 (mã ${code})"; exit 1; }
-for x in 'id="khu-h"' 'id="khu-p"' 'id="khu-d"' 'id="khu-i"' 'so-dieu-hanh.js' 'so-dieu-hanh.css'; do
+for x in 'id="khu-h"' 'id="khu-p"' 'id="khu-d"' 'id="khu-i"' 'id="khu-m"' 'id="nut-khu-m"' 'so-dieu-hanh.js' 'so-dieu-hanh.css'; do
   grep -q "${x}" "${D}/trang.html" || { echo "FAIL  trang thiếu ${x}"; exit 1; }
 done
 hdr="$(c -b "${D}/jar-sdlh-nv-a" -o /dev/null -D - "https://${TEN}/so-dieu-hanh/" | tr -d '\r')"

@@ -45,6 +45,15 @@ printf '%s %s\n' "${id}" "${sha}" > /root/tep-khoi-phuc.env
 echo 'PASS  Tải 1 tệp vào kho tệp trước khi hỏng ổ (metadata ghi qua cầu nối bằng JWT, RLS)'
 EOF
 
+# Phòng ban trước khi hỏng ổ: sổ, thư mục riêng (một tệp của phòng), mật khẩu Samba của phòng — phải trở lại sau khôi phục toàn bộ
+box_stdin <<'EOF'
+onebee-box them-phong dien-tap "Phòng diễn tập" >/dev/null
+printf 'Tệp của phòng diễn tập\n' > /srv/onebee/phong-ban/dien-tap/tep-phong.txt
+chgrp pb-dien-tap /srv/onebee/phong-ban/dien-tap/tep-phong.txt
+cp /etc/onebee-box/secrets/phong-dien-tap-samba /root/cu-mk-phong
+echo 'PASS  Tạo phòng ban diễn tập (thư mục riêng, chia sẻ Samba [pb-dien-tap]) trước khi hỏng ổ'
+EOF
+
 box "onebee-box in-khoa > /root/khoa-in-ra-giay.txt
   cp ${S}/quy-trinh-soan-luong /root/cu-soan; cp ${S}/ca/root.sha256 /root/cu-ca-sha
   cp /srv/onebee/ai-rag/khoa-hoi.json /root/cu-khoa-hoi.json; cp ${S}/may-ketoan-01-khoa /root/cu-khoa-may
@@ -52,9 +61,9 @@ box "onebee-box in-khoa > /root/khoa-in-ra-giay.txt
   onebee-box sao-luu > /root/sl-truoc-hong.log 2>&1 || { tail -20 /root/sl-truoc-hong.log; exit 1; }
   docker rm -f mailpit >/dev/null 2>&1 || true
   docker compose --project-directory /opt/onebee-box down >/dev/null 2>&1
-  cd /srv/onebee && ls -A | grep -vx ollama | xargs rm -rf
+  cd /srv/onebee && ls -A | grep -vx -e ollama -e sao-luu | xargs rm -rf
   rm -rf /etc/onebee-box /opt/onebee-box
-  echo 'PASS  (giả lập) Hỏng ổ Box: mất hết dữ liệu, khóa bí mật, cấu hình — còn bản in khóa và ổ sao lưu'"
+  echo 'PASS  (giả lập) Hỏng dữ liệu Box: mất hết dữ liệu, khóa bí mật, cấu hình — còn bản in khóa và kho sao lưu (thư mục sao-luu)'"
 
 box "/root/onebee-test/box/onebee-box-install.sh > /root/cai-lai.log 2>&1 || { tail -30 /root/cai-lai.log; exit 1; }
   ! cmp -s /srv/onebee/ai-rag/khoa-hoi.json /root/cu-khoa-hoi.json || { echo 'FAIL  Cài lại mà kho khóa Trợ lý AI không đổi — giả lập sai'; exit 1; }
@@ -92,6 +101,21 @@ box "/root/onebee-test/box/onebee-box-install.sh > /root/cai-lai.log 2>&1 || { t
   [ ! -e /srv/onebee/may-da-cap/tam-01 ] && [ -e ${S}/thu-hoi/tam-01 ] || { echo 'FAIL  Máy đã thu hồi lại được nhận báo cáo sau khôi phục'; exit 1; }
   [ -e /srv/onebee/may-da-cap/ketoan-01 ] || { echo 'FAIL  Sau khôi phục, máy ketoan-01 mất chỗ nhận báo cáo tình trạng'; exit 1; }
   echo 'PASS  khoi-phuc-toan-bo bằng khóa in ra giấy: mật khẩu, tài khoản Trợ lý AI, mật khẩu trình soạn luồng, sổ hỗ trợ trở lại như cũ; động cơ quy trình khỏe'"
+
+# Phòng ban sau khôi phục: thư mục phòng lấy lại từ bản chụp riêng (thẻ phong-<mã>), nhóm/quyền đúng, chia sẻ Samba
+# và tài khoản phòng dựng lại với mật khẩu cũ (máy trạm của phòng không phải đổi gì); chạy lại dong-bo-phong không đổi gì
+box_stdin <<'EOF'
+f=/srv/onebee/phong-ban/dien-tap/tep-phong.txt
+[ "$(cat "${f}" 2>/dev/null)" = 'Tệp của phòng diễn tập' ] || { echo 'FAIL  Mất tệp trong thư mục phòng ban sau khôi phục toàn bộ'; exit 1; }
+[ "$(stat -c %G "${f}")" = pb-dien-tap ] && [ "$(stat -c '%a %U:%G' /srv/onebee/phong-ban/dien-tap)" = '2770 root:pb-dien-tap' ] \
+  || { echo 'FAIL  Thư mục phòng ban sau khôi phục sai nhóm/quyền'; exit 1; }
+[ -s /srv/onebee/phong-ban-so/dien-tap.json ] || { echo 'FAIL  Mất sổ phòng ban sau khôi phục toàn bộ'; exit 1; }
+grep -qx '\[pb-dien-tap\]' /etc/onebee-box/samba-phong-ban.conf || { echo 'FAIL  Chia sẻ Samba [pb-dien-tap] không được dựng lại'; exit 1; }
+pdbedit -L | grep '^pb-dien-tap:' >/dev/null || { echo 'FAIL  Tài khoản Samba của phòng không được dựng lại'; exit 1; }
+cmp -s /etc/onebee-box/secrets/phong-dien-tap-samba /root/cu-mk-phong || { echo 'FAIL  Mật khẩu Samba của phòng đổi sau khôi phục'; exit 1; }
+[ -z "$(onebee-box dong-bo-phong)" ] || { echo 'FAIL  dong-bo-phong sau khôi phục + cài lại vẫn còn thay đổi'; exit 1; }
+echo 'PASS  Phòng ban sau khôi phục toàn bộ: thư mục phòng, sổ, chia sẻ và mật khẩu Samba của phòng trở lại như cũ'
+EOF
 
 # Kho tệp sau khôi phục: metadata trong bản kết xuất CSDL + đối tượng trong thư mục SeaweedFS phải khớp lại đúng tệp đã tải lên
 box_stdin <<'EOF'

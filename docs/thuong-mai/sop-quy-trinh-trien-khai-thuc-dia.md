@@ -35,7 +35,7 @@
    ```
    - Nhập Token Bot và Chat ID nhóm quản lý HTX.
    - Xác nhận điện thoại quản lý nhận được tin nhắn thông báo thử nghiệm.
-2. Khởi tạo ổ sao lưu ngoài:
+2. Kiểm tra sao lưu Box (mặc định bộ cài đã tạo kho trong ổ Box; đơn vị có ổ ngoài thì bật `onebee_box_backup_o_ngoai: true` trước):
    ```bash
    sudo onebee-box khoi-tao
    sudo onebee-box sao-luu
@@ -49,14 +49,16 @@
 
 ## BƯỚC 4: KẾT NỐI VÀ CÀI ĐẶT CÁC MÁY TRẠM (MỖI MÁY 5 PHÚT)
 1. **Đối với máy trạm Linux Mint:**
-   - Cấp tài khoản máy trạm trên Box:
+   - Tạo phòng ban trên Box (một lần cho mỗi phòng, kèm phần mềm riêng của phòng):
      ```bash
-     sudo onebee-box them-may ke-toan-01
+     sudo onebee-box them-phong ke-toan "Phòng Kế toán" gnucash
      ```
-   - Copy file cấu hình `may-tram.env` sang máy trạm và chạy:
+   - Trên máy trạm, chạy lệnh xin vào, máy sẽ hiện mã 6 số:
      ```bash
-     sudo desktop/onebee-install.sh
+     sudo ./desktop/onebee-xin-vao --ten ke-toan-01 --phong ke-toan
      ```
+   - Trên Box mở Sổ điều hành → thẻ **Máy trạm**, so đúng mã 6 số rồi bấm **Duyệt**. Box chưa bật HTTPS thì duyệt bằng lệnh
+     `sudo onebee-box duyet-may <mã-yêu-cầu> ke-toan`. Máy trạm tự nhận cấu hình và tự cài. Chi tiết: `docs/huong-dan/phong-ban-va-may-xin-vao.md`.
 2. **Đối với máy trạm Windows 10/11:**
    - Mở File Explorer, gõ: `\\onebee.local\chung`.
    - Đăng nhập bằng tài khoản chung và ghim shortcut ra màn hình Desktop.

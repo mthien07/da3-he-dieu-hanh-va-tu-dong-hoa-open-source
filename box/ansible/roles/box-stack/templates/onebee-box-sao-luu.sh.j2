@@ -8,9 +8,17 @@ box_repo_env() {
   RESTIC_PASSWORD="$(secret restic-box)"; export RESTIC_PASSWORD
 }
 
-# Ổ sao lưu phải là ổ gắn riêng (mountpoint) — nếu chưa gắn, KHÔNG ghi vào ổ hệ thống
+# % đã dùng của ổ chứa thư mục $1 (số nguyên)
+phan_tram_da_dung() { df -P "$1" | awk 'NR == 2 { sub("%", "", $5); print $5 }'; }
+
+# Sao lưu ra ổ ngoài: ổ phải là ổ gắn riêng (mountpoint) — chưa gắn thì KHÔNG ghi vào ổ hệ thống.
+# Sao lưu trong ổ Box (mặc định): chỉ cần thư mục kho (chỉ root đọc được).
 require_backup_disk() {
-  mountpoint -q "${BACKUP_MOUNT}" || die "Chưa gắn ổ sao lưu vào ${BACKUP_MOUNT} — không sao lưu (tránh ghi đầy ổ hệ thống)"
+  if [[ "${BACKUP_O_NGOAI}" == true ]]; then
+    mountpoint -q "${BACKUP_MOUNT}" || die "Chưa gắn ổ sao lưu vào ${BACKUP_MOUNT} — không sao lưu (tránh ghi đầy ổ hệ thống)"
+  else
+    install -d -m 0700 "${BACKUP_MOUNT}"
+  fi
 }
 
 cmd_khoi_tao() {
@@ -57,23 +65,45 @@ cmd_sao_luu() {
   require_backup_disk
   box_repo_env
   restic cat config >/dev/null 2>&1 || die "Chưa tạo kho sao lưu Box. Chạy: sudo onebee-box khoi-tao"
-  [[ "$(stat -c %d "${BACKUP_MOUNT}")" != "$(stat -c %d "${DATA}")" ]] || warn "Ổ sao lưu cùng ổ với dữ liệu — hỏng ổ là mất cả hai"
+  if [[ "${BACKUP_O_NGOAI}" == true ]]; then
+    [[ "$(stat -c %d "${BACKUP_MOUNT}")" != "$(stat -c %d "${DATA}")" ]] || warn "Ổ sao lưu cùng ổ với dữ liệu — hỏng ổ là mất cả hai"
+  else
+    # Kho nằm trên ổ dữ liệu: ổ gần đầy thì dừng, kẻo bản sao lưu làm đầy ổ và CSDL ngừng ghi
+    local da_dung
+    da_dung="$(phan_tram_da_dung "${DATA}")"
+    [[ "${da_dung}" =~ ^[0-9]+$ ]] || die "Không đọc được dung lượng ổ dữ liệu ${DATA}"
+    (( da_dung <= NGUONG_O_DAY )) || die "Ổ dữ liệu Box đã dùng ${da_dung}% (trên ${NGUONG_O_DAY}% là dừng) — lần sao lưu này DỪNG để không làm đầy ổ. Dọn bớt thư mục chung hoặc nới ổ rồi chạy lại: sudo onebee-box sao-luu"
+  fi
 
   # Bước 0: kết xuất CSDL dữ liệu cấu trúc TRƯỚC khi tạm dừng (không chạy được lệnh trong container đang tạm dừng);
   # lỗi thì dừng cả lần sao lưu. Thư mục dữ liệu sống của PostgreSQL không được chụp (chụp lúc đang ghi = bản hỏng)
   ket_xuat_csdl || die "Không kết xuất được CSDL (PostgreSQL) — lần sao lưu này DỪNG, chưa chụp gì. Kiểm tra: sudo onebee-box chan-doan"
   # Bước 1: tạm dừng dịch vụ có cơ sở dữ liệu (và kho tệp, để SeaweedFS không ghi dở volume), chụp nhanh phần dữ liệu
   # của chúng (nhất quán), chạy lại ngay. Metadata tệp nằm trong bản kết xuất CSDL; đối tượng nằm trong thư mục SeaweedFS.
+  # Sổ phòng ban đi cùng bản chụp CSDL (cùng thời điểm với khóa bí mật: mật khẩu Samba từng phòng)
+  install -d -m 0750 -o root -g 1000 "${PHONG_SO}"
   local svcs=(quy-trinh uptime-kuma authelia seaweedfs kho-tep)
   trap 'compose unpause "${svcs[@]}" >/dev/null 2>&1 || true' EXIT
   compose pause "${svcs[@]}" >/dev/null 2>&1 || die "Không tạm dừng được dịch vụ ${svcs[*]}"
   restic backup --retry-lock 5m --tag onebee-box --tag csdl \
-    "${DATA}/ai-rag" "${DATA}/knowledge" "${DATA}/node-red" "${DATA}/uptime-kuma" "${DATA}/ho-tro" "${DATA}/authelia" "${DATA}/seaweedfs" "${KET_XUAT_DIR}" "${BOX_DIR}" "${SECRETS}"
+    "${DATA}/ai-rag" "${DATA}/knowledge" "${DATA}/node-red" "${DATA}/uptime-kuma" "${DATA}/ho-tro" "${DATA}/authelia" "${DATA}/seaweedfs" "${KET_XUAT_DIR}" "${PHONG_SO}" "${BOX_DIR}" "${SECRETS}"
   compose unpause "${svcs[@]}" >/dev/null 2>&1 || die "Không chạy lại được dịch vụ ${svcs[*]} — kiểm tra: sudo onebee-box trang-thai"
   trap - EXIT
   # Bước 2: thư mục chung (có thể lâu) — dịch vụ vẫn chạy. Không sao lưu model AI (tải lại được)
   # và kho máy trạm (đã là bản sao).
   restic backup --retry-lock 5m --tag onebee-box --tag chung "${SHARE}"
+  # Bước 3: mỗi phòng ban một bản chụp riêng (thẻ phong-<mã>) — khôi phục riêng từng phòng được. forget nhóm theo đường dẫn
+  # nên mỗi phòng giữ đủ số bản như thư mục chung
+  local ma
+  local -a phong=()
+  mapfile -t phong < <(ds_ma_phong)
+  for ma in "${phong[@]}"; do
+    if [[ -d "${PHONG_DIR}/${ma}" ]]; then
+      restic backup --retry-lock 5m --tag onebee-box --tag "phong-${ma}" "${PHONG_DIR}/${ma}"
+    else
+      warn "Phòng ${ma} chưa có thư mục ${PHONG_DIR}/${ma} — bỏ qua; dựng lại: sudo onebee-box dong-bo-phong"
+    fi
+  done
   restic forget --retry-lock 5m --tag onebee-box --prune "${KEEP_BOX[@]}"
   prune_workstations || warn "Có kho máy trạm chưa dọn được (xem các dòng CẢNH BÁO ở trên)"
   echo "Sao lưu xong: $(date '+%d/%m/%Y %H:%M')"
@@ -150,6 +180,41 @@ cmd_sao_luu_co_bao_cao() {
   return "${st}"
 }
 
+# Nhóm của tệp lấy lại từ bản sao lưu: số nhóm pb-<mã> của bản cài lại có thể khác bản cũ (restic giữ số, không giữ tên)
+sua_nhom_phong() { chgrp -R -h "pb-$1" "$2"; }
+
+# Lấy bản sao lưu mới nhất của phòng $1 vào thư mục phòng: ${PHONG_DIR}/<mã>/khoi-phuc-<YYYYmmdd-HHMM>/ (không ghi đè tệp đang dùng).
+# Người trong phòng mở thư mục đó trên máy trạm, chép lại đúng tệp cần.
+cmd_khoi_phuc_phong() {
+  local ma="${1:-}" thoi_diem dich tam luc
+  co_phong "${ma}" || die "Cách dùng: sudo onebee-box khoi-phuc-phong <mã-phòng-có-trong-sổ> (xem: sudo onebee-box danh-sach-phong)"
+  [[ -d "${PHONG_DIR}/${ma}" ]] || die "Phòng ${ma} chưa có thư mục — chạy: sudo onebee-box dong-bo-phong"
+  require_backup_disk
+  box_repo_env
+  restic cat config >/dev/null 2>&1 || die "Chưa tạo kho sao lưu Box. Chạy: sudo onebee-box khoi-tao"
+  luc="$(restic snapshots --latest 1 --tag "onebee-box,phong-${ma}" --json | python3 -c '
+import datetime, json, re, sys
+s = json.load(sys.stdin)
+if not s:
+    sys.exit(1)
+t = max(datetime.datetime.fromisoformat(re.sub(r"(\.\d{6})\d+", r"\1", x["time"]).replace("Z", "+00:00")) for x in s)
+print(t.astimezone().strftime("%d/%m/%Y %H:%M"))')" || die "Chưa có bản sao lưu nào của phòng ${ma} (sao lưu chạy 23:00 hằng ngày; chạy ngay: sudo onebee-box sao-luu)"
+  thoi_diem="$(date +%Y%m%d-%H%M)"
+  dich="${PHONG_DIR}/${ma}/khoi-phuc-${thoi_diem}"
+  [[ ! -e "${dich}" ]] || die "Đã có ${dich} — đợi một phút rồi chạy lại"
+  tam="$(mktemp -d "${PHONG_DIR}/.khoi-phuc-tam-XXXXXX")"   # cùng ổ với thư mục phòng: chuyển vào bằng đổi tên
+  TAM_DON+=("${tam}")
+  restic restore latest --tag "onebee-box,phong-${ma}" --target "${tam}" >/dev/null \
+    || die "Khôi phục phòng ${ma} lỗi — thư mục phòng không đổi gì"
+  [[ -d "${tam}${PHONG_DIR}/${ma}" ]] || die "Bản sao lưu không có thư mục ${PHONG_DIR}/${ma}"
+  mv "${tam}${PHONG_DIR}/${ma}" "${dich}"
+  rm -rf "${tam}"
+  sua_nhom_phong "${ma}" "${dich}"
+  chmod 2770 "${dich}"
+  echo "Đã lấy lại thư mục phòng ${ma} theo bản sao lưu lúc ${luc} vào: ${dich}"
+  echo "Trên máy trạm của phòng: mở thư mục phòng ban, vào khoi-phuc-${thoi_diem}/ rồi chép lại tệp cần (xong thì xóa thư mục đó cho gọn)."
+}
+
 # Bản sao lưu cũ có thể còn khóa Trợ lý AI của máy đã thu hồi sau lần sao lưu đó → thu hồi lại cho chắc
 xoa_tai_khoan_may_da_thu_hoi() {
   local f ten
@@ -176,7 +241,8 @@ khoi_phuc_csdl() {
   echo "Đã khôi phục CSDL từ bản kết xuất $(date -r "${f}" '+%d/%m/%Y %H:%M')"
 }
 
-# Khôi phục toàn bộ Box khi hỏng ổ: chạy trên Box ĐÃ CÀI LẠI (bộ cài OneBee Box), đã gắn ổ sao lưu cũ.
+# Khôi phục toàn bộ Box: chạy trên Box ĐÃ CÀI LẠI (bộ cài OneBee Box), còn kho sao lưu cũ (ổ ngoài đã gắn lại, hoặc
+# thư mục sao-luu trong ổ dữ liệu còn nguyên khi chỉ cài lại hệ điều hành).
 # $1 = file khóa in từ 'onebee-box in-khoa' (dùng dòng restic-box=…); không đưa file thì hỏi khóa.
 cmd_khoi_phuc_toan_bo() {
   local tep="${1:-}" khoa f ten
@@ -196,11 +262,19 @@ cmd_khoi_phuc_toan_bo() {
   compose stop >/dev/null 2>&1 || true
   # Xóa dữ liệu của bản cài mới trước khi chép bản cũ vào (restic không xóa file thừa; file tạm của CSDL mới
   # lẫn với CSDL cũ có thể làm hỏng dữ liệu)
-  rm -rf "${DATA}/ai-rag" "${DATA}/knowledge" "${DATA}/node-red" "${DATA}/uptime-kuma" "${DATA}/ho-tro" "${DATA}/authelia" "${DATA}/seaweedfs" "${KET_XUAT_DIR}"
+  rm -rf "${DATA}/ai-rag" "${DATA}/knowledge" "${DATA}/node-red" "${DATA}/uptime-kuma" "${DATA}/ho-tro" "${DATA}/authelia" "${DATA}/seaweedfs" "${KET_XUAT_DIR}" "${PHONG_SO}"
   # CA riêng do lần cài lại vừa sinh phải nhường chỗ cho CA cũ (máy trạm đã tin CA cũ): xóa CA mới rồi khôi phục CA cũ từ bản sao lưu
   rm -rf "${CA_DIR}" "${HTTPS_DAU}" "${DATA}/caddy/data/caddy/certificates"   # chứng chỉ lá Caddy đã cấp bằng CA của bản cài lại cũng bỏ   # dấu HTTPS do bản cài lại ghi cũng nhường chỗ cho dấu trong bản sao lưu (nếu có)
   restic restore latest --tag onebee-box,csdl --target / || die "Khôi phục dữ liệu Box lỗi — chưa chạy lại dịch vụ"
   restic restore latest --tag onebee-box,chung --target / || warn "Khôi phục thư mục chung lỗi — thử lại lệnh này"
+  # Thư mục từng phòng có trong sổ vừa lấy lại (bản chụp riêng, thẻ phong-<mã>)
+  local ma
+  local -a phong=()
+  mapfile -t phong < <(ds_ma_phong)
+  for ma in "${phong[@]}"; do
+    restic restore latest --tag "onebee-box,phong-${ma}" --target / \
+      || warn "Khôi phục thư mục phòng ${ma} lỗi (phòng tạo sau lần sao lưu cuối?) — thử lại: sudo onebee-box khoi-phuc-phong ${ma}"
+  done
   [[ -s "${CA_DIR}/root.crt" ]] || die "Bản sao lưu không có CA riêng của Box (${CA_DIR}) — không khôi phục tiếp, vì mọi máy trạm đang tin CA cũ"
   install -m 0644 "${CA_DIR}/root.crt" /usr/local/share/ca-certificates/onebee-box-ca.crt
   update-ca-certificates --fresh >/dev/null   # Box tin lại CA cũ (bỏ CA mới sinh lúc cài lại)
@@ -214,6 +288,11 @@ cmd_khoi_phuc_toan_bo() {
   done < <(may_da_cap)
   nap_lai_kho_http   # rest-server của bản cài lại có thể đang chạy với file cũ
   dong_bo_ten_may >/dev/null   # chỗ nhận báo cáo tình trạng của động cơ quy trình dựng lại từ bí mật vừa khôi phục
+  # Phòng ban: nhóm, tài khoản, chia sẻ Samba dựng lại từ sổ; mật khẩu Samba từng phòng là mật khẩu cũ (máy trạm không phải đổi gì)
+  dong_bo_phong >/dev/null
+  for ma in "${phong[@]}"; do
+    [[ ! -d "${PHONG_DIR}/${ma}" ]] || sua_nhom_phong "${ma}" "${PHONG_DIR}/${ma}"
+  done
   compose up -d >/dev/null
   khoi_phuc_csdl
   xoa_tai_khoan_may_da_thu_hoi

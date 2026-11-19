@@ -42,7 +42,7 @@
     onebee_quy_trinh_soan_hash: "{{ lookup('ansible.builtin.file', onebee_box_secrets ~ '/quy-trinh-soan-hash') }}"
   no_log: true
 
-- name: Tạo thư mục cấu hình, dữ liệu và thư mục máy đã cấp
+- name: Tạo thư mục cấu hình, dữ liệu, máy đã cấp, yêu cầu xin vào và sổ phòng ban
   ansible.builtin.file:
     path: "{{ item.path }}"
     state: directory
@@ -54,6 +54,9 @@
     - {path: "{{ onebee_box_data }}/node-red", owner: "1000", group: "1000", mode: "0700"}
     - {path: "{{ onebee_box_data }}/may-da-cap", owner: root, group: "1000", mode: "0750"}
     - {path: "{{ onebee_box_data }}/tinh-trang-may", owner: "1000", group: "1000", mode: "0700"}
+    - {path: "{{ onebee_box_data }}/xin-vao", owner: "1000", group: "1000", mode: "0700"}
+    - {path: "{{ onebee_box_data }}/phong-ban-so", owner: root, group: "1000", mode: "0750"}
+    - {path: "{{ onebee_box_data }}/phong-ban-so/may", owner: root, group: "1000", mode: "0750"}
 
 - name: Sinh cấu hình động cơ quy trình (cấu hình, settings.js, flows.json)
   ansible.builtin.template:

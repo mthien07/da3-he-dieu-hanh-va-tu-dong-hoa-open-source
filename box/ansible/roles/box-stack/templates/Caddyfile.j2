@@ -1,6 +1,26 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Quản lý bởi OneBee OS — cổng vào của OneBee Box
+{# Máy trạm xin vào Box: cổng 80 ở CẢ hai chế độ (máy mới chưa tin CA nên chưa nối HTTPS được). Không qua đăng nhập; an toàn dựa vào
+   cam kết + mã 6 số người duyệt so bằng mắt (giao thức trong onebee-quy-trinh.js). Chỉ ba điểm /webhook/onebee-xin-vao*, thân tối đa 64 KB,
+   danh tính do máy khách tự gửi bị xóa (hai điểm duyệt cũng không tin Remote-* mà tự hỏi /api/toi). #}
+{% macro xin_vao_cong_80() %}
+	@xin_vao path /webhook/onebee-xin-vao*
+	handle @xin_vao {
+		route {
+			request_header -Remote-User
+			request_header -Remote-Groups
+			request_header -Remote-Email
+			request_header -Remote-Name
+			request_header -Authorization
+			request_header -Proxy-Authorization
+			request_body {
+				max_size 64KB
+			}
+			reverse_proxy quy-trinh:1880
+		}
+	}
+{% endmacro %}
 {% if onebee_https_hieu_luc | bool %}
 {% set cong = onebee_box_ports %}
 {% set kuma_san_sang = onebee_kuma_dia_chi | default('0.0.0.0') == '0.0.0.0' %}
@@ -36,9 +56,10 @@
 {% endfor %}
 }
 
-# Cổng 80: chỉ phục vụ chứng chỉ gốc CA + trang hướng dẫn (không chuyển hướng sang trang báo lỗi chứng chỉ). Trang này KHÔNG hiện vân tay.
+# Cổng 80: chứng chỉ gốc CA + trang hướng dẫn (không chuyển hướng sang trang báo lỗi chứng chỉ) và đúng tuyến máy trạm xin vào.
+# Trang này KHÔNG hiện vân tay.
 :80 {
-	root * /srv-http
+{{ xin_vao_cong_80() }}	root * /srv-http
 	file_server
 	header {
 		X-Content-Type-Options nosniff
@@ -279,7 +300,7 @@ https://{{ onebee_box_ip }}:{{ cong.uptime_kuma }} {
 	# Ứng dụng Sổ điều hành chỉ tồn tại trên tên Box ở chế độ HTTPS (QĐ2, B3)
 	@so_dieu_hanh path /so-dieu-hanh /so-dieu-hanh/*
 	respond @so_dieu_hanh 404
-	handle /webhook/* {
+{{ xin_vao_cong_80() }}	handle /webhook/* {
 		reverse_proxy quy-trinh:1880
 	}
 	root * /srv

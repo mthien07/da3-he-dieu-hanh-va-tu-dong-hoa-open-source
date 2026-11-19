@@ -12,6 +12,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import shlex
 import shutil
 import stat
@@ -101,6 +102,38 @@ elif cmd == "kiem-ollama":
     print("200 0.1")
 '''
 
+# Tài khoản hệ thống + Samba GIẢ (phòng ban): ghi vào tệp trong ONEBEE_OUT thay cho /etc/group, /etc/passwd, passdb của Samba
+HE_THONG_GIA = r'''#!/usr/bin/env python3
+import os, sys
+lenh, a = os.path.basename(sys.argv[0]), sys.argv[1:]
+out = os.environ["ONEBEE_OUT"]
+db = out + "/he-thong"
+dong = open(db).read().splitlines() if os.path.exists(db) else []
+sam = out + "/samba-db"
+s = open(sam).read().splitlines() if os.path.exists(sam) else []
+open(out + "/he-thong.log", "a").write(lenh + " " + " ".join(a) + "\n")
+if lenh == "getent":
+    sys.exit(0 if a[0] + " " + a[1] in dong else 2)
+elif lenh in ("groupadd", "useradd"):
+    open(db, "a").write(("group " if lenh == "groupadd" else "passwd ") + a[-1] + "\n")
+elif lenh == "pdbedit":
+    for x in s:
+        print(x.split(" ")[0] + ":1001:")
+elif lenh == "smbpasswd":
+    if "-a" in a:
+        mk = sys.stdin.read().splitlines()
+        assert len(mk) == 2 and mk[0] == mk[1], mk
+        open(sam, "a").write(a[-1] + " " + mk[0] + "\n")
+    elif "-x" in a:
+        open(sam, "w").write("".join(x + "\n" for x in s if x.split(" ")[0] != a[-1]))
+    else:   # đổi mật khẩu tài khoản đã có (smbpasswd -s <tên>)
+        mk = sys.stdin.read().splitlines()
+        assert len(mk) == 2 and mk[0] == mk[1], mk
+        if not any(x.split(" ")[0] == a[-1] for x in s):
+            print("Failed to find entry for user " + a[-1], file=sys.stderr); sys.exit(1)
+        open(sam, "w").write("".join((a[-1] + " " + mk[0] if x.split(" ")[0] == a[-1] else x) + "\n" for x in s))
+'''
+
 INSTALL_GIA = r'''#!/usr/bin/env python3
 import os, sys
 a, kq, i = sys.argv[1:], [], 0
@@ -124,7 +157,7 @@ class OnebeeBoxShell(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         t = self.t = self.tmp.name
-        for d in ("lib", "bin", "secrets", "ssh", "data/restic", "data/tinh-trang-may", "box", "out", "tmp"):
+        for d in ("lib", "bin", "secrets", "ssh", "data/restic", "data/tinh-trang-may", "box", "out", "tmp", "etc"):
             os.makedirs(os.path.join(t, d))
         v = yaml.safe_load(open(os.path.join(ROOT, "box/ansible/group_vars/all.yml"), encoding="utf-8"))
         v.update(onebee_box_secrets=f"{t}/secrets", onebee_box_ssh_dir=f"{t}/ssh", onebee_box_data=f"{t}/data",
@@ -140,8 +173,12 @@ class OnebeeBoxShell(unittest.TestCase):
             # /run/onebee-box.lock: khóa chống chạy chồng (with_lock) — CI không phải root nên không ghi được /run
             return (txt.replace("/usr/local/lib/onebee-box", lib).replace("/var/log/onebee-box", f"{t}/log")
                     .replace("/run/onebee-box.lock", f"{t}/onebee-box.lock")
+                    .replace("/etc/onebee-box/samba-phong-ban.conf", f"{t}/etc/samba-phong-ban.conf")
+                    .replace("/var/lib/onebee-box/xin-vao-da-cap.log", f"{t}/out/xin-vao-da-cap.log")
+                    .replace("/usr/local/bin/onebee-canh-bao", f"{t}/bin/onebee-canh-bao")
                     .replace("[[ ${EUID} -eq 0 ]] ||", "[[ 1 -eq 1 ]] ||"))
-        files = {"common.sh": "onebee-box-common.sh.j2", "sao-luu.sh": "onebee-box-sao-luu.sh.j2", "chan-doan.sh": "onebee-box-chan-doan.sh.j2"}
+        files = {"common.sh": "onebee-box-common.sh.j2", "sao-luu.sh": "onebee-box-sao-luu.sh.j2", "chan-doan.sh": "onebee-box-chan-doan.sh.j2",
+                 "phong-ban.sh": "onebee-box-phong-ban.sh.j2"}
         for dst, src in files.items():
             open(f"{lib}/{dst}", "w", encoding="utf-8").write(sua(render(env, src, **v)))
         self.cmd = f"{t}/bin/onebee-box"
@@ -155,7 +192,11 @@ class OnebeeBoxShell(unittest.TestCase):
         for ten, nd in (("onebee-ai-rag.py", AI_RAG_GIA),):
             open(f"{lib}/{ten}", "w").write(nd)
         docker_gia = '#!/bin/sh\necho "docker $*" >> "$ONEBEE_OUT/docker.log"\n'
-        for ten, nd in (("ssh", SSH_GIA), ("ansible-playbook", ANSIBLE_GIA), ("install", INSTALL_GIA), ("chown", "#!/bin/sh\nexit 0\n"), ("docker", docker_gia)):
+        for ten, nd in (("ssh", SSH_GIA), ("ansible-playbook", ANSIBLE_GIA), ("install", INSTALL_GIA), ("chown", "#!/bin/sh\nexit 0\n"), ("docker", docker_gia),
+                        ("chgrp", '#!/bin/sh\necho "chgrp $*" >> "$ONEBEE_OUT/chgrp.log"\n'),
+                        ("smbcontrol", '#!/bin/sh\necho "smbcontrol $*" >> "$ONEBEE_OUT/samba.log"\n'),
+                        ("onebee-canh-bao", '#!/bin/sh\nprintf "%s|%s|%s\\n" "$1" "$2" "$3" >> "$ONEBEE_OUT/canh-bao.log"\nexit "${ONEBEE_CANH_BAO_RC:-0}"\n'),
+                        *((x, HE_THONG_GIA) for x in ("getent", "groupadd", "useradd", "pdbedit", "smbpasswd"))):
             open(f"{t}/bin/{ten}", "w").write(nd)
         for f in os.listdir(f"{t}/bin") + [os.path.join("..", "lib", "onebee-ai-rag.py")]:
             os.chmod(os.path.join(t, "bin", f), 0o755)
@@ -176,7 +217,8 @@ class OnebeeBoxShell(unittest.TestCase):
         json.dump(self.sim, open(f"{self.t}/sim.json", "w"))
 
     def chay(self, *args, kiem=True):
-        r = subprocess.run(["bash", self.cmd, *args], env=self.env, capture_output=True, text=True, timeout=120)
+        # stdin rỗng (không phải cửa sổ dòng lệnh): như khi chạy từ tập lệnh / dịch vụ, không có dấu nhắc nào chờ
+        r = subprocess.run(["bash", self.cmd, *args], env=self.env, capture_output=True, text=True, timeout=120, stdin=subprocess.DEVNULL)
         if kiem and r.returncode != 0:
             self.fail(f"onebee-box {' '.join(args)} lỗi ({r.returncode}):\n{r.stdout}\n{r.stderr}")
         return r
@@ -224,7 +266,7 @@ class OnebeeBoxShell(unittest.TestCase):
         return open(f).read() if os.path.exists(f) else ""
 
     def test_ma_nguon_shell_hop_le(self):
-        for f in ("lib/common.sh", "lib/sao-luu.sh", "bin/onebee-box"):
+        for f in ("lib/common.sh", "lib/sao-luu.sh", "lib/phong-ban.sh", "bin/onebee-box"):
             r = subprocess.run(["bash", "-n", f"{self.t}/{f}"], capture_output=True, text=True)
             self.assertEqual(r.returncode, 0, r.stderr)
         if shutil.which("shellcheck"):
@@ -438,11 +480,54 @@ class OnebeeBoxShell(unittest.TestCase):
     def chuan_bi_sao_luu(self):
         """Ổ sao lưu đã gắn, kho Box đã tạo (restic giả ghi lại tham số)."""
         for ten, nd in (("mountpoint", "#!/bin/sh\nexit 0\n"),
-                        ("restic", '#!/bin/sh\necho "restic $*" >> "$ONEBEE_OUT/restic.log"\n[ "$1" != snapshots ] || echo "[]"\n'),
+                        ("restic", '#!/bin/sh\necho "restic $*" >> "$ONEBEE_OUT/restic.log"\necho "$RESTIC_REPOSITORY" >> "$ONEBEE_OUT/restic-kho.log"\n'
+                                   '[ "$1" != snapshots ] || echo "[]"\n'),
                         ("curl", "#!/bin/sh\nexit 7\n")):
             open(f"{self.t}/bin/{ten}", "w").write(nd)
             os.chmod(f"{self.t}/bin/{ten}", 0o755)
         open(f"{self.t}/secrets/restic-box", "w").write("mk-kho-box")
+
+    def bat_o_ngoai(self):
+        """Phương án phụ (onebee_box_backup_o_ngoai: true): sửa lệnh đã dựng sang kho trên ổ ngoài."""
+        p = f"{self.t}/lib/common.sh"
+        nd = re.sub(r'(?m)^BACKUP_O_NGOAI=.*$', 'BACKUP_O_NGOAI="true"', open(p, encoding="utf-8").read())
+        nd = re.sub(r'(?m)^BACKUP_REPO=.*$', f'BACKUP_REPO="{self.t}/mnt/onebee-sao-luu/restic-box"', nd)
+        open(p, "w", encoding="utf-8").write(nd)
+
+    def df_gia(self, phan_tram):
+        open(f"{self.t}/bin/df", "w").write(
+            f'#!/bin/sh\necho "Filesystem 1024-blocks Used Available Capacity Mounted on"\necho "/dev/sda1 100 {phan_tram} {100 - phan_tram} {phan_tram}% /srv"\n')
+        os.chmod(f"{self.t}/bin/df", 0o755)
+
+    def test_sao_luu_mac_dinh_ghi_vao_o_du_lieu_box_khong_can_gan_o(self):
+        self.chuan_bi_sao_luu()
+        open(f"{self.t}/bin/mountpoint", "w").write("#!/bin/sh\nexit 1\n")                     # không có ổ ngoài nào
+        self.df_gia(60)
+        self.docker_csdl_gia()
+        self.chay("sao-luu", kiem=False)
+        kho = f"{self.t}/data/sao-luu/restic-box"
+        self.assertIn("--tag csdl", open(f"{self.t}/out/restic.log").read())
+        self.assertEqual(set(open(f"{self.t}/out/restic-kho.log").read().split()) - {""}, {kho})   # mọi lệnh restic của Box đều vào kho trong ổ Box
+        self.assertEqual(os.stat(f"{self.t}/data/sao-luu").st_mode & 0o777, 0o700)
+
+    def test_khoi_tao_mac_dinh_tao_kho_trong_o_box(self):
+        self.chuan_bi_sao_luu()
+        open(f"{self.t}/bin/restic", "w").write('#!/bin/sh\necho "restic $*" >> "$ONEBEE_OUT/restic.log"\necho "$RESTIC_REPOSITORY" >> "$ONEBEE_OUT/restic-kho.log"\n'
+                                                 '[ "$1 $2" != "cat config" ] || exit 1\n')                # chưa có kho
+        r = self.chay("khoi-tao")
+        self.assertIn("restic init", open(f"{self.t}/out/restic.log").read())
+        self.assertIn(f"{self.t}/data/sao-luu/restic-box", open(f"{self.t}/out/restic-kho.log").read())
+        self.assertNotIn("Chưa gắn ổ", r.stdout + r.stderr)
+
+    def test_sao_luu_vao_o_box_dung_khi_o_du_lieu_gan_day(self):
+        self.chuan_bi_sao_luu()
+        self.df_gia(95)
+        self.docker_csdl_gia()
+        r = self.chay("sao-luu", kiem=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Ổ dữ liệu Box đã dùng 95%", r.stdout + r.stderr)
+        self.assertNotIn("restic backup", open(f"{self.t}/out/restic.log").read() if os.path.exists(f"{self.t}/out/restic.log") else "")
+        self.assertNotIn(" pause ", self.docker_log())                                           # dừng trước khi tạm dừng dịch vụ
 
     def test_sao_luu_ket_xuat_csdl_truoc_khi_tam_dung_va_dua_vao_ban_csdl(self):
         self.chuan_bi_sao_luu()
@@ -621,10 +706,11 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertEqual(r.stdout.strip(), "")
 
     def test_sao_luu_chua_gan_o_van_gia_han_ca(self):
-        """Chưa gắn ổ sao lưu thì sao lưu dừng — nhưng gia hạn CA trung gian phải chạy trước đó, kẻo hết hạn là HTTPS sập."""
+        """Phương án ổ ngoài: chưa gắn ổ sao lưu thì sao lưu dừng — nhưng gia hạn CA trung gian phải chạy trước đó, kẻo hết hạn là HTTPS sập."""
         self.chay("gia-han-ca")
         self.lam_trung_gian_sap_het_han()
         cu = open(f"{self.t}/secrets/ca/inter.crt").read()
+        self.bat_o_ngoai()
         open(f"{self.t}/bin/mountpoint", "w").write("#!/bin/sh\nexit 1\n")                     # ổ sao lưu chưa gắn
         os.chmod(f"{self.t}/bin/mountpoint", 0o755)
         r = self.chay("sao-luu", kiem=False)
@@ -942,6 +1028,416 @@ class OnebeeBoxShell(unittest.TestCase):
         self.assertIn("Đang có lệnh", r.stderr)
         self.assertEqual(self.bo_cai_log(), [])
         self.assertFalse(os.path.exists(f"{self.t}/secrets/sso-tam-tat"))
+
+
+    # ---- Phòng ban ----
+    def phong_conf(self):
+        p = f"{self.t}/etc/samba-phong-ban.conf"
+        return open(p, encoding="utf-8").read() if os.path.exists(p) else ""
+
+    def samba_db(self):
+        p = f"{self.t}/out/samba-db"
+        return dict(l.split(" ", 1) for l in open(p).read().splitlines()) if os.path.exists(p) else {}
+
+    def test_them_phong_dung_nhom_thu_muc_samba_va_lan_hai_khong_doi(self):
+        r = self.chay("them-phong", "ke-toan", "Phòng Kế toán", "gnucash", "libreoffice-calc", "gnucash")
+        self.assertIn("Đã tạo phòng ke-toan", r.stdout)
+        so = json.load(open(f"{self.t}/data/phong-ban-so/ke-toan.json", encoding="utf-8"))
+        self.assertEqual(so, {"ma": "ke-toan", "ten": "Phòng Kế toán", "phan_mem": ["gnucash", "libreoffice-calc"]})   # bỏ gói trùng
+        self.assertEqual(stat.S_IMODE(os.stat(f"{self.t}/data/phong-ban-so/ke-toan.json").st_mode), 0o644)
+        ht = open(f"{self.t}/out/he-thong").read().split("\n")
+        self.assertIn("group pb-ke-toan", ht)
+        self.assertIn("passwd pb-ke-toan", ht)
+        self.assertIn("useradd --system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin --gid pb-ke-toan pb-ke-toan",
+                      open(f"{self.t}/out/he-thong.log").read())
+        d = f"{self.t}/data/phong-ban/ke-toan"
+        self.assertEqual(stat.S_IMODE(os.stat(d).st_mode), 0o2770)
+        mk = open(f"{self.t}/secrets/phong-ke-toan-samba").read()
+        self.assertRegex(mk, r"^[A-Za-z0-9]{20}$")
+        self.assertEqual(self.samba_db(), {"pb-ke-toan": mk})                      # mật khẩu Samba = bí mật của phòng (qua stdin)
+        self.assertNotIn(mk, open(f"{self.t}/out/he-thong.log").read())            # không nằm trên dòng lệnh
+        conf = self.phong_conf()
+        khoi = conf[conf.index("[pb-ke-toan]"):]
+        for dong in ("comment = Phòng Kế toán", f"path = {d}", "valid users = pb-ke-toan", "hosts allow = 127. 10. 172.16.0.0/12 192.168.",
+                     "guest ok = no", "read only = no", "force group = pb-ke-toan", "create mask = 0660", "directory mask = 2770",
+                     "access based share enum = yes", "include = /etc/onebee-box/samba-tu-xa.conf"):
+            self.assertIn("\n   " + dong + "\n", khoi)
+        self.assertIn("smbcontrol smbd reload-config", open(f"{self.t}/out/samba.log").read())
+        # Bộ cài chạy lại: không đổi gì → không DA_DOI (Ansible changed=0), không nạp lại Samba
+        os.remove(f"{self.t}/out/samba.log")
+        self.assertEqual(self.chay("dong-bo-phong").stdout.strip(), "")
+        self.assertFalse(os.path.exists(f"{self.t}/out/samba.log"))
+        # Phòng thứ hai: thêm khối riêng, mật khẩu riêng; sửa phòng giữ mật khẩu cũ
+        self.chay("them-phong", "kho", "Phòng Kho")
+        self.assertIn("[pb-kho]", self.phong_conf())
+        self.assertNotEqual(open(f"{self.t}/secrets/phong-kho-samba").read(), mk)
+        r = self.chay("them-phong", "ke-toan", "Phòng Kế toán – Tài vụ", "gnucash")
+        self.assertIn("Đã cập nhật phòng ke-toan", r.stdout)
+        self.assertIn("comment = Phòng Kế toán – Tài vụ", self.phong_conf())
+        self.assertEqual(open(f"{self.t}/secrets/phong-ke-toan-samba").read(), mk)
+        # Tài khoản Samba mất (cài lại hệ điều hành): dong-bo-phong đặt lại bằng đúng mật khẩu cũ
+        os.remove(f"{self.t}/out/samba-db")
+        self.assertIn("DA_DOI", self.chay("dong-bo-phong").stdout)
+        self.assertEqual(self.samba_db()["pb-ke-toan"], mk)
+
+    def test_them_phong_tu_choi_ma_ten_goi_sai(self):
+        for args in (("Ke-toan", "Kế toán"), ("k", "Kế toán"), ("ke_toan", "Kế toán"), ("ke-toan", ""),
+                     ("ke-toan", 'Kế "toán"'), ("ke-toan", "Kế $(id)"), ("ke-toan", "Kế\ttoán"), ("ke-toan", "x" * 61),
+                     ("ke-toan", "Kế toán", "GnuCash"), ("ke-toan", "Kế toán", "a;rm")):
+            r = self.chay("them-phong", *args, kiem=False)
+            self.assertNotEqual(r.returncode, 0, args)
+        self.assertFalse(os.path.exists(f"{self.t}/data/phong-ban-so/ke-toan.json"))
+        self.assertEqual(self.phong_conf(), "")
+
+    def test_them_may_co_phong_in_5_dong_khong_phong_khong_in(self):
+        self.chay("them-phong", "ke-toan", "Phòng Kế toán", "gnucash", "homebank")
+        kv = self.kv("kt-01")
+        self.assertFalse(any(k.startswith(("PHONG_BAN", "SAMBA_PHONG")) for k in kv))     # không có phòng: như cũ
+        r = self.chay("them-may", "kt-02", "ke-toan")
+        dong = [l for l in r.stdout.splitlines() if "=" in l and not l.startswith("#")]
+        phong = [l for l in dong if l.startswith(("PHONG_BAN", "SAMBA_PHONG"))]
+        self.assertEqual(phong, ["PHONG_BAN=ke-toan", 'PHONG_BAN_TEN="Phòng Kế toán"', 'PHONG_BAN_PHAN_MEM="gnucash homebank"',
+                                 "SAMBA_PHONG_USER=pb-ke-toan", "SAMBA_PHONG_PASS=" + open(f"{self.t}/secrets/phong-ke-toan-samba").read()])
+        self.assertEqual(dong[-5:], phong)                                                  # cuối cấu hình, sau các dòng cũ
+        self.assertEqual(open(f"{self.t}/data/phong-ban-so/may/kt-02").read(), "ke-toan\n")
+        # Phòng không có trong sổ: không cấp gì
+        r = self.chay("them-may", "kt-03", "khong-co", kiem=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertFalse(os.path.exists(f"{self.t}/secrets/may-kt-03-repo"))
+        # Thiếu mật khẩu phòng: không in cấu hình thiếu (dong-bo-may bỏ qua máy)
+        os.rename(f"{self.t}/secrets/phong-ke-toan-samba", f"{self.t}/mk-phong")
+        r = self.chay("dong-bo-may", "kt-02", kiem=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(self.ansible_goi(), [])
+
+    def test_chuyen_phong_xoa_phong_danh_sach_va_thu_hoi(self):
+        self.chay("them-phong", "ke-toan", "Phòng Kế toán", "gnucash")
+        self.chay("them-phong", "kho", "Phòng Kho")
+        self.chay("them-may", "kt-01", "ke-toan")
+        self.chay("them-may", "kho-01")
+        self.assertNotEqual(self.chay("chuyen-phong", "chua-cap", "kho", kiem=False).returncode, 0)
+        self.assertNotEqual(self.chay("chuyen-phong", "kho-01", "khong-co", kiem=False).returncode, 0)
+        r = self.chay("chuyen-phong", "kho-01", "kho")
+        self.assertIn("dong-bo-may kho-01", r.stdout)
+        self.assertNotIn("LƯU Ý", r.stdout)                                                 # chưa thuộc phòng nào: không có mật khẩu cũ
+        ds = self.chay("danh-sach-phong").stdout
+        self.assertRegex(ds, r"ke-toan\s+Phòng Kế toán\s+gnucash\s+kt-01")
+        self.assertRegex(ds, r"kho\s+Phòng Kho\s+-\s+kho-01")
+        r = self.chay("xoa-phong", "kho", kiem=False)                                       # còn máy → từ chối
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("kho-01", r.stderr)
+        self.chay("thu-hoi-may", "kho-01", "--dong-y")
+        self.assertFalse(os.path.exists(f"{self.t}/data/phong-ban-so/may/kho-01"))           # thu hồi gỡ luôn tệp gán phòng
+        open(f"{self.t}/data/phong-ban/kho/so-kho.ods", "w").write("du lieu")
+        r = self.chay("xoa-phong", "kho")
+        self.assertNotIn("[pb-kho]", self.phong_conf())
+        self.assertIn("[pb-ke-toan]", self.phong_conf())
+        giu = [d for d in os.listdir(f"{self.t}/data/phong-ban") if d.startswith(".da-xoa-kho-")]
+        self.assertEqual(len(giu), 1)                                                       # dữ liệu giữ lại, chỉ đổi tên
+        self.assertEqual(open(f"{self.t}/data/phong-ban/{giu[0]}/so-kho.ods").read(), "du lieu")
+        self.assertNotIn("pb-kho", self.samba_db())                                         # mật khẩu Samba cũ hết hiệu lực
+        self.assertFalse(os.path.exists(f"{self.t}/secrets/phong-kho-samba"))
+        self.assertFalse(os.path.exists(f"{self.t}/data/phong-ban-so/kho.json"))
+        # Chuyển máy sang phòng khác: máy vẫn biết mật khẩu phòng cũ → nhắc đổi
+        self.chay("them-phong", "kd", "Phòng Kinh doanh")
+        r = self.chay("chuyen-phong", "kt-01", "kd")
+        self.assertIn("LƯU Ý: máy kt-01 vẫn biết mật khẩu thư mục phòng cũ ke-toan", r.stdout)
+        self.assertIn("sudo onebee-box doi-mat-khau-phong ke-toan", r.stdout)
+        self.assertNotIn("LƯU Ý", self.chay("chuyen-phong", "kt-01", "kd").stdout)          # cùng phòng: không nhắc
+
+    def test_doi_mat_khau_phong_cat_tep_cu_dat_samba_va_day_xuong_may_cua_phong(self):
+        self.chay("them-phong", "ke-toan", "Phòng Kế toán")
+        self.chay("them-phong", "kho", "Phòng Kho")
+        for ten, ip, phong in (("kt-01", "10.1.1.5", "ke-toan"), ("kt-02", "10.1.1.6", "ke-toan"), ("mat", "10.1.1.8", "ke-toan"),
+                               ("le", "10.1.1.9", None)):
+            self.cap_may(ten, ip)
+            if phong:
+                self.chay("chuyen-phong", ten, phong)
+        # Thu hồi máy mất: nhắc đổi mật khẩu phòng (đọc phòng trước khi gỡ tệp gán phòng); máy không thuộc phòng thì không nhắc
+        r = self.chay("thu-hoi-may", "mat", "--dong-y")
+        self.assertIn("LƯU Ý: máy mat thuộc phòng ke-toan", r.stdout)
+        self.assertIn("sudo onebee-box doi-mat-khau-phong ke-toan", r.stdout)
+        self.assertNotIn("doi-mat-khau-phong", self.chay("thu-hoi-may", "le", "--dong-y").stdout)
+        cu = open(f"{self.t}/secrets/phong-ke-toan-samba").read()
+        mk_kho = open(f"{self.t}/secrets/phong-kho-samba").read()
+        del self.sim["10.1.1.6"]                                                                # kt-02 đang tắt
+        self.dat_sim()
+        r = self.chay("doi-mat-khau-phong", "ke-toan")
+        moi = open(f"{self.t}/secrets/phong-ke-toan-samba").read()
+        self.assertRegex(moi, r"^[A-Za-z0-9]{20}$")
+        self.assertNotEqual(moi, cu)
+        cat = [f for f in os.listdir(f"{self.t}/secrets") if f.startswith("cu-phong-ke-toan-samba-")]
+        self.assertEqual(len(cat), 1)
+        self.assertRegex(cat[0], r"^cu-phong-ke-toan-samba-\d{8}-\d{6}$")
+        self.assertEqual(open(f"{self.t}/secrets/{cat[0]}").read(), cu)                       # mật khẩu cũ cất lại
+        self.assertEqual(self.samba_db()["pb-ke-toan"], moi)                                   # Samba nhận mật khẩu mới qua stdin
+        self.assertEqual(self.samba_db()["pb-kho"], mk_kho)                                    # phòng khác không đổi
+        self.assertIn("smbpasswd -s pb-ke-toan", open(f"{self.t}/out/he-thong.log").read())
+        self.assertNotIn(moi, open(f"{self.t}/out/he-thong.log").read() + r.stdout + r.stderr)
+        goi = self.ansible_goi()
+        self.assertEqual(len(goi), 1, r.stdout + r.stderr)
+        d = f"{self.t}/out/{goi[0]}"
+        self.assertEqual(sorted(os.listdir(f"{d}/cau-hinh")), ["kt-01.env", "kt-02.env"])  # chỉ máy còn trong phòng (không máy đã thu hồi)
+        self.assertIn(f"SAMBA_PHONG_PASS={moi}", open(f"{d}/cau-hinh/kt-01.env").read())
+        self.assertIn("kt-01 ansible_host=10.1.1.5", open(f"{d}/inventory").read())
+        self.assertIn("sudo onebee-box dong-bo-may kt-02", r.stderr)                          # máy tắt: nhắc đồng bộ sau
+        self.assertNotIn("dong-bo-may kt-01", r.stderr)
+        # Phòng không có máy: chỉ đổi mật khẩu
+        r = self.chay("doi-mat-khau-phong", "kho")
+        self.assertIn("không có máy để đồng bộ", r.stdout)
+        self.assertNotEqual(open(f"{self.t}/secrets/phong-kho-samba").read(), mk_kho)
+        self.assertEqual(len(self.ansible_goi()), 1)
+        # Samba từ chối (tài khoản chưa có): giữ nguyên mật khẩu cũ, không cất thêm gì
+        os.remove(f"{self.t}/out/samba-db")
+        truoc = open(f"{self.t}/secrets/phong-kho-samba").read()
+        r = self.chay("doi-mat-khau-phong", "kho", kiem=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(open(f"{self.t}/secrets/phong-kho-samba").read(), truoc)
+        self.assertEqual(len([f for f in os.listdir(f"{self.t}/secrets") if f.startswith("cu-phong-kho-samba-")]), 1)
+        self.assertNotEqual(self.chay("doi-mat-khau-phong", "khong-co", kiem=False).returncode, 0)
+
+    # ---- Máy trạm xin vào ----
+    def tao_yeu_cau(self, ten="kt-01", bit=3072, khoa_bam=None, id_=None, cn=None, **sua):
+        """Ghi <id>.json như động cơ quy trình ghi sau bước 3 (mã đối chiếu đã tính); khóa + chứng chỉ thật của máy trạm."""
+        id_ = id_ or os.urandom(16).hex()
+        k = f"{self.t}/may-{id_}"
+        subprocess.run(["openssl", "req", "-x509", "-newkey", f"rsa:{bit}", "-nodes", "-keyout", k + ".key", "-out", k + ".crt",
+                        "-subj", f"/CN={cn or ten}", "-days", "2"], check=True, capture_output=True)
+        pub = subprocess.run(["openssl", "x509", "-in", k + ".crt", "-noout", "-pubkey"], check=True, capture_output=True).stdout
+        der = subprocess.run(["openssl", "pkey", "-pubin", "-outform", "DER"], input=pub, check=True, capture_output=True).stdout
+        kb = khoa_bam or hashlib.sha256(der).hexdigest()
+        vt = open(f"{self.t}/secrets/ca/root.sha256").read().strip()
+        nb, nw = os.urandom(16).hex(), os.urandom(16).hex()
+        h = lambda x: hashlib.sha256(x.encode()).hexdigest()
+        ms = "%06d" % (int(h(f"onebee-xin-vao-v1|ma-so|{id_}|{kb}|{vt}|{nw}|{nb}")[:8], 16) % 1000000)
+        yc = {"id": id_, "ten": ten, "phong_xin": "ke-toan", "hostname": ten + "-pc", "ip": "192.168.1.50", "cert": open(k + ".crt").read(),
+              "khoa_bam": kb, "ca_van_tay": vt, "n_b": nb, "cam_ket": h(f"onebee-xin-vao-v1|cam-ket|{id_}|{kb}|{vt}|{nb}"),
+              "n_w": nw, "ma_so": ms, "luc": int(time.time())}
+        yc.update(sua)
+        os.makedirs(f"{self.t}/data/xin-vao", exist_ok=True)
+        json.dump(yc, open(f"{self.t}/data/xin-vao/{id_}.json", "w"))
+        return id_, k, ms
+
+    def duyet_nhu_web(self, id_, phong="ke-toan", noi_dung_id=None):
+        json.dump({"id": noi_dung_id or id_, "phong": phong, "nguoi_duyet": "an", "luc": int(time.time())},
+                  open(f"{self.t}/data/xin-vao/{id_}.duyet.json", "w"))
+
+    def ket_qua(self, id_):
+        return json.load(open(f"{self.t}/data/xin-vao/{id_}.ket-qua", encoding="utf-8"))
+
+    def giai_ma(self, kq, k):
+        """Như máy trạm: giải mã bằng khóa của máy, rồi kiểm chữ ký bằng CA gốc của Box (chỉ CA gốc, không tin chứng chỉ trong bản ký)."""
+        open(f"{k}.cms", "wb").write(base64.b64decode(kq["cms"]))
+        subprocess.run(["openssl", "cms", "-decrypt", "-binary", "-inform", "DER", "-inkey", k + ".key", "-recip", k + ".crt",
+                        "-in", k + ".cms", "-out", k + ".da-ky"], check=True, capture_output=True)
+        r = subprocess.run(["openssl", "cms", "-verify", "-binary", "-inform", "DER", "-CAfile", f"{self.t}/secrets/ca/root.crt",
+                            "-purpose", "any", "-in", k + ".da-ky"], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        # CA lạ (kẻ đứng giữa tự ký) không qua được bước kiểm này
+        subprocess.run(["openssl", "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1", "-nodes",
+                        "-keyout", k + ".la.key", "-out", k + ".la.crt", "-subj", "/CN=CA la", "-days", "2"], check=True, capture_output=True)
+        la = subprocess.run(["openssl", "cms", "-verify", "-binary", "-inform", "DER", "-CAfile", k + ".la.crt", "-purpose", "any",
+                             "-in", k + ".da-ky"], capture_output=True)
+        self.assertNotEqual(la.returncode, 0)
+        return dict(l.split("=", 1) for l in r.stdout.splitlines() if "=" in l)
+
+    def test_xin_vao_duyet_dong_lenh_dau_cuoi_bang_openssl_that(self):
+        self.chay("them-phong", "ke-toan", "Phòng Kế toán", "gnucash")
+        id_, k, ms = self.tao_yeu_cau("kt-01")
+        bang = self.chay("xin-vao").stdout
+        self.assertIn(id_, bang)
+        self.assertIn(ms, bang)
+        self.assertIn("chờ duyệt", bang)
+        r = self.chay("duyet-may", id_, "ke-toan")
+        self.assertIn(f"Mã đối chiếu: {ms}", r.stdout)
+        self.assertIn("Đã cấp máy kt-01 (phòng ke-toan)", r.stdout)
+        dy = json.load(open(f"{self.t}/data/xin-vao/{id_}.duyet.json", encoding="utf-8"))
+        self.assertEqual((dy["id"], dy["phong"], dy["nguoi_duyet"]), (id_, "ke-toan", "quản trị (dòng lệnh)"))
+        kq = self.ket_qua(id_)
+        self.assertEqual(kq["trang_thai"], "DA_CAP")
+        self.assertRegex(kq["cms"], r"^[A-Za-z0-9+/=]+$")                                     # base64 một dòng
+        self.assertEqual(stat.S_IMODE(os.stat(f"{self.t}/data/xin-vao/{id_}.ket-qua").st_mode), 0o640)
+        env_may = self.giai_ma(kq, k)
+        self.assertEqual(env_may["MAY_TRAM"], "kt-01")
+        self.assertEqual(env_may["BOX_CA_VAN_TAY"], open(f"{self.t}/secrets/ca/root.sha256").read().strip())
+        self.assertEqual(env_may["PHONG_BAN"], "ke-toan")
+        self.assertEqual(env_may["SAMBA_PHONG_USER"], "pb-ke-toan")
+        self.assertEqual(env_may["SAMBA_PHONG_PASS"], open(f"{self.t}/secrets/phong-ke-toan-samba").read())
+        self.assertEqual(env_may["RESTIC_PASSWORD"], self.mat_khau("kt-01"))
+        yc = json.load(open(f"{self.t}/data/xin-vao/{id_}.json"))
+        self.assertEqual((env_may["XIN_VAO_ID"], env_may["XIN_VAO_N_W"]), (id_, yc["n_w"]))   # gắn với đúng lượt xin vào này
+        canh_bao = open(f"{self.t}/out/canh-bao.log").read()
+        self.assertIn("INFO|Máy trạm mới vào Box|Đã cấp máy kt-01 vào phòng ke-toan, người duyệt quản trị (dòng lệnh), IP 192.168.1.50", canh_bao)
+        nk = open(f"{self.t}/out/xin-vao-da-cap.log").read().split()
+        self.assertEqual(nk[1:], ["kt-01", id_])
+        self.assertEqual(stat.S_IMODE(os.stat(f"{self.t}/out/xin-vao-da-cap.log").st_mode), 0o600)
+        self.assertTrue(os.path.exists(f"{self.t}/data/may-da-cap/kt-01"))                    # cấp như them-may
+        self.assertEqual(os.listdir(f"{self.t}/tmp"), [])                                     # cấu hình rõ không còn trên đĩa
+        self.assertNotIn(env_may["RESTIC_PASSWORD"], r.stdout + r.stderr)
+        # Đã quyết rồi: không duyệt / từ chối lại được; xử lý lại không cấp lần hai
+        self.assertNotEqual(self.chay("duyet-may", id_, "ke-toan", kiem=False).returncode, 0)
+        self.assertNotEqual(self.chay("tu-choi-may", id_, kiem=False).returncode, 0)
+        truoc = open(f"{self.t}/data/xin-vao/{id_}.ket-qua").read()
+        self.chay("xu-ly-xin-vao")
+        self.assertEqual(open(f"{self.t}/data/xin-vao/{id_}.ket-qua").read(), truoc)
+
+    def test_duyet_may_tren_cua_so_dong_lenh_phai_go_dung_ma(self):
+        import pty
+        self.chay("them-phong", "ke-toan", "Phòng Kế toán")
+        id_, k, ms = self.tao_yeu_cau("kt-01")
+        sai = "%06d" % ((int(ms) + 1) % 1000000)
+        chu, to = pty.openpty()
+        os.write(chu, (sai + "\n").encode())
+        r = subprocess.run(["bash", self.cmd, "duyet-may", id_, "ke-toan"], env=self.env, stdin=to, capture_output=True, text=True, timeout=60)
+        os.close(to)
+        os.close(chu)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Mã không khớp", r.stderr)
+        self.assertFalse(os.path.exists(f"{self.t}/data/xin-vao/{id_}.duyet.json"))
+        self.assertFalse(os.path.exists(f"{self.t}/secrets/may-kt-01-repo"))
+
+    def test_xin_vao_tu_choi_yeu_cau_xau(self):
+        self.chay("them-phong", "ke-toan", "Phòng Kế toán")
+        self.chay("them-may", "da-co")
+        ca = {}
+        id_, _, _ = self.tao_yeu_cau("rsa-2048", bit=2048);              ca[id_] = "RSA từ 3072 bit"
+        # Subject giả chuỗi độ dài khóa: độ dài phải đọc từ khóa công khai, không từ văn bản của cả chứng chỉ
+        id_, _, _ = self.tao_yeu_cau("rsa-gia", bit=2048, cn="Public-Key: (4096 bit) Public Key Algorithm: rsaEncryption")
+        ca[id_] = "RSA từ 3072 bit"
+        # khoa_bam lệch chứng chỉ, dù cam kết + mã số vẫn tính khớp với khoa_bam đó (kẻ đứng giữa tráo chứng chỉ)
+        id_, _, _ = self.tao_yeu_cau("lech", khoa_bam="ab" * 32);        ca[id_] = "Khóa băm không khớp chứng chỉ"
+        id_, _, _ = self.tao_yeu_cau("cam-ket", cam_ket="00" * 32);      ca[id_] = "Cam kết không khớp"
+        id_, _, _ = self.tao_yeu_cau("da-co");                           ca[id_] = "Tên máy đã cấp — thu hồi trước"
+        id_, _, _ = self.tao_yeu_cau("chua-mo", ma_so=None);             ca[id_] = "Chưa có mã đối chiếu"
+        id_, _, _ = self.tao_yeu_cau("ca-khac", ca_van_tay="cd" * 32);   ca[id_] = "Vân tay CA"
+        id_, _, _ = self.tao_yeu_cau("Ten-Hoa");                         ca[id_] = "Tên máy không hợp lệ"
+        id_, _, _ = self.tao_yeu_cau("id-lech");                         ca[id_] = "Quyết định duyệt không khớp"
+        for i in ca:
+            self.duyet_nhu_web(i, noi_dung_id=("0" * 32 if ca[i].startswith("Quyết định") else None))
+        # Phòng không có trong sổ
+        id_, _, _ = self.tao_yeu_cau("sai-phong")
+        self.duyet_nhu_web(id_, phong="khong-co")
+        ca[id_] = "Phòng ban không có trong sổ"
+        # Liên kết mềm tới tệp bí mật: không đọc theo
+        id_ = os.urandom(16).hex()
+        os.symlink(f"{self.t}/secrets/tinh-trang-key", f"{self.t}/data/xin-vao/{id_}.json")
+        self.duyet_nhu_web(id_)
+        ca[id_] = "Không có yêu cầu này"
+        # Tên tệp không phải id 32 hex: bỏ qua, không ghi gì
+        open(f"{self.t}/data/xin-vao/XYZ.duyet.json", "w").write("{}")
+        r = self.chay("xu-ly-xin-vao")
+        for i, ly_do in ca.items():
+            kq = self.ket_qua(i)
+            self.assertEqual(kq["trang_thai"], "LOI", i)
+            self.assertIn(ly_do, kq["loi"], i)
+            self.assertNotIn(self.t, kq["loi"])                                           # không lộ đường dẫn cho máy chưa xác thực
+        self.assertNotIn("khoa-chung", json.dumps(self.ket_qua(id_)))                       # không đọc theo liên kết mềm
+        self.assertFalse(os.path.exists(f"{self.t}/data/xin-vao/XYZ.ket-qua"))
+        for ten in ("rsa-2048", "rsa-gia", "lech", "cam-ket", "chua-mo", "ca-khac", "sai-phong"):
+            self.assertFalse(os.path.exists(f"{self.t}/secrets/may-{ten}-repo"), ten)      # không cấp máy nào
+        self.assertIn("KHÔNG cấp", r.stderr)
+        self.assertNotEqual(self.chay("duyet-may", "khong-phai-hex", "ke-toan", kiem=False).returncode, 0)
+        self.assertEqual(os.listdir(f"{self.t}/tmp"), [])
+
+    def test_xin_vao_gioi_han_10_may_24_gio_va_canh_bao_loi_khong_hong_viec_cap(self):
+        self.chay("them-phong", "ke-toan", "Phòng Kế toán")
+        bay_gio = int(time.time())
+        nk = f"{self.t}/out/xin-vao-da-cap.log"
+        open(nk, "w").write("".join(f"{bay_gio - 3600} cu-{i} {'a' * 32}\n" for i in range(9))
+                            + "".join(f"{bay_gio - 90000} rat-cu-{i} {'b' * 32}\n" for i in range(5)))  # quá 24 giờ: không tính
+        self.env["ONEBEE_CANH_BAO_RC"] = "1"                                                      # Telegram / động cơ quy trình hỏng
+        id1, k1, _ = self.tao_yeu_cau("thu-10")
+        self.duyet_nhu_web(id1)
+        r = self.chay("xu-ly-xin-vao")
+        self.assertEqual(self.ket_qua(id1)["trang_thai"], "DA_CAP")                              # máy thứ 10: vẫn cấp, cảnh báo lỗi không hỏng việc cấp
+        self.assertIn("Chưa gửi được cảnh báo cấp máy thu-10", r.stderr)
+        self.assertEqual(len(open(nk).read().splitlines()), 10)                                  # bỏ dòng quá 24 giờ
+        id2, _, _ = self.tao_yeu_cau("thu-11")
+        self.duyet_nhu_web(id2)
+        self.chay("xu-ly-xin-vao")
+        kq = self.ket_qua(id2)
+        self.assertEqual(kq, {"trang_thai": "LOI", "loi": "Đã cấp quá 10 máy trong 24 giờ — duyệt tiếp bằng them-may trên Box"})
+        self.assertFalse(os.path.exists(f"{self.t}/secrets/may-thu-11-repo"))
+
+    def test_tu_choi_may_va_bang_loc_ky_tu_dieu_khien(self):
+        self.chay("them-phong", "ke-toan", "Phòng Kế toán")
+        id_, _, _ = self.tao_yeu_cau("kt-01", hostname="may\x1b]0;gia\x07\x1b[2J")
+        bang = self.chay("xin-vao").stdout
+        self.assertNotIn("\x1b", bang)                                                         # không chèn mã điều khiển vào cửa sổ quản trị
+        self.chay("tu-choi-may", id_, "Không", "rõ\x1b[2J", "máy")
+        tc = json.load(open(f"{self.t}/data/xin-vao/{id_}.tu-choi.json", encoding="utf-8"))
+        self.assertEqual((tc["id"], tc["nguoi_duyet"], tc["ly_do"]), (id_, "quản trị (dòng lệnh)", "Không rõ[2J máy"))
+        self.assertIn("từ chối", self.chay("xin-vao").stdout)
+        self.chay("xu-ly-xin-vao")
+        self.assertFalse(os.path.exists(f"{self.t}/data/xin-vao/{id_}.ket-qua"))              # từ chối: không cấp, không ghi kết quả
+        self.assertFalse(os.path.exists(f"{self.t}/secrets/may-kt-01-repo"))
+
+    def test_xu_ly_xin_vao_don_tep_qua_24_gio(self):
+        self.chay("them-phong", "ke-toan", "Phòng Kế toán")
+        cu, _, _ = self.tao_yeu_cau("cu-01")
+        moi, _, _ = self.tao_yeu_cau("moi-01")
+        d = f"{self.t}/data/xin-vao"
+        open(f"{d}/{cu}.tu-choi.json", "w").write("{}")
+        open(f"{d}/{cu}.ket-qua.tam", "w").write("")
+        os.symlink("/etc/passwd", f"{d}/{cu}.lien-ket")
+        open(f"{d}/ghi-chu.txt", "w").write("khong phai yeu cau")
+        xua = time.time() - 25 * 3600
+        os.utime(f"{d}/{cu}.json", (xua, xua))
+        r = self.chay("xu-ly-xin-vao")
+        self.assertIn("Đã dọn 1 yêu cầu", r.stdout)
+        self.assertEqual(sorted(os.listdir(d)), sorted([f"{moi}.json", "ghi-chu.txt"]))
+        self.assertTrue(os.path.exists("/etc/passwd"))                                         # chỉ xóa liên kết, không theo
+
+    # ---- Sao lưu theo phòng ----
+    def test_sao_luu_tao_ban_chup_rieng_tung_phong(self):
+        self.chuan_bi_sao_luu()
+        self.docker_csdl_gia()
+        self.chay("them-phong", "ke-toan", "Phòng Kế toán")
+        self.chay("them-phong", "kho", "Phòng Kho")
+        self.chay("sao-luu", kiem=False)
+        log = open(f"{self.t}/out/restic.log").read().splitlines()
+        csdl = [d for d in log if d.startswith("restic backup") and "--tag csdl" in d][0]
+        self.assertIn(f" {self.t}/data/phong-ban-so ", csdl + " ")                            # sổ phòng ban cùng bản chụp với bí mật
+        for ma in ("ke-toan", "kho"):
+            self.assertIn(f"restic backup --retry-lock 5m --tag onebee-box --tag phong-{ma} {self.t}/data/phong-ban/{ma}", log)
+        chung = log.index(next(d for d in log if "--tag chung" in d))
+        forget = log.index(next(d for d in log if d.startswith("restic forget --retry-lock 5m --tag onebee-box")))
+        phong = [i for i, d in enumerate(log) if "--tag phong-" in d]
+        self.assertTrue(chung < min(phong) and max(phong) < forget, log)
+
+    def test_khoi_phuc_phong_lay_ban_moi_nhat_vao_thu_muc_rieng(self):
+        self.chuan_bi_sao_luu()
+        self.chay("them-phong", "ke-toan", "Phòng Kế toán")
+        open(f"{self.t}/bin/restic", "w").write(r"""#!/usr/bin/env python3
+import json, os, sys
+a = sys.argv[1:]
+open(os.environ["ONEBEE_OUT"] + "/restic.log", "a").write("restic " + " ".join(a) + "\n")
+if a[0] == "snapshots":
+    print(json.dumps([{"time": "2026-11-18T16:00:05.123456789Z"}] if "onebee-box,phong-ke-toan" in a else []))
+elif a[0] == "restore":
+    d = a[a.index("--target") + 1] + os.environ["ONEBEE_PHONG_GOC"] + "/ke-toan"
+    os.makedirs(d + "/2026")
+    open(d + "/2026/bao-cao.ods", "w").write("ban cu")
+""")
+        self.env["ONEBEE_PHONG_GOC"] = f"{self.t}/data/phong-ban"
+        open(f"{self.t}/data/phong-ban/ke-toan/bao-cao-dang-dung.ods", "w").write("ban moi")
+        r = self.chay("khoi-phuc-phong", "ke-toan")
+        self.assertIn("restic restore latest --tag onebee-box,phong-ke-toan --target", open(f"{self.t}/out/restic.log").read())
+        goc = f"{self.t}/data/phong-ban/ke-toan"
+        kp = [d for d in os.listdir(goc) if d.startswith("khoi-phuc-")]
+        self.assertEqual(len(kp), 1)
+        self.assertRegex(kp[0], r"^khoi-phuc-\d{8}-\d{4}$")
+        self.assertEqual(open(f"{goc}/{kp[0]}/2026/bao-cao.ods").read(), "ban cu")
+        self.assertEqual(open(f"{goc}/bao-cao-dang-dung.ods").read(), "ban moi")              # không đụng tệp đang dùng
+        self.assertIn(f"{goc}/{kp[0]}", r.stdout)
+        self.assertIn(f"chgrp -R -h pb-ke-toan {goc}/{kp[0]}", open(f"{self.t}/out/chgrp.log").read())
+        self.assertEqual([d for d in os.listdir(f"{self.t}/data/phong-ban") if d.startswith(".")], [])   # thư mục tạm đã dọn
+        r = self.chay("khoi-phuc-phong", "khong-co", kiem=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.chay("them-phong", "kho", "Phòng Kho")
+        r = self.chay("khoi-phuc-phong", "kho", kiem=False)                                     # chưa có bản nào của phòng
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Chưa có bản sao lưu nào của phòng kho", r.stderr)
 
 
 if __name__ == "__main__":

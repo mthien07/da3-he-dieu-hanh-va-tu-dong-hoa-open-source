@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Quản lý bởi OneBee OS
+[Unit]
+Description=OneBee Box — theo dõi thư mục máy trạm xin vào (có quyết định duyệt mới thì cấp máy ngay)
+
+[Path]
+PathChanged={{ onebee_box_data }}/xin-vao
+Unit=onebee-xin-vao.service
+
+[Install]
+WantedBy=paths.target

@@ -24,6 +24,11 @@ onebee_quy_trinh_diem_nhan:
   - {ten: tinh-trang, duong_dan: /onebee-tinh-trang, phuong_thuc: post}
   - {ten: canh-bao, duong_dan: /onebee-canh-bao, phuong_thuc: post}
   - {ten: phe-duyet, duong_dan: /onebee-phe-duyet, phuong_thuc: post}
+  - {ten: xin-vao, duong_dan: /onebee-xin-vao, phuong_thuc: post}
+  - {ten: xin-vao-mo, duong_dan: /onebee-xin-vao-mo, phuong_thuc: post}
+  - {ten: xin-vao-ket-qua, duong_dan: /onebee-xin-vao-ket-qua, phuong_thuc: post}
+  - {ten: may-xin-vao, duong_dan: /onebee-may-xin-vao, phuong_thuc: get}
+  - {ten: duyet-may, duong_dan: /onebee-duyet-may, phuong_thuc: post}
 
 # Danh mục dùng cho sổ hỗ trợ (lược đồ CSDL và ứng dụng Sổ điều hành dùng chung)
 onebee_ho_tro_loai:
