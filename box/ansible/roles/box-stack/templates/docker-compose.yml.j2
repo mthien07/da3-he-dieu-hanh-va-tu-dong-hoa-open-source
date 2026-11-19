@@ -131,6 +131,9 @@ services:
       - {{ onebee_box_data }}/node-red:/data
       - {{ onebee_box_data }}/may-da-cap:/may-da-cap:ro
       - {{ onebee_box_data }}/tinh-trang-may:/tinh-trang-may
+      # Yêu cầu máy trạm xin vào (Node-RED ghi, root xử lý) và sổ phòng ban (chỉ đọc, do onebee-box ghi)
+      - {{ onebee_box_data }}/xin-vao:/xin-vao
+      - {{ onebee_box_data }}/phong-ban-so:/phong-ban:ro
 
   uptime-kuma:
     image: {{ onebee_box_images.uptime_kuma }}

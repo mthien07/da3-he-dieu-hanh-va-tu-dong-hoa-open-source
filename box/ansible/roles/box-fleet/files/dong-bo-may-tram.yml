@@ -141,6 +141,11 @@
         name: quan-ly-tap-trung
         tasks_from: muc-menu
 
+    # Phòng ban: gắn / gỡ thư mục phòng, cài phần mềm phòng. Địa chỉ SMB (onebee_kn_dia_chi_smb) đã được ket-noi-box đặt ở trên
+    - name: Cập nhật thư mục và phần mềm của phòng
+      ansible.builtin.include_role:
+        name: phong-ban
+
     # Báo cáo thành công = khóa tình trạng và địa chỉ mới dùng được. Lỗi thì dừng để quản trị biết (bản cũ còn trong /etc/onebee)
     - name: Gửi tình trạng về Box bằng cấu hình mới
       ansible.builtin.command: /usr/local/sbin/onebee-bao-tinh-trang

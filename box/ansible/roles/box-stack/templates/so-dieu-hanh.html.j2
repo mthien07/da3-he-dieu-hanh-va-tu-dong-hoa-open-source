@@ -29,13 +29,14 @@
   </header>
   <div id="thong-bao-chung" class="thong-bao" hidden></div>
 
-  <nav class="the" role="tablist" aria-label="Các khu làm việc H, P, D, I, Kho, Kế toán">
+  <nav class="the" role="tablist" aria-label="Các khu làm việc H, P, D, I, Kho, Kế toán, Máy trạm">
     <button type="button" role="tab" aria-selected="true" data-khu="khu-h">[H] Bàn làm việc</button>
     <button type="button" role="tab" aria-selected="false" data-khu="khu-p">[P] Quy trình và duyệt</button>
     <button type="button" role="tab" aria-selected="false" data-khu="khu-d">[D] Bảng điều hành</button>
     <button type="button" role="tab" aria-selected="false" data-khu="khu-i">[I] Trợ lý AI</button>
     <button type="button" role="tab" aria-selected="false" data-khu="khu-k" id="nut-khu-k" hidden>Kho</button>
     <button type="button" role="tab" aria-selected="false" data-khu="khu-t" id="nut-khu-t" hidden>Kế toán</button>
+    <button type="button" role="tab" aria-selected="false" data-khu="khu-m" id="nut-khu-m" hidden>[M] Máy trạm</button>
   </nav>
 
   <section id="khu-h" class="khu hien" role="tabpanel">
@@ -297,6 +298,23 @@
             <tbody id="bang-can-doi"><tr><td colspan="6">Đang tải…</td></tr></tbody>
           </table>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="khu-m" class="khu" role="tabpanel">
+    <div class="the-noi-dung">
+      <h2>Máy trạm xin vào Box</h2>
+      <p class="phu">So mã 6 số với màn hình máy trạm trước khi duyệt — khác mã thì Từ chối</p>
+      <p>Chọn phòng rồi bấm <b>Duyệt</b>: Box cấp khóa và gửi cấu hình về đúng máy đó. Danh sách tự tải lại mỗi 10 giây khi thẻ này đang mở.</p>
+      <div id="m-chua-co-phong" class="thong-bao loi" hidden>Chưa có phòng ban — tạo trên Box: sudo onebee-box them-phong &lt;mã&gt; "&lt;tên&gt;"</div>
+      <div id="m-kq" class="thong-bao" hidden></div>
+      <div id="m-loi" class="thong-bao loi" hidden></div>
+      <div class="cuon">
+        <table id="bang-may">
+          <thead><tr><th>Tên máy</th><th>Máy</th><th>IP</th><th>Phòng xin</th><th>Mã đối chiếu</th><th>Lúc</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+          <tbody id="bang-may-xin-vao"><tr><td colspan="8">Chưa tải danh sách.</td></tr></tbody>
+        </table>
       </div>
     </div>
   </section>

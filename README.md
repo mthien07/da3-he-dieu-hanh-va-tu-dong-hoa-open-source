@@ -37,16 +37,16 @@
 | Thành phần | Làm gì |
 |---|---|
 | **OneBee OS Desktop** | Bộ cài biến Linux Mint 22 thành máy văn phòng tiếng Việt: gõ Telex (IBus + Bamboo), LibreOffice lưu mặc định .docx/.xlsx, font thay thế giữ bố cục file Word, tự cập nhật, tự sao lưu lên Box, lệnh `hoi` hỏi Trợ lý AI, báo cần hỗ trợ, hỗ trợ từ xa có đồng ý |
-| **OneBee Box**, **máy trạm đi công tác** dùng dịch vụ của Box qua VPN Tailscale (Box duyệt từng máy, thu hồi tức thì) | Bộ cài máy chủ nội bộ (Ubuntu Server 24.04) theo kiến trúc **DX-OS Open-Core**: đăng nhập một lần (Authelia), cơ sở dữ liệu PostgreSQL có API tự sinh và phân quyền tới từng dòng, kho tệp có kiểm dịch mã độc, động cơ quy trình Node-RED (duyệt đơn, email báo cáo, nhắc hạn thuế/BHXH), Trợ lý AI tiếng Việt chạy tại chỗ (Gemma 4 qua Ollama), ứng dụng **Sổ điều hành** H-P-D-I kèm **sổ kho và sổ kế toán nhật ký kép** (duyệt đơn tự xuất kho và sinh bút toán, xuất CSV), thư mục chung, sao lưu 2 tầng chống mã độc tống tiền, quản lý và cập nhật máy trạm từ 1 lệnh, **máy trạm đi công tác** dùng dịch vụ của Box qua VPN Tailscale (Box duyệt từng máy, thu hồi tức thì) |
+| **OneBee Box**, **máy trạm đi công tác** dùng dịch vụ của Box qua VPN Tailscale (Box duyệt từng máy, thu hồi tức thì) | Bộ cài máy chủ nội bộ (Ubuntu Server 24.04) theo kiến trúc **DX-OS Open-Core**: đăng nhập một lần (Authelia), cơ sở dữ liệu PostgreSQL có API tự sinh và phân quyền tới từng dòng, kho tệp có kiểm dịch mã độc, động cơ quy trình Node-RED (duyệt đơn, email báo cáo, nhắc hạn thuế/BHXH), Trợ lý AI tiếng Việt chạy tại chỗ (Gemma 4 qua Ollama), ứng dụng **Sổ điều hành** H-P-D-I kèm **sổ kho và sổ kế toán nhật ký kép** (duyệt đơn tự xuất kho và sinh bút toán, xuất CSV), thư mục chung, **phòng ban** (thư mục riêng mà phòng khác không thấy, phần mềm riêng, sao lưu riêng từng phòng), **máy trạm xin vào Box và được duyệt trên web** (so mã 6 số, không chép cấu hình bằng tay), sao lưu 2 tầng chống mã độc tống tiền, quản lý và cập nhật máy trạm từ 1 lệnh, **máy trạm đi công tác** dùng dịch vụ của Box qua VPN Tailscale (Box duyệt từng máy, thu hồi tức thì) |
 | **Dịch vụ** | Khảo sát → sao lưu nguyên ổ Windows → cài → đào tạo 3 buổi → bảo trì (theo dõi báo cáo hằng ngày, xử lý yêu cầu hỗ trợ có đo thời gian) |
 
 ```
  Máy trạm (Linux Mint + OneBee OS)                 OneBee Box (Ubuntu Server 24.04, trong LAN)
  ├─ gõ tiếng Việt, LibreOffice          sao lưu    ├─ Caddy (HTTPS) → Authelia (đăng nhập một lần) → API, kho tệp, AI, Sổ điều hành
- ├─ onebee-sao-luu (12:00)         ───────────────▶├─ restic rest-server (chỉ-thêm) → ổ ngoài 23:00
+ ├─ onebee-sao-luu (12:00)         ───────────────▶├─ restic rest-server (chỉ-thêm) · Box tự sao lưu 23:00 vào ổ Box (ổ ngoài: tùy chọn)
  ├─ onebee-bao-tinh-trang (mỗi giờ) ──────────────▶├─ PostgreSQL + Node-RED: đơn hàng, hỗ trợ, khảo sát, email báo cáo, nhắc hạn
  ├─ hoi "câu hỏi"                   ──────────────▶├─ Ollama (Gemma 4) — không gửi dữ liệu ra ngoài · Samba: thư mục chung
- └─ onebee-ho-tro (khi người dùng bấm)◀──SSH────── └─ onebee-box: them-may, may-tram, cap-nhat-may, bao-cao-tuan …
+ └─ onebee-ho-tro (khi người dùng bấm)◀──SSH────── └─ onebee-box: them-phong, duyet-may, may-tram, cap-nhat-may …
 ```
 
 <table>
@@ -81,6 +81,14 @@ cd "$(mktemp -d)" && R=mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source \
 ```
 **Box** — Ubuntu Server 24.04 LTS 64-bit trong LAN: như trên, lệnh cuối là `sudo ./box/onebee-box-install.sh`.
 
+**Nối máy trạm với Box** (từ 2.1.0, không chép file cấu hình bằng tay):
+1. Trên Box, tạo phòng ban một lần: `sudo onebee-box them-phong ke-toan "Phòng Kế toán" gnucash`. Mỗi phòng có thư mục riêng (phòng khác không vào được, không thấy) và phần mềm riêng.
+2. Trên máy trạm, dùng khối lệnh trên nhưng thay lệnh cuối bằng `sudo ./desktop/onebee-xin-vao --ten ketoan-01 --phong ke-toan`. Máy tự tìm Box trong LAN và hiện mã 6 số.
+3. Trên Box, mở Sổ điều hành → thẻ **Máy trạm** (hoặc chạy `sudo onebee-box duyet-may` khi chưa bật HTTPS). So mã, chọn phòng, bấm Duyệt.
+4. Gõ lại mã trên máy trạm. Máy nhận cấu hình đã ký và mã hóa, rồi tự cài: sao lưu, Trợ lý AI, thư mục phòng `/mnt/phongban`, phần mềm của phòng.
+
+Chi tiết: [phong-ban-va-may-xin-vao.md](docs/huong-dan/phong-ban-va-may-xin-vao.md).
+
 Muốn lấy mã nguồn mới nhất (chưa phát hành) để thử hoặc đóng góp, dùng `git clone`:
 ```bash
 sudo apt install -y git
@@ -97,6 +105,7 @@ cd onebee && sudo ./desktop/onebee-install.sh
 | Trợ lý AI, quy trình tự động, email | [dung-tro-ly-ai-va-quy-trinh-tu-dong.md](docs/huong-dan/dung-tro-ly-ai-va-quy-trinh-tu-dong.md) |
 | Quản lý, cập nhật máy trạm, hỗ trợ từ xa | [quan-ly-may-tram.md](docs/huong-dan/quan-ly-may-tram.md) |
 | Vào máy từ xa để cài tiếp (máy mới cài hệ điều hành, ở nơi khác) | [truy-cap-tu-xa-khi-cai-may.md](docs/huong-dan/truy-cap-tu-xa-khi-cai-may.md) |
+| **Phòng ban** (thư mục riêng, phần mềm riêng) và **máy trạm xin vào**, duyệt trên web Box | [phong-ban-va-may-xin-vao.md](docs/huong-dan/phong-ban-va-may-xin-vao.md) |
 | **Máy trạm đi công tác** dùng thư mục chung, kho tệp, Trợ lý AI, sao lưu qua VPN | [may-tram-di-cong-tac.md](docs/huong-dan/may-tram-di-cong-tac.md) |
 | **Sổ kho và sổ kế toán** (nhập kho, duyệt đơn tự trừ tồn, nhật ký kép, xuất CSV) | [dung-so-kho-va-ke-toan.md](docs/huong-dan/dung-so-kho-va-ke-toan.md) |
 | Kiểm trải nghiệm trên máy thật (phiên Cinnamon, Trợ lý AI, trang chủ Box) | [kiem-thu-trai-nghiem-may-that.md](docs/kiem-thu-trai-nghiem-may-that.md) · kết quả: [reports/trai-nghiem/](reports/trai-nghiem/) |
@@ -107,7 +116,7 @@ cd onebee && sudo ./desktop/onebee-install.sh
 | **Hồ sơ dự thi OLP 2026**: tự chấm có lệnh kiểm, kịch bản trình diễn 15 phút, thư nộp bài | [olp-2026-tu-cham-pof.md](docs/olp-2026-tu-cham-pof.md) · [kịch bản](docs/hoi-thi/olp-2026-kich-ban-trinh-dien.md) · [thư nộp bài](docs/hoi-thi/olp-2026-thu-nop-bai.md) |
 | Quyết định kiến trúc | [docs/adr/](docs/adr/) · Lõi DX-OS open-core (SSO, cổng API, dữ liệu, kho tệp, quy trình): [ADR 0006](docs/adr/0006-loi-dx-os-open-core.md) · Thay đổi: [CHANGELOG.md](CHANGELOG.md) |
 
-## 📌 Trạng thái (2.0.3)
+## 📌 Trạng thái (2.1.0)
 - ✅ **Đủ tính năng cho một đơn vị**: máy trạm, Box, Trợ lý AI chạy tại chỗ, quy trình email, quản lý máy trạm, hỗ trợ từ xa, sổ hỗ trợ + khảo sát,
   giám sát, HTTPS nội bộ (CA riêng của Box), xoay khóa, **khôi phục toàn bộ Box khi hỏng ổ**; giao diện quen thuộc như Windows
   (thanh tác vụ ghim sẵn ứng dụng, Win+E/D/L, LibreOffice dạng Ribbon).
@@ -121,6 +130,10 @@ cd onebee && sudo ./desktop/onebee-install.sh
 - 🔧 **Bản vá 2.0.1–2.0.3** (lỗi tìm ra khi thử trên máy ảo Linux): tải chữ ký ClamAV lần đầu không còn hỏng; cài lại Box báo `changed=0`;
   **Box đổi mạng khi đang chạy** (thay router, đổi dải DHCP) tường lửa tự nhận dải LAN mới trong vòng 1 phút, không còn chặn SSH và trang chủ
   ([CHANGELOG.md](CHANGELOG.md)).
+- 🆕 **Mới ở 2.1.0**: **phòng ban** — mỗi phòng có thư mục riêng (phòng khác không vào được, không thấy), phần mềm riêng, sao lưu
+  và khôi phục riêng từng phòng; **máy trạm xin vào Box**, quản trị so mã 6 số rồi bấm duyệt trên Sổ điều hành, máy tự nhận cấu hình đã ký
+  và mã hóa ([hướng dẫn](docs/huong-dan/phong-ban-va-may-xin-vao.md), [ADR 0009](docs/adr/0009-phong-ban-va-may-tram-xin-vao.md));
+  **Box tự sao lưu vào ổ dữ liệu của Box** ngay từ đêm đầu, ổ ngoài thành tùy chọn để chống hỏng ổ.
 - ✅ **Đã kiểm tự động** ở mỗi thay đổi ([CI](https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source/actions/workflows/ci.yml)):
   Box cài thật trong Docker lồng (đăng nhập một lần, API, kho tệp, AI, sao lưu/khôi phục, tường lửa, máy công tác C1–C11),
   máy trạm cài thật trong container Linux Mint 22.3; cả hai bộ cài chạy lần 2 `changed=0 failed=0`; lint sạch. Cách chạy: [tests/README.md](tests/README.md).
@@ -130,7 +143,7 @@ cd onebee && sudo ./desktop/onebee-install.sh
   ([báo cáo](plans/reports/kiem-thu-261117-1608-kho-ke-toan-box.md)); bài kiểm Box đầy đủ (bản 2.0.2, máy ảo Linux) đạt **251/251 mục**,
   Box thật nâng sạch lên 2.0.2 kèm xoay CA sang IP mới, cài lại `changed=0` ([báo cáo](plans/reports/kiem-thu-261118-0445-da3-2.0.0-may-linux.md)).
 - ✅ Model AI chọn bằng bộ chấm 40 câu tiếng Việt (98%): [ADR 0003](docs/adr/0003-chon-model-ai-gemma.md), [reports/ai/](reports/ai/).
-- ⏳ **Chưa cài trên máy vật lý tại đơn vị nào**; chưa thử khôi phục từ ổ sao lưu ngoài trên Box thật →
+- ⏳ **Chưa cài trên máy vật lý tại đơn vị nào**; chưa thử khôi phục từ ổ sao lưu ngoài (phương án phụ) trên Box thật →
   [phiếu kiểm thử máy thật](plans/reports/261010-kiem-thu-tren-may-that.md), [danh sách thử](docs/huong-dan/thu-nghiem-tren-may-ao.md).
 - ⏳ Chạy thử 4 tuần tại HTX OneBee → số liệu thật cho giá, video hướng dẫn.
 

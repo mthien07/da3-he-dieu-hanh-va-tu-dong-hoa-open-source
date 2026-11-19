@@ -6,9 +6,10 @@
 var MAU_TOM_TAT = "Tóm tắt số liệu tuần này bằng tiếng Việt, ngắn gọn, chỉ dùng đúng các con số trong JSON; không bịa thêm số liệu ngoài JSON. Trả lời bằng tiếng Việt.\n";
 var DUOI_TEP = [".pdf", ".png", ".jpg", ".jpeg", ".txt", ".docx", ".xlsx", ".odt", ".ods"];
 var TOI_DA_TEP = 10 * 1024 * 1024;
-var TEN_KHU = ["khu-h", "khu-p", "khu-d", "khu-i", "khu-k", "khu-t"];
+var TEN_KHU = ["khu-h", "khu-p", "khu-d", "khu-i", "khu-k", "khu-t", "khu-m"];
 var VAI_TRO_KHO = ["thu_kho", "ke_toan", "quan_ly"];   // kế toán chỉ xem tồn và sổ kho, không nhập kho
 var VAI_TRO_KE_TOAN = ["ke_toan", "quan_ly"];
+var VAI_TRO_MAY = ["quan_ly", "ky_thuat"];   // duyệt máy trạm xin vào; Node-RED tự hỏi lại /api/toi, không tin trang này
 var HOSO = { ten: "", vai_tro: "" };
 var SO_LIEU = {};
 var MAT_HANG = [];
@@ -202,6 +203,8 @@ function chonKhu(ma) {
     taiNhatKy().catch(function (e) { hienThongBao("tq-nhat-ky", e.message, true); });
     taiCanDoi().catch(function (e) { hienThongBao("tq-nhat-ky", e.message, true); });
   }
+  batTaiMay(ma === "khu-m");
+  if (ma === "khu-m") taiMay(true).catch(function (e) { hienThongBao("m-loi", e.message, true); });
 }
 
 function dem(duong) {
@@ -225,6 +228,7 @@ function taiHoSo() {
     var laKeToan = VAI_TRO_KE_TOAN.indexOf(HOSO.vai_tro) >= 0;
     document.getElementById("nut-khu-k").hidden = !laKho;
     document.getElementById("nut-khu-t").hidden = !laKeToan;
+    document.getElementById("nut-khu-m").hidden = VAI_TRO_MAY.indexOf(HOSO.vai_tro) < 0;
     document.getElementById("k-than").hidden = !laKho;
     document.getElementById("t-than").hidden = !laKeToan;
     document.getElementById("k-chan-quyen").hidden = laKho;
@@ -636,6 +640,170 @@ function taiVatTu() {
     var conHang = 0;
     for (var i = 0; i < MAT_HANG.length; i++) if (MAT_HANG[i].hoat_dong !== false) conHang++;
     document.getElementById("don-mat-hang-trong").hidden = conHang > 0;
+  });
+}
+
+/* ---------- Khu Máy trạm: duyệt máy xin vào Box ---------- */
+
+var NHAN_TRANG_THAI_MAY = { CHO_MA: "Chờ máy hiện mã", CHO_DUYET: "Chờ duyệt", DANG_CAP: "Đang cấp khóa", DA_CAP: "Đã cấp", LOI: "Lỗi", TU_CHOI: "Đã từ chối" };
+var CHU_KY_TAI_MAY_MS = 10000;
+var MAY_NHAP = {};   /* phòng và lý do đang chọn dở theo mã yêu cầu, để tải lại bảng không làm mất */
+var DONG_HO_MAY = null;
+var DANG_GUI_MAY = false;
+
+/* Mã đối chiếu 6 số hiển thị "123 456" để so với màn hình máy trạm. */
+function dinhDangMa(ma) {
+  var s = chu(ma);
+  return /^\d{6}$/.test(s) ? s.slice(0, 3) + " " + s.slice(3) : "—";
+}
+
+function gioMay(luc) {
+  var n = Number(luc);
+  return isFinite(n) && n > 0 ? new Date(n * 1000).toLocaleString("vi-VN") : "—";
+}
+
+function nhanTrangThaiMay(yc) {
+  var nhan = NHAN_TRANG_THAI_MAY[yc.trang_thai] || "Không rõ";
+  return yc.trang_thai === "LOI" && chu(yc.loi) ? nhan + ": " + chu(yc.loi) : nhan;
+}
+
+function batTaiMay(bat) {
+  if (DONG_HO_MAY) { clearInterval(DONG_HO_MAY); DONG_HO_MAY = null; }
+  if (!bat) return;
+  DONG_HO_MAY = setInterval(function () {
+    if (!document.hidden) taiMay(false).catch(function (e) { hienThongBao("m-loi", e.message, true); });
+  }, CHU_KY_TAI_MAY_MS);
+}
+
+/* Chỉ giữ chữ số của ô nhập mã; duyệt cần đủ 6 số. */
+function soMa(v) {
+  return String(v === undefined || v === null ? "" : v).replace(/\D/g, "");
+}
+
+function quyetDinhMay(yc, quyetDinh, phong, lyDo, ma) {
+  var ly = chu(lyDo);
+  if (quyetDinh === "DUYET" && !phong) { hienThongBao("m-kq", "Chọn phòng cấp cho máy " + yc.ten + " trước khi duyệt.", true); return; }
+  if (quyetDinh === "DUYET" && soMa(ma).length !== 6) { hienThongBao("m-kq", "Gõ đủ 6 số mã đang hiện trên màn hình máy " + yc.ten + " trước khi duyệt.", true); return; }
+  if (quyetDinh === "TU_CHOI" && !ly) { hienThongBao("m-kq", "Từ chối phải ghi lý do.", true); return; }
+  if (DANG_GUI_MAY) return;
+  DANG_GUI_MAY = true;
+  goiApi("/quy-trinh/webhook/onebee-duyet-may", {
+    phuongThuc: "POST",
+    than: { id: yc.id, quyet_dinh: quyetDinh, phong: quyetDinh === "DUYET" ? phong : "", ly_do: ly, ma_so: quyetDinh === "DUYET" ? soMa(ma) : "" }
+  }).then(function () {
+    delete MAY_NHAP[yc.id];
+    hienThongBao("m-kq", quyetDinh === "DUYET"
+      ? "Đã duyệt máy " + yc.ten + " vào phòng " + phong + " — Box đang cấp khóa, máy sẽ tự nhận cấu hình sau ít giây."
+      : "Đã từ chối máy " + yc.ten + ".", false);
+  }).catch(function (e) {
+    hienThongBao("m-kq", e.message, true);
+  }).then(function () {
+    DANG_GUI_MAY = false;
+    return taiMay(true).catch(function (e) { hienThongBao("m-loi", e.message, true); });
+  });
+}
+
+function oThaoTacMay(yc, phongBan) {
+  var td = document.createElement("td");
+  if (yc.trang_thai !== "CHO_DUYET") { td.textContent = "—"; return td; }
+  var nhap = MAY_NHAP[yc.id] || (MAY_NHAP[yc.id] = { phong: "", ly_do: "", ma: "" });
+  var chon = null, i;
+  var hang1 = document.createElement("div"), hang2 = document.createElement("div");
+  hang1.className = hang2.className = "hang-nut";
+  if (phongBan.length) {
+    var macDinh = nhap.phong || yc.phong_xin, co = false;
+    chon = document.createElement("select");
+    chon.setAttribute("aria-label", "Phòng cấp cho máy " + yc.ten);
+    for (i = 0; i < phongBan.length; i++) if (phongBan[i].ma === macDinh) co = true;
+    if (!co) {
+      var tro = document.createElement("option");
+      tro.value = "";
+      tro.textContent = "— chọn phòng —";
+      chon.appendChild(tro);
+    }
+    for (i = 0; i < phongBan.length; i++) {
+      var o = document.createElement("option");
+      o.value = phongBan[i].ma;
+      o.textContent = phongBan[i].ten + " (" + phongBan[i].ma + ")";
+      chon.appendChild(o);
+    }
+    chon.value = co ? macDinh : "";
+    chon.addEventListener("change", function () { nhap.phong = chon.value; });
+    /* Người duyệt gõ lại mã đọc từ màn hình máy trạm; Box so với mã của yêu cầu, lệch thì không duyệt. */
+    var ma = document.createElement("input");
+    ma.type = "text";
+    ma.inputMode = "numeric";
+    ma.maxLength = 7;
+    ma.autocomplete = "off";
+    ma.placeholder = "Mã trên máy trạm (6 số)";
+    ma.setAttribute("aria-label", "Mã 6 số đang hiện trên màn hình máy " + yc.ten);
+    ma.value = nhap.ma;
+    var duyet = document.createElement("button");
+    duyet.type = "button";
+    duyet.className = "nut";
+    duyet.textContent = "Duyệt";
+    duyet.disabled = soMa(nhap.ma).length !== 6;
+    ma.addEventListener("input", function () { nhap.ma = ma.value; duyet.disabled = soMa(ma.value).length !== 6; });
+    duyet.addEventListener("click", function () { quyetDinhMay(yc, "DUYET", chon.value, "", ma.value); });
+    hang1.appendChild(ma);
+    hang1.appendChild(chon);
+    hang1.appendChild(duyet);
+    td.appendChild(hang1);
+  }
+  var ly = document.createElement("input");
+  ly.type = "text";
+  ly.maxLength = 300;
+  ly.autocomplete = "off";
+  ly.placeholder = "Lý do từ chối";
+  ly.setAttribute("aria-label", "Lý do từ chối máy " + yc.ten);
+  ly.value = nhap.ly_do;
+  ly.addEventListener("input", function () { nhap.ly_do = ly.value; });
+  var tuChoi = document.createElement("button");
+  tuChoi.type = "button";
+  tuChoi.className = "nut tu-choi";
+  tuChoi.textContent = "Từ chối";
+  tuChoi.addEventListener("click", function () { quyetDinhMay(yc, "TU_CHOI", "", ly.value); });
+  hang2.appendChild(ly);
+  hang2.appendChild(tuChoi);
+  td.appendChild(hang2);
+  return td;
+}
+
+/* ep = true: dựng lại ngay; false (tự tải lại): bỏ qua khi người dùng đang gõ lý do hoặc chọn phòng trong bảng. */
+function taiMay(ep) {
+  var than = document.getElementById("bang-may-xin-vao");
+  if (!ep && than.contains(document.activeElement)) return Promise.resolve(null);
+  return goiApi("/quy-trinh/webhook/onebee-may-xin-vao").then(function (d) {
+    var ds = d && Array.isArray(d.yeu_cau) ? d.yeu_cau : [];
+    var pb = d && Array.isArray(d.phong_ban) ? d.phong_ban : [];
+    var con = {}, i;
+    anThongBao("m-loi");
+    document.getElementById("m-chua-co-phong").hidden = pb.length > 0;
+    while (than.firstChild) than.removeChild(than.firstChild);
+    if (ds.length === 0) {
+      var trong = document.createElement("tr");
+      var oT = oChu("Chưa có máy nào xin vào.");
+      oT.setAttribute("colspan", "8");
+      trong.appendChild(oT);
+      than.appendChild(trong);
+    }
+    for (i = 0; i < ds.length; i++) {
+      var yc = ds[i], tr = document.createElement("tr");
+      con[yc.id] = true;
+      tr.appendChild(oChu(chu(yc.ten)));
+      tr.appendChild(oChu(chu(yc.hostname) || "—"));
+      tr.appendChild(oChu(chu(yc.ip) || "—"));
+      tr.appendChild(oChu(chu(yc.phong_xin) || "—"));
+      var oMa = oChu(dinhDangMa(yc.ma_so));
+      oMa.className = "ma-doi-chieu";
+      tr.appendChild(oMa);
+      tr.appendChild(oChu(gioMay(yc.luc)));
+      tr.appendChild(oChu(nhanTrangThaiMay(yc)));
+      tr.appendChild(oThaoTacMay(yc, pb));
+      than.appendChild(tr);
+    }
+    for (var id in MAY_NHAP) if (!con[id]) delete MAY_NHAP[id];
+    return d;
   });
 }
 

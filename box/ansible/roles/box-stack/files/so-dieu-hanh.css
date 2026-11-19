@@ -42,6 +42,12 @@ table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px
 #khu-k .luoi > .the-noi-dung:first-child { grid-column: 1 / -1; }
 #bang-ton-kho th, #bang-ton-kho td { white-space: nowrap; }
 #bang-ton-kho td:nth-child(n + 4) { text-align: right; }
+/* Khu Máy trạm: mã đối chiếu 6 số đọc được từ xa, bảng rộng nên cuộn ngang */
+#bang-may { min-width: 900px; }
+.ma-doi-chieu { font: 700 24px/1.2 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; letter-spacing: 2px; color: var(--nhan); white-space: nowrap; }
+#bang-may .hang-nut select { width: auto; min-width: 150px; }
+#bang-may .hang-nut .nut { margin-top: 0; }
+#bang-may .hang-nut + .hang-nut { margin-top: 6px; }
 th, td { padding: 8px 10px; border-bottom: 1px solid var(--vien); text-align: left; vertical-align: top; }
 th { color: var(--phu); font-weight: 600; }
 .so-lon { font-size: 28px; font-weight: 700; }

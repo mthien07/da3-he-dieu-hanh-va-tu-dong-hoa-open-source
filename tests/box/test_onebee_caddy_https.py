@@ -5,7 +5,8 @@
 Cần tệp chạy caddy: đặt biến ONEBEE_TEST_CADDY=/đường/dẫn/caddy (hoặc caddy có trong PATH), nếu không bài này bị bỏ qua.
 Backend là máy chủ HTTP giả; CA là CA riêng do onebee-ca.sh sinh (gốc không kèm khóa gốc ở thư mục của Caddy).
 Kiểm: Caddy nhận gốc không khóa + trung gian có khóa; nối bằng IP KHÔNG SNI (default_sni) và bằng tên; chuỗi đến CA riêng; http:// tới cổng TLS bị chuyển 308;
-cổng 80 chỉ phục vụ CA/hướng dẫn; mỗi cổng tới đúng backend; Kuma chỉ có site khi đã sẵn sàng. Chạy: python3 -m unittest"""
+cổng 80 chỉ phục vụ CA/hướng dẫn + tuyến máy trạm xin vào (không đăng nhập, xóa Remote-*/Authorization, thân tối đa 64 KB; cả chế độ HTTP);
+mỗi cổng tới đúng backend; Kuma chỉ có site khi đã sẵn sàng. Chạy: python3 -m unittest"""
 import os
 import shutil
 import socket
@@ -40,12 +41,19 @@ def backend(ten):
             pass
 
         def do_GET(self):
-            nd = f"backend-{ten} host={self.headers.get('Host')} xfp={self.headers.get('X-Forwarded-Proto')}".encode()
+            n = int(self.headers.get("Content-Length") or 0)
+            if n:
+                self.rfile.read(n)
+            nd = (f"backend-{ten} host={self.headers.get('Host')} xfp={self.headers.get('X-Forwarded-Proto')} "
+                  f"ru={self.headers.get('Remote-User')} auth={self.headers.get('Authorization')} {self.command} {self.path}").encode()
             self.send_response(200)
             self.send_header("Content-Length", str(len(nd)))
             self.end_headers()
             self.wfile.write(nd)
+
+        do_POST = do_GET
     sv = HTTPServer(("127.0.0.1", 0), H)
+    sv.handle_error = lambda *a: None   # Caddy ngắt giữa chừng khi thân vượt giới hạn
     threading.Thread(target=sv.serve_forever, daemon=True).start()
     return sv
 
@@ -151,6 +159,29 @@ class CaddyHttps(unittest.TestCase):
         self.assertEqual(curl(f"http://127.0.0.1:{c['http']}/onebee-ca.crt").stdout, open(self.goc()).read())
         self.assertEqual(curl(f"http://127.0.0.1:{c['http']}/").stdout, "huong dan cai CA")
 
+    def test_e2_cong_80_chi_them_tuyen_xin_vao_toi_quy_trinh(self):
+        if not self.caddy:
+            self.dung_caddy()
+        goc = f"http://127.0.0.1:{self.cong['http']}"
+        gia = ("-H", "Remote-User: quanly", "-H", "Remote-Groups: quan_ly", "-H", "Authorization: Bearer x",
+               "-H", "Content-Type: application/json")
+        for duong in ("/webhook/onebee-xin-vao", "/webhook/onebee-xin-vao-mo", "/webhook/onebee-xin-vao-ket-qua"):
+            r = curl("-X", "POST", *gia, "-d", "{}", goc + duong)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(r.stdout.split(" ", 1)[0], "backend-quy-trinh", r.stdout)
+            self.assertIn(f"ru=None auth=None POST {duong}", r.stdout)      # danh tính máy khách tự gửi bị xóa
+        # chỉ đúng tuyến đó: mọi webhook/đường dẫn khác vẫn chỉ là tệp tĩnh (404)
+        for duong in ("/webhook/suc-khoe", "/webhook/onebee-duyet-may", "/webhook/onebee-may-xin-vao", "/webhook/onebee-canh-bao",
+                      "/quy-trinh/", "/quy-trinh/webhook/onebee-duyet-may"):
+            r = curl("-i", "-X", "POST", "-d", "{}", goc + duong)
+            self.assertNotIn("backend-", r.stdout, duong)
+            self.assertRegex(r.stdout.splitlines()[0], r" (404|405) ", duong)
+        tep = f"{self.t}/lon64.bin"
+        open(tep, "wb").write(b"x" * (64 * 1024 + 10))
+        r = curl("-i", "-X", "POST", "--data-binary", f"@{tep}", "-H", "Content-Type: application/json", goc + "/webhook/onebee-xin-vao")
+        self.assertIn(" 413 ", r.stdout.splitlines()[0], r.stdout)
+        self.assertEqual(curl(f"{goc}/").stdout, "huong dan cai CA")        # phần cũ của cổng 80 giữ nguyên
+
     def test_f_ca_la_khong_tin_duoc(self):
         la = f"{self.t}/ca-la"
         subprocess.run([TAO_CA, la, "ke-la", "127.0.0.1"], check=True, capture_output=True)
@@ -164,6 +195,60 @@ class CaddyHttps(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         r = curl("--cacert", self.goc(), f"https://127.0.0.1:{self.cong['rest_server']}/x")
         self.assertEqual(r.returncode, 0, r.stderr)   # các cổng khác vẫn chạy
+
+
+@unittest.skipUnless(CADDY, "cần caddy (ONEBEE_TEST_CADDY)")
+class CaddyHttpXinVao(unittest.TestCase):
+    """Chế độ HTTP (HTTPS chưa bật): cổng 80 vẫn có tuyến xin vào với cùng giới hạn như chế độ HTTPS."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        t = cls.t = cls.tmp.name
+        os.makedirs(f"{t}/srv")
+        open(f"{t}/srv/index.html", "w").write("OneBee Box trang chu")
+        cls.http, cls.bk = cong_trong(), backend("quy-trinh")
+        v = yaml.safe_load(open(os.path.join(ROOT, "box/ansible/group_vars/all.yml"), encoding="utf-8"))
+        v.update(onebee_box_ip="127.0.0.1", onebee_box_ma_don_vi="anphu", onebee_https_hieu_luc=False, onebee_sso_hieu_luc=False)
+        env = jinja2.Environment(keep_trailing_newline=True, trim_blocks=True)
+        env.filters["bool"] = bool
+        nd = env.from_string(open(TEMPLATE, encoding="utf-8").read()).render(**v)
+        nd = nd.replace("\n:80 {", f"\n:{cls.http} {{").replace("root * /srv\n", f"root * {t}/srv\n")
+        nd = nd.replace("quy-trinh:1880", f"127.0.0.1:{cls.bk.server_port}")
+        open(f"{t}/Caddyfile", "w").write(nd)
+        env_c = {**os.environ, "XDG_DATA_HOME": f"{t}/data", "XDG_CONFIG_HOME": f"{t}/cfg"}
+        r = subprocess.run([CADDY, "validate", "--config", f"{t}/Caddyfile", "--adapter", "caddyfile"], capture_output=True, text=True, env=env_c)
+        assert r.returncode == 0, r.stderr[-2000:]
+        cls.caddy = subprocess.Popen([CADDY, "run", "--config", f"{t}/Caddyfile", "--adapter", "caddyfile"], env=env_c,
+                                     stdout=subprocess.DEVNULL, stderr=open(f"{t}/caddy.log", "w"))
+        for _ in range(100):
+            time.sleep(0.2)
+            if curl(f"http://127.0.0.1:{cls.http}/").stdout == "OneBee Box trang chu":
+                return
+        raise AssertionError("Caddy không lên: " + open(f"{t}/caddy.log").read()[-2000:])
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.caddy.terminate()
+        cls.caddy.wait(10)
+        cls.tmp.cleanup()
+
+    def test_tuyen_xin_vao_xoa_danh_tinh_va_gioi_han_64kb(self):
+        goc = f"http://127.0.0.1:{self.http}"
+        for duong in ("/webhook/onebee-xin-vao", "/webhook/onebee-xin-vao-mo", "/webhook/onebee-xin-vao-ket-qua"):
+            r = curl("-X", "POST", "-H", "Remote-User: quanly", "-H", "Authorization: Bearer x", "-d", "{}", goc + duong)
+            self.assertIn(f"backend-quy-trinh", r.stdout)
+            self.assertIn(f"ru=None auth=None POST {duong}", r.stdout)
+        tep = f"{self.t}/lon64.bin"
+        open(tep, "wb").write(b"x" * (64 * 1024 + 10))
+        r = curl("-i", "-X", "POST", "--data-binary", f"@{tep}", goc + "/webhook/onebee-xin-vao-mo")
+        self.assertIn(" 413 ", r.stdout.splitlines()[0], r.stdout)
+
+    def test_webhook_cu_va_trang_chu_giu_nguyen(self):
+        goc = f"http://127.0.0.1:{self.http}"
+        self.assertIn("backend-quy-trinh", curl(f"{goc}/webhook/suc-khoe").stdout)
+        self.assertIn(" 404 ", curl("-i", f"{goc}/so-dieu-hanh/").stdout.splitlines()[0])
+        self.assertEqual(curl(f"{goc}/").stdout, "OneBee Box trang chu")
 
 
 if __name__ == "__main__":

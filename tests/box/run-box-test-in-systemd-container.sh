@@ -2,14 +2,15 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Kiểm thử OneBee Box trong container "Ubuntu 24.04 + systemd" (cần Docker, chạy --privileged để có Docker lồng).
-# Các bước: cài 2 lần (idempotent) → verify 26 mục → AI hỏi đáp thật → sao lưu/khôi phục Box ra "ổ ngoài"
+# Các bước: cài 2 lần (idempotent) → verify 26 mục → AI hỏi đáp thật → sao lưu/khôi phục Box vào ổ dữ liệu Box
 # → máy trạm Mint 22.3 cài OneBee OS Desktop, sao lưu lên Box + khôi phục + thử xóa bản cũ (phải bị chặn)
 # → quản lý tập trung (báo tình trạng, cập nhật qua SSH) → email báo cáo → Box dọn bản cũ
+# → phòng ban + máy trạm xin vào, duyệt, từ chối + sao lưu/khôi phục theo phòng (check-phong-ban-xin-vao.sh)
 # → tường lửa: máy trong LAN vào được, máy ngoài mạng cho phép bị chặn
 # → diễn tập hỏng ổ Box: cài lại + khôi phục toàn bộ bằng khóa in ra giấy (gồm 1 tệp trong kho tệp, tải lại đúng SHA-256)
 # → bật HTTPS: Sổ điều hành H-P-D-I (check-https.sh gọi check-so-dieu-hanh.sh), kho tệp /files/ tải lên, kiểm dịch ClamAV,
 # tệp nhiễm bị chặn (check-kho-tep-inside.sh)
-# → bản giả mạo ngày tương lai bị phát hiện → chưa gắn ổ ngoài thì từ chối → khởi động lại Box, dịch vụ tự lên.
+# → bản giả mạo ngày tương lai bị phát hiện → phương án phụ ổ ngoài (chưa gắn ổ thì từ chối) → khởi động lại Box, dịch vụ tự lên.
 # Biến: ONEBEE_TEST_EXTRA_CA (CA proxy), ONEBEE_TEST_MODEL / ONEBEE_TEST_EMBED_MODEL (model tải trong bài kiểm AI),
 #       ONEBEE_TEST_KEEP=1 (giữ container để xem lại).
 set -euo pipefail
@@ -41,7 +42,7 @@ wait_systemd() {
 echo "===== Chuẩn bị máy Box giả lập ====="
 docker build -q -t "${IMAGE}" -f "${REPO_ROOT}/tests/box/Dockerfile.ubuntu-systemd" "${REPO_ROOT}/tests/box" >/dev/null
 docker network create "${NET}" >/dev/null
-# /mnt/onebee-sao-luu là volume riêng = "ổ ngoài" khác thiết bị với /srv
+# /mnt/onebee-sao-luu là volume riêng = "ổ ngoài" khác thiết bị với /srv (kiểm phương án phụ)
 docker run -d --name "${BOX}" --hostname onebee-box --network "${NET}" --privileged --cgroupns=host \
   -v /sys/fs/cgroup:/sys/fs/cgroup:rw --tmpfs /run --tmpfs /run/lock \
   -v "${BOX}-docker:/var/lib/docker" -v "${BOX}-containerd:/var/lib/containerd" \
@@ -101,11 +102,12 @@ echo "===== AI HỎI ĐÁP THẬT ====="
 box "ONEBEE_TEST_MODEL=${TEST_MODEL} /root/onebee-test/tests/box/check-ai-chat-inside.sh"
 echo "===== QUY TRÌNH Node-RED QUA EMAIL ====="
 box '/root/onebee-test/tests/box/check-quy-trinh-inside.sh'
-echo "===== SAO LƯU BOX RA Ổ NGOÀI + KHÔI PHỤC ====="
-box 'if onebee-box sao-luu > /root/sl0.log 2>&1; then echo "FAIL  sao-luu chạy khi chưa tạo kho"; exit 1; fi
-     grep -q "Chưa tạo kho" /root/sl0.log || { cat /root/sl0.log; exit 1; }
-     echo "PASS  Chưa tạo kho sao lưu thì sao-luu từ chối (không tự tạo kho)"
-     onebee-box khoi-tao | tail -1
+echo "===== SAO LƯU BOX VÀO Ổ DỮ LIỆU BOX (mặc định) + KHÔI PHỤC ====="
+box '[ -f /srv/onebee/sao-luu/restic-box/config ] || { echo "FAIL  Bộ cài chưa tự tạo kho sao lưu trong ổ dữ liệu Box"; exit 1; }
+     [ "$(stat -c %a /srv/onebee/sao-luu)" = 700 ] || { echo "FAIL  Thư mục sao lưu trong ổ Box không phải 700"; exit 1; }
+     [ -z "$(ls -A /mnt/onebee-sao-luu)" ] || { echo "FAIL  Mặc định mà vẫn ghi ra ổ ngoài"; exit 1; }
+     echo "PASS  Bộ cài tự tạo kho sao lưu trong ổ dữ liệu Box, không cần gắn ổ"
+     onebee-box khoi-tao | tail -1 | grep -q "đã có sẵn" || { echo "FAIL  khoi-tao chạy lại không nhận kho đã có"; exit 1; }
      onebee-box khoi-phuc-thu | tail -1 | tee /root/kp.txt; grep -q "^ĐẠT" /root/kp.txt || exit 1
      echo "PASS  Sao lưu/khôi phục Box"
      onebee-box in-khoa > /root/khoa.txt
@@ -176,6 +178,9 @@ box 'onebee-box sao-luu > /root/sl.log 2>&1 || { tail -20 /root/sl.log; exit 1; 
      [ "${n}" = 1 ] || { echo "FAIL  Box không dọn được kho máy trạm (còn ${n} bản)"; exit 1; }
      echo "PASS  Box dọn được bản cũ trong kho máy trạm (máy trạm thì không)"'
 
+# Phòng ban (thư mục riêng, phòng khác không thấy) + máy trạm xin vào qua LAN, duyệt, từ chối + sao lưu/khôi phục theo phòng
+"${REPO_ROOT}/tests/box/check-phong-ban-xin-vao.sh" "${BOX}" "${CLIENT}"
+
 echo "===== TƯỜNG LỬA: CHỈ MẠNG LAN CHO PHÉP VÀO BOX ====="
 # Máy trạm cùng mạng với Box → vào được. Đổi danh sách cho phép sang mạng khác (giả lập máy trạm ở Wi-Fi khách)
 # → bị chặn cả dịch vụ Docker (AI, trang giới thiệu, kho sao lưu) lẫn dịch vụ trên Box (thư mục chung).
@@ -244,12 +249,20 @@ echo "===== BẬT / TẮT HTTPS (CA riêng + Caddy) ====="
 echo "===== XOAY KHÓA (máy trạm + Box) ====="
 "${REPO_ROOT}/tests/box/check-xoay-khoa.sh" "${BOX}" "${CLIENT}"
 
-echo "===== CHƯA GẮN Ổ SAO LƯU ====="
-box 'umount /mnt/onebee-sao-luu
-     if onebee-box sao-luu > /root/sl3.log 2>&1; then echo "FAIL  Vẫn sao lưu khi chưa gắn ổ"; exit 1; fi
-     grep -q "Chưa gắn ổ sao lưu" /root/sl3.log || { cat /root/sl3.log; exit 1; }
-     [ -z "$(ls -A /mnt/onebee-sao-luu)" ] || { echo "FAIL  Đã ghi vào ổ hệ thống"; exit 1; }
-     echo "PASS  Chưa gắn ổ ngoài thì từ chối sao lưu, không ghi vào ổ hệ thống"'
+echo "===== PHƯƠNG ÁN PHỤ: Ổ NGOÀI (onebee_box_backup_o_ngoai: true) ====="
+# Bật tạm trong lệnh đã cài (như bộ cài dựng khi đặt cờ), kiểm ổ ngoài gắn/chưa gắn, rồi trả lại mặc định
+box 'C=/usr/local/lib/onebee-box/common.sh; cp "${C}" /root/common.sh.goc
+     sed -i -E "s#^BACKUP_O_NGOAI=.*#BACKUP_O_NGOAI=\"true\"#; s#^BACKUP_REPO=.*#BACKUP_REPO=\"/mnt/onebee-sao-luu/restic-box\"#" "${C}"
+     onebee-box khoi-tao | tail -1
+     onebee-box sao-luu > /root/sl-o-ngoai.log 2>&1 || { tail -20 /root/sl-o-ngoai.log; cp /root/common.sh.goc "${C}"; exit 1; }
+     [ -f /mnt/onebee-sao-luu/restic-box/config ] || { echo "FAIL  Bật ổ ngoài mà không ghi ra ổ ngoài"; cp /root/common.sh.goc "${C}"; exit 1; }
+     echo "PASS  Phương án phụ: sao lưu ra ổ ngoài đã gắn"
+     umount /mnt/onebee-sao-luu
+     if onebee-box sao-luu > /root/sl3.log 2>&1; then echo "FAIL  Vẫn sao lưu khi chưa gắn ổ"; cp /root/common.sh.goc "${C}"; exit 1; fi
+     grep -q "Chưa gắn ổ sao lưu" /root/sl3.log || { cat /root/sl3.log; cp /root/common.sh.goc "${C}"; exit 1; }
+     [ -z "$(ls -A /mnt/onebee-sao-luu)" ] || { echo "FAIL  Đã ghi vào ổ hệ thống"; cp /root/common.sh.goc "${C}"; exit 1; }
+     cp /root/common.sh.goc "${C}"
+     echo "PASS  Phương án phụ: chưa gắn ổ ngoài thì từ chối sao lưu, không ghi vào ổ hệ thống"'
 
 echo "===== KHỞI ĐỘNG LẠI BOX ====="
 docker restart "${BOX}" >/dev/null

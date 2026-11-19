@@ -53,7 +53,7 @@
     group: root
     mode: preserve
     directory_mode: "0755"
-  loop: [ket-noi-box, backup-client, ai-cli, quan-ly-tap-trung]
+  loop: [ket-noi-box, backup-client, ai-cli, quan-ly-tap-trung, phong-ban]
 
 - name: Cài công cụ báo cáo và cập nhật máy trạm
   ansible.builtin.copy:
@@ -67,6 +67,32 @@
     - {src: onebee-bao-cao-tuan.py, mode: "0750"}
     - {src: cap-nhat-may-tram.yml, mode: "0640"}
     - {src: dong-bo-may-tram.yml, mode: "0640"}
+
+# Phòng ban (sổ do lệnh onebee-box ghi): nhóm + tài khoản pb-<mã>, thư mục riêng, chia sẻ Samba — sau khi lệnh onebee-box
+# (box-stack) và Samba đã cài. Sổ không đổi thì không đổi gì (changed=0)
+- name: Dựng phòng ban từ sổ (nhóm, thư mục riêng, chia sẻ Samba)
+  ansible.builtin.command: /usr/local/sbin/onebee-box dong-bo-phong
+  register: onebee_dong_bo_phong
+  changed_when: "'DA_DOI' in onebee_dong_bo_phong.stdout"
+
+# Máy trạm xin vào: động cơ quy trình ghi yêu cầu / quyết định duyệt vào thư mục xin-vao → systemd path gọi
+# "onebee-box xu-ly-xin-vao" (root cấp máy, mã hóa cấu hình gửi về); hẹn giờ 15 phút dọn yêu cầu quá 24 giờ
+- name: Cài dịch vụ xử lý máy trạm xin vào
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: [onebee-xin-vao.service, onebee-xin-vao.path, onebee-xin-vao.timer]
+
+- name: Bật dịch vụ xử lý máy trạm xin vào (theo dõi thư mục + hẹn giờ dọn)
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop: [onebee-xin-vao.path, onebee-xin-vao.timer]
 
 # CA mới / HTTPS bật hoặc tắt → đẩy cấu hình mới (CA, địa chỉ https, cờ BOX_HTTPS) xuống mọi máy đã cấp
 # NGAY CUỐI bộ cài, khi các công cụ mới đã chép xong.

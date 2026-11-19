@@ -2,6 +2,35 @@
 
 ## [Unreleased]
 
+## [2.1.0] — 19/11/2026 — Phòng ban, máy trạm xin vào Box, sao lưu vào ổ Box
+
+### Thêm
+- **Phòng ban**:
+  - Tạo phòng ban trên Box bằng `sudo onebee-box them-phong <mã> "<tên>" [gói…]`.
+  - Mỗi phòng có thư mục Samba riêng `\\<Box>\pb-<mã>` với tài khoản và mật khẩu riêng; phòng khác không vào được và không thấy cả tên.
+  - Mỗi phòng có danh sách phần mềm riêng, được cài sẵn lên máy của phòng.
+  - Máy trạm gắn thư mục phòng tại `/mnt/phongban` và có lối tắt trong menu.
+  - Thêm các lệnh `danh-sach-phong`, `chuyen-phong`, `xoa-phong` (giữ dữ liệu) và `doi-mat-khau-phong` (khi mất máy).
+  - `them-may <tên> [<mã>]` nhận thêm phòng.
+- **Máy trạm xin vào Box, duyệt trên web**:
+  - Trên máy trạm, `sudo ./desktop/onebee-xin-vao` tự tìm Box trong LAN và gửi yêu cầu.
+  - Máy trạm và web Box cùng hiện một mã đối chiếu 6 số. Quản trị so mã, chọn phòng rồi bấm Duyệt ở thẻ **[M] Máy trạm** của Sổ điều hành.
+  - Box cấp khóa như `them-may` và gửi cấu hình đã mã hóa riêng cho máy đó; máy tự cài, không còn chép `may-tram.env` bằng tay.
+  - Duyệt trên dòng lệnh: `xin-vao`, `duyet-may`, `tu-choi-may`.
+  - Chi tiết: `docs/huong-dan/phong-ban-va-may-xin-vao.md`, ADR 0009.
+- **Sao lưu theo phòng**:
+  - Đêm 23:00, Box chụp mỗi phòng một bản riêng (nhãn `phong-<mã>`).
+  - `sudo onebee-box khoi-phuc-phong <mã>` lấy lại riêng một phòng vào thư mục `khoi-phuc-<ngày-giờ>` của phòng đó.
+  - `khoi-phuc-toan-bo` lấy lại mọi phòng.
+  - Sao lưu `/home` của máy trạm có thêm nhãn phòng.
+
+### Thay đổi
+- **Sao lưu Box mặc định vào ổ dữ liệu của Box** (`/srv/onebee/sao-luu/restic-box`): bộ cài tự tạo kho sao lưu, Box sao lưu 23:00
+  ngay từ đêm đầu mà không cần gắn ổ. Ổ sao lưu ngoài thành **phương án phụ**, bật bằng `onebee_box_backup_o_ngoai: true`
+  (giữ nguyên cách làm cũ: chưa gắn ổ thì không sao lưu). Ở mặc định, ổ dữ liệu đã dùng trên 90% thì lần sao lưu dừng để không
+  làm đầy ổ; `chan-doan` và trang chủ báo nơi lưu. Box nâng cấp mà đang có kho cũ ở ổ ngoài: bộ cài nhắc đặt cờ nếu muốn giữ ổ ngoài.
+  Giới hạn: ở mặc định, hỏng ổ Box là mất cả bản sao lưu Box.
+
 ## [2.0.3] — 18/11/2026 — Tường lửa Box theo kịp khi đổi mạng
 
 ### Sửa

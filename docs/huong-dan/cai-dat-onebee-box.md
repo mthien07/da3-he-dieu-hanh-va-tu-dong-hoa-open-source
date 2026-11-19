@@ -73,7 +73,7 @@ Mật khẩu và khóa đang đi qua LAN dạng rõ ở chế độ HTTP. Bật 
 6. Kỹ thuật vào Box qua Tailscale: thêm dòng `/etc/hosts` `<IP Tailscale của Box> box.<mã đơn vị>.onebee.internal`, mở `https://box.<mã đơn vị>.onebee.internal/` (Trợ lý AI hỏi bằng lệnh `hoi` trên máy trạm; mở bằng IP 100.x trần không dùng được).
    Mỗi khách dùng **một hồ sơ Firefox riêng** (CA của khách A chỉ cấp cho tên của khách A, nhưng các khách hay trùng dải `192.168.1.x`).
 7. Hoàn tác: `onebee_box_https: false` → chạy lại bộ cài (máy trạm tự nhận cờ `BOX_HTTPS=0`, về HTTP).
-Hết hạn CA trung gian (1 năm) được gia hạn tự động mỗi đêm khi lệnh sao lưu 23:00 chạy — bước gia hạn chạy trước khi kiểm ổ sao lưu, nên vẫn chạy cả khi chưa gắn ổ;
+Hết hạn CA trung gian (1 năm) được gia hạn tự động mỗi đêm khi lệnh sao lưu 23:00 chạy — bước gia hạn chạy trước khi kiểm nơi lưu, nên vẫn chạy cả khi ổ ngoài (nếu bật) chưa gắn;
 `sudo onebee-box trang-thai` hiện số ngày còn lại.
 
 ### Thư mục chung (Samba): chỉ SMB 3.1.1 + mã hóa
@@ -92,10 +92,12 @@ Thử trước trên 1 máy Windows 10 và 1 máy Linux Mint rồi mới áp cho
    các dịch vụ của Box; khi đã cấu hình email, dịch vụ nào ngừng sẽ có email báo.
 3. **Email báo cáo**: làm theo mục 4 của [dung-tro-ly-ai-va-quy-trinh-tu-dong.md](dung-tro-ly-ai-va-quy-trinh-tu-dong.md).
 4. **Thư mục chung**: tài khoản `onebee`, mật khẩu xem bằng `sudo cat /etc/onebee-box/secrets/samba-onebee`.
-5. **Ổ sao lưu**: gắn ổ ngoài vào `/mnt/onebee-sao-luu`. Khai báo trong `/etc/fstab` có `nofail` để máy vẫn khởi động
+5. **Sao lưu Box**: mặc định Box sao lưu 23:00 hằng đêm vào ổ dữ liệu của chính nó (`/srv/onebee/sao-luu/restic-box`, mã hóa);
+   bộ cài đã tạo kho, không cần gắn ổ. Bản này **cùng ổ** với dữ liệu — hỏng ổ Box là mất cả hai; ổ dữ liệu dùng trên 90% thì sao lưu dừng.
+   **Phương án phụ — ổ ngoài**: gắn ổ vào `/mnt/onebee-sao-luu`, khai báo trong `/etc/fstab` có `nofail` để máy vẫn khởi động
    khi rút ổ, ví dụ: `UUID=<uuid-ổ> /mnt/onebee-sao-luu ext4 defaults,nofail,x-systemd.device-timeout=10s 0 2`
-   (xem UUID bằng `sudo blkid`). Rồi chạy lần lượt:
-   - `sudo onebee-box khoi-tao` — tạo kho sao lưu (mã hóa) trên ổ ngoài
+   (xem UUID bằng `sudo blkid`), đặt `onebee_box_backup_o_ngoai: true` trong `group_vars/all.yml`, chạy lại bộ cài rồi `sudo onebee-box khoi-tao`.
+   Cả hai cách đều chạy tiếp:
    - `sudo onebee-box in-khoa` — **in khóa ra giấy hoặc chép USB, cất két**. Hỏng ổ Box mà mất khóa thì bản sao lưu vô dụng.
    - `sudo onebee-box khoi-phuc-thu` — phải thấy dòng `ĐẠT`
    Chưa gắn ổ thì lệnh sao lưu **từ chối chạy** (không ghi vào ổ hệ thống) — lịch 23:00 sẽ báo lỗi trong nhật ký.
@@ -157,7 +159,10 @@ kết xuất trước vào `postgres-ket-xuat/truoc-luoc-do-<tệp>.dump`. `chan
 cũ quá 48 giờ. `xoay-khoa --box` đổi cả mật khẩu CSDL (đổi trong CSDL trước, rồi mới ghi tệp bí mật).
 
 ## 4. Cấp cho máy trạm (sao lưu, Trợ lý AI, quản lý tập trung)
-Trên Box:
+**Cách mới, không chép tay:** tạo phòng ban, cho máy trạm chạy `sudo ./desktop/onebee-xin-vao` rồi bấm duyệt trên web Box.
+Máy tự nhận cấu hình, thư mục riêng của phòng và phần mềm của phòng. Xem [phong-ban-va-may-xin-vao.md](phong-ban-va-may-xin-vao.md).
+
+Cách cũ, chép cấu hình bằng tay. Trên Box (thêm `<mã-phòng>` ở cuối để gán phòng):
 ```bash
 sudo onebee-box them-may ketoan-01
 ```
@@ -174,7 +179,12 @@ Máy trạm cài bản v0.1 (file `sao-luu.env`) được bộ cài tự đổi 
 |---|---|
 | `sudo onebee-box trang-thai` | Dịch vụ đang chạy, dung lượng ổ |
 | `sudo onebee-box chan-doan [--json]` | **Tự chẩn đoán** khi có sự cố: mạng (router < 5 ms, Internet, Tailscale), ổ `/` và dữ liệu (> 80% vàng, > 90% đỏ), RAM trống (< 1,5 GB), tải CPU, các container, AI trả lời thử (> 5 giây là chậm), Samba ghi được, bản sao lưu Box (> 26 giờ), CA và chứng chỉ HTTPS (< 15 ngày) — mỗi dòng [OK]/[CẢNH BÁO]/[LỖI] kèm gợi ý sửa. Mã thoát 0/1/2; `--json` cho trang chủ |
-| `sudo onebee-box them-may <tên>` | Cấp cho máy trạm: sao lưu, khóa Trợ lý AI, quản lý tập trung |
+| `sudo onebee-box them-may <tên> [<mã-phòng>]` | Cấp cho máy trạm: sao lưu, khóa Trợ lý AI, quản lý tập trung (kèm phòng nếu có) |
+| `sudo onebee-box them-phong <mã> "<tên>" [gói…]` / `xoa-phong <mã>` / `danh-sach-phong` | Tạo hoặc sửa phòng ban (thư mục riêng, phần mềm riêng), xóa phòng (giữ dữ liệu), liệt kê — xem [phong-ban-va-may-xin-vao.md](phong-ban-va-may-xin-vao.md) |
+| `sudo onebee-box chuyen-phong <tên-máy> <mã>` | Đổi phòng của máy (chạy tiếp `dong-bo-may <tên-máy>`) |
+| `sudo onebee-box doi-mat-khau-phong <mã>` | Đổi mật khẩu Samba của phòng (khi mất máy) và đẩy xuống các máy còn lại của phòng |
+| `sudo onebee-box xin-vao` / `duyet-may <mã-yêu-cầu> <mã-phòng>` / `tu-choi-may <mã-yêu-cầu> [lý do]` | Yêu cầu xin vào của máy trạm, duyệt hoặc từ chối trên dòng lệnh (trên web: Sổ điều hành → thẻ Máy trạm) |
+| `sudo onebee-box khoi-phuc-phong <mã>` | Lấy bản sao lưu mới nhất của một phòng vào `khoi-phuc-<ngày-giờ>/` trong thư mục phòng |
 | `sudo onebee-box may-tram` | Tình trạng các máy trạm (sao lưu, cập nhật, ổ đĩa, liên lạc cuối) |
 | `sudo onebee-box cap-nhat-may <tên>` / `--tat-ca` | Cập nhật phần mềm máy trạm từ Box (lần đầu máy phải chứng minh rồi mới ghim khóa SSH) |
 | `sudo onebee-box dong-bo-may <tên>` / `--tat-ca` | Đẩy lại cấu hình (`may-tram.env`) từ Box xuống máy trạm |
@@ -188,14 +198,16 @@ Máy trạm cài bản v0.1 (file `sao-luu.env`) được bộ cài tự đổi 
 | `sudo onebee-box nap-tri-thuc` | Nạp kho tri thức (NĐ 30, mẫu soạn văn bản, tài liệu đơn vị) vào CSDL |
 | `sudo onebee-box cap-khoa-hoi <tên>` / `go-khoa-hoi <tên>` | Cấp lại / thu hồi khóa Trợ lý AI của một người |
 | `sudo onebee-box dat-mat-khau-email` / `email-thu` | Đặt mật khẩu hộp thư gửi / gửi email thử |
-| `sudo onebee-box khoi-tao` | Tạo kho sao lưu Box trên ổ ngoài (1 lần) |
-| `sudo onebee-box sao-luu` | Sao lưu Box ra ổ ngoài ngay + dọn bản cũ (tự chạy 23:00 hằng ngày) |
+| `sudo onebee-box khoi-tao` | Tạo kho sao lưu Box (bộ cài đã tự tạo trong ổ Box; chạy 1 lần sau khi bật và gắn ổ ngoài) |
+| `sudo onebee-box sao-luu` | Sao lưu Box ngay (vào ổ Box, hoặc ổ ngoài khi đã bật; mỗi phòng ban một bản riêng) + dọn bản cũ (tự chạy 23:00 hằng ngày) |
 | `sudo onebee-box in-khoa` | In khóa bí mật để cất ngoài Box |
 | `sudo onebee-box khoi-phuc-thu` | Thử khôi phục 1 file — kiểm tra sao lưu dùng được |
 | `sudo onebee-box khoi-phuc-toan-bo [file-khóa]` | Hỏng ổ Box: lấy lại toàn bộ trên Box cài lại (mục dưới) |
 
 ## Khôi phục toàn bộ khi hỏng ổ Box
-1. Cài lại Ubuntu Server 24.04 + chạy `sudo ./box/onebee-box-install.sh` (như máy mới).
+Cần **ổ sao lưu ngoài** (phương án phụ, mục 3 bước 5): sao lưu mặc định nằm trên chính ổ Box nên hỏng ổ là mất theo.
+Khi chỉ cài lại hệ điều hành mà ổ dữ liệu còn nguyên, kho `/srv/onebee/sao-luu` vẫn dùng được (bỏ bước 2).
+1. Cài lại Ubuntu Server 24.04 + chạy `sudo ./box/onebee-box-install.sh` (như máy mới; giữ `onebee_box_backup_o_ngoai: true` nếu dùng ổ ngoài).
 2. Gắn ổ sao lưu cũ vào `/mnt/onebee-sao-luu` (mục 3). Chép file khóa đã in từ `in-khoa` (hoặc gõ tay dòng `restic-box`).
 3. `sudo onebee-box khoi-phuc-toan-bo /đường/dẫn/khoa.txt` — lấy lại dữ liệu Trợ lý AI, động cơ quy trình, giám sát, sổ hỗ trợ, CSDL (đơn hàng…), thư mục chung,
    toàn bộ khóa bí mật (mật khẩu cũ dùng lại được), khóa SSH quản trị máy trạm.

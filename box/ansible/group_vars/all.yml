@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
 # Cấu hình chung OneBee Box — đổi tại đây, không sửa trong role
-onebee_box_version: "2.0.3"
+onebee_box_version: "2.1.0"
 onebee_timezone: Asia/Ho_Chi_Minh
 
 # Thư mục
@@ -100,8 +100,13 @@ onebee_box_samba_smb3: true
 onebee_box_samba_share: chung
 onebee_box_samba_user: onebee
 
-# Sao lưu Box ra ổ ngoài (restic). Thư mục đích phải nằm trên ổ khác ổ hệ thống.
-onebee_box_backup_repo: /mnt/onebee-sao-luu/restic-box
+# Sao lưu Box hằng đêm (restic, mã hóa).
+# false (mặc định): lưu thẳng vào ổ dữ liệu của Box, thư mục <onebee_box_data>/sao-luu/restic-box; bộ cài tự tạo kho, không cần gắn ổ.
+#   Giới hạn: bản sao lưu nằm cùng ổ với dữ liệu — chống xóa nhầm, sửa nhầm, lỗi phần mềm, nhưng HỎNG Ổ Box là mất cả hai.
+#   Ổ dữ liệu đã dùng trên 90% thì lần sao lưu dừng (không làm đầy ổ khiến CSDL ngừng).
+# true: lưu ra ổ ngoài gắn riêng tại thư mục cha của onebee_box_backup_repo (chưa gắn ổ thì không sao lưu).
+onebee_box_backup_o_ngoai: false
+onebee_box_backup_repo: /mnt/onebee-sao-luu/restic-box   # chỉ dùng khi onebee_box_backup_o_ngoai: true
 onebee_box_backup_time: "*-*-* 23:00:00"
 onebee_box_backup_keep: "--keep-daily 7 --keep-weekly 4 --keep-monthly 6"
 

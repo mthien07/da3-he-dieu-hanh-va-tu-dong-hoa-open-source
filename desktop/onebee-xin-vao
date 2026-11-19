@@ -1,0 +1,417 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+"""onebee-xin-vao — máy trạm xin vào OneBee Box qua mạng LAN; quản trị so mã rồi bấm Duyệt trên Sổ điều hành của Box.
+
+Cách dùng:
+  sudo ./onebee-xin-vao [--box <IP|tên>] [--ten <tên-máy>] [--phong <mã>] [--cho <phút, mặc định 60>] [--khong-cai]
+
+Giao thức (chống kẻ đứng giữa bằng cam kết + mã đối chiếu 6 số, kiểu so số của Bluetooth). H(x) = sha256 hex của chuỗi UTF-8 x.
+ 1. Tải chứng chỉ gốc của Box qua http, tự tính vân tay (ca_van_tay). Sinh khóa RSA 3072 + chứng chỉ tự ký của máy.
+ 2. Gửi tên máy, phòng, chứng chỉ → Box trả id, cam_ket, ca_van_tay (phải trùng bản tự tính).
+ 3. Gửi n_w (16 byte ngẫu nhiên) → Box mở n_b. Kiểm cam_ket = H("onebee-xin-vao-v1|cam-ket|id|khoa_bam|ca_van_tay|n_b").
+    Mã đối chiếu = H("onebee-xin-vao-v1|ma-so|id|khoa_bam|ca_van_tay|n_w|n_b") → 8 số hex đầu, chia 1.000.000.
+ 4. Người dùng so mã với màn hình Box rồi GÕ LẠI mã tại máy (không khớp thì dừng). Sau đó hỏi kết quả mỗi 5 giây tới khi được duyệt,
+    bị từ chối hoặc hết giờ chờ.
+ 5. Giải mã cấu hình bằng khóa riêng của máy (openssl cms -decrypt), kiểm chữ ký của Box bằng CA đã tải ở bước 1 (openssl cms -verify),
+    kiểm XIN_VAO_ID / XIN_VAO_N_W đúng của yêu cầu này, kiểm đúng tên máy + vân tay CA, ghi /etc/onebee/may-tram.env, chạy onebee-install.sh.
+Chỉ dùng thư viện chuẩn của Python 3 và lệnh openssl. Biến ONEBEE_XIN_VAO_GOC=<thư mục> (dùng khi kiểm thử): thêm tiền tố cho mọi
+đường dẫn hệ thống và bỏ kiểm quyền root."""
+import argparse
+import base64
+import binascii
+import hashlib
+import json
+import os
+import re
+import secrets
+import shutil
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.request
+
+TIEN_TO = "onebee-xin-vao-v1"
+MAU_TEN_MAY = re.compile(r"[a-z0-9][a-z0-9-]{0,31}")
+MAU_PHONG = re.compile(r"[a-z][a-z0-9-]{1,19}")
+MAU_HOST = re.compile(r"[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:[0-9]{1,5})?")
+MAU_HEX32 = re.compile(r"[0-9a-f]{32}")
+MAU_HEX64 = re.compile(r"[0-9a-f]{64}")
+MAU_DONG_CAU_HINH = re.compile(r"[A-Z_]+=[^\x00-\x08\x0a-\x1f\x7f]*")
+TEN_BOX_MDNS = "onebee.local"
+DUNG_LUONG_TOI_DA = 256 * 1024
+CHU_KY_HOI_GIAY = 5
+
+
+class Loi(Exception):
+    """Lỗi người dùng đọc được; main in ra stderr và thoát với mã `ma`."""
+
+    def __init__(self, thong_bao, ma=1):
+        super().__init__(thong_bao)
+        self.ma = ma
+
+
+def duong(p):
+    """Đường dẫn hệ thống, có tiền tố ONEBEE_XIN_VAO_GOC khi kiểm thử."""
+    return os.environ.get("ONEBEE_XIN_VAO_GOC", "") + p
+
+
+def bam(chuoi):
+    return hashlib.sha256(chuoi.encode("utf-8")).hexdigest()
+
+
+def cam_ket_dung(id_, khoa_bam, ca_van_tay, n_b):
+    return bam("|".join([TIEN_TO, "cam-ket", id_, khoa_bam, ca_van_tay, n_b]))
+
+
+def ma_so(id_, khoa_bam, ca_van_tay, n_w, n_b):
+    """Mã đối chiếu 6 chữ số (đệm 0) mà máy và web Box cùng tính."""
+    h = bam("|".join([TIEN_TO, "ma-so", id_, khoa_bam, ca_van_tay, n_w, n_b]))
+    return "%06d" % (int(h[:8], 16) % 1000000)
+
+
+def openssl(args, du_lieu=None):
+    try:
+        r = subprocess.run(["openssl", *args], input=du_lieu, capture_output=True, timeout=120, check=False)
+    except FileNotFoundError:
+        raise Loi("Máy chưa có lệnh openssl. Cài bằng: sudo apt install openssl") from None
+    except subprocess.TimeoutExpired:
+        raise Loi("Lệnh openssl chạy quá lâu, đã dừng.") from None
+    if r.returncode != 0:
+        raise Loi("openssl báo lỗi: " + r.stderr.decode(errors="replace").strip()[:300])
+    return r.stdout
+
+
+# ---------- Mạng ----------
+_MO = urllib.request.build_opener(urllib.request.ProxyHandler({}))   # mạng LAN: không đi qua proxy
+
+
+def dong_sach(s):
+    return re.sub(r"[\x00-\x1f\x7f]", " ", str(s))[:200]
+
+
+def goi(url, du_lieu=None):
+    """GET (du_lieu None) hoặc POST JSON. Trả (mã HTTP, nội dung bytes). Lỗi mạng → Loi."""
+    yeu_cau = urllib.request.Request(url, method="GET" if du_lieu is None else "POST")
+    if du_lieu is not None:
+        yeu_cau.data = json.dumps(du_lieu).encode("utf-8")
+        yeu_cau.add_header("Content-Type", "application/json")
+    try:
+        with _MO.open(yeu_cau, timeout=15) as r:
+            return r.status, r.read(DUNG_LUONG_TOI_DA)
+    except urllib.error.HTTPError as e:
+        return e.code, e.read(DUNG_LUONG_TOI_DA)
+    except (urllib.error.URLError, OSError) as e:
+        raise Loi(f"Không nối được tới OneBee Box ({dong_sach(getattr(e, 'reason', e))}). Kiểm tra dây mạng và địa chỉ Box.") from None
+
+
+def goi_json(url, du_lieu, mong_doi=(200,)):
+    """POST JSON, trả dict. Mã HTTP lạ → Loi kèm lý do Box báo (nếu có)."""
+    ma, nd = goi(url, du_lieu)
+    try:
+        kq = json.loads(nd.decode("utf-8")) if nd else {}
+    except (ValueError, UnicodeDecodeError):
+        kq = {}
+    if not isinstance(kq, dict):
+        kq = {}
+    if ma not in mong_doi:
+        ly_do = kq.get("loi") or kq.get("ly_do") or ""
+        raise Loi(f"OneBee Box từ chối yêu cầu (mã {ma})" + (f": {dong_sach(ly_do)}" if ly_do else "."))
+    return kq
+
+
+# ---------- Tìm Box ----------
+def phan_giai(host):
+    """host[:cổng] → (IPv4, cổng hoặc None)."""
+    ten, _, cong = host.partition(":")
+    try:
+        ip = socket.getaddrinfo(ten, None, socket.AF_INET, socket.SOCK_STREAM)[0][4][0]
+    except (socket.gaierror, OSError):
+        raise Loi(f"Không tìm thấy OneBee Box ở địa chỉ '{ten}'.") from None
+    return ip, (int(cong) if cong else None)
+
+
+def tim_box(tham_so):
+    if tham_so:
+        if not MAU_HOST.fullmatch(tham_so):
+            raise Loi("Địa chỉ Box không hợp lệ. Ví dụ: --box 192.168.1.10", 2)
+        return phan_giai(tham_so)
+    try:
+        return phan_giai(TEN_BOX_MDNS)
+    except Loi:
+        pass
+    print("Chưa tự tìm thấy OneBee Box trong mạng.")
+    while True:
+        nhap = hoi("Nhập địa chỉ OneBee Box (ví dụ 192.168.1.10): ")
+        if MAU_HOST.fullmatch(nhap):
+            try:
+                return phan_giai(nhap)
+            except Loi as e:
+                print(e)
+        else:
+            print("Địa chỉ chưa đúng, nhập lại.")
+
+
+def hoi(cau_hoi):
+    try:
+        return input(cau_hoi).strip()
+    except EOFError:
+        raise Loi("Không đọc được câu trả lời từ bàn phím. Hãy chạy lại trong cửa sổ dòng lệnh (kèm --box và --ten để bớt câu hỏi).", 2) from None
+
+
+def lay_ten_may(tham_so):
+    if tham_so is not None:
+        if not MAU_TEN_MAY.fullmatch(tham_so):
+            raise Loi("Tên máy chỉ gồm chữ thường không dấu, số, dấu gạch ngang (tối đa 32 ký tự). Ví dụ: kt-01", 2)
+        return tham_so
+    while True:
+        ten = hoi("Đặt tên cho máy này (chữ thường không dấu, số, gạch ngang; ví dụ kt-01): ")
+        if MAU_TEN_MAY.fullmatch(ten):
+            return ten
+        print("Tên chưa đúng, nhập lại.")
+
+
+# ---------- Mật mã ----------
+def doc_ca(noi_dung):
+    """Chứng chỉ CA của Box (PEM hoặc DER) → DER."""
+    for loai in ("PEM", "DER"):
+        try:
+            return openssl(["x509", "-inform", loai, "-outform", "DER"], noi_dung)
+        except Loi:
+            continue
+    raise Loi("Chứng chỉ Box tải về không đọc được. Có thể có máy lạ trả lời thay Box; báo quản trị mạng.")
+
+
+def kiem_ca_rang_buoc(der, ca_van_tay, box_ip):
+    """Nếu có onebee-kiem-ca.py cạnh bộ cài: CA phải là CA OneBee có ràng buộc tên đúng IP Box."""
+    kiem = os.path.join(os.path.dirname(os.path.realpath(__file__)), "ansible/roles/ket-noi-box/files/onebee-kiem-ca.py")
+    if not os.path.isfile(kiem):
+        return
+    r = subprocess.run([sys.executable, kiem, base64.b64encode(der).decode(), ca_van_tay, box_ip], capture_output=True, text=True, check=False)
+    if r.returncode != 0:
+        raise Loi("Chứng chỉ của máy trả lời không phải CA OneBee hợp lệ cho địa chỉ " + box_ip + ": "
+                  + r.stderr.strip().removeprefix("LỖI: ")[:300] + "\nCó thể có máy giả mạo Box trong mạng.")
+
+
+def tao_khoa(thu_muc):
+    khoa, cert = os.path.join(thu_muc, "khoa.pem"), os.path.join(thu_muc, "cert.pem")
+    openssl(["req", "-x509", "-newkey", "rsa:3072", "-nodes", "-days", "2", "-subj", "/CN=onebee-xin-vao", "-keyout", khoa, "-out", cert])
+    pub = openssl(["x509", "-in", cert, "-noout", "-pubkey"])
+    khoa_bam = hashlib.sha256(openssl(["pkey", "-pubin", "-outform", "DER"], pub)).hexdigest()
+    with open(cert, encoding="ascii") as f:
+        return khoa, cert, f.read(), khoa_bam
+
+
+def giai_ma(khoa, cert, cms_b64):
+    """Giải mã bằng khóa riêng của máy → bản đã ký của Box (DER)."""
+    try:
+        der = base64.b64decode(cms_b64, validate=True)
+    except (binascii.Error, ValueError, TypeError):
+        raise Loi("Cấu hình Box gửi về bị hỏng (không đọc được). Hãy xin vào lại.") from None
+    try:
+        return openssl(["cms", "-decrypt", "-binary", "-inform", "DER", "-inkey", khoa, "-recip", cert], der)
+    except Loi:
+        raise Loi("Không giải mã được cấu hình Box gửi về (không đúng khóa của máy này). Hãy xin vào lại.") from None
+
+
+def kiem_chu_ky(thu_muc, ca_der, da_ky):
+    """Cấu hình phải do Box ký, chuỗi chứng chỉ dẫn tới đúng CA gốc đã tải ở bước 1. Trả nội dung (văn bản) đã xác thực."""
+    ca_pem = os.path.join(thu_muc, "ca.pem")
+    with open(ca_pem, "wb") as f:
+        f.write(openssl(["x509", "-inform", "DER", "-outform", "PEM"], ca_der))
+    try:
+        nd = openssl(["cms", "-verify", "-binary", "-inform", "DER", "-CAfile", ca_pem, "-purpose", "any"], da_ky)
+        return nd.decode("utf-8")
+    except (Loi, UnicodeDecodeError):
+        raise Loi("Cấu hình không có chữ ký hợp lệ của Box — có thể có máy giả mạo. Không ghi gì vào máy.") from None
+
+
+def loc_cau_hinh(van_ban, ten, ca_van_tay, id_, n_w):
+    """Giữ các dòng KHÓA=giá trị. BẮT BUỘC: đúng một dòng XIN_VAO_ID và một dòng XIN_VAO_N_W khớp yêu cầu này (chống phát lại cấu hình cũ),
+    MAY_TRAM đúng tên máy, BOX_CA_VAN_TAY đúng bản đã tự tính ở bước 1. Hai dòng XIN_VAO_* chỉ để kiểm, không ghi vào cấu hình."""
+    dong = [d for d in van_ban.replace("\r", "").split("\n") if MAU_DONG_CAU_HINH.fullmatch(d)]
+    for khoa, mong_doi in (("XIN_VAO_ID", id_), ("XIN_VAO_N_W", n_w)):
+        if [d for d in dong if d.startswith(khoa + "=")] != [f"{khoa}={mong_doi}"]:
+            raise Loi("Cấu hình nhận về không thuộc yêu cầu xin vào này (có thể là bản cũ bị gửi lại hoặc máy giả mạo Box). Không ghi gì vào máy.")
+    dong = [d for d in dong if not d.startswith(("XIN_VAO_ID=", "XIN_VAO_N_W="))]
+
+    def gia_tri(khoa):
+        return {d.split("=", 1)[1].strip('"') for d in dong if d.startswith(khoa + "=")}
+
+    if gia_tri("MAY_TRAM") != {ten}:
+        raise Loi(f"Cấu hình nhận về không dành cho máy '{ten}'. Không ghi gì vào máy.")
+    if {v.lower() for v in gia_tri("BOX_CA_VAN_TAY")} != {ca_van_tay}:
+        raise Loi("Vân tay chứng chỉ trong cấu hình không khớp bản đã kiểm lúc đầu. Không ghi gì vào máy; có thể có máy giả mạo Box trong mạng.")
+    return dong
+
+
+# ---------- Ghi cấu hình ----------
+def ghi_kin(duong_tep, noi_dung):
+    """Ghi tệp tạm quyền 0600 cùng thư mục rồi đổi tên đè lên đích."""
+    tam = f"{duong_tep}.tmp-{os.getpid()}"
+    fd = os.open(tam, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(noi_dung)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tam, duong_tep)
+    except BaseException:
+        if os.path.exists(tam):
+            os.unlink(tam)
+        raise
+
+
+def ghi_cau_hinh(dong):
+    thu_muc = duong("/etc/onebee")
+    os.makedirs(thu_muc, mode=0o700, exist_ok=True)
+    dich = os.path.join(thu_muc, "may-tram.env")
+    if os.path.isfile(dich):
+        with open(dich, "rb") as f:
+            ghi_kin(dich + ".~", f.read())
+    ghi_kin(dich, ("\n".join(dong) + "\n").encode("utf-8"))
+    return dich
+
+
+# ---------- Luồng chính ----------
+def in_ma(ma):
+    ma_chia = f"{ma[:3]} {ma[3:]}"
+    vien = "=" * 52
+    print(f"\n{vien}\n\n        MÃ ĐỐI CHIẾU:   {ma_chia}\n\n{vien}")
+    print("Mở Sổ điều hành trên Box → thẻ Máy trạm → so đúng mã này rồi bấm Duyệt.")
+    print("Nếu mã trên Box KHÁC mã ở đây: KHÔNG bấm Duyệt, hãy bấm Từ chối và báo quản trị mạng.\n")
+
+
+def xac_nhan_ma(ma):
+    """Bắt người dùng tự gõ lại mã sau khi so với màn hình Box: không thể bấm cho qua mà không nhìn mã."""
+    nhap = hoi("Mở Sổ điều hành trên Box, so mã. Trùng thì gõ lại mã đó vào đây (khác thì bấm Ctrl+C): ")
+    if re.sub(r"\s", "", nhap) != ma:
+        raise Loi("Mã gõ vào không khớp mã của máy này. Không chờ duyệt nữa: nếu mã trên Box khác mã ở đây, hãy Từ chối yêu cầu trên Box "
+                  "và báo quản trị mạng; nếu chỉ gõ nhầm, chạy lại onebee-xin-vao.")
+
+
+def cho_ket_qua(goc, id_, so_phut, chu_ky=None):
+    chu_ky = CHU_KY_HOI_GIAY if chu_ky is None else chu_ky
+    han = time.monotonic() + so_phut * 60
+    nhac = time.monotonic()
+    loi_lien_tiep = 0
+    while True:
+        try:
+            kq = goi_json(goc + "/webhook/onebee-xin-vao-ket-qua", {"id": id_})
+            loi_lien_tiep = 0
+        except Loi as e:
+            loi_lien_tiep += 1
+            if loi_lien_tiep >= 12:
+                raise
+            if loi_lien_tiep == 1:
+                print(f"(Tạm mất liên lạc với Box, đang thử lại: {e})")
+            kq = {"trang_thai": "CHO_DUYET"}
+        tt = kq.get("trang_thai")
+        if tt == "DA_CAP":
+            return kq
+        if tt in ("TU_CHOI", "LOI"):
+            ly_do = dong_sach(kq.get("loi") or kq.get("ly_do") or "không nêu lý do")
+            raise Loi(("Quản trị đã từ chối cho máy vào: " if tt == "TU_CHOI" else "Box báo lỗi khi cấp cấu hình: ") + ly_do)
+        if tt == "KHONG_CO":
+            raise Loi("Box không còn yêu cầu này (đã hết hạn hoặc bị xóa). Hãy chạy lại onebee-xin-vao.")
+        if time.monotonic() >= han:
+            raise Loi(f"Hết {so_phut} phút mà chưa được duyệt. Nhờ quản trị sẵn sàng duyệt rồi chạy lại onebee-xin-vao.")
+        if time.monotonic() - nhac >= 60:
+            nhac = time.monotonic()
+            print(f"Vẫn đang chờ quản trị duyệt (còn khoảng {max(1, int((han - nhac) // 60))} phút)...")
+        time.sleep(chu_ky)
+
+
+def xin_vao(args):
+    if "ONEBEE_XIN_VAO_GOC" not in os.environ and os.geteuid() != 0:
+        raise Loi("Hãy chạy bằng quyền quản trị: sudo " + " ".join(sys.argv), 2)
+    if args.phong is not None and not MAU_PHONG.fullmatch(args.phong):
+        raise Loi("Mã phòng chỉ gồm chữ thường không dấu, số, gạch ngang (bắt đầu bằng chữ, 2–20 ký tự). Ví dụ: ke-toan", 2)
+    ten = lay_ten_may(args.ten)
+    box_ip, cong = tim_box(args.box)
+    goc = f"http://{box_ip}" + (f":{cong}" if cong else "")
+
+    thu_muc = tempfile.mkdtemp(prefix="onebee-xin-vao-")   # 0700
+    try:
+        # 1. CA của Box
+        ma, nd = goi(goc + "/onebee-ca.crt")
+        if ma != 200:
+            raise Loi(f"Địa chỉ {box_ip} không phải OneBee Box hoặc Box chưa sẵn sàng (mã {ma}).")
+        print(f"Đã kết nối OneBee Box {box_ip}")
+        der = doc_ca(nd)
+        ca_van_tay = hashlib.sha256(der).hexdigest()
+        kiem_ca_rang_buoc(der, ca_van_tay, box_ip)
+        khoa, cert_pem_tep, cert, khoa_bam = tao_khoa(thu_muc)
+
+        # 2. Gửi yêu cầu
+        kq = goi_json(goc + "/webhook/onebee-xin-vao",
+                      {"ten": ten, "phong": args.phong, "hostname": socket.gethostname(), "cert": cert})
+        id_, cam_ket = kq.get("id"), kq.get("cam_ket")
+        if not (isinstance(id_, str) and MAU_HEX32.fullmatch(id_) and isinstance(cam_ket, str) and MAU_HEX64.fullmatch(cam_ket)):
+            raise Loi("Box trả lời sai khuôn dạng. Hãy chạy lại; nếu vẫn vậy, báo kỹ thuật OneBee.")
+        if kq.get("ca_van_tay") != ca_van_tay:
+            raise Loi("Vân tay chứng chỉ Box trả lời khác bản vừa tải về: có thể có máy giả mạo Box trong mạng. Dừng lại và báo quản trị mạng.")
+
+        # 3. Mở nonce, kiểm cam kết, tính mã
+        n_w = secrets.token_hex(16)
+        kq = goi_json(goc + "/webhook/onebee-xin-vao-mo", {"id": id_, "n_w": n_w}, mong_doi=(200,))
+        n_b = kq.get("n_b")
+        if not (isinstance(n_b, str) and MAU_HEX32.fullmatch(n_b)):
+            raise Loi("Box trả lời sai khuôn dạng. Hãy chạy lại; nếu vẫn vậy, báo kỹ thuật OneBee.")
+        if cam_ket_dung(id_, khoa_bam, ca_van_tay, n_b) != cam_ket:
+            raise Loi("Cam kết của Box không khớp: có thể có máy giả mạo Box trong mạng. Dừng lại và báo quản trị mạng.")
+        ma_doi_chieu = ma_so(id_, khoa_bam, ca_van_tay, n_w, n_b)
+        in_ma(ma_doi_chieu)
+        xac_nhan_ma(ma_doi_chieu)
+
+        # 4. Chờ duyệt
+        kq = cho_ket_qua(goc, id_, args.cho, float(os.environ.get("ONEBEE_XIN_VAO_CHU_KY", CHU_KY_HOI_GIAY)))
+
+        # 5. Nhận cấu hình
+        da_ky = giai_ma(khoa, cert_pem_tep, kq.get("cms"))
+        van_ban = kiem_chu_ky(thu_muc, der, da_ky)
+        dong = loc_cau_hinh(van_ban, ten, ca_van_tay, id_, n_w)
+    finally:
+        shutil.rmtree(thu_muc, ignore_errors=True)
+
+    dich = ghi_cau_hinh(dong)
+    print(f"Đã được duyệt. Đã ghi cấu hình máy vào {dich}")
+    if args.khong_cai:
+        print("Bỏ qua bước cài (--khong-cai). Khi sẵn sàng chạy: sudo ./onebee-install.sh")
+        return 0
+    cai = os.path.join(os.path.dirname(os.path.realpath(__file__)), "onebee-install.sh")
+    if not os.path.isfile(cai):
+        raise Loi("Không thấy onebee-install.sh cạnh onebee-xin-vao. Cấu hình đã ghi; hãy chạy bộ cài thủ công: sudo ./onebee-install.sh")
+    print("Đang chạy bộ cài OneBee, vui lòng chờ...")
+    return subprocess.run([cai], check=False).returncode
+
+
+def doc_tham_so(argv):
+    p = argparse.ArgumentParser(prog="onebee-xin-vao", description="Xin vào OneBee Box; quản trị duyệt trên Sổ điều hành của Box.")
+    p.add_argument("--box", help="địa chỉ OneBee Box (IP hoặc tên); bỏ trống thì tự tìm onebee.local")
+    p.add_argument("--ten", help="tên máy (chữ thường không dấu, số, gạch ngang; tối đa 32 ký tự)")
+    p.add_argument("--phong", help="mã phòng ban của máy (nếu có)")
+    p.add_argument("--cho", type=int, default=60, help="số phút chờ quản trị duyệt (mặc định 60)")
+    p.add_argument("--khong-cai", action="store_true", help="chỉ nhận cấu hình, không chạy bộ cài")
+    args = p.parse_args(argv)
+    if not 1 <= args.cho <= 1440:
+        p.error("--cho phải từ 1 đến 1440 phút")
+    return args
+
+
+def main(argv=None):
+    try:
+        return xin_vao(doc_tham_so(sys.argv[1:] if argv is None else argv))
+    except Loi as e:
+        print(f"LỖI: {e}", file=sys.stderr)
+        return e.ma
+    except KeyboardInterrupt:
+        print("\nĐã hủy.", file=sys.stderr)
+        return 130
+
+
+if __name__ == "__main__":
+    sys.exit(main())
