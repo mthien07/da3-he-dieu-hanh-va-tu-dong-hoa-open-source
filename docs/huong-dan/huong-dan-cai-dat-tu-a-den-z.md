@@ -50,7 +50,7 @@ flowchart LR
 ```
 Điểm cần nhớ: dữ liệu và câu hỏi gửi Trợ lý AI **chỉ đi trong mạng LAN của văn phòng**. Internet chỉ dùng để tải phần mềm, cập nhật và gửi email báo cáo.
 
-**Thứ tự làm:** Phần 1 (chuẩn bị) → Phần 2–3 (cài Box) → Phần 4 (ổ sao lưu) → Phần 5–6 (cài từng máy trạm) → Phần 7 (kiểm tra) → Phần 8–9 (tùy chọn).
+**Thứ tự làm:** Phần 1 (chuẩn bị) → Phần 2–3 (cài Box) → Phần 4 (sao lưu Box, in khóa) → Phần 5–6 (cài từng máy trạm) → Phần 7 (kiểm tra) → Phần 8–9 (tùy chọn).
 
 ### Hình 2. Các bước cài, theo thứ tự
 ```mermaid
@@ -59,7 +59,7 @@ flowchart TD
     subgraph B["🗄️ Làm trên máy Box — 1 lần"]
         P2["<b>Phần 2</b> · Cài Ubuntu Server<br/>+ giữ IP cố định trên router"]
         P3["<b>Phần 3</b> · Cài OneBee Box<br/>khai mã đơn vị + IP → chạy bộ cài"]
-        P4["<b>Phần 4</b> · Gắn ổ sao lưu<br/>in khóa ra giấy, cất két"]
+        P4["<b>Phần 4</b> · Sao lưu Box (tự động)<br/>in khóa ra giấy, cất két"]
     end
     subgraph T["💻 Làm trên TỪNG máy trạm"]
         P5["<b>Phần 5</b> · Cài Linux Mint"]
@@ -179,7 +179,7 @@ Mở `http://<ip-box>/` từ máy khác trong mạng, bạn thấy trang giới 
 
 ![Trang giới thiệu OneBee Box 1.3.0 (chế độ sáng)](anh/01-trang-gioi-thieu-box.png)
 
-*Ảnh chụp từ một Box thử trên máy ảo, chưa gắn ổ sao lưu nên dòng **Sao lưu** hiện đỏ "Lỗi" và có dòng "Có mục cần chú ý". Gắn ổ ở Phần 4 là hết. Chế độ tối: [ảnh](anh/07-box-giao-dien-toi.png). Điện thoại: [ảnh](anh/08-box-giao-dien-dien-thoai.png).*
+*Ảnh chụp từ một Box thử bản 1.3.0 trên máy ảo, khi Box còn bắt buộc gắn ổ sao lưu ngoài nên dòng **Sao lưu** hiện đỏ "Lỗi". Từ bản này Box tự sao lưu vào ổ dữ liệu của nó, dòng này xanh sau lần sao lưu 23:00 đầu tiên. Chế độ tối: [ảnh](anh/07-box-giao-dien-toi.png). Điện thoại: [ảnh](anh/08-box-giao-dien-dien-thoai.png).*
 
 ### 3.4. Lấy mật khẩu quản trị
 ```bash
@@ -213,7 +213,7 @@ git pull --ff-only
 nano box/ansible/group_vars/all.yml                            # khai lại ĐÚNG 2 dòng như cũ (xem trong ~/group_vars-sao-luu.yml)
 sudo ./box/onebee-box-install.sh
 ```
-- **Trước khi nâng cấp:** Box chạy máy ảo thì chụp snapshot; Box máy thật thì chạy `sudo onebee-box sao-luu` (cần ổ sao lưu đã gắn, Phần 4).
+- **Trước khi nâng cấp:** Box chạy máy ảo thì chụp snapshot; Box máy thật thì chạy `sudo onebee-box sao-luu` (Phần 4).
 - Lần thử nâng cấp từ 1.2.0 lên 1.3.0 trên máy ảo mất khoảng **25 phút** (tải thêm các dịch vụ mới).
 - Xong, chân trang của trang giới thiệu Box ghi đúng số phiên bản mới (ví dụ `OneBee Box 1.3.0`). Chạy `sudo onebee-box chan-doan` để xem lại tình trạng.
 
@@ -225,7 +225,7 @@ Trang giới thiệu Box của cùng một máy, trước và sau khi nâng cấ
 
 ---
 
-## Phần 4. Gắn ổ sao lưu cho Box (bắt buộc — đừng bỏ qua)
+## Phần 4. Sao lưu của Box (tự động) và ổ ngoài (tùy chọn)
 
 ### Hình 3. Dữ liệu được sao lưu thế nào
 ```mermaid
@@ -233,21 +233,40 @@ flowchart LR
     subgraph M["💻 Máy trạm"]
         H["Thư mục /home<br/>tài liệu của nhân viên"]
     end
-    subgraph BX["🗄️ OneBee Box"]
+    subgraph BX["🗄️ OneBee Box — ổ dữ liệu"]
         K["Kho sao lưu máy trạm<br/>🔒 chỉ-thêm: máy trạm KHÔNG xóa được bản cũ<br/>→ chống mã độc tống tiền"]
-        D["Dữ liệu của Box<br/>Trợ lý AI, động cơ quy trình, thư mục chung,<br/>sổ hỗ trợ, khóa bí mật"]
+        D["Dữ liệu của Box<br/>CSDL, Trợ lý AI, động cơ quy trình,<br/>thư mục chung, khóa bí mật"]
+        S["Kho sao lưu Box<br/>/srv/onebee/sao-luu · 🔒 mã hóa"]
     end
-    O[("💽 Ổ sao lưu ngoài<br/>🔒 mã hóa")]
+    O[("💽 Ổ sao lưu ngoài<br/>tùy chọn")]
     G["📄 Tờ in-khoa<br/>cất két"]
 
     H -- "12:00 hằng ngày" --> K
-    D -- "23:00 hằng ngày" --> O
-    G -. "cần tờ này để mở ổ<br/>khi hỏng ổ Box" .-> O
+    D -- "23:00 hằng ngày<br/>(mặc định)" --> S
+    D -. "23:00 hằng ngày<br/>(khi bật ổ ngoài)" .-> O
+    G -. "cần tờ này để mở<br/>bản sao lưu Box" .-> S
 ```
-Bản sao lưu của máy trạm nằm trên **ổ trong của Box**. Bản sao lưu của Box nằm trên **ổ ngoài**. Tờ `in-khoa` là chìa khóa để mở ổ ngoài,
-nên **mất tờ này thì bản sao lưu vô dụng**.
+**Mặc định Box tự sao lưu mỗi đêm 23:00 vào chính ổ dữ liệu của nó** (`/srv/onebee/sao-luu`). Bộ cài đã tạo sẵn kho sao lưu,
+**không cần gắn ổ nào**. Bản sao lưu cứu được khi xóa nhầm, sửa nhầm, mã độc trên máy trạm hay lỗi phần mềm.
 
-Box tự sao lưu toàn bộ dữ liệu của nó **mỗi đêm 23:00** ra một ổ riêng. Không có ổ này thì hỏng ổ Box là **mất hết**.
+> ⚠️ Bản sao lưu nằm **cùng ổ** với dữ liệu: **hỏng ổ Box là mất cả hai**. Đơn vị có dữ liệu quan trọng nên bật thêm **ổ sao lưu ngoài**
+> (phần dưới). Ổ dữ liệu đã dùng trên 90% thì Box **dừng sao lưu** để không làm đầy ổ (trang chủ và `chan-doan` báo đỏ).
+
+Việc cần làm (cả hai cách):
+1. **In khóa ra giấy**:
+   ```bash
+   sudo onebee-box in-khoa
+   ```
+   **Chép tay hoặc chụp ảnh toàn bộ nội dung `in-khoa`, cất két.** Mất tờ khóa này thì bản sao lưu **không mở được**.
+2. Thử khôi phục:
+   ```bash
+   sudo onebee-box khoi-phuc-thu
+   ```
+   Phải thấy chữ **`ĐẠT`**.
+
+### 4.1. Ổ sao lưu ngoài (tùy chọn — phương án phụ)
+
+Bật khi muốn bản sao lưu Box nằm **trên ổ khác**, để hỏng ổ Box vẫn còn. Khi bật, bản sao lưu 23:00 của Box ghi ra ổ ngoài thay cho ổ Box.
 
 1. Cắm ổ ngoài vào Box. Xem tên ổ:
    ```bash
@@ -265,17 +284,16 @@ Box tự sao lưu toàn bộ dữ liệu của nó **mỗi đêm 23:00** ra mộ
    sudo systemctl daemon-reload && sudo mount -a && df -h /mnt/onebee-sao-luu
    ```
    Dòng cuối phải hiện dung lượng của ổ ngoài.
-4. Tạo kho sao lưu và **in khóa ra giấy**:
+4. Bật ổ ngoài: mở `box/ansible/group_vars/all.yml`, sửa dòng `onebee_box_backup_o_ngoai: false` thành `true`, rồi chạy lại bộ cài
+   và tạo kho trên ổ ngoài:
    ```bash
+   sudo ./box/onebee-box-install.sh
    sudo onebee-box khoi-tao
-   sudo onebee-box in-khoa
-   ```
-   **Chép tay hoặc chụp ảnh toàn bộ nội dung `in-khoa`, cất két.** Nếu ổ Box hỏng mà mất tờ khóa này, bản sao lưu **không mở được**.
-5. Thử khôi phục:
-   ```bash
    sudo onebee-box khoi-phuc-thu
    ```
-   Phải thấy chữ **`ĐẠT`**.
+   Phải thấy chữ **`ĐẠT`**. Kho cũ trong ổ Box (`/srv/onebee/sao-luu`) vẫn giữ nguyên, mở được bằng cùng khóa `in-khoa`.
+
+Muốn quay về mặc định: đặt lại `false` và chạy lại bộ cài.
 
 ---
 
@@ -496,7 +514,7 @@ Chưa có khóa nào thì Box giữ nguyên mật khẩu và in cảnh báo, đ�
 | Mất máy, nhân viên nghỉ việc | Trên Box: `sudo onebee-box thu-hoi-may <tên-máy>`. Máy đó mất quyền vào kho sao lưu, Trợ lý AI và kết nối từ xa qua VPN **ngay lập tức** |
 | Nghi lộ mật khẩu | `sudo onebee-box xoay-khoa --tat-ca --box`, gõ `xoay khoa` để xác nhận. Đổi toàn bộ mật khẩu/khóa, máy trạm đang bật tự nhận khóa mới (máy đang tắt: bật lên rồi `sudo onebee-box dong-bo-may --tat-ca`). Sau đó **in lại khóa** (`in-khoa`) cất két |
 | Nhân viên lỡ xóa file | Khôi phục từ bản sao lưu của máy trạm, xem [quan-ly-may-tram.md](quan-ly-may-tram.md) |
-| **Hỏng ổ Box** | Cài lại Ubuntu (Phần 2) và Box (Phần 3, **cùng mã đơn vị và IP**), gắn lại ổ sao lưu (Phần 4 bước 3, **không** chạy lại `mkfs`). Chép nội dung tờ `in-khoa` vào file `~/khoa.txt`, rồi chạy: `sudo onebee-box khoi-phuc-toan-bo ~/khoa.txt` → `sudo ./box/onebee-box-install.sh` → `sudo onebee-box khoi-phuc-thu`. Mật khẩu cũ dùng lại được, **máy trạm không phải làm gì** |
+| **Hỏng ổ Box** | Chỉ cứu được khi đã bật **ổ sao lưu ngoài** (mục 4.1); sao lưu mặc định nằm trên chính ổ Box nên hỏng ổ là mất theo. Cài lại Ubuntu (Phần 2) và Box (Phần 3, **cùng mã đơn vị và IP**, `onebee_box_backup_o_ngoai: true`), gắn lại ổ sao lưu (mục 4.1 bước 3, **không** chạy lại `mkfs`). Chép nội dung tờ `in-khoa` vào file `~/khoa.txt`, rồi chạy: `sudo onebee-box khoi-phuc-toan-bo ~/khoa.txt` → `sudo ./box/onebee-box-install.sh` → `sudo onebee-box khoi-phuc-thu`. Mật khẩu cũ dùng lại được, **máy trạm không phải làm gì** |
 | **Thay router, Box đổi IP** (máy trạm, SSH không vào được Box) | Từ bản **2.0.3**, Box tự nhận dải mạng mới trong khoảng **1 phút** (bản cũ hơn: khởi động lại Box). Sau đó: (1) gán lại IP cố định cho Box trên router mới (mục 2.1); (2) nếu IP Box đã khác, sửa `onebee_box_dia_chi` thành IP mới **và** đặt `onebee_box_xoay_ca: true` trong `box/ansible/group_vars/all.yml`, chạy `sudo ./box/onebee-box-install.sh`, rồi đặt lại `onebee_box_xoay_ca: false`. Cuối cùng chạy `sudo onebee-box dong-bo-may --tat-ca` để đẩy IP mới và chứng chỉ mới xuống máy trạm (máy đang tắt: bật lên rồi `sudo onebee-box dong-bo-may <tên-máy>`). Đơn vị đã khai `onebee_box_lan_cho_phep` thì sửa danh sách đó theo dải mới rồi chạy lại bộ cài |
 | Bộ cài (Box hoặc máy trạm) dừng giữa chừng, báo `fatal` và `connection timed out` | Mạng chập chờn. Kiểm tra mạng rồi **chạy lại đúng lệnh cài**. Bộ cài làm tiếp phần còn lại, chạy lại nhiều lần là an toàn |
 | `onebee-box chan-doan` báo `onebee-quy-trinh` "không khỏe (unhealthy)" nhưng trình soạn luồng vẫn mở được | Chỉ có ở Box **1.3.0** (phép kiểm tra sức khỏe của dịch vụ này sai, không phải lỗi thật). Nâng cấp lên 1.3.1 trở lên theo mục 3.5 là hết |
