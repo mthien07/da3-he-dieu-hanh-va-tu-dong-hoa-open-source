@@ -90,6 +90,17 @@ class ComposeHaiCheDo(unittest.TestCase):
             self.assertIn("127.0.0.1:1880/quy-trinh/auth/login", lenh)   # cổng và đường dẫn gốc trình soạn trong settings.js
             self.assertIn("start_period", hc)
 
+    def test_quy_trinh_gan_xin_vao_ghi_duoc_va_so_phong_ban_chi_doc_khong_cong_bo_cong(self):
+        for che_do in (False, True):
+            dv = ve(che_do)["quy-trinh"]
+            self.assertNotIn("ports", dv, che_do)
+            self.assertIn("/srv/onebee/xin-vao:/xin-vao", dv["volumes"], che_do)
+            self.assertIn("/srv/onebee/phong-ban-so:/phong-ban:ro", dv["volumes"], che_do)
+            # chỉ hai chỗ gắn mới thêm; sổ phòng ban không ghi được, không gắn thư mục bí mật
+            self.assertEqual([v for v in dv["volumes"] if "xin-vao" in v or "phong-ban" in v],
+                             ["/srv/onebee/xin-vao:/xin-vao", "/srv/onebee/phong-ban-so:/phong-ban:ro"])
+            self.assertFalse([v for v in dv["volumes"] if "secrets" in v or "pki" in v])
+
     def test_ca_gui_den_cac_cong_cu_cung_mot_nguon(self):
         # image không đổi giữa hai chế độ → chuyển HTTP ↔ HTTPS không phải tải lại gì
         a, b = ve(False), ve(True)

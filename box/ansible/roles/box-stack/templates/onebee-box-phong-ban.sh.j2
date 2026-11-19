@@ -1,0 +1,688 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# shellcheck shell=bash
+# Phòng ban và máy trạm xin vào — thư viện được lệnh onebee-box nạp vào (quản lý bởi OneBee OS, không sửa tay).
+# Sổ phòng ban ${PHONG_SO}/<mã>.json là nguồn duy nhất: dong-bo-phong dựng nhóm + tài khoản hệ thống pb-<mã>, thư mục riêng
+# ${PHONG_DIR}/<mã>, tài khoản Samba và tệp ${SAMBA_PHONG_TEP} (các chia sẻ [pb-<mã>]) từ sổ này. Mỗi phòng một mật khẩu Samba
+# (${SECRETS}/phong-<mã>-samba): máy phòng A chỉ nhận mật khẩu phòng A nên không vào được [pb-B], cũng không thấy nó
+# (access based share enum).
+# Máy trạm xin vào: động cơ quy trình (Node-RED, uid 1000) ghi yêu cầu và quyết định duyệt vào ${XIN_VAO_DIR}; lệnh này chạy bằng
+# root nên coi MỌI tệp ở đó là không tin được: đọc không theo liên kết mềm, giới hạn cỡ, kiểm dạng chặt, ghi kết quả bằng tệp tạm
+# rồi đổi tên (không chown/chmod theo đường dẫn mà kẻ chiếm động cơ quy trình có thể tráo).
+SAMBA_PHONG_TEP="/etc/onebee-box/samba-phong-ban.conf"
+# Máy đã cấp qua xin vào (mỗi dòng "<giây epoch> <tên> <id>"): NGOÀI thư mục xin-vao (động cơ quy trình ghi/xóa được ở đó),
+# chỉ root đọc. Kẻ chiếm động cơ quy trình tự duyệt được thì cũng chỉ được tối đa XIN_VAO_TOI_DA máy mỗi 24 giờ, và mỗi máy đều có cảnh báo
+XIN_VAO_NHAT_KY="/var/lib/onebee-box/xin-vao-da-cap.log"
+XIN_VAO_TOI_DA=10
+
+# Sổ phòng ban (root ghi, nên tin được; vẫn kiểm dạng khi đọc). Việc: ghi <sổ> <mã> <tên> [gói…] | doc <sổ> <mã> | ds <sổ>
+phong_py() {
+  python3 -I - "$@" <<'PY'
+import json, os, re, sys, unicodedata
+viec, so = sys.argv[1], sys.argv[2]
+MA = re.compile(r"[a-z][a-z0-9-]{1,19}")
+GOI = re.compile(r"[a-z0-9][a-z0-9+.-]{1,62}")
+
+
+def ten_hop_le(t):
+    # 1–60 ký tự, không ký tự điều khiển; không " \ $ ` (tên nằm trong dòng PHONG_BAN_TEN="…" của may-tram.env)
+    return 1 <= len(t) <= 60 and not any(unicodedata.category(c).startswith("C") or c in '"\\$`' for c in t)
+
+
+def doc(ma):
+    with open(os.path.join(so, ma + ".json"), encoding="utf-8") as f:
+        p = json.load(f)
+    if not (isinstance(p, dict) and p.get("ma") == ma and isinstance(p.get("ten"), str) and ten_hop_le(p["ten"])
+            and isinstance(p.get("phan_mem"), list)
+            and all(isinstance(g, str) and GOI.fullmatch(g) for g in p["phan_mem"])):
+        sys.exit("LỖI: sổ phòng " + ma + " sai dạng (" + os.path.join(so, ma + ".json") + ")")
+    return p
+
+
+def may_cua_phong():
+    kq = {}
+    thu_muc = os.path.join(so, "may")
+    for ten in sorted(os.listdir(thu_muc)) if os.path.isdir(thu_muc) else []:
+        try:
+            ma = open(os.path.join(thu_muc, ten), encoding="utf-8").readline().strip()
+        except OSError:
+            continue
+        kq.setdefault(ma, []).append(ten)
+    return kq
+
+
+if viec == "ghi":
+    ma, ten, goi = sys.argv[3], sys.argv[4], sys.argv[5:]
+    if not MA.fullmatch(ma):
+        sys.exit("LỖI: mã phòng chỉ gồm chữ thường không dấu, số, dấu gạch; 2–20 ký tự, bắt đầu bằng chữ (vd: ke-toan)")
+    if not ten_hop_le(ten):
+        sys.exit('LỖI: tên hiển thị 1–60 ký tự, không có ký tự điều khiển, dấu " \\ $ `')
+    sai = [g for g in goi if not GOI.fullmatch(g)]
+    if sai:
+        sys.exit("LỖI: tên gói phần mềm không hợp lệ: " + " ".join(sai) + " (gói apt, vd: gnucash libreoffice-calc)")
+    goi = list(dict.fromkeys(goi))
+    dich = os.path.join(so, ma + ".json")
+    with open(dich + ".moi", "w", encoding="utf-8") as f:
+        json.dump({"ma": ma, "ten": ten, "phan_mem": goi}, f, ensure_ascii=False)
+        f.write("\n")
+    os.chmod(dich + ".moi", 0o644)
+    os.rename(dich + ".moi", dich)
+elif viec == "doc":
+    p = doc(sys.argv[3])
+    print(p["ten"] + "\t" + " ".join(p["phan_mem"]))
+elif viec == "ds":
+    ds = sorted(f[:-5] for f in os.listdir(so) if f.endswith(".json") and MA.fullmatch(f[:-5])) if os.path.isdir(so) else []
+    if not ds:
+        print('Chưa có phòng ban nào. Tạo: sudo onebee-box them-phong <mã> "<tên>" [gói phần mềm…]')
+        sys.exit()
+    may = may_cua_phong()
+    print("%-20s  %-30s  %-30s  %s" % ("MÃ", "TÊN", "PHẦN MỀM", "MÁY TRẠM"))
+    for ma in ds:
+        p = doc(ma)
+        print("%-20s  %-30s  %-30s  %s" % (ma, p["ten"], " ".join(p["phan_mem"]) or "-", " ".join(may.get(ma, [])) or "-"))
+PY
+}
+
+# Mã phòng $1 có trong sổ?
+co_phong() { [[ "$1" =~ ${MA_PHONG_RE} && -f "${PHONG_SO}/$1.json" ]]; }
+
+# Mã phòng của máy $1 (dòng đầu tệp ${PHONG_SO}/may/<tên>); thoát 1 khi máy chưa gán phòng hoặc tệp sai dạng
+phong_cua_may() {
+  local f="${PHONG_SO}/may/$1" ma
+  [[ -f "${f}" ]] || return 1
+  ma="$(head -n 1 "${f}")"
+  [[ "${ma}" =~ ${MA_PHONG_RE} ]] || return 1
+  printf '%s\n' "${ma}"
+}
+
+# Các máy (đã cấp, chưa thu hồi) đang thuộc phòng $1
+may_cua_phong() {
+  local ten
+  while read -r ten; do
+    [[ "$(phong_cua_may "${ten}" 2>/dev/null || true)" != "$1" ]] || printf '%s\n' "${ten}"
+  done < <(may_da_cap)
+}
+
+# Gán máy $1 vào phòng $2 (ghi tệp tạm rồi đổi tên; động cơ quy trình đọc được sổ, không ghi được)
+gan_phong_may() {
+  local f="${PHONG_SO}/may/$1"
+  install -d -m 0750 -o root -g 1000 "${PHONG_SO}" "${PHONG_SO}/may"
+  printf '%s\n' "$2" >"${f}.moi"
+  chmod 0644 "${f}.moi"
+  mv -f "${f}.moi" "${f}"
+}
+
+# Năm dòng cấu hình phòng ban của máy $1 (in_cau_hinh_may gọi trong $(…) TRƯỚC khi in gì: thiếu gì thì dừng, không in cấu hình thiếu)
+cau_hinh_phong() {
+  local ten="$1" ma kq ten_phong goi
+  ma="$(phong_cua_may "${ten}")" || die "Tệp gán phòng của máy ${ten} sai dạng (${PHONG_SO}/may/${ten}) — gán lại: sudo onebee-box chuyen-phong ${ten} <mã-phòng>"
+  co_phong "${ma}" || die "Máy ${ten} gán vào phòng ${ma} không có trong sổ — gán lại: sudo onebee-box chuyen-phong ${ten} <mã-phòng>"
+  [[ -s "${SECRETS}/phong-${ma}-samba" ]] || die "Thiếu mật khẩu Samba của phòng ${ma} — chạy: sudo onebee-box dong-bo-phong"
+  kq="$(phong_py doc "${PHONG_SO}" "${ma}")" || die "Sổ phòng ${ma} hỏng — sửa lại: sudo onebee-box them-phong ${ma} \"<tên>\" [gói…]"
+  IFS=$'\t' read -r ten_phong goi <<<"${kq}"
+  echo "PHONG_BAN=${ma}"
+  echo "PHONG_BAN_TEN=\"${ten_phong}\""
+  echo "PHONG_BAN_PHAN_MEM=\"${goi}\""
+  echo "SAMBA_PHONG_USER=pb-${ma}"
+  echo "SAMBA_PHONG_PASS=$(cat "${SECRETS}/phong-${ma}-samba")"
+}
+
+nap_lai_samba() {
+  smbcontrol smbd reload-config >/dev/null 2>&1 || systemctl reload smbd >/dev/null 2>&1 \
+    || warn "Chưa nạp lại được cấu hình Samba — chạy: sudo systemctl reload smbd"
+}
+
+# Dựng phòng ban từ sổ: nhóm + tài khoản hệ thống pb-<mã> (không đăng nhập, không thư mục nhà), thư mục 2770 root:pb-<mã>,
+# tài khoản Samba (mật khẩu ${SECRETS}/phong-<mã>-samba, 20 ký tự), tệp chia sẻ ${SAMBA_PHONG_TEP}.
+# In "DA_DOI" khi có thay đổi (bộ cài Ansible báo changed đúng). Phòng đã xóa khỏi sổ chỉ mất chia sẻ (xoa-phong lo phần còn lại).
+dong_bo_phong() {
+  local ma nhom ten_phong kq mk tmp doi=0 noi_dung
+  local -a ds=() samba_co=()
+  install -d -m 0750 -o root -g 1000 "${PHONG_SO}" "${PHONG_SO}/may"
+  install -d -m 0711 -o root -g root "${PHONG_DIR}"   # chỉ đi qua được, không liệt kê được tên các phòng
+  mapfile -t ds < <(ds_ma_phong)
+  mapfile -t samba_co < <(pdbedit -L 2>/dev/null | cut -d: -f1)
+  noi_dung="# Quản lý bởi OneBee OS — onebee-box dong-bo-phong dựng từ sổ phòng ban (${PHONG_SO}), không sửa tay"$'\n'
+  for ma in "${ds[@]}"; do
+    nhom="pb-${ma}"
+    kq="$(phong_py doc "${PHONG_SO}" "${ma}")" || die "Sổ phòng ${ma} hỏng — sửa lại: sudo onebee-box them-phong ${ma} \"<tên>\" [gói…]"
+    ten_phong="${kq%%$'\t'*}"
+    getent group "${nhom}" >/dev/null || { groupadd --system "${nhom}"; doi=1; }
+    if ! getent passwd "${nhom}" >/dev/null; then
+      useradd --system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin --gid "${nhom}" "${nhom}"
+      doi=1
+    fi
+    if [[ ! -d "${PHONG_DIR}/${ma}" ]]; then
+      install -d -m 2770 -o root -g "${nhom}" "${PHONG_DIR}/${ma}"
+      doi=1
+    else
+      chown root:"${nhom}" "${PHONG_DIR}/${ma}"; chmod 2770 "${PHONG_DIR}/${ma}"
+    fi
+    if ! trong_mang "${nhom}" "${samba_co[@]}"; then
+      mk="$(secret "phong-${ma}-samba" 20)"
+      # -s: mật khẩu đọc từ stdin (không nằm trên dòng lệnh)
+      printf '%s\n%s\n' "${mk}" "${mk}" | smbpasswd -s -a "${nhom}" >/dev/null
+      doi=1
+    fi
+    noi_dung+="
+[${nhom}]
+   comment = ${ten_phong}
+   path = ${PHONG_DIR}/${ma}
+   valid users = ${nhom}
+   hosts allow = ${SAMBA_HOSTS_ALLOW}
+   guest ok = no
+   read only = no
+   force group = ${nhom}
+   create mask = 0660
+   directory mask = 2770
+   access based share enum = yes
+   include = /etc/onebee-box/samba-tu-xa.conf
+"
+  done
+  tmp="$(mktemp "${SAMBA_PHONG_TEP}.XXXXXX")"
+  printf '%s' "${noi_dung}" >"${tmp}"
+  if cmp -s "${tmp}" "${SAMBA_PHONG_TEP}"; then
+    rm -f "${tmp}"
+  else
+    chmod 0644 "${tmp}"
+    mv -f "${tmp}" "${SAMBA_PHONG_TEP}"
+    nap_lai_samba
+    doi=1
+  fi
+  [[ ${doi} -eq 0 ]] || echo "DA_DOI"
+}
+
+cmd_them_phong() {
+  local ma="${1:-}" ten="${2:-}" moi=1 t
+  local -a may=()
+  [[ "${ma}" =~ ${MA_PHONG_RE} && -n "${ten}" ]] \
+    || die 'Cách dùng: sudo onebee-box them-phong <mã> "<tên hiển thị>" [gói phần mềm…] — mã: chữ thường không dấu, số, dấu gạch, 2–20 ký tự, bắt đầu bằng chữ (vd: ke-toan)'
+  shift 2
+  [[ ! -f "${PHONG_SO}/${ma}.json" ]] || moi=0
+  install -d -m 0750 -o root -g 1000 "${PHONG_SO}" "${PHONG_SO}/may"
+  phong_py ghi "${PHONG_SO}" "${ma}" "${ten}" "$@" || exit 1
+  dong_bo_phong >/dev/null
+  if [[ ${moi} -eq 1 ]]; then
+    echo "Đã tạo phòng ${ma} (${ten}): thư mục ${PHONG_DIR}/${ma}, chia sẻ Samba [pb-${ma}] — chỉ máy của phòng vào được và thấy được."
+    echo "Gán máy: máy mới cấp: sudo onebee-box them-may <tên-máy> ${ma}; máy đã cấp: sudo onebee-box chuyen-phong <tên-máy> ${ma}; máy tự xin vào: duyệt trên web Box, chọn phòng ${ma}."
+  else
+    echo "Đã cập nhật phòng ${ma} (${ten})."
+    mapfile -t may < <(may_cua_phong "${ma}")
+    for t in "${may[@]}"; do
+      echo "Đẩy tên/phần mềm mới xuống máy ${t}: sudo onebee-box dong-bo-may ${t}"
+    done
+  fi
+}
+
+cmd_xoa_phong() {
+  local ma="${1:-}" f ten thoi_diem
+  local -a con=()
+  co_phong "${ma}" || die "Cách dùng: sudo onebee-box xoa-phong <mã-phòng-có-trong-sổ> (xem: sudo onebee-box danh-sach-phong)"
+  for f in "${PHONG_SO}"/may/*; do
+    [[ -f "${f}" ]] || continue
+    ten="$(basename "${f}")"
+    [[ "$(head -n 1 "${f}")" != "${ma}" ]] || con+=("${ten}")
+  done
+  [[ -z "${con[*]:-}" ]] || die "Phòng ${ma} còn máy: ${con[*]} — chuyển sang phòng khác (chuyen-phong) hoặc thu hồi máy (thu-hoi-may) trước"
+  thoi_diem="$(date +%Y%m%d-%H%M%S)"
+  # Giữ dữ liệu: thư mục đổi tên (không còn chia sẻ, vẫn nằm trong bản sao lưu cũ); tài khoản hệ thống giữ để tệp vẫn mang tên nhóm
+  [[ ! -d "${PHONG_DIR}/${ma}" ]] || mv "${PHONG_DIR}/${ma}" "${PHONG_DIR}/.da-xoa-${ma}-${thoi_diem}"
+  rm -f "${PHONG_SO}/${ma}.json"
+  smbpasswd -x "pb-${ma}" >/dev/null 2>&1 || true   # mật khẩu Samba cũ của phòng hết hiệu lực
+  rm -f "${SECRETS}/phong-${ma}-samba"
+  dong_bo_phong >/dev/null
+  echo "Đã xóa phòng ${ma}: chia sẻ [pb-${ma}] gỡ khỏi Samba. Dữ liệu giữ ở ${PHONG_DIR}/.da-xoa-${ma}-${thoi_diem}"
+}
+
+cmd_danh_sach_phong() { phong_py ds "${PHONG_SO}"; }
+
+cmd_chuyen_phong() {
+  local ten="${1:-}" ma="${2:-}" cu
+  if ! [[ "${ten}" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]] || ! la_may_da_cap "${ten}"; then
+    die "Cách dùng: sudo onebee-box chuyen-phong <tên-máy-đã-cấp> <mã-phòng>"
+  fi
+  co_phong "${ma}" || die "Không có phòng ${ma} (xem: sudo onebee-box danh-sach-phong)"
+  cu="$(phong_cua_may "${ten}" 2>/dev/null || true)"   # đọc TRƯỚC khi gán phòng mới
+  gan_phong_may "${ten}" "${ma}"
+  echo "Đã chuyển máy ${ten} sang phòng ${ma}. Đẩy cấu hình mới (mật khẩu thư mục phòng, phần mềm) xuống máy: sudo onebee-box dong-bo-may ${ten}"
+  if [[ -n "${cu}" && "${cu}" != "${ma}" ]] && co_phong "${cu}"; then
+    echo "LƯU Ý: máy ${ten} vẫn biết mật khẩu thư mục phòng cũ ${cu} — đổi: sudo onebee-box doi-mat-khau-phong ${cu}"
+  fi
+}
+
+# Đổi mật khẩu Samba của phòng (máy của phòng bị mất / thu hồi vẫn giữ mật khẩu cũ) rồi đẩy cấu hình mới xuống các máy còn trong phòng.
+# Đổi trong Samba TRƯỚC, ghi tệp bí mật SAU: Samba từ chối thì tệp cũ còn nguyên (vẫn khớp Samba). Mật khẩu cũ cất thành
+# cu-phong-<mã>-samba-<thời điểm> (in-khoa vẫn in, như kho cũ của them-may)
+cmd_doi_mat_khau_phong() {
+  local ma="${1:-}" moi thoi_diem t rc=0
+  local -a ds=()
+  co_phong "${ma}" || die "Cách dùng: sudo onebee-box doi-mat-khau-phong <mã-phòng-có-trong-sổ> (xem: sudo onebee-box danh-sach-phong)"
+  moi="$(ngau_nhien 20)"
+  [[ "${moi}" =~ ^[A-Za-z0-9]{20}$ ]] || die "Không sinh được mật khẩu mới"
+  # Tài khoản đã có: không dùng -a; -s: mật khẩu đọc từ stdin (không nằm trên dòng lệnh)
+  printf '%s\n%s\n' "${moi}" "${moi}" | smbpasswd -s "pb-${ma}" >/dev/null \
+    || die "Samba không nhận mật khẩu mới của pb-${ma} (tài khoản chưa có? chạy: sudo onebee-box dong-bo-phong) — mật khẩu cũ giữ nguyên"
+  thoi_diem="$(date +%Y%m%d-%H%M%S)"
+  [[ ! -e "${SECRETS}/phong-${ma}-samba" ]] || mv "${SECRETS}/phong-${ma}-samba" "${SECRETS}/cu-phong-${ma}-samba-${thoi_diem}"
+  (umask 077; printf '%s' "${moi}" >"${SECRETS}/phong-${ma}-samba")
+  echo "Đã đổi mật khẩu Samba của phòng ${ma} — mật khẩu cũ hết hiệu lực ngay."
+  mapfile -t ds < <(may_cua_phong "${ma}")
+  if [[ -z "${ds[*]:-}" ]]; then
+    echo "Phòng ${ma} không có máy để đồng bộ."
+    return 0
+  fi
+  echo "Đẩy cấu hình mới xuống máy của phòng: ${ds[*]}"
+  CHON_MAY=("${ds[@]}"); VAO_DUOC=()
+  cmd_dong_bo_may_da_chon || rc=$?
+  for t in "${ds[@]}"; do
+    # CHON_MAY còn lại = máy dựng được cấu hình; VAO_DUOC = máy vào được qua SSH; rc ≠ 0 = playbook chưa xong ở đâu đó
+    if ! trong_mang "${t}" "${CHON_MAY[@]}" || ! trong_mang "${t}" "${VAO_DUOC[@]}" || [[ ${rc} -ne 0 ]]; then
+      warn "Máy ${t} có thể chưa nhận mật khẩu thư mục phòng mới (máy tắt, không vào được hoặc đẩy lỗi — xem cảnh báo ở trên). Khi máy bật lại chạy: sudo onebee-box dong-bo-may ${t}"
+    fi
+  done
+  echo "Xong. In lại khóa để cất: sudo onebee-box in-khoa."
+}
+
+# ---- Máy trạm xin vào ----
+# Tệp trong ${XIN_VAO_DIR} (động cơ quy trình ghi, root đọc). Việc:
+#   bang <thư mục>                                    bảng yêu cầu (chuỗi đã lọc ký tự điều khiển trước khi in ra màn hình)
+#   xem <thư mục> <id>                                 tên, hostname, IP, mã đối chiếu, phòng xin (cách bằng tab) — cho duyet-may
+#   ghi-quyet <thư mục> <id> <sổ> duyet|tu-choi <người duyệt> <phòng|lý do>
+#   kiem <thư mục> <id> <sổ> <vân tay CA> <thư mục tạm>   kiểm yêu cầu đã duyệt; ghi cert.pem; in tên, phòng, khoa_bam, n_w,
+#                                                      người duyệt, IP (cách bằng tab, hai trường cuối đã lọc); lỗi ghi <tạm>/loi
+#   ket-qua <thư mục> <id> DA_CAP <tệp cms base64> | LOI <lý do>
+#   don <thư mục>                                      xóa mọi <id>.* quá 24 giờ
+xin_vao_py() {
+  python3 -I - "$@" <<'PY'
+import hashlib, json, os, re, stat, sys, time, unicodedata
+HEX32 = re.compile(r"[0-9a-f]{32}")
+HEX64 = re.compile(r"[0-9a-f]{64}")
+TEN = re.compile(r"[a-z0-9][a-z0-9-]{0,31}")
+MA = re.compile(r"[a-z][a-z0-9-]{1,19}")
+TEP_ID = re.compile(r"([0-9a-f]{32})\..+")
+viec, d = sys.argv[1], sys.argv[2]
+
+
+class Loi(Exception):
+    pass
+
+
+def doc(ten, gioi_han):
+    # Không theo liên kết mềm (O_NOFOLLOW), không treo ở FIFO (O_NONBLOCK), chỉ tệp thường, giới hạn cỡ
+    try:
+        fd = os.open(os.path.join(d, ten), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError:
+        raise Loi("Không có yêu cầu này (hoặc không đọc được)")
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or st.st_size > gioi_han:
+            raise Loi("Tệp yêu cầu sai dạng")
+        du_lieu = os.read(fd, gioi_han + 1)
+    finally:
+        os.close(fd)
+    try:
+        v = json.loads(du_lieu.decode("utf-8"))
+    except (ValueError, RecursionError):   # RecursionError: JSON lồng quá sâu
+        raise Loi("Tệp yêu cầu sai dạng")
+    if not isinstance(v, dict):
+        raise Loi("Tệp yêu cầu sai dạng")
+    return v
+
+
+def co(ten):
+    return os.path.lexists(os.path.join(d, ten))
+
+
+def ghi(ten, obj, uid, gid, mode):
+    # Tệp tạm tạo mới (O_EXCL, không theo liên kết mềm), đổi chủ/quyền qua fd, rồi đổi tên (người đọc không thấy tệp dở)
+    dich = os.path.join(d, ten)
+    tam = dich + ".tam"
+    try:
+        os.unlink(tam)
+    except FileNotFoundError:
+        pass
+    fd = os.open(tam, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    try:
+        if os.geteuid() == 0:
+            os.fchown(fd, uid, gid)
+        os.fchmod(fd, mode)
+        b = (json.dumps(obj, ensure_ascii=False) + "\n").encode("utf-8")
+        while b:
+            b = b[os.write(fd, b):]
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    os.rename(tam, dich)
+
+
+def sach(x, n=40):
+    # Chuỗi không tin được, sắp in ra cửa sổ dòng lệnh của quản trị: bỏ ký tự điều khiển (chống chèn mã thoát), cắt ngắn
+    if x is None or isinstance(x, (dict, list)):
+        return "-"
+    s = "".join(c for c in str(x) if not unicodedata.category(c).startswith("C"))
+    if len(s) > n:
+        s = s[:n - 1] + "…"
+    return s or "-"
+
+
+def ma_so(v):
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, int) and 0 <= v < 1000000:
+        return "%06d" % v
+    if isinstance(v, str) and re.fullmatch(r"[0-9]{6}", v):
+        return v
+    return None
+
+
+def H(s):
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()
+
+
+def yeu_cau(id_):
+    if not HEX32.fullmatch(id_):
+        raise Loi("Mã yêu cầu phải là 32 ký tự hex")
+    yc = doc(id_ + ".json", 16384)
+    if yc.get("id") != id_:
+        raise Loi("Mã yêu cầu trong tệp không khớp tên tệp")
+    return yc
+
+
+def da_quyet(id_):
+    return any(co(id_ + x) for x in (".duyet.json", ".tu-choi.json", ".ket-qua"))
+
+
+def bang():
+    ds = []
+    for ten in os.listdir(d):
+        m = re.fullmatch(r"([0-9a-f]{32})\.json", ten)
+        if not m:
+            continue
+        id_ = m.group(1)
+        try:
+            yc = yeu_cau(id_)
+        except Loi:
+            continue
+        if co(id_ + ".ket-qua"):
+            try:
+                kq = doc(id_ + ".ket-qua", 65536)
+                tt = "đã cấp" if kq.get("trang_thai") == "DA_CAP" else "lỗi: " + sach(kq.get("loi"), 30)
+            except Loi:
+                tt = "lỗi"
+        elif co(id_ + ".tu-choi.json"):
+            tt = "từ chối"
+        elif co(id_ + ".duyet.json"):
+            tt = "đang cấp"
+        elif ma_so(yc.get("ma_so")) is None:
+            tt = "chờ máy (bước 2)"
+        else:
+            tt = "chờ duyệt"
+        luc = yc.get("luc")
+        if not isinstance(luc, (int, float)) or isinstance(luc, bool) or luc != luc:
+            luc = 0
+        try:
+            luc_s = time.strftime("%d/%m %H:%M", time.localtime(luc)) if luc else "-"
+        except (OverflowError, OSError, ValueError):
+            luc_s = "-"
+        ds.append((luc, id_, sach(yc.get("ten"), 32), sach(yc.get("phong_xin"), 20),
+                   sach(yc.get("hostname"), 24), sach(yc.get("ip"), 15), ma_so(yc.get("ma_so")) or "-", luc_s, tt))
+    if not ds:
+        print("Không có yêu cầu xin vào nào.")
+        return
+    mau = "%-32s  %-20s  %-12s  %-24s  %-15s  %-6s  %-11s  %s"
+    print(mau % ("MÃ YÊU CẦU", "TÊN MÁY", "PHÒNG XIN", "HOSTNAME", "IP", "MÃ SỐ", "LÚC", "TRẠNG THÁI"))
+    for r in sorted(ds):
+        print(mau % (r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8]))
+    print("Duyệt: sudo onebee-box duyet-may <mã-yêu-cầu> <mã-phòng> (MÃ SỐ phải trùng mã hiện trên máy trạm); "
+          "từ chối: sudo onebee-box tu-choi-may <mã-yêu-cầu> [lý do]")
+
+
+def xem(id_):
+    yc = yeu_cau(id_)
+    if da_quyet(id_):
+        raise Loi("Yêu cầu này đã được duyệt hoặc từ chối rồi")
+    ms = ma_so(yc.get("ma_so"))
+    if ms is None:
+        raise Loi("Máy chưa làm xong bước 2 (chưa có mã đối chiếu) — đợi máy trạm hiện mã 6 số rồi duyệt")
+    print("\t".join((sach(yc.get("ten"), 32), sach(yc.get("hostname")), sach(yc.get("ip"), 45), ms, sach(yc.get("phong_xin"), 20))))
+
+
+def ghi_quyet(id_, so, loai, nguoi, gia_tri):
+    yc = yeu_cau(id_)
+    if da_quyet(id_):
+        raise Loi("Yêu cầu này đã được duyệt hoặc từ chối rồi")
+    luc = int(time.time())
+    if loai == "duyet":
+        if not (MA.fullmatch(gia_tri) and os.path.isfile(os.path.join(so, gia_tri + ".json"))):
+            raise Loi("Không có phòng " + gia_tri)
+        if ma_so(yc.get("ma_so")) is None:
+            raise Loi("Máy chưa làm xong bước 2 (chưa có mã đối chiếu)")
+        ghi(id_ + ".duyet.json", {"id": id_, "phong": gia_tri, "nguoi_duyet": nguoi, "luc": luc}, 1000, 1000, 0o640)
+    else:
+        ly_do = "".join(c for c in gia_tri if not unicodedata.category(c).startswith("C"))[:200]
+        ghi(id_ + ".tu-choi.json", {"id": id_, "nguoi_duyet": nguoi, "ly_do": ly_do, "luc": luc}, 1000, 1000, 0o640)
+
+
+def kiem(id_, so, ca_vt, tam):
+    yc = yeu_cau(id_)
+    dy = doc(id_ + ".duyet.json", 4096)
+    if dy.get("id") != id_:
+        raise Loi("Quyết định duyệt không khớp yêu cầu")
+    ten = yc.get("ten")
+    if not (isinstance(ten, str) and TEN.fullmatch(ten)):
+        raise Loi("Tên máy không hợp lệ")
+    phong = dy.get("phong")
+    if not (isinstance(phong, str) and MA.fullmatch(phong) and os.path.isfile(os.path.join(so, phong + ".json"))):
+        raise Loi("Phòng ban không có trong sổ")
+    ms = ma_so(yc.get("ma_so"))
+    if ms is None:
+        raise Loi("Chưa có mã đối chiếu")
+    kb, vt, ck, nb, nw = (yc.get(k) for k in ("khoa_bam", "ca_van_tay", "cam_ket", "n_b", "n_w"))
+    if not (all(isinstance(x, str) for x in (kb, vt, ck, nb, nw)) and HEX64.fullmatch(kb) and HEX64.fullmatch(vt)
+            and HEX64.fullmatch(ck) and HEX32.fullmatch(nb) and HEX32.fullmatch(nw)):
+        raise Loi("Yêu cầu thiếu khóa băm, cam kết hoặc số ngẫu nhiên")
+    if vt != ca_vt:
+        raise Loi("Vân tay CA trong yêu cầu khác CA của Box")
+    if H("onebee-xin-vao-v1|cam-ket|" + id_ + "|" + kb + "|" + vt + "|" + nb) != ck:
+        raise Loi("Cam kết không khớp")
+    if "%06d" % (int(H("onebee-xin-vao-v1|ma-so|" + id_ + "|" + kb + "|" + vt + "|" + nw + "|" + nb)[:8], 16) % 1000000) != ms:
+        raise Loi("Mã đối chiếu không khớp")
+    cert = yc.get("cert")
+    if not (isinstance(cert, str) and len(cert) <= 8192 and cert.lstrip().startswith("-----BEGIN CERTIFICATE-----")):
+        raise Loi("Chứng chỉ không hợp lệ")
+    fd = os.open(os.path.join(tam, "cert.pem"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(cert)
+    print("\t".join((ten, phong, kb, nw, sach(dy.get("nguoi_duyet"), 64), sach(yc.get("ip"), 45))))
+
+
+def ket_qua(id_, trang_thai, gia_tri):
+    if not HEX32.fullmatch(id_):
+        raise Loi("Mã yêu cầu sai dạng")
+    if trang_thai == "DA_CAP":
+        obj = {"trang_thai": "DA_CAP", "cms": open(gia_tri, encoding="ascii").read().strip()}
+    else:
+        obj = {"trang_thai": "LOI", "loi": gia_tri[:300]}
+    ghi(id_ + ".ket-qua", obj, 0, 1000, 0o640)
+
+
+def don():
+    bay_gio, cu, tep = time.time(), set(), []
+    for e in os.scandir(d):
+        m = TEP_ID.fullmatch(e.name)
+        if not m:
+            continue
+        tep.append((m.group(1), e.name))
+        try:
+            if bay_gio - e.stat(follow_symlinks=False).st_mtime > 86400:
+                cu.add(m.group(1))
+        except OSError:
+            pass
+    for id_, ten in tep:
+        if id_ in cu:
+            try:
+                os.unlink(os.path.join(d, ten))   # unlink không theo liên kết mềm
+            except IsADirectoryError:
+                pass
+            except FileNotFoundError:
+                pass
+    if cu:
+        print("Đã dọn %d yêu cầu xin vào quá 24 giờ" % len(cu))
+
+
+try:
+    if viec == "bang":
+        bang()
+    elif viec == "xem":
+        xem(sys.argv[3])
+    elif viec == "ghi-quyet":
+        ghi_quyet(sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6], sys.argv[7])
+    elif viec == "kiem":
+        try:
+            kiem(sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6])
+        except Loi as e:
+            with open(os.path.join(sys.argv[6], "loi"), "w", encoding="utf-8") as f:
+                f.write(str(e))
+            raise
+    elif viec == "ket-qua":
+        ket_qua(sys.argv[3], sys.argv[4], sys.argv[5])
+    elif viec == "don":
+        don()
+except Loi as e:
+    sys.exit("LỖI: " + str(e))
+PY
+}
+
+cmd_xin_vao() {
+  install -d -m 0700 -o 1000 -g 1000 "${XIN_VAO_DIR}"
+  xin_vao_py bang "${XIN_VAO_DIR}"
+}
+
+cmd_duyet_may() {
+  local id="${1:-}" ma="${2:-}" kq ten may ip ma_so phong_xin go
+  [[ "${id}" =~ ^[0-9a-f]{32}$ && "${ma}" =~ ${MA_PHONG_RE} ]] \
+    || die "Cách dùng: sudo onebee-box duyet-may <mã-yêu-cầu> <mã-phòng>   (xem các yêu cầu: sudo onebee-box xin-vao)"
+  co_phong "${ma}" || die "Không có phòng ${ma} (xem: sudo onebee-box danh-sach-phong)"
+  kq="$(xin_vao_py xem "${XIN_VAO_DIR}" "${id}")" || exit 1
+  IFS=$'\t' read -r ten may ip ma_so phong_xin <<<"${kq}"
+  echo "Yêu cầu ${id}: máy ${ten} (hostname ${may}, IP ${ip}) xin vào phòng ${phong_xin}; duyệt vào phòng ${ma}"
+  echo "Mã đối chiếu: ${ma_so} — PHẢI trùng mã đang hiện trên màn hình máy trạm"
+  # Ngồi trước cửa sổ dòng lệnh: gõ lại mã thấy trên máy trạm (không chỉ đọc lướt). Chạy từ tập lệnh (không có cửa sổ): bỏ qua bước này
+  if [[ -t 0 ]]; then
+    read -rp "Gõ mã 6 số đang hiện trên máy trạm để duyệt: " go || die "Đã hủy"
+    [[ "${go}" == "${ma_so}" ]] || die "Mã không khớp — KHÔNG duyệt (có thể có máy khác đứng giữa). Từ chối: sudo onebee-box tu-choi-may ${id}"
+  fi
+  xin_vao_py ghi-quyet "${XIN_VAO_DIR}" "${id}" "${PHONG_SO}" duyet "quản trị (dòng lệnh)" "${ma}" || exit 1
+  if lay_khoa_thu; then
+    xu_ly_xin_vao
+  else
+    echo "Đang có lệnh sao lưu / xoay khóa khác chạy — máy được cấp tự động ngay khi lệnh đó xong (dịch vụ onebee-xin-vao)."
+  fi
+}
+
+cmd_tu_choi_may() {
+  local id="${1:-}"
+  [[ "${id}" =~ ^[0-9a-f]{32}$ ]] || die "Cách dùng: sudo onebee-box tu-choi-may <mã-yêu-cầu> [lý do]   (xem các yêu cầu: sudo onebee-box xin-vao)"
+  shift
+  xin_vao_py ghi-quyet "${XIN_VAO_DIR}" "${id}" "${PHONG_SO}" tu-choi "quản trị (dòng lệnh)" "$*" || exit 1
+  echo "Đã từ chối yêu cầu ${id}. Máy trạm nhận kết quả ở lần hỏi kế tiếp."
+}
+
+# Cấp một yêu cầu đã duyệt (chạy trong subshell: die chỉ dừng yêu cầu này). $1 = id, $2 = thư mục tạm 0700 (người gọi dọn).
+# Lý do trả về máy trạm ghi vào $2/loi; chi tiết kỹ thuật chỉ ra stderr (nhật ký dịch vụ), không gửi cho máy chưa xác thực.
+cap_may_xin_vao() {
+  local id="$1" tam="$2" kq ten phong khoa_bam n_w nguoi ip dong bit bay_gio da_cap
+  that_bai() { printf '%s' "$1" >"${tam}/loi"; die "Yêu cầu ${id}: $1"; }
+  [[ -s "${CA_DIR}/root.crt" && -s "${CA_DIR}/inter.crt" && -s "${CA_DIR}/inter.key" ]] || that_bai "Box chưa có CA riêng"
+  kq="$(xin_vao_py kiem "${XIN_VAO_DIR}" "${id}" "${PHONG_SO}" "$(ca_van_tay)" "${tam}")" \
+    || that_bai "$(cat "${tam}/loi" 2>/dev/null || echo 'Yêu cầu không hợp lệ')"
+  IFS=$'\t' read -r ten phong khoa_bam n_w nguoi ip <<<"${kq}"
+  # Chứng chỉ máy trạm: đọc được; khóa RSA ≥ 3072 bit (cần cho RSA-OAEP); băm SPKI DER khớp khoa_bam.
+  # Độ dài + loại khóa đọc từ CHÍNH khóa công khai (text_pub), không từ -text cả chứng chỉ: subject có thể chứa chuỗi "Public-Key: (4096 bit)"
+  openssl x509 -in "${tam}/cert.pem" -noout -pubkey >"${tam}/pub.pem" 2>/dev/null || that_bai "Chứng chỉ không đọc được"
+  openssl pkey -pubin -in "${tam}/pub.pem" -outform DER -out "${tam}/spki.der" 2>/dev/null || that_bai "Chứng chỉ không đọc được"
+  mapfile -t dong < <(openssl pkey -pubin -in "${tam}/pub.pem" -noout -text_pub 2>/dev/null | head -n 2)
+  # RSA in "Public-Key: (N bit)" rồi "Modulus:"; EC/Ed25519 in dòng thứ hai khác. Khóa RSA-PSS bị chặn ở bước thử mã hóa OAEP dưới đây
+  [[ "${dong[0]:-}" =~ ^Public-Key:\ \(([0-9]+)\ bit\)$ && "${dong[1]:-}" == "Modulus:" ]] \
+    || that_bai "Chứng chỉ phải dùng khóa RSA từ 3072 bit"
+  bit="${BASH_REMATCH[1]}"
+  (( bit >= 3072 )) || that_bai "Chứng chỉ phải dùng khóa RSA từ 3072 bit"
+  [[ "$(sha256sum <"${tam}/spki.der" | cut -d' ' -f1)" == "${khoa_bam}" ]] || that_bai "Khóa băm không khớp chứng chỉ"
+  ! la_may_da_cap "${ten}" || that_bai "Tên máy đã cấp — thu hồi trước"
+  # Giới hạn số máy cấp qua xin vào trong 24 giờ (nhật ký chỉ root ghi)
+  bay_gio="$(date +%s)"
+  da_cap="$(awk -v tu=$(( bay_gio - 86400 )) '$1 ~ /^[0-9]+$/ && $1 > tu { n++ } END { print n + 0 }' "${XIN_VAO_NHAT_KY}" 2>/dev/null || echo 0)"
+  (( da_cap < XIN_VAO_TOI_DA )) || that_bai "Đã cấp quá ${XIN_VAO_TOI_DA} máy trong 24 giờ — duyệt tiếp bằng them-may trên Box"
+  # Thử mã hóa TRƯỚC khi cấp: chứng chỉ không dùng được cho CMS thì không để lại máy cấp dở
+  printf 'thu\n' | openssl cms -encrypt -binary -aes-256-gcm -outform DER -recip "${tam}/cert.pem" \
+      -keyopt rsa_padding_mode:oaep -keyopt rsa_oaep_md:sha256 -out "${tam}/thu.der" 2>/dev/null \
+    || that_bai "Chứng chỉ không dùng được để mã hóa cấu hình"
+  cap_may "${ten}" "${phong}" >/dev/null
+  ghi_nhat_ky_xin_vao "${bay_gio}" "${ten}" "${id}"
+  # Cấu hình + hai dòng gắn với lượt xin vào này (máy kiểm id và n_w của chính nó: chặn phát lại cấu hình của lượt khác)
+  (umask 077
+   in_cau_hinh_may "${ten}" >"${tam}/may-tram.env"
+   printf 'XIN_VAO_ID=%s\nXIN_VAO_N_W=%s\n' "${id}" "${n_w}" >>"${tam}/may-tram.env")
+  # KÝ bằng CA trung gian của Box rồi mới mã hóa tới chứng chỉ máy: chỉ mã hóa thì kẻ đứng giữa (có chứng chỉ công khai của máy)
+  # tự dựng được cấu hình giả mà máy vẫn nhận. Máy kiểm chữ ký bằng CA gốc (cms -verify -CAfile root.crt) sau khi giải mã.
+  # Không thêm -certfile: chứng chỉ ký đã nằm trong bản ký (thêm nữa là lỗi "certificate already present")
+  openssl cms -sign -binary -nodetach -md sha256 -signer "${CA_DIR}/inter.crt" -inkey "${CA_DIR}/inter.key" -outform DER \
+      -in "${tam}/may-tram.env" -out "${tam}/da-ky.der" \
+    || that_bai "Box đã cấp tên máy nhưng không ký được cấu hình — quản trị thu hồi máy rồi máy xin vào lại"
+  openssl cms -encrypt -binary -aes-256-gcm -outform DER -recip "${tam}/cert.pem" \
+      -keyopt rsa_padding_mode:oaep -keyopt rsa_oaep_md:sha256 -in "${tam}/da-ky.der" -out "${tam}/cms.der" \
+    || that_bai "Box đã cấp tên máy nhưng không mã hóa được cấu hình — quản trị thu hồi máy rồi máy xin vào lại"
+  base64 -w0 "${tam}/cms.der" >"${tam}/cms.b64"
+  printf '%s\t%s\t%s\t%s\n' "${ten}" "${phong}" "${nguoi}" "${ip}" >"${tam}/da-cap"
+}
+
+# Ghi một dòng vào nhật ký máy cấp qua xin vào, bỏ các dòng quá 24 giờ (tệp tạm rồi đổi tên, 0600)
+ghi_nhat_ky_xin_vao() {
+  local tmp
+  mkdir -p "$(dirname "${XIN_VAO_NHAT_KY}")"
+  tmp="$(mktemp "${XIN_VAO_NHAT_KY}.XXXXXX")"
+  { awk -v tu=$(( $1 - 86400 )) '$1 ~ /^[0-9]+$/ && $1 > tu' "${XIN_VAO_NHAT_KY}" 2>/dev/null || true
+    printf '%s %s %s\n' "$1" "$2" "$3"; } >"${tmp}"
+  chmod 0600 "${tmp}"
+  mv -f "${tmp}" "${XIN_VAO_NHAT_KY}"
+}
+
+xu_ly_mot_xin_vao() {
+  local id="$1" tam st loi ten phong nguoi ip
+  tam="$(mktemp -d)"; TAM_DON+=("${tam}")
+  set +e
+  ( set -e; cap_may_xin_vao "${id}" "${tam}" )
+  st=$?
+  set -e
+  if [[ ${st} -eq 0 ]]; then
+    xin_vao_py ket-qua "${XIN_VAO_DIR}" "${id}" DA_CAP "${tam}/cms.b64"
+    IFS=$'\t' read -r ten phong nguoi ip <"${tam}/da-cap"
+    echo "Đã cấp máy ${ten} (phòng ${phong}) cho yêu cầu ${id} — máy trạm tự nhận cấu hình rồi chạy bộ cài."
+    logger -t onebee-xin-vao "đã cấp máy ${ten} (phòng ${phong}), người duyệt ${nguoi}, IP ${ip}, yêu cầu ${id}" 2>/dev/null || true
+    # Mỗi máy cấp qua xin vào đều báo quản trị (Telegram + động cơ quy trình): lượt duyệt lạ thì thấy ngay. Gửi lỗi không hỏng việc cấp
+    timeout 60 /usr/local/bin/onebee-canh-bao INFO "Máy trạm mới vào Box" \
+        "Đã cấp máy ${ten} vào phòng ${phong}, người duyệt ${nguoi}, IP ${ip}. Không phải máy của đơn vị: sudo onebee-box thu-hoi-may ${ten}" \
+        >/dev/null 2>&1 || warn "Chưa gửi được cảnh báo cấp máy ${ten} (Telegram / động cơ quy trình)"
+  else
+    loi="$(cat "${tam}/loi" 2>/dev/null || true)"
+    [[ -n "${loi}" ]] || loi="Box không cấp được máy — quản trị xem: sudo journalctl -u onebee-xin-vao"
+    xin_vao_py ket-qua "${XIN_VAO_DIR}" "${id}" LOI "${loi}"
+    warn "Yêu cầu ${id} KHÔNG cấp: ${loi}"
+  fi
+  rm -rf "${tam}"
+}
+
+# Xử lý mọi yêu cầu đã duyệt mà chưa có kết quả, rồi dọn yêu cầu quá 24 giờ (dịch vụ onebee-xin-vao gọi, có khóa chung)
+xu_ly_xin_vao() {
+  local f id
+  install -d -m 0700 -o 1000 -g 1000 "${XIN_VAO_DIR}"
+  for f in "${XIN_VAO_DIR}"/*.duyet.json; do
+    [[ -f "${f}" && ! -L "${f}" ]] || continue
+    id="$(basename "${f}" .duyet.json)"
+    [[ "${id}" =~ ^[0-9a-f]{32}$ ]] || continue
+    [[ ! -e "${XIN_VAO_DIR}/${id}.ket-qua" && ! -L "${XIN_VAO_DIR}/${id}.ket-qua" ]] || continue
+    [[ ! -e "${XIN_VAO_DIR}/${id}.tu-choi.json" && ! -L "${XIN_VAO_DIR}/${id}.tu-choi.json" ]] || continue
+    xu_ly_mot_xin_vao "${id}"
+  done
+  xin_vao_py don "${XIN_VAO_DIR}"
+}

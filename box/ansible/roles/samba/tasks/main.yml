@@ -96,6 +96,28 @@
          include = /etc/onebee-box/samba-tu-xa.conf
   notify: Khởi động lại Samba
 
+# Phòng ban: mỗi phòng một chia sẻ [pb-<mã>] chỉ tài khoản của phòng vào được (ẩn với người khác). Nội dung tệp do
+# "onebee-box dong-bo-phong" dựng từ sổ phòng ban (role box-fleet gọi); ở đây chỉ tạo tệp rỗng lần đầu để smb.conf nạp được.
+- name: Tạo tệp chia sẻ phòng ban nếu chưa có (chạy lại bộ cài không xóa các phòng đang có)
+  ansible.builtin.copy:
+    dest: /etc/onebee-box/samba-phong-ban.conf
+    content: ""
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+
+# Cuối smb.conf (sau mọi chia sẻ khác): tệp nạp vào bắt đầu bằng các khối [pb-<mã>] riêng
+- name: Nạp các chia sẻ phòng ban vào cấu hình Samba
+  ansible.builtin.blockinfile:
+    path: /etc/samba/smb.conf
+    marker: "# {mark} ONEBEE BOX — chia sẻ phòng ban (onebee-box dong-bo-phong), không sửa tay"
+    insertafter: EOF
+    block: |
+      include = /etc/onebee-box/samba-phong-ban.conf
+    validate: testparm -s %s
+  notify: Khởi động lại Samba
+
 - name: Kiểm tra tài khoản Samba đã có chưa
   ansible.builtin.command: pdbedit -L
   register: onebee_samba_users

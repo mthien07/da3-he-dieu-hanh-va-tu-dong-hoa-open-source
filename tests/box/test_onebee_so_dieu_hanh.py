@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Kiểm thử Ứng dụng Sổ điều hành H-P-D-I (box-stack: so-dieu-hanh.html.j2, so-dieu-hanh.css, so-dieu-hanh.js), không cần Box thật.
 Trang: tĩnh, không nguồn ngoài, không innerHTML, mỗi tệp dưới 40 KB, đủ bốn khu H, P, D, I và hai khu Kho, Kế toán,
-chỉ gọi /api/, /files/, /ai/, /quy-trinh/webhook/onebee-phe-duyet;
+chỉ gọi /api/, /files/, /ai/, /quy-trinh/webhook/onebee-{phe-duyet,may-xin-vao,duyet-may};
+khu [M] Máy trạm (duyệt máy xin vào Box) chạy THẬT bằng node với DOM giả: bảng, ô chọn phòng, nút Duyệt/Từ chối gọi đúng điểm nhận;
 mã JavaScript chạy THẬT bằng node (nếu có): kiểm dữ liệu nhập, đọc số dòng, thông báo lỗi tiếng Việt, tóm tắt tuần chỉ có số liệu tổng hợp.
 Bộ cài tạo thư mục portal/site/so-dieu-hanh trước khi sinh trang; Caddyfile có tuyến sau đăng nhập; Authelia có luật theo nhóm; trang chủ và
 menu máy trạm trỏ tới ứng dụng. Chạy: python3 -m unittest"""
@@ -73,7 +74,7 @@ class TrangTinh(unittest.TestCase):
 
     def test_moi_tep_duoi_40kb(self):
         tong = sum(len(t.encode("utf-8")) for t in self.tat_ca.values())
-        self.assertLess(tong, 72 * 1024, f"cả trang (HTML + CSS + JS) {tong} byte")
+        self.assertLess(tong, 80 * 1024, f"cả trang (HTML + CSS + JS) {tong} byte")
         for ten, noi_dung in self.tat_ca.items():
             self.assertLess(len(noi_dung.encode("utf-8")), 40 * 1024, f"{ten} {len(noi_dung.encode('utf-8'))} byte")
 
@@ -112,6 +113,21 @@ class TrangTinh(unittest.TestCase):
         self.assertIn("luu-y-ai", h)     # dòng nhắc "AI có thể sai" luôn hiện cạnh kết quả
         self.assertIn("AI có thể sai", h)
 
+    def test_co_khu_m_may_tram_chi_hien_cho_quan_ly_ky_thuat(self):
+        h = self.html
+        self.assertRegex(h, r'<button [^>]*data-khu="khu-m"[^>]*id="nut-khu-m"[^>]* hidden>\[M\] Máy trạm</button>')
+        self.assertIn('<section id="khu-m" class="khu" role="tabpanel">', h)
+        for cot in ("Tên máy", "Máy", "IP", "Phòng xin", "Mã đối chiếu", "Lúc", "Trạng thái"):
+            self.assertIn(f"<th>{cot}</th>", h)
+        self.assertIn("So mã 6 số với màn hình máy trạm trước khi duyệt — khác mã thì Từ chối", h)
+        self.assertIn("sudo onebee-box them-phong", h)
+        self.assertIn('"khu-m"', self.js)
+        self.assertIn('VAI_TRO_MAY = ["quan_ly", "ky_thuat"]', self.js)
+        self.assertIn('getElementById("nut-khu-m").hidden', self.js)
+        for cam in ("alert(", "confirm(", "prompt("):
+            self.assertNotIn(cam, self.js)
+        self.assertIn("CHU_KY_TAI_MAY_MS = 10000", self.js)
+
     def test_tieu_de_ten_don_vi_thoat_html_va_mo_hinh_ai(self):
         h = render(TRANG, onebee_box_ten_don_vi='<script>alert("x")</script>')
         self.assertNotIn('<script>alert("x")', h)
@@ -125,7 +141,7 @@ class TrangTinh(unittest.TestCase):
         duong = set(re.findall(r"""["'](/(?:api|files|ai|quy-trinh)/[A-Za-z0-9_/.\-]*)""", js))
         da_giao = {"/api/toi", "/api/don_hang", "/api/yeu_cau_ho_tro", "/api/khao_sat", "/api/khao_sat_tong_hop", "/api/tinh_trang_may",
                    "/api/tep_dinh_kem", "/files/", "/ai/hoi", "/ai/tom-tat", "/quy-trinh/webhook/onebee-phe-duyet",
-                   "/api/mat_hang", "/api/ton_kho", "/api/so_kho", "/api/so_nhat_ky", "/api/bang_can_doi", "/api/rpc/them_nhap_kho"}
+                   "/quy-trinh/webhook/onebee-may-xin-vao", "/quy-trinh/webhook/onebee-duyet-may", "/api/mat_hang", "/api/ton_kho", "/api/so_kho", "/api/so_nhat_ky", "/api/bang_can_doi", "/api/rpc/them_nhap_kho"}
         self.assertEqual(duong, da_giao)
         self.assertNotIn("/ai/api/chat", js)   # dịch vụ Trợ lý chỉ mở /ai/hoi và /ai/tom-tat (Giai đoạn 3)
         self.assertNotIn("/webhook/", re.sub(r"/quy-trinh/webhook/", "", js))   # không gọi webhook không qua /quy-trinh/
@@ -249,6 +265,169 @@ class MaJavaScript(unittest.TestCase):
     def test_khong_co_ten_tuy_y_di_vao_so_lieu_gui_ai(self):
         loi_nhac = self.chay("taoLoiNhacTomTat({__proto__: {x: 1}, constructor: 'a', don_hang: {tong: 2, toString: 'b'}})")
         self.assertEqual(json.loads(loi_nhac[loi_nhac.index("{"):]), {"don_hang": {"tong": 2}})
+
+
+@unittest.skipUnless(NODE, "cần node")
+class KhuMayTram(unittest.TestCase):
+    """Chạy khu [M] bằng DOM giả tối thiểu: dựng bảng bằng textContent, gọi đúng điểm nhận Node-RED, giữ lựa chọn dở dang."""
+    HARNESS = r"""
+const vm = require('vm'), fs = require('fs');
+function El(tag) {
+  const e = { tag, children: [], attrs: {}, ls: {}, hidden: false, className: '', value: '', _t: '' };
+  e.appendChild = c => { e.children.push(c); return c; };
+  e.removeChild = c => { e.children.splice(e.children.indexOf(c), 1); };
+  Object.defineProperty(e, 'firstChild', { get: () => e.children[0] || null });
+  e.setAttribute = (k, v) => { e.attrs[k] = v; };
+  e.addEventListener = (k, f) => { e.ls[k] = f; };
+  e.contains = n => n === e || e.children.some(c => c.contains(n));
+  Object.defineProperty(e, 'textContent', { get: () => e._t + e.children.map(c => c.textContent).join('|'), set: v => { e._t = String(v); e.children = []; } });
+  return e;
+}
+const ids = {};
+['bang-may-xin-vao', 'm-chua-co-phong', 'm-loi', 'm-kq'].forEach(i => { ids[i] = El('x'); });
+const goi = [];
+let tra = null;
+const ctx = vm.createContext({
+  document: { getElementById: i => ids[i] || null, createElement: El, addEventListener() {}, hidden: false, activeElement: null },
+  window: {}, console, setTimeout, setInterval, clearInterval,
+  fetch: (url, o) => { goi.push({ url, method: o.method, body: o.body ? JSON.parse(o.body) : null });
+    return Promise.resolve({ ok: true, text: () => Promise.resolve(JSON.stringify(tra)) }); },
+});
+vm.runInContext(fs.readFileSync(process.argv[1], 'utf8'), ctx);
+const chay = b => vm.runInContext(b, ctx);
+const doi = () => new Promise(r => setTimeout(r, 30));
+const dong = () => ids['bang-may-xin-vao'].children.map(tr => tr.children.map(td => td.textContent));
+const YC = (id, tt, them) => Object.assign({ id: id.repeat(32), ten: 'kt-' + id, phong_xin: 'ke-toan', hostname: 'pc-' + id, ip: '10.0.0.' + id, ma_so: null, luc: 1700000000, trang_thai: tt }, them);
+const PB = [{ ma: 'ke-toan', ten: 'Phòng Kế toán' }, { ma: 'kho', ten: 'Phòng Kho' }];
+const kq = {};
+(async () => {
+  tra = { yeu_cau: [YC('a', 'CHO_DUYET', { ma_so: '012345' }), YC('b', 'CHO_MA'), YC('c', 'LOI', { loi: 'không mã hóa được' }), YC('d', 'DANG_CAP', { phong_xin: '' })], phong_ban: PB };
+  await chay('taiMay(true)');
+  kq.url = goi[0].url;
+  kq.dong = dong();
+  const hang = ids['bang-may-xin-vao'].children[0];
+  kq.maClass = hang.children[4].className;
+  const thaoTac = hang.children[7];
+  const oMa = thaoTac.children[0].children[0], oChon = thaoTac.children[0].children[1], nutDuyet = thaoTac.children[0].children[2];
+  kq.chonRong = oChon.children.map(o => o.value + '=' + o.textContent);
+  kq.chonGiaTri = oChon.value;
+  kq.nutHang1 = thaoTac.children[0].children.map(c => c.textContent);
+  kq.maPlaceholder = oMa.placeholder;
+  // Duyệt phải gõ lại mã 6 số: chưa gõ thì nút tắt và bấm cũng không gọi Box
+  kq.duyetTatBanDau = nutDuyet.disabled;
+  const truocMa = goi.length;
+  nutDuyet.ls.click();
+  kq.duyetThieuMa = { goi: goi.length - truocMa, kq: ids['m-kq'].textContent, loi: ids['m-kq'].className };
+  oMa.value = '01 23'; oMa.ls.input(); kq.tatKhi5So = nutDuyet.disabled;
+  oMa.value = '012 345'; oMa.ls.input(); kq.batKhi6So = !nutDuyet.disabled;
+  kq.nutHang2 = thaoTac.children[1].children.map(c => c.textContent);
+  kq.khongNutCuaDongKhac = ids['bang-may-xin-vao'].children.slice(1).map(tr => tr.children[7].textContent);
+  kq.canhBaoPhong = ids['m-chua-co-phong'].hidden;
+  // Từ chối không ghi lý do: không gọi Box
+  const truoc = goi.length;
+  thaoTac.children[1].children[1].ls.click();
+  kq.tuChoiTrong = { goi: goi.length - truoc, kq: ids['m-kq'].textContent, loi: ids['m-kq'].className };
+  // đổi phòng + gõ lý do rồi tải lại: lựa chọn dở dang còn nguyên
+  oChon.value = 'kho'; oChon.ls.change();
+  const oLy = thaoTac.children[1].children[0]; oLy.value = 'Mã lệch'; oLy.ls.input();
+  await chay('taiMay(true)');
+  const t2 = ids['bang-may-xin-vao'].children[0].children[7];
+  kq.giuChon = t2.children[0].children[1].value; kq.giuLyDo = t2.children[1].children[0].value;
+  kq.giuMa = t2.children[0].children[0].value; kq.giuNutBat = !t2.children[0].children[2].disabled;
+  // duyệt
+  tra = { yeu_cau: [], phong_ban: PB };
+  t2.children[0].children[2].ls.click();
+  await doi();
+  const post = goi.filter(g => g.method === 'POST');
+  kq.duyet = post[0]; kq.sauDuyet = goi[goi.length - 1].url; kq.thongBaoDuyet = ids['m-kq'].textContent;
+  kq.bangRong = dong();
+  // từ chối có lý do
+  tra = { yeu_cau: [YC('e', 'CHO_DUYET', { ma_so: '999000' })], phong_ban: PB };
+  await chay('taiMay(true)');
+  const t3 = ids['bang-may-xin-vao'].children[0].children[7];
+  const oLy3 = t3.children[1].children[0]; oLy3.value = '  Mã khác  '; oLy3.ls.input();
+  t3.children[1].children[1].ls.click();
+  await doi();
+  kq.tuChoi = goi.filter(g => g.method === 'POST')[1];
+  // không có phòng ban: nhắc tạo phòng, vẫn từ chối được nhưng không có ô chọn phòng/nút Duyệt
+  tra = { yeu_cau: [YC('f', 'CHO_DUYET', { ma_so: '000001' })], phong_ban: [] };
+  await chay('taiMay(true)');
+  kq.khongPhong = { canhBao: ids['m-chua-co-phong'].hidden, hang: ids['bang-may-xin-vao'].children[0].children[7].children.length,
+                    ma: ids['bang-may-xin-vao'].children[0].children[4].textContent };
+  // đang gõ trong bảng: tự tải lại bị bỏ qua, không mất chữ
+  const nTruoc = goi.length;
+  ctx.document.activeElement = ids['bang-may-xin-vao'].children[0].children[7].children[0].children[0];
+  await chay('taiMay(false)');
+  kq.boQuaKhiDangGo = goi.length === nTruoc;
+  kq.dinhDang = chay("[dinhDangMa('012345'), dinhDangMa(null), dinhDangMa('12345'), dinhDangMa('1234567'), dinhDangMa('ab1234')]");
+  kq.nhan = chay("[nhanTrangThaiMay({trang_thai:'LOI', loi:'x'}), nhanTrangThaiMay({trang_thai:'CHO_DUYET'}), nhanTrangThaiMay({trang_thai:'?'})]");
+  console.log(JSON.stringify(kq));
+})().catch(e => { console.error(e); process.exit(1); });
+"""
+
+    @classmethod
+    def setUpClass(cls):
+        r = subprocess.run([NODE, "-e", cls.HARNESS, JS], capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, r.stderr
+        cls.kq = json.loads(r.stdout)
+
+    def test_bang_yeu_cau_dung_cot_va_goi_dung_diem_nhan(self):
+        k = self.kq
+        self.assertEqual(k["url"], "/quy-trinh/webhook/onebee-may-xin-vao")
+        self.assertEqual(k["dong"][0][:3], ["kt-a", "pc-a", "10.0.0.a"])
+        self.assertEqual(k["dong"][0][3], "ke-toan")
+        self.assertEqual(k["dong"][0][4], "012 345")                 # mã đối chiếu hiển thị "123 456"
+        self.assertEqual(k["maClass"], "ma-doi-chieu")
+        self.assertEqual(k["dong"][0][6], "Chờ duyệt")
+        self.assertEqual(k["dong"][1][4], "—")                      # chưa có mã (máy chưa gửi bước 3)
+        self.assertEqual(k["dong"][1][6], "Chờ máy hiện mã")
+        self.assertEqual(k["dong"][2][6], "Lỗi: không mã hóa được")
+        self.assertEqual(k["dong"][3][3], "—")
+        self.assertEqual(k["dong"][3][6], "Đang cấp khóa")
+
+    def test_chi_dong_cho_duyet_co_nut_va_phong_mac_dinh_la_phong_xin(self):
+        k = self.kq
+        self.assertEqual(k["chonRong"], ["ke-toan=Phòng Kế toán (ke-toan)", "kho=Phòng Kho (kho)"])
+        self.assertEqual(k["chonGiaTri"], "ke-toan")
+        self.assertEqual(k["nutHang1"][-1], "Duyệt")
+        self.assertEqual(k["nutHang2"][-1], "Từ chối")
+        self.assertEqual(k["khongNutCuaDongKhac"], ["—", "—", "—"])
+        self.assertTrue(k["canhBaoPhong"])                           # có phòng ban thì ẩn dòng nhắc tạo phòng
+
+    def test_tu_choi_bat_buoc_ly_do_va_giu_lua_chon_khi_tai_lai(self):
+        k = self.kq
+        self.assertEqual(k["tuChoiTrong"], {"goi": 0, "kq": "Từ chối phải ghi lý do.", "loi": "thong-bao loi"})
+        self.assertEqual((k["giuChon"], k["giuLyDo"], k["giuMa"], k["giuNutBat"]), ("kho", "Mã lệch", "012 345", True))
+        self.assertTrue(k["boQuaKhiDangGo"])
+
+    def test_duyet_bat_buoc_go_lai_ma_6_so(self):
+        k = self.kq
+        self.assertIn("6 số", k["maPlaceholder"])
+        self.assertTrue(k["duyetTatBanDau"])                          # chưa gõ mã thì nút Duyệt tắt
+        self.assertEqual(k["duyetThieuMa"]["goi"], 0)                 # bấm vào cũng không gọi Box
+        self.assertIn("Gõ đủ 6 số", k["duyetThieuMa"]["kq"])
+        self.assertEqual(k["duyetThieuMa"]["loi"], "thong-bao loi")
+        self.assertTrue(k["tatKhi5So"])
+        self.assertTrue(k["batKhi6So"])                               # đủ 6 số (bỏ qua dấu cách) thì bật
+
+    def test_duyet_gui_phong_da_chon_roi_tai_lai_bang(self):
+        k = self.kq
+        self.assertEqual(k["duyet"]["url"], "/quy-trinh/webhook/onebee-duyet-may")
+        self.assertEqual(k["duyet"]["body"], {"id": "a" * 32, "quyet_dinh": "DUYET", "phong": "kho", "ly_do": "", "ma_so": "012345"})
+        self.assertEqual(k["sauDuyet"], "/quy-trinh/webhook/onebee-may-xin-vao")
+        self.assertIn("Đã duyệt máy kt-a vào phòng kho", k["thongBaoDuyet"])
+        self.assertEqual(k["bangRong"], [["Chưa có máy nào xin vào."]])
+        self.assertEqual(k["tuChoi"]["body"], {"id": "e" * 32, "quyet_dinh": "TU_CHOI", "phong": "", "ly_do": "Mã khác", "ma_so": ""})
+
+    def test_chua_co_phong_ban_nhac_tao_phong_va_khong_co_nut_duyet(self):
+        k = self.kq["khongPhong"]
+        self.assertFalse(k["canhBao"])
+        self.assertEqual(k["hang"], 1)                               # chỉ còn hàng lý do + Từ chối
+        self.assertEqual(k["ma"], "000 001")
+
+    def test_dinh_dang_ma_va_nhan_trang_thai(self):
+        self.assertEqual(self.kq["dinhDang"], ["012 345", "—", "—", "—", "—"])
+        self.assertEqual(self.kq["nhan"], ["Lỗi: x", "Chờ duyệt", "Không rõ"])
 
 
 class BoCaiVaNoiTrang(unittest.TestCase):

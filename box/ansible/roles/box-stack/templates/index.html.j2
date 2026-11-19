@@ -153,7 +153,7 @@
       <ul>
         <li>LibreOffice lưu mặc định dạng Word/Excel (.docx/.xlsx) — gửi cho đơn vị khác mở được ngay</li>
         <li>Tài liệu cần dùng chung: lưu vào <b>Thư mục dùng chung</b> trên Box, không gửi qua USB</li>
-        <li>Máy văn phòng tự sao lưu lên Box lúc 12:00 hằng ngày (để máy bật); Box tự sao lưu ra ổ ngoài lúc {{ onebee_box_backup_time.split(' ')[1][:5] }}</li>
+        <li>Máy văn phòng tự sao lưu lên Box lúc 12:00 hằng ngày (để máy bật); Box tự sao lưu {{ 'ra ổ ngoài' if onebee_box_backup_o_ngoai | bool else 'vào ổ dữ liệu của Box' }} lúc {{ onebee_box_backup_time.split(' ')[1][:5] }}</li>
         <li>Lỡ xóa/ghi đè tệp: báo kỹ thuật để lấy lại từ bản sao lưu — không tự cài phần mềm khôi phục</li>
       </ul>
     </details>

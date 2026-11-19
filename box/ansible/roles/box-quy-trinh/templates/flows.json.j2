@@ -10,6 +10,11 @@
   ('tinh-trang', '/onebee-tinh-trang', 'post', 'Nhận tình trạng máy trạm'),
   ('canh-bao', '/onebee-canh-bao', 'post', 'Cảnh báo sự cố'),
   ('phe-duyet', '/onebee-phe-duyet', 'post', 'Phê duyệt đơn hàng'),
+  ('xin-vao', '/onebee-xin-vao', 'post', 'Máy trạm xin vào (bước 1: gửi chứng chỉ)'),
+  ('xin-vao-mo', '/onebee-xin-vao-mo', 'post', 'Máy trạm xin vào (bước 2: mở cam kết)'),
+  ('xin-vao-ket-qua', '/onebee-xin-vao-ket-qua', 'post', 'Máy trạm hỏi kết quả xin vào'),
+  ('may-xin-vao', '/onebee-may-xin-vao', 'get', 'Danh sách máy xin vào (Sổ điều hành)'),
+  ('duyet-may', '/onebee-duyet-may', 'post', 'Duyệt hoặc từ chối máy xin vào (Sổ điều hành)'),
 ] %}
 [
   {
@@ -55,7 +60,7 @@
     "once": false,
     "topic": "",
     "x": 200,
-    "y": 720,
+    "y": 1200,
     "wires": [["fn_nhac_han_theo_lich"]]
   },
   {
@@ -66,7 +71,7 @@
     "func": "const m = await global.get('onebee').xuLy('nhac-han-theo-lich', msg);\nreturn m;",
     "outputs": 1,
     "x": 460,
-    "y": 720,
+    "y": 1200,
     "wires": []
   },
   {
@@ -77,7 +82,7 @@
     "statusCode": "",
     "headers": {},
     "x": 700,
-    "y": 360
+    "y": 540
   },
   {
     "id": "ghi_chu_bao_mat",
@@ -86,7 +91,7 @@
     "name": "Không thêm gói ngoài: Box có thể không có Internet. Trình soạn luồng có mật khẩu riêng (xem onebee-box in-khoa).",
     "info": "",
     "x": 330,
-    "y": 810,
+    "y": 1290,
     "wires": []
   }
 ]

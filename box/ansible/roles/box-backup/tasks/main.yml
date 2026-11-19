@@ -1,7 +1,7 @@
 ---
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
-# Sao lưu dữ liệu Box ra ổ ngoài hằng ngày (restic, mã hóa) + dọn bản cũ. Lệnh: onebee-box sao-luu
+# Sao lưu dữ liệu Box hằng ngày (restic, mã hóa) vào ổ dữ liệu Box (mặc định) hoặc ổ ngoài + dọn bản cũ. Lệnh: onebee-box sao-luu
 
 - name: Cài lịch sao lưu (systemd)
   ansible.builtin.template:
@@ -21,14 +21,41 @@
     state: started
     daemon_reload: true
 
+# ---- Mặc định: kho sao lưu nằm ngay trong ổ dữ liệu Box → tự tạo kho, không cần gắn ổ ----
+- name: Tạo kho sao lưu Box trong ổ dữ liệu (lần đầu)
+  ansible.builtin.command: /usr/local/sbin/onebee-box khoi-tao
+  args:
+    creates: "{{ onebee_box_data }}/sao-luu/restic-box/config"
+  when: not (onebee_box_backup_o_ngoai | bool)
+
+- name: Kiểm tra Box có kho sao lưu cũ ở ổ ngoài không
+  ansible.builtin.stat:
+    path: "{{ onebee_box_backup_repo }}/config"
+  register: onebee_backup_kho_o_ngoai
+  when: not (onebee_box_backup_o_ngoai | bool)
+
+- name: Nhắc kho sao lưu cũ ở ổ ngoài
+  ansible.builtin.debug:
+    msg: >-
+      Box có kho sao lưu cũ tại {{ onebee_box_backup_repo }} (ổ ngoài). Từ bản này Box sao lưu vào
+      {{ onebee_box_data }}/sao-luu/restic-box (ổ dữ liệu Box); kho cũ giữ nguyên. Muốn tiếp tục sao lưu ra ổ ngoài:
+      đặt onebee_box_backup_o_ngoai: true trong group_vars/all.yml rồi chạy lại bộ cài.
+  when:
+    - not (onebee_box_backup_o_ngoai | bool)
+    - onebee_backup_kho_o_ngoai.stat.exists | default(false)
+
+# ---- Tùy chọn ổ ngoài (onebee_box_backup_o_ngoai: true) ----
 - name: Kiểm tra đã gắn ổ sao lưu chưa
   ansible.builtin.stat:
     path: "{{ onebee_box_backup_repo | dirname }}"
   register: onebee_backup_mount
+  when: onebee_box_backup_o_ngoai | bool
 
 - name: Nhắc gắn ổ sao lưu
   ansible.builtin.debug:
     msg: >-
       CHƯA có ổ sao lưu tại {{ onebee_box_backup_repo | dirname }}.
-      Gắn ổ ngoài vào đường dẫn này (khai báo trong /etc/fstab), rồi chạy: sudo onebee-box khoi-phuc-thu
-  when: not onebee_backup_mount.stat.exists
+      Gắn ổ ngoài vào đường dẫn này (khai báo trong /etc/fstab), rồi chạy: sudo onebee-box khoi-tao và sudo onebee-box khoi-phuc-thu
+  when:
+    - onebee_box_backup_o_ngoai | bool
+    - not onebee_backup_mount.stat.exists

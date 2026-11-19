@@ -64,6 +64,7 @@ def may_chu(xu_ly):
         do_GET = do_POST = do_DELETE = do_PUT = xong
     sv = ThreadingHTTPServer(("127.0.0.1", 0), H)
     sv.daemon_threads = True
+    sv.handle_error = lambda *a: None   # Caddy ngắt giữa chừng khi thân vượt giới hạn: bên sau không cần in lỗi đường ống
     threading.Thread(target=sv.serve_forever, daemon=True).start()
     return sv
 
@@ -73,7 +74,7 @@ class Ghi:
         self.ds = []
 
 
-AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY, KHO_TEP_THAY, AI_RAG_THAY = Ghi(), Ghi(), Ghi(), Ghi(), Ghi(), Ghi()
+AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY, KHO_TEP_THAY, AI_RAG_THAY, QUY_TRINH_THAY = Ghi(), Ghi(), Ghi(), Ghi(), Ghi(), Ghi(), Ghi()
 
 
 def authelia(h):
@@ -134,7 +135,8 @@ class CaddySso(unittest.TestCase):
         cls.sv = {"authelia": may_chu(authelia), "postgrest": may_chu(ghi_va_tra(PHIA_SAU_THAY, "postgrest")),
                   "ollama": may_chu(ghi_va_tra(OLLAMA_THAY, "ollama")), "uptime-kuma": may_chu(ghi_va_tra(KUMA_THAY, "kuma")),
                   "kho-tep": may_chu(ghi_va_tra(KHO_TEP_THAY, "kho-tep")),
-                  "ai-rag": may_chu(ghi_va_tra(AI_RAG_THAY, "ai-rag")), "khac": may_chu(ghi_va_tra(Ghi(), "khac"))}
+                  "ai-rag": may_chu(ghi_va_tra(AI_RAG_THAY, "ai-rag")), "quy-trinh": may_chu(ghi_va_tra(QUY_TRINH_THAY, "quy-trinh")),
+                  "khac": may_chu(ghi_va_tra(Ghi(), "khac"))}
         with open(f"{t}/khoa", "w") as f:
             f.write("ab" * 32 + "\n")
         cls.cong_cau_noi = cong_trong()
@@ -171,7 +173,7 @@ class CaddySso(unittest.TestCase):
         p = {k: s.server_port for k, s in cls.sv.items()}
         for goc, moi in (("authelia:9091", cong_trong() if authelia_chet else p["authelia"]), ("cau-noi:8080", cls.cong_cau_noi),
                          ("ollama:11434", p["ollama"]), ("uptime-kuma:3001", p["uptime-kuma"]), ("kho-tep:8080", p["kho-tep"]),
-                         ("ai-rag:8092", p["ai-rag"]), ("quy-trinh:1880", p["khac"]), ("rest-server:8000", p["khac"])):
+                         ("ai-rag:8092", p["ai-rag"]), ("quy-trinh:1880", p["quy-trinh"]), ("rest-server:8000", p["khac"])):
             nd = nd.replace(goc, f"127.0.0.1:{moi}")
         open(f"{t}/Caddyfile", "w").write(nd)
         if cls.caddy:
@@ -198,7 +200,7 @@ class CaddySso(unittest.TestCase):
         if not self.caddy or getattr(self, "_sso", True) is not True:
             type(self).dung_caddy(sso=True)
             type(self)._sso = True
-        for g in (AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY, KHO_TEP_THAY, AI_RAG_THAY):
+        for g in (AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY, KHO_TEP_THAY, AI_RAG_THAY, QUY_TRINH_THAY):
             g.ds.clear()
 
     def test_a_chua_co_phien_goi_api_toi_nhan_401(self):
@@ -323,6 +325,36 @@ class CaddySso(unittest.TestCase):
         ma, _, chuyen, _ = curl("--cacert", f"{self.t}/ca/root.crt", f"https://127.0.0.1:{k}/dashboard")
         self.assertEqual((ma, chuyen), ("308", f"https://{TEN}:{k}/dashboard"))
 
+    def test_m_cong_80_chi_mo_tuyen_xin_vao_khong_dang_nhap(self):
+        """Máy mới chưa tin CA nên xin vào qua cổng 80: không qua Authelia, Remote-*/Authorization của máy khách bị xóa, thân tối đa 64 KB."""
+        goc = f"http://127.0.0.1:{self.cong['http']}"
+        gia = ("-H", "Remote-User: quanly", "-H", "Remote-Groups: quan_ly", "-H", "Remote-Email: a@b", "-H", "Remote-Name: x",
+               "-H", "Authorization: Bearer x", "-H", "Proxy-Authorization: y", "-H", "Content-Type: application/json")
+        for duong in ("/webhook/onebee-xin-vao", "/webhook/onebee-xin-vao-mo", "/webhook/onebee-xin-vao-ket-qua"):
+            QUY_TRINH_THAY.ds.clear()
+            ma, than, _, _ = curl("-X", "POST", *gia, "-d", "{}", goc + duong)
+            self.assertEqual(ma, "200", duong)
+            self.assertEqual([(y["method"], y["path"]) for y in QUY_TRINH_THAY.ds], [("POST", duong)])
+            tieu_de = {k.lower() for k in QUY_TRINH_THAY.ds[0]["headers"]}
+            self.assertFalse(tieu_de & {"remote-user", "remote-groups", "remote-email", "remote-name", "authorization", "proxy-authorization"},
+                             tieu_de)
+        self.assertEqual(AUTHELIA_THAY.ds, [])
+        tep = f"{self.t}/lon64.bin"
+        with open(tep, "wb") as f:
+            f.write(b"x" * (64 * 1024 + 10))
+        QUY_TRINH_THAY.ds.clear()
+        ma, _, _, _ = curl("-X", "POST", "--data-binary", f"@{tep}", "-H", "Content-Type: application/json", goc + "/webhook/onebee-xin-vao")
+        self.assertEqual(ma, "413")   # Caddy cắt thân ở 64 KB: Node-RED không bao giờ nhận đủ thân để xử lý
+
+    def test_n_cong_80_khong_mo_hai_diem_duyet_va_webhook_khac(self):
+        goc = f"http://127.0.0.1:{self.cong['http']}"
+        for duong in ("/webhook/onebee-duyet-may", "/webhook/onebee-may-xin-vao", "/webhook/suc-khoe", "/webhook/onebee-canh-bao",
+                      "/quy-trinh/webhook/onebee-duyet-may", "/quy-trinh/webhook/onebee-may-xin-vao", "/quy-trinh/"):
+            for them in ((), ("-X", "POST", "-d", "{}")):
+                ma, _, _, _ = curl("-H", "Remote-User: quanly", *them, goc + duong)
+                self.assertIn(ma, ("404", "405"), (them, duong, ma))
+        self.assertEqual((QUY_TRINH_THAY.ds, AUTHELIA_THAY.ds), ([], []))
+
     def test_l_cac_cong_khac_giu_nguyen(self):
         for cong in (self.cong["rest_server"],):
             ma, than, _, _ = curl("--cacert", f"{self.t}/ca/root.crt", f"https://127.0.0.1:{cong}/x")
@@ -338,7 +370,7 @@ class CaddySsoTamTat(CaddySso):
         if not self.caddy or getattr(self, "_sso", True) is not False:
             type(self).dung_caddy(sso=False)
             type(self)._sso = False
-        for g in (AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY, KHO_TEP_THAY, AI_RAG_THAY):
+        for g in (AUTHELIA_THAY, PHIA_SAU_THAY, OLLAMA_THAY, KUMA_THAY, KHO_TEP_THAY, AI_RAG_THAY, QUY_TRINH_THAY):
             g.ds.clear()
 
     def test_tuyen_loi_tra_503_ca_khi_co_phien(self):

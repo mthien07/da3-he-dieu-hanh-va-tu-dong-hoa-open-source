@@ -306,13 +306,24 @@ kiem_sao_luu() {
     fi
   fi
   gio=""
-  if ! mountpoint -q "${BACKUP_MOUNT}"; then
+  if [[ "${BACKUP_O_NGOAI}" != true ]]; then
+    # Kho nằm trong ổ dữ liệu Box: sao lưu đêm tự dừng khi ổ đã dùng trên NGUONG_O_DAY%
+    local da_dung
+    da_dung="$(df -P "${DATA}" 2>/dev/null | awk 'NR == 2 { sub("%", "", $5); print $5 }')"
+    if [[ "${da_dung}" =~ ^[0-9]+$ ]] && (( da_dung > NGUONG_O_DAY )); then
+      ghi_kq sao_luu o_sao_luu loi "Nơi lưu bản sao lưu" "Ổ dữ liệu Box đã dùng ${da_dung}% — sao lưu đêm dừng (trên ${NGUONG_O_DAY}%) để không làm đầy ổ" \
+        "Dọn bớt thư mục chung hoặc nới ổ dữ liệu, rồi: sudo onebee-box sao-luu"
+    else
+      ghi_kq sao_luu o_sao_luu ok "Nơi lưu bản sao lưu" "Trong ổ dữ liệu Box (${BACKUP_REPO})"
+    fi
+  elif ! mountpoint -q "${BACKUP_MOUNT}"; then
     ghi_kq sao_luu o_sao_luu loi "Ổ sao lưu" "Chưa gắn ổ vào ${BACKUP_MOUNT} — sao lưu đêm không chạy" \
       "Gắn ổ sao lưu ngoài theo hướng dẫn cài Box (mục ổ sao lưu)"
     ghi_kq sao_luu ban_moi_nhat loi "Bản sao lưu Box mới nhất" "Không đọc được kho (chưa gắn ổ)" "Gắn ổ rồi chạy lại: sudo onebee-box chan-doan"
     return 0
+  else
+    ghi_kq sao_luu o_sao_luu ok "Ổ sao lưu" "Đã gắn ${BACKUP_MOUNT}"
   fi
-  ghi_kq sao_luu o_sao_luu ok "Ổ sao lưu" "Đã gắn ${BACKUP_MOUNT}"
   # Số giờ từ bản mới nhất ("khong-co" khi kho rỗng); --no-lock: không tranh khóa với lần sao lưu đang chạy
   if [[ -s "${SECRETS}/restic-box" ]]; then
     gio="$(RESTIC_REPOSITORY="${BACKUP_REPO}" RESTIC_PASSWORD_FILE="${SECRETS}/restic-box" \
@@ -327,7 +338,7 @@ print(round((datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() /
   fi
   if [[ -z "${gio:-}" ]]; then
     ghi_kq sao_luu ban_moi_nhat loi "Bản sao lưu Box mới nhất" "Không mở được kho ${BACKUP_REPO} (chưa tạo kho, sai ổ hoặc thiếu mật khẩu kho)" \
-      "Chưa tạo kho: sudo onebee-box khoi-tao; đã có kho: kiểm tra đúng ổ sao lưu đang gắn"
+      "Chưa tạo kho: sudo onebee-box khoi-tao; đã có kho: kiểm tra đúng nơi lưu (ổ dữ liệu Box hoặc ổ ngoài đang gắn)"
   elif [[ "${gio}" == khong-co ]]; then
     ghi_kq sao_luu ban_moi_nhat loi "Bản sao lưu Box mới nhất" "Kho chưa có bản sao lưu nào" "Sao lưu ngay: sudo onebee-box sao-luu"
   elif lon_hon "${gio}" "${NGUONG_SAO_LUU_GIO}"; then

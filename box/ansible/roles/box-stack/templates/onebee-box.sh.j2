@@ -4,7 +4,7 @@
 # onebee-box — lệnh quản trị OneBee Box (quản lý bởi OneBee OS, không sửa tay)
 #   onebee-box trang-thai          Xem dịch vụ đang chạy, dung lượng ổ
 #   onebee-box chan-doan [--json]  Tự chẩn đoán 8 hạng mục (mạng, tài nguyên, Docker, AI, Samba, kho tệp, sao lưu, chứng chỉ) + gợi ý cách sửa
-#   onebee-box them-may <ten-may>  Cấp tài khoản sao lưu, khóa Trợ lý AI, quản lý cho 1 máy trạm; in cấu hình dán vào máy trạm
+#   onebee-box them-may <ten-may> [<mã-phòng>]  Cấp tài khoản sao lưu, khóa Trợ lý AI, quản lý cho 1 máy trạm (kèm phòng ban nếu có); in cấu hình dán vào máy trạm
 #   onebee-box may-tram            Tình trạng các máy trạm: sao lưu, cập nhật, ổ đĩa, lần liên lạc cuối
 #   onebee-box cap-nhat-may <ten-may>|--tat-ca   Cập nhật phần mềm máy trạm từ Box (qua SSH; máy phải chứng minh được là máy đã cấp)
 #   onebee-box dong-bo-may <ten-may>|--tat-ca    Đẩy lại cấu hình (may-tram.env) từ Box xuống máy trạm (qua SSH, như trên)
@@ -14,6 +14,16 @@
 #   onebee-box tu-xa                    Bảng các lượt duyệt máy công tác đang có
 #   onebee-box tu-xa-ap-dung            Áp dụng danh sách vào tường lửa + Samba, thu hồi lượt hết hạn (bộ hẹn giờ gọi)
 #   onebee-box ghim-lai-may <ten-may>            Máy cài lại hệ điều hành: bỏ khóa SSH đã ghim để ghim lại
+#   onebee-box them-phong <mã> "<tên>" [gói…]   Tạo hoặc sửa phòng ban: thư mục riêng + chia sẻ Samba [pb-<mã>] chỉ máy của phòng vào được, phần mềm riêng
+#   onebee-box xoa-phong <mã>        Xóa phòng (từ chối khi còn máy); giữ dữ liệu ở thư mục .da-xoa-<mã>-<thời điểm>
+#   onebee-box danh-sach-phong       Bảng phòng ban: tên, phần mềm, máy trạm
+#   onebee-box chuyen-phong <tên-máy> <mã>   Chuyển máy đã cấp sang phòng khác (rồi: dong-bo-may <tên-máy>)
+#   onebee-box doi-mat-khau-phong <mã>   Đổi mật khẩu Samba của phòng (sau khi thu hồi máy của phòng) và đẩy xuống các máy còn trong phòng
+#   onebee-box dong-bo-phong         Dựng nhóm, tài khoản, thư mục, chia sẻ Samba từ sổ phòng ban (bộ cài gọi)
+#   onebee-box xin-vao               Bảng máy trạm xin vào qua mạng LAN, kèm mã đối chiếu 6 số
+#   onebee-box duyet-may <mã-yêu-cầu> <mã-phòng>   Duyệt máy xin vào (mã đối chiếu phải trùng mã trên máy trạm); Box cấp máy và gửi cấu hình đã mã hóa
+#   onebee-box tu-choi-may <mã-yêu-cầu> [lý do]    Từ chối máy xin vào
+#   onebee-box xu-ly-xin-vao         Cấp các yêu cầu đã duyệt, dọn yêu cầu quá 24 giờ (dịch vụ onebee-xin-vao gọi)
 #   onebee-box bao-cao-tuan [YYYY-MM-DD]   Nhật ký tuần: yêu cầu hỗ trợ, khảo sát, tình trạng máy (Markdown) — đọc từ CSDL sau khi chuyển sổ cũ
 #   onebee-box chuyen-du-lieu      Chuyển sổ cũ (CSV đơn hàng, hỗ trợ, khảo sát; JSON tình trạng máy) vào CSDL — chạy lại chỉ nạp dòng mới
 #   onebee-box nap-tri-thuc        Nạp kho tri thức (NĐ 30, mẫu soạn văn bản, tài liệu đơn vị) vào CSDL; chạy lại không tạo trùng
@@ -22,6 +32,7 @@
 #   onebee-box khoi-tao            Tạo kho sao lưu Box trên ổ ngoài (làm 1 lần sau khi gắn ổ)
 #   onebee-box sao-luu             Sao lưu Box ra ổ ngoài + dọn bản cũ (tự chạy 23:00 hằng ngày)
 #   onebee-box khoi-phuc-thu       Thử khôi phục 1 file từ bản sao lưu Box (kiểm tra sao lưu dùng được)
+#   onebee-box khoi-phuc-phong <mã>  Lấy bản sao lưu mới nhất của một phòng vào thư mục phòng: khoi-phuc-<thời điểm>/
 #   onebee-box khoi-phuc-toan-bo [file-khóa]   Hỏng ổ Box: trên Box cài lại, lấy lại toàn bộ dữ liệu từ ổ sao lưu
 #   onebee-box may-chua-nhan-ca    Máy đã cấp mà chưa nhận CA hiện tại (chặn bật HTTPS)
 #   onebee-box go-khoa-hoi-may     Xóa tài khoản/khóa Trợ lý AI theo MÁY (sau khi nhân viên đã dùng khóa riêng; xem onebee_box_hoi_khoa_may)
@@ -49,6 +60,8 @@ LIB=/usr/local/lib/onebee-box
 # shellcheck source=/dev/null
 [[ ! -f "${LIB}/tu-xa.sh" ]] || . "${LIB}/tu-xa.sh"
 # shellcheck source=/dev/null
+[[ ! -f "${LIB}/phong-ban.sh" ]] || . "${LIB}/phong-ban.sh"
+# shellcheck source=/dev/null
 . "${LIB}/chan-doan.sh"
 
 [[ ${EUID} -eq 0 ]] || die "Hãy chạy bằng quyền quản trị: sudo onebee-box $*"
@@ -61,7 +74,9 @@ trap don_tam EXIT
 cmd_trang_thai() {
   compose ps --format 'table {{ '{{' }}.Name{{ '}}' }}\t{{ '{{' }}.Status{{ '}}' }}'
   echo; df -h "${DATA}" | tail -1 | awk '{print "Ổ dữ liệu: đã dùng " $3 "/" $2 " (" $5 ")"}'
-  if mountpoint -q "${BACKUP_MOUNT}"; then df -h "${BACKUP_MOUNT}" | tail -1 | awk '{print "Ổ sao lưu: đã dùng " $3 "/" $2 " (" $5 ")"}'
+  if [[ "${BACKUP_O_NGOAI}" != true ]]; then
+    echo "Sao lưu: trong ổ dữ liệu Box (${BACKUP_REPO}), kho đang chiếm $(du -sh "${BACKUP_REPO}" 2>/dev/null | cut -f1 || echo '?')"
+  elif mountpoint -q "${BACKUP_MOUNT}"; then df -h "${BACKUP_MOUNT}" | tail -1 | awk '{print "Ổ sao lưu: đã dùng " $3 "/" $2 " (" $5 ")"}'
   else echo "Ổ sao lưu: CHƯA GẮN (${BACKUP_MOUNT})"; fi
   echo "CA riêng của Box (mã ${BOX_MA_DON_VI}): gốc còn $(ca_con_ngay root) ngày, trung gian còn $(ca_con_ngay inter) ngày (tự gia hạn khi còn < 60 ngày, lúc sao lưu đêm)"
 }
@@ -83,11 +98,15 @@ cmd_in_ca() {
 # In cấu hình dán vào máy trạm — CHỈ ĐỌC bí mật đã có (không tạo tài khoản/khóa, không ghi htpasswd). Thiếu bí mật nào thì dừng (die),
 # không in cấu hình thiếu. them-may tạo bí mật trước rồi gọi hàm này; dong-bo-may gọi lại để đẩy cấu hình xuống máy.
 in_cau_hinh_may() {
-  local ten="$1" ip http_pw repo_pw tram_key="" hoi_key="" f esq
+  local ten="$1" ip http_pw repo_pw tram_key="" hoi_key="" f esq phong=""
   # Kiểm đủ bí mật TRƯỚC khi in gì (die gọi thẳng ở đây; die trong $(…) chỉ thoát subshell của nó, hàm vẫn in tiếp file thiếu mật khẩu)
   for f in "${SECRETS}/may-${ten}-http" "${SECRETS}/may-${ten}-repo" "${SSH_DIR}/quan-tri.pub" "${CA_DIR}/root.crt"; do
     [[ -s "${f}" ]] || die "Thiếu ${f} — máy ${ten} chưa cấp đủ hoặc đã thu hồi (cấp lại: sudo onebee-box them-may ${ten})"
   done
+  # Máy thuộc một phòng ban: thư mục riêng (tài khoản Samba của phòng) + phần mềm của phòng. Máy chưa gán phòng: không thêm dòng nào
+  if [[ -e "${PHONG_SO}/may/${ten}" ]]; then
+    phong="$(cau_hinh_phong "${ten}")" || die "Chưa dựng được cấu hình phòng ban của máy ${ten} (xem lỗi ở trên)"
+  fi
   ip="$(box_ip)"; [[ -n "${ip}" ]] || die "Không xác định được IP của Box — đặt onebee_box_dia_chi trong group_vars"
   http_pw="$(cat "${SECRETS}/may-${ten}-http")"
   repo_pw="$(cat "${SECRETS}/may-${ten}-repo")"
@@ -134,11 +153,13 @@ in_cau_hinh_may() {
   echo "BOX_CA_VAN_TAY=$(ca_van_tay)"
   # Cờ HTTPS: 1 = máy ghi dấu bền và từ chối http://; 0 = Box hoàn tác HTTPS (chỉ cờ này mới xóa dấu trên máy)
   if https_bat; then echo "BOX_HTTPS=1"; else echo "BOX_HTTPS=0"; fi
+  [[ -z "${phong}" ]] || printf '%s\n' "${phong}"
 }
 
-cmd_them_may() {
-  local ten="${1:-}" ip http_pw repo_pw hoi_key thoi_diem
-  [[ "${ten}" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]] || die "Tên máy chỉ gồm chữ thường không dấu, số, dấu gạch (vd: ketoan-01)"
+# Cấp máy $1 (tên đã kiểm): bí mật, tài khoản kho HTTP, khóa Trợ lý AI; $2 = mã phòng (đã kiểm có trong sổ; trống = giữ như cũ).
+# them-may và xu-ly-xin-vao (máy xin vào đã được duyệt) cùng dùng
+cap_may() {
+  local ten="$1" phong="${2:-}" ip http_pw repo_pw hoi_key thoi_diem
   ip="$(box_ip)"; [[ -n "${ip}" ]] || die "Không xác định được IP của Box — đặt onebee_box_dia_chi trong group_vars"
   if [[ -e "${SECRETS}/thu-hoi/${ten}" ]]; then
     # Cấp lại cho máy từng thu hồi: máy cũ (mất cắp, nghi chiếm) vẫn biết MẬT KHẨU KHO cũ — mà mật khẩu kho là khóa ký báo cáo và là bằng chứng
@@ -163,7 +184,15 @@ cmd_them_may() {
     }
   fi
   [[ -z "${hoi_key}" ]] || (umask 077; printf '%s' "${hoi_key}" >"${SECRETS}/may-${ten}-khoa")
+  [[ -z "${phong}" ]] || gan_phong_may "${ten}" "${phong}"
   dong_bo_ten_may >/dev/null
+}
+
+cmd_them_may() {
+  local ten="${1:-}" phong="${2:-}"
+  [[ "${ten}" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]] || die "Tên máy chỉ gồm chữ thường không dấu, số, dấu gạch (vd: ketoan-01)"
+  [[ -z "${phong}" ]] || co_phong "${phong}" || die "Không có phòng ${phong} (xem: sudo onebee-box danh-sach-phong; tạo: sudo onebee-box them-phong)"
+  cap_may "${ten}" "${phong}"
   echo "# Dán nội dung dưới đây vào máy trạm ${ten}: /etc/onebee/may-tram.env, rồi chạy lại bộ cài OneBee OS"
   in_cau_hinh_may "${ten}"
 }
@@ -171,8 +200,11 @@ cmd_them_may() {
 # Thu hồi 1 máy trạm (mất máy, nhân viên nghỉ, máy bị nghi giả mạo): khóa Trợ lý AI, mật khẩu kho HTTP, ghim SSH và chỗ nhận báo cáo bị gỡ.
 # Giữ lại kho sao lưu và mật khẩu kho của máy (để khôi phục dữ liệu / dọn bản cũ). Chạy lại lệnh này an toàn (dọn tiếp phần còn sót).
 cmd_thu_hoi_may() {
-  local ten="${1:-}" xac_nhan="${2:-}" tra_loi
+  local ten="${1:-}" xac_nhan="${2:-}" tra_loi phong=""
   [[ "${ten}" =~ ^[a-z0-9][a-z0-9-]{0,31}$ && -e "${SECRETS}/may-${ten}-repo" ]] || die "Cách dùng: sudo onebee-box thu-hoi-may <tên-máy-đã-cấp> [--dong-y]"
+  # Phòng của máy: đọc TRƯỚC khi xóa tệp gán phòng (để nhắc đổi mật khẩu thư mục phòng mà máy cũ vẫn giữ)
+  [[ ! -f "${PHONG_SO}/may/${ten}" ]] || phong="$(head -n 1 "${PHONG_SO}/may/${ten}")"
+  [[ "${phong}" =~ ${MA_PHONG_RE} ]] || phong=""
   if [[ "${xac_nhan}" != --dong-y ]]; then
     read -rp "Thu hồi máy ${ten}? Máy sẽ không sao lưu, hỏi Trợ lý AI, báo tình trạng hay nhận cập nhật được nữa. Gõ 'thu hoi' để xác nhận: " tra_loi \
       || die "Cần xác nhận: chạy trong cửa sổ dòng lệnh, hoặc thêm --dong-y"
@@ -184,11 +216,12 @@ cmd_thu_hoi_may() {
   nap_lai_kho_http   # máy thu hồi mất quyền vào kho ngay, không chờ rest-server tự đọc lại
   hoi_khoa go may "${ten}" >/dev/null 2>&1 || true
   rm -f "${SECRETS}/may-${ten}-http" "${SECRETS}/may-${ten}-khoa" "${SECRETS}/may-${ten}-hoi" "${SECRETS}/may-${ten}-webui" \
-        "${DATA}/tinh-trang-may/${ten}.json"
+        "${DATA}/tinh-trang-may/${ten}.json" "${PHONG_SO}/may/${ten}"
   ssh-keygen -R "${ten}" -f "${SSH_DIR}/known_hosts" >/dev/null 2>&1 || true
   dong_bo_ten_may >/dev/null
   echo "Đã thu hồi máy ${ten}. Kho sao lưu của máy vẫn còn trên Box. Cấp lại (mật khẩu kho mới, kho cũ cất riêng): sudo onebee-box them-may ${ten}"
   echo "LƯU Ý: chạy NGAY 'sudo onebee-box sao-luu' để bản sao lưu Box ghi nhận việc thu hồi — nếu ổ hỏng trước lần sao lưu 23:00, khôi phục sẽ cấp lại máy này."
+  [[ -z "${phong}" ]] || echo "LƯU Ý: máy ${ten} thuộc phòng ${phong} và vẫn giữ mật khẩu thư mục phòng — đổi ngay: sudo onebee-box doi-mat-khau-phong ${phong}"
 }
 
 # Bỏ khóa Trợ lý AI theo MÁY: thu hồi khóa may-<tên> + khóa đã lưu. Chỉ sau khi đặt onebee_box_hoi_khoa_may: false
@@ -643,8 +676,15 @@ cmd_bat_sso_lai() {
 }
 
 # Không cho 2 lệnh sao lưu / xoay khóa chạy chồng nhau (lịch tự động + chạy tay)
-lay_khoa() { exec 9>/run/onebee-box.lock; flock -n 9 || die "Đang có lệnh sao lưu / xoay khóa khác chạy — thử lại sau"; }
+lay_khoa_thu() { exec 9>/run/onebee-box.lock; flock -n 9; }
+lay_khoa() { lay_khoa_thu || die "Đang có lệnh sao lưu / xoay khóa khác chạy — thử lại sau"; }
 with_lock() { lay_khoa; "$@"; }
+# Dịch vụ chạy nền (xu-ly-xin-vao): CHỜ lệnh đang giữ khóa xong (tối đa 6 giờ) thay vì bỏ — máy đã duyệt được cấp ngay sau lần sao lưu đêm
+with_lock_cho() {
+  exec 9>/run/onebee-box.lock
+  flock -w 21600 9 || die "Chờ 6 giờ vẫn có lệnh sao lưu / xoay khóa khác giữ khóa — kiểm tra: sudo onebee-box trang-thai"
+  "$@"
+}
 
 case "${1:-}" in
   trang-thai) cmd_trang_thai ;;
@@ -664,6 +704,16 @@ case "${1:-}" in
   tu-xa) shift; cmd_tu_xa "$@" ;;
   tu-xa-ap-dung) tu_xa_ap_dung ;;
   ghim-lai-may) shift; cmd_ghim_lai_may "$@" ;;
+  them-phong) shift; cmd_them_phong "$@" ;;
+  xoa-phong) shift; cmd_xoa_phong "$@" ;;
+  danh-sach-phong) cmd_danh_sach_phong ;;
+  chuyen-phong) shift; cmd_chuyen_phong "$@" ;;
+  doi-mat-khau-phong) shift; with_lock cmd_doi_mat_khau_phong "$@" ;;   # không chạy chồng sao lưu (bí mật) / xoay khóa
+  dong-bo-phong) dong_bo_phong ;;   # bộ cài gọi (role box-fleet)
+  xin-vao) cmd_xin_vao ;;
+  duyet-may) shift; cmd_duyet_may "$@" ;;   # tự lấy khóa sau bước xác nhận mã đối chiếu
+  tu-choi-may) shift; cmd_tu_choi_may "$@" ;;
+  xu-ly-xin-vao) with_lock_cho xu_ly_xin_vao ;;   # dịch vụ onebee-xin-vao (systemd path + hẹn giờ 15 phút) gọi
   dong-bo-ten-may) dong_bo_ten_may ;;
   # Không lấy khóa sao lưu/xoay khóa: bộ cài gọi lệnh này khi đang giữ khóa (tat-sso-tam, xoay-khoa --box);
   # nạp tri thức chỉ đọc tệp bí mật và ghi CSDL trong một giao dịch, không xung đột với sao lưu hay xoay khóa.
@@ -673,6 +723,7 @@ case "${1:-}" in
   khoi-tao) with_lock cmd_khoi_tao ;;
   sao-luu) with_lock cmd_sao_luu_co_bao_cao ;;
   khoi-phuc-thu) with_lock cmd_khoi_phuc_thu ;;
+  khoi-phuc-phong) shift; with_lock cmd_khoi_phuc_phong "$@" ;;
   khoi-phuc-toan-bo) shift; with_lock cmd_khoi_phuc_toan_bo "$@" ;;
   in-khoa) cmd_in_khoa ;;
   xoay-khoa) shift; cmd_xoay_khoa "$@" ;;   # tự lấy khóa sau bước xác nhận

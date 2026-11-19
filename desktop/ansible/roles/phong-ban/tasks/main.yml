@@ -1,0 +1,200 @@
+---
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Dương Minh Thiện, HTX OneBee
+# Phòng ban của máy trạm: gắn thư mục riêng của phòng từ OneBee Box vào /mnt/phongban (CIFS, gắn khi mở, tự nhả sau 10 phút không dùng),
+# cài phần mềm của phòng và đặt lối tắt trong menu. Đọc PHONG_BAN* và SAMBA_PHONG_* từ onebee_may_tram (do backup-client/doc-cau-hinh đặt).
+# Máy không có dòng PHONG_BAN: gỡ gắn kết, mật khẩu và lối tắt (KHÔNG gỡ phần mềm đã cài — có thể người dùng đang dùng).
+# Chạy được cả từ bộ cài desktop lẫn từ 'onebee-box dong-bo-may' (include_role). Mọi task đụng mật khẩu đều no_log.
+
+- name: Đọc phòng ban từ cấu hình máy trạm
+  ansible.builtin.set_fact:
+    onebee_pb_ma: "{{ (onebee_may_tram | default({})).PHONG_BAN | default('') }}"
+    onebee_pb_ten: "{{ (onebee_may_tram | default({})).PHONG_BAN_TEN | default('') }}"
+    onebee_pb_goi: "{{ ((onebee_may_tram | default({})).PHONG_BAN_PHAN_MEM | default('')).split() }}"
+    onebee_pb_user: "{{ (onebee_may_tram | default({})).SAMBA_PHONG_USER | default('') }}"
+    onebee_pb_pass: "{{ (onebee_may_tram | default({})).SAMBA_PHONG_PASS | default('') }}"
+    # Cùng cách chọn địa chỉ với lối tắt thư mục chung của ket-noi-box (tên Box khi đi công tác, ngược lại IP LAN)
+    onebee_pb_dia_chi: "{{ onebee_kn_dia_chi_smb | default('') or (onebee_may_tram | default({})).BOX_IP | default('') }}"
+  no_log: true
+
+- name: Chuẩn hóa thông tin phòng
+  ansible.builtin.set_fact:
+    onebee_pb_ma_dung: "{{ onebee_pb_ma is match('^[a-z][a-z0-9-]{1,19}$') }}"
+    onebee_pb_mat_khau_dung: "{{ onebee_pb_pass is match('^[A-Za-z0-9]{8,64}$') }}"
+    onebee_pb_dia_chi_dung: >-
+      {{ onebee_pb_dia_chi is match('^[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+$')
+         or onebee_pb_dia_chi is match('^box[.][a-z0-9-]+[.]onebee[.]internal$') }}
+    # Tên hiển thị 1–60 ký tự, không ký tự điều khiển, không " \ và không ký tự Jinja/systemd ({ } % $); sai thì hiện mã phòng
+    onebee_pb_ten_dung: >-
+      {{ onebee_pb_ten | length > 0 and onebee_pb_ten | length <= 60 and onebee_pb_ten.isprintable()
+         and not (onebee_pb_ten is search('["{}%$]')) and '\\' not in onebee_pb_ten }}
+    onebee_pb_goi_sai: "{{ onebee_pb_goi | reject('match', '^[a-z0-9][a-z0-9+.-]{1,62}$') | list }}"
+  no_log: true
+
+- name: Cảnh báo cấu hình phòng chưa dùng được (giữ nguyên trạng thái hiện có)
+  ansible.builtin.debug:
+    msg: >-
+      CẢNH BÁO: cấu hình phòng ban của máy chưa đúng (mã phòng, mật khẩu Samba hoặc địa chỉ Box) — bỏ qua, không đổi gì.
+      Báo quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>
+  when:
+    - onebee_pb_ma | length > 0
+    - not (onebee_pb_ma_dung and onebee_pb_mat_khau_dung and onebee_pb_dia_chi_dung)
+
+# ---------------- Máy thuộc một phòng ----------------
+- name: Gắn thư mục phòng ban
+  when:
+    - onebee_pb_ma_dung
+    - onebee_pb_mat_khau_dung
+    - onebee_pb_dia_chi_dung
+  block:
+    - name: Kiểm tên các gói phần mềm của phòng
+      ansible.builtin.assert:
+        that: onebee_pb_goi_sai | length == 0
+        fail_msg: "Tên gói phần mềm của phòng không hợp lệ: {{ onebee_pb_goi_sai | join(' ') }}"
+        quiet: true
+
+    - name: Cài cifs-utils và phần mềm của phòng
+      ansible.builtin.apt:
+        name: "{{ ['cifs-utils'] + onebee_pb_goi }}"
+        state: present
+
+    - name: Ghi tài khoản Samba của phòng (chỉ root đọc)
+      ansible.builtin.copy:
+        dest: /etc/onebee/phong-ban.cred
+        content: |
+          username=pb-{{ onebee_pb_ma }}
+          password={{ onebee_pb_pass }}
+        owner: root
+        group: root
+        mode: "0600"
+      no_log: true
+
+    - name: Cài đơn vị gắn thư mục phòng (mount + automount)
+      ansible.builtin.copy:
+        dest: "/etc/systemd/system/{{ item.name }}"
+        content: "{{ item.content }}"
+        owner: root
+        group: root
+        mode: "0644"
+      loop:
+        - name: mnt-phongban.mount
+          content: |
+            # Quản lý bởi OneBee OS
+            [Unit]
+            Description=OneBee — thư mục riêng của phòng {{ onebee_pb_ma }}
+            After=network-online.target
+            Wants=network-online.target
+
+            [Mount]
+            What=//{{ onebee_pb_dia_chi }}/pb-{{ onebee_pb_ma }}
+            Where=/mnt/phongban
+            Type=cifs
+            Options=credentials=/etc/onebee/phong-ban.cred,vers=3.1.1,seal,uid=0,gid=0,file_mode=0666,dir_mode=0777,iocharset=utf8,_netdev,nofail
+        - name: mnt-phongban.automount
+          content: |
+            # Quản lý bởi OneBee OS — gắn khi có người mở /mnt/phongban, tự nhả sau 10 phút không dùng
+            [Unit]
+            Description=OneBee — gắn thư mục phòng {{ onebee_pb_ma }} khi mở
+
+            [Automount]
+            Where=/mnt/phongban
+            TimeoutIdleSec=600
+
+            [Install]
+            WantedBy=remote-fs.target
+      register: onebee_pb_unit
+
+    - name: Bật gắn thư mục phòng khi mở
+      # noqa: command-instead-of-module — chỉ tạo liên kết enable, chạy được cả khi systemd chưa khởi động
+      ansible.builtin.command: systemctl enable mnt-phongban.automount
+      args:
+        creates: /etc/systemd/system/remote-fs.target.wants/mnt-phongban.automount
+
+    - name: Kiểm tra máy đang chạy systemd (không phải lúc cài trong chroot/container)
+      ansible.builtin.stat:
+        path: /run/systemd/system
+      register: onebee_pb_systemd
+
+    - name: Chạy ngay gắn thư mục phòng khi mở (khởi động lại nếu đơn vị vừa đổi)
+      ansible.builtin.systemd_service:
+        name: mnt-phongban.automount
+        state: "{{ 'restarted' if onebee_pb_unit is changed else 'started' }}"
+        daemon_reload: true
+      when: onebee_pb_systemd.stat.exists
+
+    - name: Lối tắt thư mục phòng trong menu
+      ansible.builtin.copy:
+        dest: /usr/share/applications/onebee-thu-muc-phong.desktop
+        content: |
+          [Desktop Entry]
+          Type=Application
+          Name=Thư mục phòng: {{ onebee_pb_ten if onebee_pb_ten_dung else onebee_pb_ma }}
+          Comment=Thư mục riêng của phòng trên OneBee Box, chỉ phòng mình thấy
+          Exec=nemo /mnt/phongban
+          Icon=folder-remote
+          Terminal=false
+          Categories=Office;FileManager;
+          X-OneBee=1
+        owner: root
+        group: root
+        mode: "0644"
+
+# ---------------- Máy không thuộc phòng nào: gỡ (không gỡ phần mềm đã cài) ----------------
+- name: Gỡ thư mục phòng ban
+  when: onebee_pb_ma | length == 0
+  block:
+    - name: Kiểm tra máy đang chạy systemd
+      ansible.builtin.stat:
+        path: /run/systemd/system
+      register: onebee_pb_systemd_go
+
+    - name: Kiểm tra còn đơn vị gắn thư mục phòng không
+      ansible.builtin.stat:
+        path: "/etc/systemd/system/{{ item }}"
+      loop: [mnt-phongban.automount, mnt-phongban.mount]
+      register: onebee_pb_con
+
+    # Tắt trước khi xóa tệp. Đang có người mở thư mục (nhả không được) thì chỉ báo, không làm hỏng cả lần đồng bộ
+    - name: Tắt gắn thư mục phòng
+      # noqa: command-instead-of-module — cần biết mã thoát để báo nhẹ nhàng thay vì làm hỏng cả lần đồng bộ
+      ansible.builtin.command: "systemctl stop {{ item.item }}"
+      loop: "{{ onebee_pb_con.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      when: onebee_pb_systemd_go.stat.exists and item.stat.exists
+      register: onebee_pb_tat
+      changed_when: false
+      failed_when: false
+
+    - name: Báo thư mục phòng còn đang được dùng
+      ansible.builtin.debug:
+        msg: >-
+          CẢNH BÁO: chưa nhả được thư mục phòng ({{ item.item.item }}) vì đang có người mở.
+          Đóng thư mục /mnt/phongban rồi chạy lại đồng bộ.
+      loop: "{{ onebee_pb_tat.results }}"
+      loop_control:
+        label: "{{ item.item.item }}"
+      when: item.rc is defined and item.rc != 0
+
+    - name: Bỏ bật gắn thư mục phòng
+      # noqa: command-instead-of-module — chỉ gỡ liên kết enable, chạy được cả khi systemd chưa khởi động
+      ansible.builtin.command: systemctl disable mnt-phongban.automount
+      args:
+        removes: /etc/systemd/system/remote-fs.target.wants/mnt-phongban.automount
+
+    - name: Xóa đơn vị gắn, mật khẩu phòng và lối tắt
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/systemd/system/mnt-phongban.automount
+        - /etc/systemd/system/mnt-phongban.mount
+        - /etc/onebee/phong-ban.cred
+        - /usr/share/applications/onebee-thu-muc-phong.desktop
+      register: onebee_pb_xoa
+
+    - name: Nạp lại systemd sau khi gỡ
+      # noqa: command-instead-of-module — daemon-reload chỉ chạy khi vừa xóa đơn vị
+      ansible.builtin.command: systemctl daemon-reload
+      when: onebee_pb_systemd_go.stat.exists and onebee_pb_xoa is changed
+      changed_when: true
