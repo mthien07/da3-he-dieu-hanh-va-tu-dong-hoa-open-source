@@ -81,6 +81,14 @@ cd "$(mktemp -d)" && R=mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source \
 ```
 **Box** — Ubuntu Server 24.04 LTS 64-bit trong LAN: như trên, lệnh cuối là `sudo ./box/onebee-box-install.sh`.
 
+**Nối máy trạm với Box** (từ 2.1.0, không chép file cấu hình bằng tay):
+1. Trên Box, tạo phòng ban một lần: `sudo onebee-box them-phong ke-toan "Phòng Kế toán" gnucash`. Mỗi phòng có thư mục riêng (phòng khác không vào được, không thấy) và phần mềm riêng.
+2. Trên máy trạm, dùng khối lệnh trên nhưng thay lệnh cuối bằng `sudo ./desktop/onebee-xin-vao --ten ketoan-01 --phong ke-toan`. Máy tự tìm Box trong LAN và hiện mã 6 số.
+3. Trên Box, mở Sổ điều hành → thẻ **Máy trạm** (hoặc chạy `sudo onebee-box duyet-may` khi chưa bật HTTPS). So mã, chọn phòng, bấm Duyệt.
+4. Gõ lại mã trên máy trạm. Máy nhận cấu hình đã ký và mã hóa, rồi tự cài: sao lưu, Trợ lý AI, thư mục phòng `/mnt/phongban`, phần mềm của phòng.
+
+Chi tiết: [phong-ban-va-may-xin-vao.md](docs/huong-dan/phong-ban-va-may-xin-vao.md).
+
 Muốn lấy mã nguồn mới nhất (chưa phát hành) để thử hoặc đóng góp, dùng `git clone`:
 ```bash
 sudo apt install -y git
