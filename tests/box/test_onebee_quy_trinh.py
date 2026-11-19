@@ -717,14 +717,15 @@ class MayXinVao(GoiNode, unittest.TestCase):
             self.assertEqual(self.xin(ten=f"may-{i:02d}")[0], 200, i)
         ma, kq = self.xin(ten="may-20")
         self.assertEqual(ma, 429, kq)
-        self.assertEqual(len([f for f in os.listdir(f"{self.t}/xin-vao") if f.endswith(".json")]), 20)
+        # Chỉ tệp yêu cầu <id>.json (id 32 hex) — không lẫn <id>.tu-choi.json / <id>.duyet.json (id ngẫu nhiên, lẫn là lỗi lúc có lúc không)
+        yeu_cau = lambda: sorted(f[:-5] for f in os.listdir(f"{self.t}/xin-vao") if re.fullmatch(r"[0-9a-f]{32}\.json", f))
+        self.assertEqual(len(yeu_cau()), 20)
         # một yêu cầu được xử lý xong thì còn chỗ
-        id_ = next(f[:-5] for f in os.listdir(f"{self.t}/xin-vao") if f.endswith(".json"))
+        id_ = yeu_cau()[0]
         open(f"{self.t}/xin-vao/{id_}.tu-choi.json", "w").write("{}")
         self.assertEqual(self.xin(ten="may-20")[0], 200)
         # đã cấp xong (DA_CAP) cũng không còn tính vào số yêu cầu chờ, dù tệp được giữ để máy hỏi lại
-        id2 = next(f[:-5] for f in sorted(os.listdir(f"{self.t}/xin-vao")) if f.endswith(".json") and f[:-5] != id_
-                   and not os.path.exists(f"{self.t}/xin-vao/{f[:-5]}.tu-choi.json"))
+        id2 = next(i for i in yeu_cau() if i != id_ and not os.path.exists(f"{self.t}/xin-vao/{i}.tu-choi.json"))
         open(f"{self.t}/xin-vao/{id2}.ket-qua", "w").write(json.dumps({"trang_thai": "DA_CAP", "cms": "QUJD"}))
         self.assertEqual(self.xin(ten="may-21")[0], 200)
 
