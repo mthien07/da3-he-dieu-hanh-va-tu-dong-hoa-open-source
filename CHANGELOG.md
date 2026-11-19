@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.1.0] — 19/11/2026 — Phòng ban, máy trạm xin vào Box, sao lưu vào ổ Box
+
 ### Thêm
 - **Phòng ban**:
   - Tạo phòng ban trên Box bằng `sudo onebee-box them-phong <mã> "<tên>" [gói…]`.

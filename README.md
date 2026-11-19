@@ -108,7 +108,7 @@ cd onebee && sudo ./desktop/onebee-install.sh
 | **Hồ sơ dự thi OLP 2026**: tự chấm có lệnh kiểm, kịch bản trình diễn 15 phút, thư nộp bài | [olp-2026-tu-cham-pof.md](docs/olp-2026-tu-cham-pof.md) · [kịch bản](docs/hoi-thi/olp-2026-kich-ban-trinh-dien.md) · [thư nộp bài](docs/hoi-thi/olp-2026-thu-nop-bai.md) |
 | Quyết định kiến trúc | [docs/adr/](docs/adr/) · Lõi DX-OS open-core (SSO, cổng API, dữ liệu, kho tệp, quy trình): [ADR 0006](docs/adr/0006-loi-dx-os-open-core.md) · Thay đổi: [CHANGELOG.md](CHANGELOG.md) |
 
-## 📌 Trạng thái (2.0.3)
+## 📌 Trạng thái (2.1.0)
 - ✅ **Đủ tính năng cho một đơn vị**: máy trạm, Box, Trợ lý AI chạy tại chỗ, quy trình email, quản lý máy trạm, hỗ trợ từ xa, sổ hỗ trợ + khảo sát,
   giám sát, HTTPS nội bộ (CA riêng của Box), xoay khóa, **khôi phục toàn bộ Box khi hỏng ổ**; giao diện quen thuộc như Windows
   (thanh tác vụ ghim sẵn ứng dụng, Win+E/D/L, LibreOffice dạng Ribbon).
@@ -122,6 +122,10 @@ cd onebee && sudo ./desktop/onebee-install.sh
 - 🔧 **Bản vá 2.0.1–2.0.3** (lỗi tìm ra khi thử trên máy ảo Linux): tải chữ ký ClamAV lần đầu không còn hỏng; cài lại Box báo `changed=0`;
   **Box đổi mạng khi đang chạy** (thay router, đổi dải DHCP) tường lửa tự nhận dải LAN mới trong vòng 1 phút, không còn chặn SSH và trang chủ
   ([CHANGELOG.md](CHANGELOG.md)).
+- 🆕 **Mới ở 2.1.0**: **phòng ban** — mỗi phòng có thư mục riêng (phòng khác không vào được, không thấy), phần mềm riêng, sao lưu
+  và khôi phục riêng từng phòng; **máy trạm xin vào Box**, quản trị so mã 6 số rồi bấm duyệt trên Sổ điều hành, máy tự nhận cấu hình đã ký
+  và mã hóa ([hướng dẫn](docs/huong-dan/phong-ban-va-may-xin-vao.md), [ADR 0009](docs/adr/0009-phong-ban-va-may-tram-xin-vao.md));
+  **Box tự sao lưu vào ổ dữ liệu của Box** ngay từ đêm đầu, ổ ngoài thành tùy chọn để chống hỏng ổ.
 - ✅ **Đã kiểm tự động** ở mỗi thay đổi ([CI](https://github.com/mthien07/da3-he-dieu-hanh-va-tu-dong-hoa-open-source/actions/workflows/ci.yml)):
   Box cài thật trong Docker lồng (đăng nhập một lần, API, kho tệp, AI, sao lưu/khôi phục, tường lửa, máy công tác C1–C11),
   máy trạm cài thật trong container Linux Mint 22.3; cả hai bộ cài chạy lần 2 `changed=0 failed=0`; lint sạch. Cách chạy: [tests/README.md](tests/README.md).
