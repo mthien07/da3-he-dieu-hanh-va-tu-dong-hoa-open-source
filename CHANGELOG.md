@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [2.1.1] — 20/11/2026 — Box nâng cấp từ 2.0.x nhận đủ luồng xin vào
+
+### Sửa
+- **Box nâng cấp từ 2.0.x lên 2.1.0 không nhận 5 điểm nhận mới của Node-RED** (xin vào, mở cam kết, hỏi kết quả, danh sách
+  máy xin vào, duyệt máy): máy trạm chạy `onebee-xin-vao` nhận 404 và thẻ [M] Máy trạm không có dữ liệu. Bộ cài chỉ chép
+  `flows.json` khi Box chưa có (để giữ luồng người dùng đã sửa), nên Box cũ không bao giờ nhận điểm nhận mới. Nay bộ cài bổ sung
+  các nút OneBee còn thiếu (so theo id) vào luồng đang chạy rồi khởi động lại Node-RED; nút đã có, kể cả nút người dùng đã sửa,
+  giữ nguyên. Box cài mới không bị ảnh hưởng. Tìm ra khi thử 2.1.0 trên Box thật nâng cấp từ 2.0.3.
+- Máy trạm bỏ dở `onebee-xin-vao` sau khi đã hiện mã (Ctrl+C, gõ sai mã, mất điện) rồi xin lại cùng tên thì bị 409, phải bấm
+  Từ chối yêu cầu cũ trên Box. Nay xin lại từ cùng địa chỉ thì Box thay yêu cầu cũ chưa duyệt (mã cũ mất hiệu lực theo); cùng tên
+  từ máy khác, hoặc yêu cầu đang được cấp, vẫn bị chặn.
+- `onebee-sao-luu` trên máy trạm chạy theo lịch (không có HOME) báo "unable to open cache" và phải đọc lại chỉ mục từ Box mỗi lần;
+  nay dùng bộ nhớ đệm riêng `/var/cache/onebee-sao-luu`.
+
+### Đã kiểm
+- Trên máy ảo VMware: Box nâng 2.0.3 → 2.1.0 → bản sửa, máy Linux Mint 22.3 xin vào, so mã, duyệt bằng trình duyệt thật (đăng nhập
+  hai lớp), tự cài, gắn `/mnt/phongban` (SMB 3.1.1 mã hóa), cài phần mềm của phòng, phòng khác không vào được và không thấy,
+  từ chối kèm lý do, sao lưu và khôi phục theo phòng. Box và máy trạm cài lại `changed=0 failed=0`.
+
 ## [2.1.0] — 19/11/2026 — Phòng ban, máy trạm xin vào Box, sao lưu vào ổ Box
 
 ### Thêm

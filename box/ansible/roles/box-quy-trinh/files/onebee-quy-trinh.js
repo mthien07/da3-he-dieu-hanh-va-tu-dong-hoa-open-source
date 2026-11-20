@@ -488,15 +488,23 @@ async function xinVao(msg) {
     throw new LoiHttp(503, 'Box chưa có chứng chỉ gốc CA để đối chiếu — chạy lại bộ cài rồi thử lại');
   }
   if (coTep(path.join(CH.may_da_cap, ten))) throw new LoiHttp(409, `Máy "${ten}" đã được cấp — dùng tên khác hoặc nhờ quản trị thu hồi trước`);
-  const cho = dsYeuCau().filter(x => ['CHO_MA', 'CHO_DUYET', 'DANG_CAP'].includes(x.trang_thai));
-  if (cho.some(x => x.yc.ten === ten)) throw new LoiHttp(409, `Máy "${ten}" đã có yêu cầu đang chờ duyệt`);
+  const ip = ipMay(msg);
+  let cho = dsYeuCau().filter(x => ['CHO_MA', 'CHO_DUYET', 'DANG_CAP'].includes(x.trang_thai));
+  // Máy bỏ dở (Ctrl+C, gõ sai mã, mất điện) rồi xin lại cùng tên từ cùng địa chỉ: yêu cầu cũ chưa duyệt thì thay bằng yêu cầu mới.
+  // Mã đối chiếu của yêu cầu cũ mất hiệu lực theo, nên thay cũng không giúp ai qua mặt bước so mã. Đang cấp thì không đụng.
+  const cu = cho.filter(x => x.yc.ten === ten);
+  if (cu.length && ip && cu.every(x => x.trang_thai !== 'DANG_CAP' && x.yc.ip === ip)) {
+    cu.forEach(x => xoaYeuCau(x.id));
+    cho = cho.filter(x => x.yc.ten !== ten);
+  }
+  if (cho.some(x => x.yc.ten === ten)) throw new LoiHttp(409, `Máy "${ten}" đã có yêu cầu đang chờ duyệt từ máy khác — bấm Từ chối yêu cầu cũ trên Sổ điều hành rồi xin lại`);
   if (cho.length >= TOI_DA_YEU_CAU_CHO) throw new LoiHttp(429, 'Box đang có quá nhiều yêu cầu chờ duyệt — thử lại sau');
   const id = crypto.randomBytes(16).toString('hex');
   const nb = crypto.randomBytes(16).toString('hex');
   const khoaBam = bam(khoa.export({ type: 'spki', format: 'der' }));   // sha256 hex của SPKI DER
   const camKet = bam(`${TIEN_TO_XIN_VAO}cam-ket|${id}|${khoaBam}|${caVanTay}|${nb}`);
   ghiTep(tepXinVao(id, 'json'), JSON.stringify({
-    id, ten, phong_xin: phong, hostname: motDong(b.hostname, 64), ip: ipMay(msg), cert: cert.toString(), khoa_bam: khoaBam,
+    id, ten, phong_xin: phong, hostname: motDong(b.hostname, 64), ip, cert: cert.toString(), khoa_bam: khoaBam,
     ca_van_tay: caVanTay, n_b: nb, cam_ket: camKet, n_w: null, ma_so: null, luc: Math.floor(Date.now() / 1000),
   }));
   return { id, cam_ket: camKet, ca_van_tay: caVanTay };

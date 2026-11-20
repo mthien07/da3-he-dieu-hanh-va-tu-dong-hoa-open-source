@@ -184,6 +184,7 @@ class SaoLuuDocCauHinh(unittest.TestCase):
             nd = open(os.path.join(ROLES, "backup-client/files/onebee-sao-luu"), encoding="utf-8").read()
             nd = nd.replace("CONF=/etc/onebee/may-tram.env", f"CONF={t}/may-tram.env").replace("[[ ${EUID} -eq 0 ]] ||", "[[ 1 -eq 1 ]] ||")
             nd = nd.replace("/usr/local/share/ca-certificates/onebee-box-ca.crt", f"{t}/ca.crt").replace("/var/lib/onebee", f"{t}/var")
+            nd = nd.replace("/var/cache/onebee-sao-luu", f"{t}/cache")
             nd = nd.replace("restic ", "restic_gia ")
             open(f"{t}/sao-luu", "w").write(nd)
             open(f"{t}/may-tram.env", "w").write(env_nd)

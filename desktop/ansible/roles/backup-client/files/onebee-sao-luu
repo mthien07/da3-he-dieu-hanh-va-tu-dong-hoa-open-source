@@ -32,6 +32,9 @@ case "${RESTIC_REPOSITORY}" in
     [[ ! -e /var/lib/onebee/https-bat ]] || { echo "Máy đã bật HTTPS nhưng cấu hình kho còn http:// — không sao lưu. Báo quản trị chạy: sudo onebee-box dong-bo-may <tên-máy>" >&2; exit 1; } ;;
   *) ;;
 esac
+# Bộ hẹn giờ systemd chạy không có HOME: restic không mở được bộ nhớ đệm, mỗi lần phải đọc lại chỉ mục từ Box (chậm, có cảnh báo)
+export RESTIC_CACHE_DIR=/var/cache/onebee-sao-luu
+install -d -m 0700 "${RESTIC_CACHE_DIR}"
 restic cat config >/dev/null 2>&1 || restic init
 the_phong=()
 [[ -z "${phong}" ]] || the_phong=(--tag "phong-${phong}")

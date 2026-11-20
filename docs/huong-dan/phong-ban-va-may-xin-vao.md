@@ -41,6 +41,7 @@ sudo ./desktop/onebee-xin-vao --ten kt-01 --phong ke-toan
 ```
 - Không có `--box` thì máy tự tìm `onebee.local` trong LAN. Không tìm được thì máy hỏi địa chỉ IP của Box (xem trên màn hình Box hoặc router).
 - Máy in **mã đối chiếu 6 số**. Mở web Box (mục 3), thấy cùng mã thì **gõ lại mã đó vào máy trạm**; khác mã thì bấm Ctrl+C.
+  Bỏ dở rồi chạy lại lệnh với cùng `--ten` trên cùng máy thì Box thay yêu cầu cũ chưa duyệt bằng yêu cầu mới (mã mới).
   Máy chờ duyệt tối đa 60 phút (`--cho <phút>` để đổi).
 - Được duyệt thì máy ghi `/etc/onebee/may-tram.env` và tự chạy bộ cài OneBee OS. Thêm `--khong-cai` nếu chỉ muốn nhận cấu hình.
 
