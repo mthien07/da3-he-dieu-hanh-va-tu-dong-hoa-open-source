@@ -22,17 +22,20 @@ class SaoLuuTheoPhong(unittest.TestCase):
                 nd = f.read()
             nd = nd.replace("CONF=/etc/onebee/may-tram.env", f"CONF={t}/may-tram.env").replace("[[ ${EUID} -eq 0 ]] ||", "[[ 1 -eq 1 ]] ||")
             nd = nd.replace("/usr/local/share/ca-certificates/onebee-box-ca.crt", f"{t}/ca.crt").replace("/var/lib/onebee", f"{t}/var")
+            nd = nd.replace("/var/cache/onebee-sao-luu", f"{t}/cache")
             nd = nd.replace("restic ", "restic_gia ")
             with open(f"{t}/sao-luu", "w", encoding="utf-8") as f:
                 f.write(nd)
             with open(f"{t}/may-tram.env", "w", encoding="utf-8") as f:
                 f.write(env_nd)
             with open(f"{t}/restic_gia", "w", encoding="utf-8") as f:
-                f.write(f'#!/bin/bash\necho "$@" >> {t}/lenh\n')
+                f.write(f'#!/bin/bash\necho "$@" >> {t}/lenh\necho "$RESTIC_CACHE_DIR" >> {t}/cache-dir\n')
             os.chmod(f"{t}/restic_gia", 0o755)
             r = subprocess.run(["bash", f"{t}/sao-luu"], capture_output=True, text=True, env={**os.environ, "PATH": f"{t}:{os.environ['PATH']}"}, check=False)
             with open(f"{t}/lenh", encoding="utf-8") as f:
                 backup = [d for d in f.read().splitlines() if d.startswith("backup")]
+            self.cache = open(f"{t}/cache-dir", encoding="utf-8").read().split() if os.path.exists(f"{t}/cache-dir") else []
+            self.cache_co = os.path.isdir(f"{t}/cache") and oct(os.stat(f"{t}/cache").st_mode & 0o777)
             return r, (backup[0].split() if backup else [])
 
     def the(self, tham_so):
@@ -59,6 +62,12 @@ class SaoLuuTheoPhong(unittest.TestCase):
             self.assertEqual(r.returncode, 0, (sai, r.stderr))
             self.assertEqual(self.the(backup), ["onebee-may-tram"], sai)
         self.assertFalse(os.path.exists("/tmp/bi-chay-phong"))
+
+    def test_restic_co_bo_nho_dem_rieng_khi_chay_khong_co_home(self):
+        r, _ = self.chay(CO_BAN)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(self.cache and all(c.endswith("/cache") for c in self.cache), self.cache)
+        self.assertEqual(self.cache_co, "0o700")
 
     def test_dong_phong_ban_khac_khong_bi_nham(self):
         _, backup = self.chay(CO_BAN + 'PHONG_BAN_TEN="Phòng Kế toán"\nPHONG_BAN_PHAN_MEM="gnucash"\n')
