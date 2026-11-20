@@ -101,6 +101,17 @@
     mode: "0600"
     force: false
 
+# Box nâng cấp từ bản cũ đã có flows.json nên tác vụ trên bỏ qua: bổ sung nút OneBee còn thiếu (so theo id),
+# không đụng nút đang có, kể cả nút người dùng đã sửa.
+- name: Bổ sung điểm nhận mới vào flows.json đang chạy (Box nâng cấp từ bản cũ)
+  ansible.builtin.script:
+    cmd: >-
+      onebee-bo-sung-luong.py {{ (onebee_box_dir ~ '/quy-trinh/flows.json') | quote }}
+      {{ (onebee_box_data ~ '/node-red/flows.json') | quote }}
+    executable: python3
+  register: onebee_qt_luong_bo_sung
+  changed_when: "'DA_BO_SUNG' in onebee_qt_luong_bo_sung.stdout"
+
 - name: Kiểm tra container động cơ quy trình đã có chưa
   ansible.builtin.command: docker compose ps -q quy-trinh
   args:
@@ -112,7 +123,7 @@
   ansible.builtin.command: >-
     docker compose up -d --no-deps
     {{ '--force-recreate' if (onebee_qt_cau_hinh is changed or onebee_qt_mo_dun is changed or onebee_qt_ca is changed
-       or not onebee_qt_container.stdout) else '' }}
+       or onebee_qt_luong_bo_sung is changed or not onebee_qt_container.stdout) else '' }}
     quy-trinh
   args:
     chdir: "{{ onebee_box_dir }}"

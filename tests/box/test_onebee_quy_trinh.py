@@ -173,6 +173,64 @@ class FlowsJson(unittest.TestCase):
                     self.assertFalse(n.get("libs"))
 
 
+class BoSungLuongKhiNangCap(unittest.TestCase):
+    """Box nâng cấp từ bản cũ đã có flows.json (bộ cài không ghi đè) vẫn phải nhận điểm nhận mới."""
+    SCRIPT = os.path.join(ROLE, "files/onebee-bo-sung-luong.py")
+    MOI = ("http_xin_vao", "fn_xin_vao", "http_xin_vao_mo", "http_xin_vao_ket_qua", "http_may_xin_vao", "http_duyet_may")
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.mau = os.path.join(self.tmp, "mau.json")
+        self.dich = os.path.join(self.tmp, "dang-chay.json")
+        with open(self.mau, "w", encoding="utf-8") as f:
+            f.write(ve("flows.json.j2"))
+
+    def chay(self):
+        return subprocess.run(["python3", self.SCRIPT, self.mau, self.dich], capture_output=True, text=True)
+
+    def ghi_dich(self, luong):
+        with open(self.dich, "w", encoding="utf-8") as f:
+            json.dump(luong, f, ensure_ascii=False, indent=4)
+        os.chmod(self.dich, 0o600)
+
+    def test_box_cu_nhan_diem_nhan_moi_giu_nut_nguoi_dung_sua(self):
+        cu = [n for n in json.load(open(self.mau, encoding="utf-8")) if "xin_vao" not in n["id"] and "duyet_may" not in n["id"]]
+        next(n for n in cu if n["id"] == "fn_phe_duyet")["func"] = "return msg; // người dùng sửa"
+        cu.append({"id": "nut_rieng", "type": "comment", "z": "tab_onebee_quy_trinh", "name": "của người dùng"})
+        self.ghi_dich(cu)
+        kq = self.chay()
+        self.assertEqual(kq.returncode, 0, kq.stderr)
+        self.assertTrue(kq.stdout.startswith("DA_BO_SUNG "), kq.stdout)
+        sau = json.load(open(self.dich, encoding="utf-8"))
+        theo_id = {n["id"]: n for n in sau}
+        for i in self.MOI:
+            self.assertIn(i, theo_id)
+        self.assertEqual(theo_id["fn_phe_duyet"]["func"], "return msg; // người dùng sửa")
+        self.assertIn("nut_rieng", theo_id)
+        self.assertEqual(len(sau), len({n["id"] for n in sau}))
+        self.assertEqual(os.stat(self.dich).st_mode & 0o777, 0o600)
+        self.assertEqual(self.chay().stdout, "")   # chạy lại: đủ rồi, không đổi (bộ cài changed=0)
+
+    def test_tep_hong_bao_loi_khong_ghi_de(self):
+        with open(self.dich, "w", encoding="utf-8") as f:
+            f.write("{hỏng")
+        kq = self.chay()
+        self.assertNotEqual(kq.returncode, 0)
+        self.assertIn("LỖI", kq.stderr)
+        self.assertEqual(open(self.dich, encoding="utf-8").read(), "{hỏng")
+
+    def test_role_bo_sung_sau_khi_chep_va_khoi_dong_lai_node_red(self):
+        tasks = yaml.safe_load(open(os.path.join(ROLE, "tasks/main.yml"), encoding="utf-8"))
+        chu = [json.dumps(t, ensure_ascii=False) for t in tasks]
+        chep = next(i for i, t in enumerate(chu) if "force\": false" in t and "node-red/flows.json" in t)
+        bo_sung = next(i for i, t in enumerate(chu) if "onebee-bo-sung-luong.py" in t)
+        chay = next(i for i, t in enumerate(chu) if "docker compose up" in t and "quy-trinh" in t)
+        self.assertLess(chep, bo_sung)
+        self.assertLess(bo_sung, chay)
+        self.assertIn("onebee_qt_luong_bo_sung is changed", chu[chay])
+
+
 class RoleQuyTrinh(unittest.TestCase):
     def test_sau_box_du_lieu_trong_site(self):
         vai = yaml.safe_load(open(os.path.join(ANSIBLE, "site.yml"), encoding="utf-8"))[0]["roles"]
@@ -604,8 +662,20 @@ class MayXinVao(GoiNode, unittest.TestCase):
         self.assertEqual(self.goi("xin-vao", None)[0], 400)
         self.assertEqual(os.listdir(f"{self.t}/xin-vao"), [])   # bị từ chối thì không để lại tệp nào
         self.assertEqual(self.xin(ten="kt-01")[0], 200)
-        loi(409, ten="kt-01")                             # đã có yêu cầu đang chờ cùng tên
+        ma, kq = self.goi("xin-vao", {"ten": "kt-01", "cert": self.cert}, {"X-Forwarded-For": "192.168.1.99"})
+        self.assertEqual(ma, 409, kq)                     # cùng tên từ máy khác: không được giành chỗ
         self.assertEqual(self.xin(ten="may-khong-phong", phong="")[0], 200)   # phòng là tùy chọn
+
+    def test_may_bo_do_xin_lai_cung_ten_cung_dia_chi_thay_yeu_cau_cu(self):
+        _, cu = self.xin()
+        self.mo(cu["id"])                                 # đã hiện mã rồi bấm Ctrl+C
+        ma, moi = self.xin()
+        self.assertEqual(ma, 200, moi)
+        self.assertEqual(self.tep(cu["id"]), [])          # yêu cầu cũ (và mã cũ) bỏ hẳn
+        self.assertEqual([y["id"] for y in self.ds()[1]["yeu_cau"]], [moi["id"]])
+        self.mo(moi["id"])
+        self.assertEqual(self.duyet(moi["id"])[0], 200)   # đang cấp thì không thay được nữa
+        self.assertEqual(self.xin()[0], 409)
 
     def test_phong_null_rong_hoac_thieu_deu_luu_thanh_chuoi_rong(self):
         ma, kq = self.xin(ten="np-null", phong=None)                 # máy trạm gửi "phong": null khi không chọn phòng
