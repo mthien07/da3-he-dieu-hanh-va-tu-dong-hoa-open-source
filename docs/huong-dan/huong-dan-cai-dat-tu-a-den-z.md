@@ -12,8 +12,8 @@ trong khung xám**, mỗi lần một khung, và đọc dòng kết quả cuối
 
 | Máy | Là gì | Bao nhiêu máy |
 |---|---|---|
-| **OneBee Box** | Máy chủ nhỏ đặt tại đơn vị, bật suốt ngày đêm. Chứa Trợ lý AI tiếng Việt (chạy tại chỗ, không gửi dữ liệu ra ngoài), thư mục chung, kho sao lưu, tự động gửi email | **1 máy** |
-| **Máy trạm OneBee OS** | Máy văn phòng của nhân viên (Linux Mint + bộ cài OneBee): gõ tiếng Việt, mở file Word/Excel, tự sao lưu lên Box, hỏi Trợ lý AI | Mỗi nhân viên 1 máy |
+| **OneBee Box** | Máy chủ nhỏ đặt tại đơn vị, bật suốt ngày đêm. Chứa Trợ lý AI tiếng Việt (chạy tại chỗ, không gửi dữ liệu ra ngoài), đăng nhập một lần (SSO), Sổ điều hành H-P-D-I & sổ kho/kế toán, kho tệp có kiểm dịch, thư mục chung & thư mục phòng ban, kho sao lưu tự động, tự động gửi email | **1 máy** |
+| **Máy trạm OneBee OS** | Máy văn phòng của nhân viên (Linux Mint + bộ cài OneBee): gõ tiếng Việt, mở file Word/Excel, gắn sẵn thư mục phòng ban (`/mnt/phongban`), cài sẵn phần mềm của phòng, tự sao lưu lên Box, hỏi Trợ lý AI, kết nối từ xa qua Tailscale khi đi công tác | Mỗi nhân viên 1 máy |
 
 ### Hình 1. Sau khi cài xong, văn phòng của bạn trông như thế này
 ```mermaid
@@ -21,36 +21,41 @@ flowchart LR
     NET(["🌐 Internet"])
     ROUTER["📶 Router / modem<br/>mạng LAN của đơn vị<br/>vd 192.168.1.x"]
 
-    subgraph VP["🏢 Văn phòng — chỉ máy trong mạng LAN mới vào được Box"]
+    subgraph VP["🏢 Văn phòng — mạng LAN nội bộ"]
         direction LR
-        subgraph TRAM["💻 Máy trạm OneBee OS — mỗi nhân viên 1 máy"]
+        subgraph TRAM["💻 Máy trạm OneBee OS — chia theo phòng ban"]
             direction TB
-            T1["ketoan-01"]
-            T2["kho-01"]
-            T3["banhang-01"]
+            T1["ketoan-01 · Phòng Kế toán"]
+            T2["kho-01 · Kho vận"]
+            T3["banhang-01 · Kinh doanh"]
         end
         subgraph BOX["🗄️ OneBee Box — 1 máy, bật suốt ngày đêm, IP cố định"]
             direction TB
+            SSO["🔐 Đăng nhập một lần SSO /dangnhap/<br/>(Authelia · 5 nhóm quyền, 2 lớp TOTP)"]
+            SO["📋 Sổ điều hành, Kho & Kế toán<br/>/so-dieu-hanh/ · PostgreSQL /api/"]
+            FILES["🗂️ Kho tệp + kiểm dịch ClamAV /files/"]
             AI["🤖 Trợ lý AI tiếng Việt<br/>chạy tại chỗ /ai/ (lệnh hoi)"]
             QT["⚙️ Quy trình tự động (Node-RED), email /quy-trinh/"]
-            KUMA["📈 Giám sát :3001"]
-            SMB["📁 Thư mục chung"]
-            KHO["🔒 Kho sao lưu máy trạm :8000"]
+            KUMA["📈 Giám sát /giam-sat/ (nhóm ky_thuat)"]
+            SMB["📁 Thư mục chung & thư mục phòng ban<br/>(/mnt/phongban · SMB 3.1.1 mã hóa)"]
+            KHO["🔒 Kho sao lưu máy trạm :8000<br/>+ sao lưu Box 23:00 (/srv/onebee/sao-luu)"]
         end
-        USB[("💽 Ổ sao lưu ngoài<br/>luôn cắm vào Box")]
+        USB[("💽 Ổ sao lưu ngoài<br/>tùy chọn (mục 4.1)")]
     end
+    REMOTE["🧳 Máy trạm đi công tác<br/>(ngoài văn phòng · qua Tailscale VPN)"]
 
     NET --- ROUTER
     ROUTER --- TRAM
     ROUTER --- BOX
-    TRAM -- "hỏi AI, mở thư mục chung" --> BOX
+    TRAM -- "HTTPS: SSO, Sổ điều hành, Kho tệp, AI & /mnt/phongban" --> BOX
     TRAM -- "sao lưu /home lúc 12:00" --> KHO
-    BOX -- "sao lưu toàn bộ Box lúc 23:00" --> USB
-    BOX -. "cập nhật phần mềm máy trạm qua SSH" .-> TRAM
+    BOX -. "sao lưu Box 23:00 (khi bật ổ ngoài)" .-> USB
+    BOX -. "cập nhật & đồng bộ máy trạm qua SSH" .-> TRAM
+    REMOTE -. "duyet-tu-xa: chỉ mở 443, 445, 8000 qua Tailscale" .-> BOX
 ```
-Điểm cần nhớ: dữ liệu và câu hỏi gửi Trợ lý AI **chỉ đi trong mạng LAN của văn phòng**. Internet chỉ dùng để tải phần mềm, cập nhật và gửi email báo cáo.
+Điểm cần nhớ: dữ liệu và câu hỏi gửi Trợ lý AI **chỉ đi trong mạng LAN của văn phòng** (hoặc qua đường hầm Tailscale mã hóa cho máy đi công tác đã được Box duyệt — không mở cổng nào trên router). Internet chỉ dùng để tải phần mềm, cập nhật và gửi email báo cáo.
 
-**Thứ tự làm:** Phần 1 (chuẩn bị) → Phần 2–3 (cài Box) → Phần 4 (sao lưu Box, in khóa) → Phần 5–6 (cài từng máy trạm) → Phần 7 (kiểm tra) → Phần 8–9 (tùy chọn).
+**Thứ tự làm:** Phần 1 (chuẩn bị) → Phần 2–3 (cài Box) → Phần 4 (sao lưu Box, in khóa) → Phần 5–6 (tạo phòng ban, cài từng máy trạm) → Phần 7 (kiểm tra) → Phần 8.3 (bật HTTPS & tạo tài khoản SSO để mở AI, Sổ điều hành, Kho tệp) → Phần 8.1–8.2 & 9 (email, SSH khóa, máy đi công tác).
 
 ### Hình 2. Các bước cài, theo thứ tự
 ```mermaid
@@ -65,15 +70,18 @@ flowchart TD
     subgraph T["💻 Làm trên TỪNG máy trạm"]
         P5["<b>Phần 5</b> · Cài Linux Mint + tải OneBee"]
         P6a["<b>6.2</b> · Máy trạm xin vào Box<br/><code>onebee-xin-vao</code>, hiện mã 6 số"]
-        P6b["<b>6.3</b> · Trên Box: so mã, chọn phòng, bấm Duyệt<br/>(máy tự nhận cấu hình và tự cài)"]
-        P6c["<b>6.4–6.5</b> · Tạo tài khoản nhân viên, kiểm tra"]
+        P6b["<b>6.3</b> · Trên Box: so mã, chọn phòng, Duyệt<br/>(CLI khi HTTP; web Sổ điều hành khi đã HTTPS) → tự cài"]
+        P6c["<b>6.4–6.5</b> · Tạo tài khoản Linux nhân viên, kiểm tra"]
     end
-    P7["<b>Phần 7</b> · Kiểm tra từ Box<br/><code>onebee-box may-tram</code>"]
-    P8["<b>Phần 8</b> · Nên làm thêm<br/>email, SSH bằng khóa, HTTPS"]
+    P7["<b>Phần 7</b> · Kiểm tra từ Box<br/><code>onebee-box may-tram</code> · <code>cap-nhat-may</code>"]
+    P8a["<b>8.3</b> · Bật HTTPS + tạo tài khoản SSO (<code>them-nguoi</code>)<br/>mở khóa Sổ điều hành, Kho tệp, Trợ lý AI <code>hoi</code>"]
+    P8b["<b>8.1–8.2</b> · Nên làm thêm<br/>email báo cáo, SSH chỉ bằng khóa"]
+    P9r["<b>Tùy chọn</b> · Máy đi công tác qua Tailscale<br/><code>onebee-cong-tac bat</code> → <code>duyet-tu-xa</code>"]
 
     P1 --> P2 --> P3 --> P4 --> P6p --> P5 --> P6a --> P6b --> P6c
     P6c -- "còn máy trạm khác" --> P5
-    P6c -- "đã cài hết" --> P7 --> P8
+    P6c -- "đã cài hết" --> P7 --> P8a --> P8b
+    P8a -. "nếu có laptop đi công tác" .-> P9r
 ```
 
 ### Vài điều cần biết trước khi gõ lệnh
@@ -95,7 +103,7 @@ flowchart TD
 | CPU | 64-bit, 4 nhân trở lên | 64-bit (máy 32-bit **không** cài được) |
 | RAM | **Tối thiểu 8 GB** (Trợ lý AI chiếm khoảng 4 GB). Nên 16 GB cho thoải mái *(khuyến nghị, chưa đo trên máy thật)* | 4 GB trở lên |
 | Ổ cứng | 120 GB trở lên (chứa thư mục chung + sao lưu của các máy trạm) | 40 GB trở lên |
-| Thêm | **1 ổ cứng gắn ngoài riêng** để Box tự sao lưu mỗi đêm | — |
+| Thêm | *(Tùy chọn, khuyến nghị)* **1 ổ cứng gắn ngoài riêng** để bản sao lưu Box nằm khác ổ hệ thống (mặc định Box tự sao lưu vào ổ trong, xem mục 4.1) | — |
 | Mạng | Cắm dây mạng (LAN), có Internet khi cài | Có Internet khi cài |
 
 Không cần card đồ họa. Trợ lý AI chạy được bằng CPU, chỉ trả lời chậm hơn.
@@ -192,17 +200,19 @@ Lệnh in ra mọi khóa trong `/etc/onebee-box/secrets/` và vân tay CA của 
 - `samba-onebee`: mật khẩu **thư mục chung**.
 - `van-tay-ca-onebee-box`: vân tay CA để đối chiếu khi cài chứng chỉ lên thiết bị khác.
 
-Tài khoản người dùng tạo bằng `sudo onebee-box them-nguoi <tên> <nhóm>` (`nhan_vien`, `ky_thuat`, `quan_ly`); Trợ lý AI vào bằng chính tài khoản đó sau khi đăng nhập một lần, hoặc bằng khóa `obk-` cấp riêng cho từng người (chỉ in một lần lúc cấp).
+Tài khoản người dùng tạo bằng `sudo onebee-box them-nguoi <tên> <nhóm>` (`nhan_vien`, `thu_kho`, `ke_toan`, `quan_ly`, `ky_thuat`; bốn nhóm sau cần mã 2 lớp TOTP khi đăng nhập lần đầu, lấy mã xác minh bằng `sudo onebee-box ma-xac-nhan`). Trợ lý AI vào bằng chính tài khoản đó sau khi đăng nhập một lần, hoặc bằng khóa `obk-` cấp riêng cho từng người (chỉ in một lần lúc cấp).
 
 Từ một máy khác cùng mạng, mở trình duyệt vào `http://<ip-box>/`. Trang giới thiệu có nút tới từng dịch vụ:
 
 | Dịch vụ | Địa chỉ | Dùng để |
 |---|---|---|
+| Đăng nhập một lần (SSO) | `https://box.<mã>.onebee.internal/dangnhap/` | Đăng nhập dùng chung cho các dịch vụ web bên dưới (cần HTTPS) |
+| Sổ điều hành H-P-D-I, Kho & Kế toán | `https://box.<mã>.onebee.internal/so-dieu-hanh/` | Gửi đơn kèm tệp, duyệt đơn, sổ kho/kế toán, thẻ `[M] Máy trạm` (cần HTTPS và đăng nhập một lần) |
+| Kho tệp (có kiểm dịch) | `https://box.<mã>.onebee.internal/files/` | Lưu trữ, chia sẻ tệp có quét mã độc ClamAV (cần HTTPS và đăng nhập một lần) |
 | Trợ lý AI | `https://box.<mã>.onebee.internal/ai/` hoặc lệnh `hoi` | Hỏi đáp, tóm tắt, soạn văn bản bằng tiếng Việt (cần HTTPS) |
 | Quy trình tự động (Node-RED) | `https://box.<mã>.onebee.internal/quy-trinh/` | Email báo cáo, nhắc hạn thuế/BHXH, đơn hàng, phê duyệt |
-| Sổ điều hành H-P-D-I | `https://box.<mã>.onebee.internal/so-dieu-hanh/` | Gửi đơn kèm tệp, duyệt đơn, bảng điều hành (cần HTTPS và đăng nhập một lần) |
 | Giám sát | `https://box.<mã>.onebee.internal/giam-sat/` | Xem dịch vụ nào đang ngừng (chỉ nhóm `ky_thuat`) |
-| Thư mục chung | `smb://<ip-box>/chung` | Chia sẻ file trong đơn vị (tài khoản `onebee`, mật khẩu: `sudo cat /etc/onebee-box/secrets/samba-onebee`) |
+| Thư mục chung & thư mục phòng ban | `smb://<ip-box>/chung` · `smb://<ip-box>/pb-<mã>` | Chia sẻ file toàn đơn vị (`onebee`) và riêng từng phòng (máy trạm gắn sẵn tại `/mnt/phongban`) |
 
 ### 3.5. Nâng cấp Box lên bản mới
 Box cài bằng `git clone` ở mục 3.1 thì nâng cấp như sau. Bước đầu cất bản đã khai ở mục 3.2 vì `git pull` không chạy được khi file đó đã bị sửa:
@@ -236,7 +246,7 @@ flowchart LR
     end
     subgraph BX["🗄️ OneBee Box — ổ dữ liệu"]
         K["Kho sao lưu máy trạm<br/>🔒 chỉ-thêm: máy trạm KHÔNG xóa được bản cũ<br/>→ chống mã độc tống tiền"]
-        D["Dữ liệu của Box<br/>CSDL, Trợ lý AI, động cơ quy trình,<br/>thư mục chung, khóa bí mật"]
+        D["Dữ liệu của Box<br/>CSDL (đơn hàng, kho, kế toán), kho tệp /files/,<br/>tài khoản & TOTP, Trợ lý AI, quy trình,<br/>thư mục chung & phòng ban, khóa bí mật"]
         S["Kho sao lưu Box<br/>/srv/onebee/sao-luu · 🔒 mã hóa"]
     end
     O[("💽 Ổ sao lưu ngoài<br/>tùy chọn")]
@@ -420,8 +430,9 @@ sudo ~/onebee/tests/desktop/verify-desktop-install.sh
 Mọi dòng phải là `PASS`, dòng cuối `KẾT QUẢ: tất cả mục đạt`. Thêm vài việc thử bằng tay:
 - Bấm **Super + Space** (phím Windows + phím cách) để bật/tắt tiếng Việt, gõ Telex "Hợp tác xã" ra đúng dấu.
 - Mở LibreOffice Writer, gõ vài chữ, Ctrl + S → mặc định lưu `.docx`.
+- Kiểm thư mục phòng ban đã gắn sẵn tại `/mnt/phongban` (hoặc lối tắt trong menu).
 - Sao lưu ngay: `sudo onebee-sao-luu` → báo sao lưu xong.
-- Hỏi Trợ lý AI: `hoi cách xuất file PDF` → có câu trả lời tiếng Việt.
+- Hỏi Trợ lý AI: `hoi cách xuất file PDF` → có câu trả lời tiếng Việt *(chỉ chạy được sau khi đã bật HTTPS và tạo tài khoản/khóa ở mục 8.3)*.
 - Đăng xuất, đăng nhập bằng tài khoản nhân viên vừa tạo ở 6.4: cửa sổ **Trung tâm OneBee** phải tự mở.
 
 **Sau khi khởi động lại, bạn sẽ thấy lần lượt** (ảnh chụp từ máy ảo Linux Mint 22.3 cài mới hoàn toàn rồi cài OneBee bằng đúng các lệnh ở trên):
@@ -514,7 +525,7 @@ Sau đó trên Box chạy lại `sudo ./box/onebee-box-install.sh`. Box tự **t
 Chưa có khóa nào thì Box giữ nguyên mật khẩu và in cảnh báo, để bạn không tự khóa mình ở ngoài.
 
 ### 8.3. Bật HTTPS (mã hóa trong mạng LAN)
-Ở chế độ mặc định (HTTP), mật khẩu đi qua mạng LAN không mã hóa. Nên bật HTTPS **sau khi đã cài xong mọi máy trạm**:
+Ở chế độ mặc định (HTTP), mật khẩu đi qua mạng LAN không mã hóa. Ngoài ra, **bật HTTPS là điều kiện bắt buộc để mở khóa Đăng nhập một lần (`/dangnhap/`), Sổ điều hành (`/so-dieu-hanh/`), Kho tệp (`/files/`) và Trợ lý AI (`hoi` / `/ai/`)**. Nên bật HTTPS **sau khi đã cài xong mọi máy trạm**:
 1. Trên Box, kiểm mọi máy trạm đã nhận chứng chỉ:
    ```bash
    sudo onebee-box may-chua-nhan-ca
@@ -525,7 +536,12 @@ Chưa có khóa nào thì Box giữ nguyên mật khẩu và in cảnh báo, đ�
 3. Từ đây dùng `https://<ip-box>/` (hoặc `https://box.<mã>.onebee.internal/`)… Máy trạm tự chuyển sang HTTPS. **Điện thoại, laptop cá nhân** muốn dùng thì cài chứng chỉ theo
    [cai-dat-onebee-box.md](cai-dat-onebee-box.md) mục "Bật HTTPS" bước 5.
    **Đã cài chứng chỉ rồi mà vẫn thấy cảnh báo bảo mật khi vào Box thì không bấm "tiếp tục".** Báo ngay cho kỹ thuật.
-4. Muốn quay lại HTTP: đặt lại `false` rồi chạy bộ cài.
+4. **Tạo tài khoản đăng nhập một lần** (để nhân viên vào Sổ điều hành, Kho tệp và dùng `hoi`):
+   ```bash
+   sudo onebee-box them-nguoi an nhan_vien    # nhóm: nhan_vien, thu_kho, ke_toan, quan_ly, ky_thuat
+   ```
+   Ghi lại mật khẩu tạm và khóa `obk-` (chỉ hiện **một lần**). Bốn nhóm sau cần 2 lớp TOTP ở lần đăng nhập đầu tại `https://box.<mã>.onebee.internal/dangnhap/` — khi trang hỏi mã xác minh 8 ký tự, quản trị chạy `sudo onebee-box ma-xac-nhan` để lấy. Trên máy trạm, nhân viên dùng `hoi --dan-khoa` để dán khóa `obk-` (hoặc `hoi --dang-nhap`).
+5. Muốn quay lại HTTP: đặt lại `false` rồi chạy bộ cài.
 
 ---
 
@@ -552,9 +568,11 @@ Chưa có khóa nào thì Box giữ nguyên mật khẩu và in cảnh báo, đ�
 | Lệnh | Việc |
 |---|---|
 | `sudo onebee-box trang-thai` | Dịch vụ đang chạy, dung lượng ổ, hạn chứng chỉ |
+| `sudo onebee-box chan-doan` | Tự kiểm tra sức khỏe tổng thể toàn bộ Box |
 | `sudo onebee-box them-phong <mã> "<tên>" [phần-mềm…]` / `danh-sach-phong` | Tạo phòng ban / xem các phòng |
 | `sudo onebee-box xin-vao` / `duyet-may <mã-yêu-cầu> <mã-phòng>` / `tu-choi-may <mã-yêu-cầu>` | Xem, duyệt, từ chối máy trạm xin vào (trên web: Sổ điều hành → thẻ Máy trạm) |
 | `sudo onebee-box them-may <tên> [<mã-phòng>]` | Cấp cho máy trạm mới theo cách cũ (chép file cấu hình bằng tay) |
+| `sudo onebee-box them-nguoi <tên> <nhóm>` / `danh-sach-nguoi` / `ma-xac-nhan` | Tạo / xem tài khoản SSO và lấy mã xác minh 2 lớp TOTP |
 | `sudo onebee-box khoi-phuc-phong <mã-phòng>` | Lấy lại bản sao lưu gần nhất của một phòng |
 | `sudo onebee-box may-tram` | Tình trạng các máy trạm |
 | `sudo onebee-box cap-nhat-may <tên>` / `--tat-ca` | Cập nhật phần mềm máy trạm từ Box |
