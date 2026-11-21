@@ -57,6 +57,11 @@ flowchart LR
 **Thứ tự làm:** Phần 1 (chuẩn bị) → Phần 2–3 (cài Box) → Phần 4 (sao lưu Box, in khóa) → Phần 5–6 (tạo phòng ban, cài từng máy trạm) → Phần 7 (kiểm tra) → Phần 8.3 (bật HTTPS & tạo tài khoản SSO để mở AI, Sổ điều hành, Kho tệp) → Phần 8.1–8.2 & 9 (email, SSH khóa, máy đi công tác).
 
 ### Hình 2. Các bước cài, theo thứ tự
+
+![Sơ đồ workflow 2 phân hệ OneBee OS Desktop và OneBee Box](anh/16-workflow-2-phan-he.svg)
+
+*Màu trắng: hạ tầng hệ điều hành & mạng LAN · Màu vàng: bước kỹ thuật/quản trị thao tác hoặc bấm duyệt · Màu xanh lá: bước OneBee tự động hóa. Thứ tự chi tiết theo từng phần trong tài liệu:*
+
 ```mermaid
 flowchart TD
     P1["<b>Phần 1</b> · Chuẩn bị<br/>phần cứng, 2 USB cài đặt, mã đơn vị,<br/>tên máy, sao lưu Windows cũ"]

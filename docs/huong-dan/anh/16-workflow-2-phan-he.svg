@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: MIT -->
+<!-- Copyright (c) 2026 Dương Minh Thiện, HTX OneBee -->
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 1280 790"
+  width="1280"
+  height="790"
+  style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;"
+>
+  <defs>
+    <marker id="arrow-solid" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#a8a29e" />
+    </marker>
+    <marker id="arrow-dash" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#d6d3d1" />
+    </marker>
+  </defs>
+
+  <!-- Nền tổng thể -->
+  <rect x="0" y="0" width="1280" height="790" rx="8" fill="#1c1917" />
+
+  <!-- Chú giải 3 màu -->
+  <g transform="translate(24, 16)">
+    <rect x="0" y="0" width="14" height="14" rx="2" fill="#ffffff" stroke="#78716c" stroke-width="1.2" />
+    <text x="22" y="12" fill="#d6d3d1" font-size="12.5" font-weight="500">Hạ tầng OS &amp; LAN</text>
+
+    <rect x="160" y="0" width="14" height="14" rx="2" fill="#fef3c7" stroke="#d97706" stroke-width="1.5" />
+    <text x="182" y="12" fill="#d6d3d1" font-size="12.5" font-weight="500">Thủ công / Quản trị thao tác &amp; duyệt</text>
+
+    <rect x="435" y="0" width="14" height="14" rx="2" fill="#d8f3dc" stroke="#2d6a4f" stroke-width="1.5" />
+    <text x="457" y="12" fill="#d6d3d1" font-size="12.5" font-weight="500">OneBee tự động hóa</text>
+  </g>
+
+  <g transform="translate(0, 30)">
+    <!-- Khung trái: HĐH Client Mint -->
+    <rect x="20" y="65" width="420" height="670" rx="8" fill="#221f1d" stroke="#78716c" stroke-width="1.5" />
+    <text x="230" y="90" text-anchor="middle" fill="#e7e5e4" font-size="13.5" font-weight="600">
+      USB máy trạm · hệ điều hành (OneBee OS Desktop)
+    </text>
+
+    <!-- Khung phải: HĐH Box -->
+    <rect x="690" y="20" width="570" height="715" rx="8" fill="#221f1d" stroke="#78716c" stroke-width="1.5" />
+    <text x="975" y="44" text-anchor="middle" fill="#e7e5e4" font-size="13.5" font-weight="600">
+      USB Box · hệ điều hành (OneBee Box 2.1.1)
+    </text>
+
+    <!-- ========== KHUNG TRÁI: CLIENT MINT ========== -->
+    <!-- C_LIST -->
+    <rect x="50" y="108" width="360" height="58" rx="4" fill="#ffffff" stroke="#44403c" stroke-width="1.2" />
+    <text x="230" y="132" text-anchor="middle" fill="#1c1917" font-size="13.5" font-weight="700">
+      Máy trạm 1, 2, 3, 4, 5 ...
+    </text>
+    <text x="230" y="152" text-anchor="middle" fill="#44403c" font-size="12">
+      Kế toán · Bán hàng · Kỹ thuật · Kho · Nhân sự
+    </text>
+
+    <line x1="230" y1="166" x2="230" y2="190" stroke="#a8a29e" stroke-width="1.5" marker-end="url(#arrow-solid)" />
+
+    <!-- C_ISO -->
+    <rect x="120" y="192" width="220" height="38" rx="4" fill="#ffffff" stroke="#44403c" stroke-width="1.2" />
+    <text x="230" y="216" text-anchor="middle" fill="#1c1917" font-size="13" font-weight="600">
+      ISO (Linux Mint 22.3)
+    </text>
+
+    <line x1="230" y1="230" x2="230" y2="254" stroke="#a8a29e" stroke-width="1.5" marker-end="url(#arrow-solid)" />
+
+    <!-- C_MINT -->
+    <rect x="115" y="256" width="230" height="38" rx="4" fill="#ffffff" stroke="#44403c" stroke-width="1.2" />
+    <text x="230" y="280" text-anchor="middle" fill="#1c1917" font-size="13" font-weight="600">
+      Linux Mint Cinnamon
+    </text>
+
+    <line x1="230" y1="294" x2="230" y2="318" stroke="#a8a29e" stroke-width="1.5" marker-end="url(#arrow-solid)" />
+
+    <!-- C_LAN -->
+    <rect x="140" y="320" width="180" height="38" rx="4" fill="#ffffff" stroke="#44403c" stroke-width="1.2" />
+    <text x="230" y="344" text-anchor="middle" fill="#1c1917" font-size="13" font-weight="600">
+      Kết nối LAN
+    </text>
+
+    <!-- Tách nhánh từ Kết nối LAN -->
+    <path d="M 195 358 C 155 378, 114 384, 112 405" fill="none" stroke="#a8a29e" stroke-width="1.5" marker-end="url(#arrow-solid)" />
+    <path d="M 265 358 C 296 376, 317 382, 317 400" fill="none" stroke="#a8a29e" stroke-width="1.5" marker-end="url(#arrow-solid)" />
+
+    <!-- C_IP -->
+    <rect x="36" y="407" width="152" height="46" rx="4" fill="#ffffff" stroke="#44403c" stroke-width="1.2" />
+    <text x="112" y="427" text-anchor="middle" fill="#1c1917" font-size="12.5" font-weight="600">
+      IP của máy trạm
+    </text>
+    <text x="112" y="444" text-anchor="middle" fill="#57534e" font-size="11.5">
+      (DHCP)
+    </text>
+
+    <!-- C_GIT (Vàng - thủ công) -->
+    <rect x="208" y="402" width="218" height="54" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="2" />
+    <text x="317" y="425" text-anchor="middle" fill="#1c1917" font-size="13" font-weight="700">
+      Git clone / Gói phát hành
+    </text>
+    <text x="317" y="444" text-anchor="middle" fill="#44403c" font-size="11.5">
+      (tải thủ công)
+    </text>
+
+    <line x1="317" y1="456" x2="317" y2="480" stroke="#a8a29e" stroke-width="1.5" marker-end="url(#arrow-solid)" />
+
+    <!-- C_XIN (Vàng - thủ công) -->
+    <rect x="202" y="482" width="226" height="56" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="2" />
+    <text x="315" y="505" text-anchor="middle" fill="#1c1917" font-size="13" font-weight="700">
+      Chạy onebee-xin-vao
+    </text>
+    <text x="315" y="524" text-anchor="middle" fill="#44403c" font-size="11">
+      --ten &lt;máy&gt; --phong &lt;phòng&gt; · mã 6 số
+    </text>
+
+    <line x1="315" y1="538" x2="315" y2="566" stroke="#a8a29e" stroke-width="1.5" marker-end="url(#arrow-solid)" />
+
+    <!-- C_OS (Xanh lá - tự động) -->
+    <rect x="174" y="568" width="254" height="70" rx="4" fill="#d8f3dc" stroke="#2d6a4f" stroke-width="2" />
+    <text x="301" y="590" text-anchor="middle" fill="#1c1917" font-size="12.5" font-weight="700">
+      Tự giải mã 12 key &amp; onebee-install.sh
+    </text>
+    <text x="301" y="608" text-anchor="middle" fill="#292524" font-size="11.5">
+      Telex · LibreOffice · /mnt/phongban
+    </text>
+    <text x="301" y="625" text-anchor="middle" fill="#292524" font-size="11.5">
+      lệnh hoi · sao lưu 12:00 · báo tình trạng
+    </text>
+
+    <!-- ========== KHUNG PHẢI: BOX ========== -->
+    <!-- B_SRV -->
+    <rect x="885" y="62" width="180" height="36" rx="4" fill="#ffffff" stroke="#44403c" stroke-width="1.2" />
+    <text x="975" y="85" text-anchor="middle" fill="#1c1917" font-size="13" font-weight="700">
+      Server Box
+    </text>
+
+    <line x1="975" y1="98" x2="975" y2="120" stroke="#a8a29e" stroke-width="1.5" marker-end="url(#arrow-solid)" />
+
+    <!-- B_ISO -->
+    <rect x="855" y="122" width="240" height="38" rx="4" fill="#ffffff" stroke="#44403c" stroke-width="1.2" />
+    <text x="975" y="146" text-anchor="middle" fill="#1c1917" font-size="13" font-weight="600">
+      ISO (Ubuntu Server 24.04)
+    </text>
+
+    <line x1="975" y1="160" x2="975" y2="182" stroke="#a8a29e" stroke-width="1.5" marker-end="url(#arrow-solid)" />
+
+    <!-- B_LAN -->
+    <rect x="855" y="184" width="240" height="40" rx="4" fill="#ffffff" stroke="#44403c" stroke-width="1.2" />
+    <text x="975" y="209" text-anchor="middle" fill="#1c1917" font-size="13" font-weight="600">
+      Kết nối LAN + Giữ IP cố định
+    </text>
+
+    <line x1="975" y1="224" x2="975" y2="248" stroke="#a8a29e" stroke-width="1.5" marker-end="url(#arrow-solid)" />
+
+    <!-- B_CFG (Vàng - thủ công) -->
+    <rect x="820" y="250" width="310" height="52" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="2" />
+    <text x="975" y="272" text-anchor="middle" fill="#1c1917" font-size="13" font-weight="700">
+      Git clone &amp; Khai all.yml (thủ công)
+    </text>
+    <text x="975" y="291" text-anchor="middle" fill="#44403c" font-size="11.5">
+      onebee_box_ma_don_vi + onebee_box_dia_chi
+    </text>
+
+    <!-- B_CFG -> B_ANS + nhãn chạy onebee-box-install.sh -->
+    <line x1="975" y1="302" x2="975" y2="356" stroke="#a8a29e" stroke-width="1.5" marker-end="url(#arrow-solid)" />
+    <rect x="895" y="319" width="160" height="20" rx="4" fill="#0c0a09" />
+    <text x="975" y="333" text-anchor="middle" fill="#e7e5e4" font-size="11.5" font-weight="600">
+      chạy onebee-box-install.sh
+    </text>
+
+    <!-- B_ANS (Xanh lá - tự động) -->
+    <rect x="825" y="358" width="300" height="48" rx="4" fill="#d8f3dc" stroke="#2d6a4f" stroke-width="2" />
+    <text x="975" y="379" text-anchor="middle" fill="#1c1917" font-size="13" font-weight="700">
+      Ansible tự động dựng OneBee Box
+    </text>
+    <text x="975" y="396" text-anchor="middle" fill="#292524" font-size="11.5">
+      (idempotent · chạy lại không đổi gì)
+    </text>
+
+    <!-- 3 nhánh từ B_ANS xuống -->
+    <path d="M 895 406 C 845 430, 791 440, 791 466" fill="none" stroke="#a8a29e" stroke-width="1.5" marker-end="url(#arrow-solid)" />
+    <line x1="975" y1="406" x2="975" y2="466" stroke="#a8a29e" stroke-width="1.5" marker-end="url(#arrow-solid)" />
+    <path d="M 1055 406 C 1105 430, 1159 440, 1159 466" fill="none" stroke="#a8a29e" stroke-width="1.5" marker-end="url(#arrow-solid)" />
+
+    <!-- B_CORE (Xanh lá) -->
+    <rect x="705" y="468" width="172" height="86" rx="4" fill="#d8f3dc" stroke="#2d6a4f" stroke-width="2" />
+    <text x="791" y="489" text-anchor="middle" fill="#1c1917" font-size="12.5" font-weight="700">
+      Dịch vụ lõi tự vận hành
+    </text>
+    <text x="791" y="508" text-anchor="middle" fill="#292524" font-size="11">
+      AI Gemma 4 · Thư mục chung
+    </text>
+    <text x="791" y="525" text-anchor="middle" fill="#292524" font-size="11">
+      Quy trình · Kho tệp · Sổ ĐH
+    </text>
+    <text x="791" y="542" text-anchor="middle" fill="#292524" font-size="11">
+      Sao lưu Box 23:00
+    </text>
+
+    <!-- B_WAIT (Xanh lá) -->
+    <rect x="889" y="468" width="172" height="70" rx="4" fill="#d8f3dc" stroke="#2d6a4f" stroke-width="2" />
+    <text x="975" y="490" text-anchor="middle" fill="#1c1917" font-size="12.5" font-weight="700">
+      Tiếp nhận yêu cầu xin-vao
+    </text>
+    <text x="975" y="509" text-anchor="middle" fill="#292524" font-size="11">
+      Trao đổi cam kết
+    </text>
+    <text x="975" y="526" text-anchor="middle" fill="#292524" font-size="11">
+      &amp; tính mã 6 số
+    </text>
+
+    <line x1="975" y1="538" x2="975" y2="578" stroke="#a8a29e" stroke-width="1.5" marker-end="url(#arrow-solid)" />
+
+    <!-- B_KEY (Vàng - Quản trị duyệt) -->
+    <rect x="882" y="580" width="186" height="64" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="2" />
+    <text x="975" y="601" text-anchor="middle" fill="#1c1917" font-size="12.5" font-weight="700">
+      Chấp thuận mã 6 số
+    </text>
+    <text x="975" y="619" text-anchor="middle" fill="#44403c" font-size="11">
+      (cấp 12 key mã hóa)
+    </text>
+    <text x="975" y="635" text-anchor="middle" fill="#44403c" font-size="10.5">
+      CLI: duyet-may | HTTPS: Thẻ [M]
+    </text>
+
+    <!-- B_DEPT (Vàng - thủ công) -->
+    <rect x="1073" y="468" width="172" height="86" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="2" />
+    <text x="1159" y="489" text-anchor="middle" fill="#1c1917" font-size="12.5" font-weight="700">
+      Tạo phòng &amp; Bật HTTPS
+    </text>
+    <text x="1159" y="507" text-anchor="middle" fill="#44403c" font-size="11">
+      (thủ công)
+    </text>
+    <text x="1159" y="524" text-anchor="middle" fill="#44403c" font-size="10.5">
+      them-phong · them-nguoi
+    </text>
+    <text x="1159" y="541" text-anchor="middle" fill="#44403c" font-size="10.5">
+      onebee_box_https: true
+    </text>
+
+    <!-- ========== KHU VỰC GIỮA (KẾT NỐI & PHỐI HỢP) ========== -->
+    <!-- 1. Quản lý / Kỹ thuật -> Box -->
+    <rect x="497" y="180" width="136" height="36" rx="18" fill="#ffffff" stroke="#44403c" stroke-width="1.2" />
+    <text x="565" y="203" text-anchor="middle" fill="#1c1917" font-size="12.5" font-weight="700">
+      Quản lý / Kỹ thuật
+    </text>
+    <path d="M 633 198 L 853 198" fill="none" stroke="#a8a29e" stroke-width="1.5" marker-end="url(#arrow-solid)" />
+
+    <!-- 2. mDNS (onebee.local) / Ping -->
+    <polygon points="484,282 646,282 662,304 646,326 484,326 468,304" fill="#ffffff" stroke="#44403c" stroke-width="1.2" />
+    <text x="565" y="309" text-anchor="middle" fill="#1c1917" font-size="12" font-weight="700">
+      mDNS (onebee.local) / Ping
+    </text>
+    <path d="M 322 338 Q 400 326 466 306" fill="none" stroke="#d6d3d1" stroke-width="1.5" stroke-dasharray="4 4" marker-start="url(#arrow-dash)" marker-end="url(#arrow-dash)" />
+    <path d="M 664 302 Q 760 270 853 216" fill="none" stroke="#d6d3d1" stroke-width="1.5" stroke-dasharray="4 4" marker-start="url(#arrow-dash)" marker-end="url(#arrow-dash)" />
+    <rect x="706" y="256" width="84" height="20" rx="4" fill="#0c0a09" />
+    <text x="748" y="270" text-anchor="middle" fill="#e7e5e4" font-size="11" font-weight="600">
+      tìm thấy Box
+    </text>
+
+    <!-- 3. Yêu cầu phân phòng (cam kết + mã 6 số) -->
+    <path d="M 428 494 L 444 494 Q 456 494 456 482 L 456 446 Q 456 434 468 434 L 918 434 Q 930 434 930 446 L 930 466" fill="none" stroke="#d6d3d1" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arrow-dash)" />
+    <rect x="464" y="422" width="218" height="22" rx="4" fill="#1c1917" />
+    <text x="573" y="437" text-anchor="middle" fill="#fde68a" font-size="11.5" font-weight="600">
+      1. yêu cầu phân phòng (mã 6 số)
+    </text>
+
+    <!-- 4. Trả may-tram.env (12 key mã hóa) -> tự cài -->
+    <path d="M 882 608 L 430 608" fill="none" stroke="#d6d3d1" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arrow-dash)" />
+    <rect x="448" y="596" width="234" height="22" rx="4" fill="#1c1917" />
+    <text x="565" y="611" text-anchor="middle" fill="#bbf7d0" font-size="11.5" font-weight="600">
+      2. trả 12 key (may-tram.env) → tự cài
+    </text>
+
+    <!-- 5. Đi công tác: onebee-cong-tac <-> duyet-tu-xa -->
+    <path d="M 301 640 L 301 684 Q 301 696 313 696 L 779 696 Q 791 696 791 684 L 791 556" fill="none" stroke="#93c5fd" stroke-width="1.6" stroke-dasharray="5 4" marker-start="url(#arrow-dash)" marker-end="url(#arrow-dash)" />
+    <rect x="444" y="684" width="242" height="22" rx="4" fill="#1c1917" />
+    <text x="565" y="699" text-anchor="middle" fill="#93c5fd" font-size="11" font-weight="600">
+      3. đi công tác: Tailscale (443, 445, 8000)
+    </text>
+  </g>
+</svg>

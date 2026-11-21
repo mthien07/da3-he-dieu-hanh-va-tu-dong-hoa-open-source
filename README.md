@@ -49,6 +49,11 @@
  └─ onebee-ho-tro (khi người dùng bấm)◀──SSH────── └─ onebee-box: them-phong, duyet-may, may-tram, cap-nhat-may …
 ```
 
+<p align="center">
+  <img src="docs/huong-dan/anh/16-workflow-2-phan-he.svg" alt="Sơ đồ workflow triển khai và kết nối 2 phân hệ OneBee OS Desktop và OneBee Box"/>
+  <br/><sub>Luồng triển khai và phối hợp giữa 2 phân hệ: Máy trạm OneBee OS Desktop (Linux Mint 22.3) và Máy chủ OneBee Box (Ubuntu Server 24.04)</sub>
+</p>
+
 <table>
   <tr>
     <td width="50%"><img src="docs/huong-dan/anh/01-trang-gioi-thieu-box.png" alt="Trang giới thiệu OneBee Box"/><br/><sub>Trang giới thiệu của OneBee Box trong mạng LAN</sub></td>
