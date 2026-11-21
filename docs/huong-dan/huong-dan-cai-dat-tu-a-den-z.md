@@ -3,7 +3,6 @@
 Tài liệu này dẫn từng bước, từ lúc chuẩn bị máy đến khi nhân viên dùng được. Không cần biết Linux: chỉ cần **gõ (hoặc dán) đúng các lệnh
 trong khung xám**, mỗi lần một khung, và đọc dòng kết quả cuối cùng.
 
-> Lưu ý trung thực: bộ cài đã chạy đạt toàn bộ kiểm thử tự động trong máy ảo/container (Docker), nhưng **chưa được cài trên máy thật tại đơn vị nào**.
 > Hãy làm thử trên máy ảo hoặc máy cũ trước ([thu-nghiem-tren-may-ao.md](thu-nghiem-tren-may-ao.md)), và gặp lỗi thì gửi file nhật ký cho kỹ thuật OneBee.
 
 ---
