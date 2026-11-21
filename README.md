@@ -178,9 +178,6 @@ Mã nguồn repo: **MIT** ([LICENSE](LICENSE)). Thành phần giữ giấy phép
 | Authelia, Caddy, SeaweedFS | Apache-2.0 |
 | ClamAV | GPL-2.0-only; image dựng cục bộ **bỏ `libclamunrar`** (giấy phép UnRAR không thuộc OSI) |
 
-## 🖥️ Demo web và hồ sơ hội thi
-`demo/index.html` là giao diện **mô phỏng** (số liệu minh họa, không chạy AI thật). Hồ sơ dự thi: `docs/hoi-thi/`.
-
 ## 📞 Liên hệ
 
 **Tác giả dự án: Dương Minh Thiện**
@@ -191,10 +188,3 @@ Mã nguồn repo: **MIT** ([LICENSE](LICENSE)). Thành phần giữ giấy phép
 - 📱 0385 944 909
 - 🔢 MST: 1102128064
 - 👤 Người đại diện: DUONG MINH THIEN
-
----
-
-<p align="center">
-  <em>Dự án dự thi Hội thi Khởi nghiệp Đổi mới Sáng tạo tỉnh Tây Ninh năm 2026</em><br/>
-  <strong>🐝 HTX OneBee — Chuyển đổi số cho cộng đồng</strong>
-</p>
